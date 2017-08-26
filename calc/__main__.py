@@ -8,8 +8,7 @@ import argparse
 import textwrap
 import collections
 
-from resistor import Resistor
-from regulator import Regulator
+from .regulator import Regulator
 
 PROG = 'calc'
 DESC = 'Electronics calculator'
