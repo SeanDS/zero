@@ -6,6 +6,7 @@ from .resistor import Set
 
 class Regulator(object):
     TYPE_LM317 = 1
+    TYPE_LM337 = 2
 
     def __init__(self, reg_type):
         self.type = reg_type
@@ -16,11 +17,16 @@ class Regulator(object):
 
     @type.setter
     def type(self, reg_type):
-        if str(reg_type).lower() == "lm317":
+        reg_type = str(reg_type).lower()
+
+        if reg_type == "lm317":
             self._type = self.TYPE_LM317
             logging.getLogger("regulator").info("Using LM317 regulator")
+        elif reg_type == "lm337":
+            self._type = self.TYPE_LM337
+            logging.getLogger("regulator").info("Using LM337 regulator")
         else:
-            raise ValueError("Unknwon regulator type")
+            raise ValueError("Unknown regulator type")
 
     def resistors_for_voltage(self, voltage, n_values, series=None, *args, **kwargs):
         voltage = float(voltage)
@@ -47,7 +53,7 @@ class Regulator(object):
             yield (self._regulated_voltage(pair), *pair)
 
     def _regulated_voltage(self, resistors):
-        if self.type is self.TYPE_LM317:
+        if self.type in [self.TYPE_LM317, self.TYPE_LM337]:
             return 1.25 * (1 + float(resistors[1].resistance)
                                / float(resistors[0].resistance))
         else:
