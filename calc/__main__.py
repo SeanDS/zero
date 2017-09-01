@@ -51,7 +51,9 @@ def enable_verbose_logs():
 
 class Cmd(object):
     """base class for commands"""
+
     cmd = ''
+
     def __init__(self):
         """Initialize argument parser"""
         self.parser = argparse.ArgumentParser(
@@ -61,14 +63,18 @@ class Cmd(object):
         )
     def parse_args(self, args):
         """Parse arguments and returned ArgumentParser Namespace object"""
+
         return self.parser.parse_args(args)
     def __call__(self, args):
         """Take Namespace object as input and execute command"""
+
         pass
 
 class RegulatorResistors(Cmd):
     """Calculate regulator resistor values"""
+
     cmd = 'regres'
+
     def __init__(self):
         Cmd.__init__(self)
         self.parser.add_argument('voltage',
@@ -88,20 +94,35 @@ class RegulatorResistors(Cmd):
         if args.verbose:
             enable_verbose_logs()
 
+        voltage = float(args.voltage)
         reg = Regulator(args.type)
+        num_values = int(args.num_values)
 
-        matches = reg.resistors_for_voltage(args.voltage,
-            n_values=args.num_values, series=args.series)
+        matches = reg.resistors_for_voltage(voltage, n_values=num_values,
+                                            series=args.series)
 
-        print('Closest {} matches for {}V target:'.format(args.num_values, args.voltage))
-        for match in matches[:int(args.num_values)]:
-            print('V = {}, R1 = {}, R2 = {}'.format(*match))
+        print('Closest {} matches for {}V target:'.format(num_values,
+                                                          args.voltage))
+        for match in matches:
+            # how close, in percent, the match is to the desired voltage
+            closeness = 100 * (1 - match[0] / voltage)
+
+            # formatted string
+            closeness_str = "{:.2f}".format(abs(closeness))
+
+            if closeness > 0:
+                closeness_sign = "-"
+            else:
+                closeness_sign = "+"
+
+            print('V = {} ({}{}%), R1 = {}, R2 = {}'.format(match[0],
+                closeness_sign, closeness_str, match[1], match[2]))
 
 class Help(Cmd):
-    """Print manpage or command help (also '-h' after command).
+    """Print manpage or command help (also '-h' after command)."""
 
-    """
     cmd = 'help'
+
     def __init__(self):
         Cmd.__init__(self)
         self.parser.add_argument('cmd', nargs='?',
@@ -132,6 +153,7 @@ def format_commands(man=False):
         initial_indent=prefix,
         subsequent_indent=prefix,
         )
+
     with io.StringIO() as f:
         for name, func in CMDS.items():
             if man:
@@ -145,6 +167,7 @@ def format_commands(man=False):
                 desc = func.__doc__.splitlines()[0]
                 f.write('  {:10}{}\n'.format(name, desc))
         output = f.getvalue()
+
     return output.rstrip()
 
 def get_func(cmd):

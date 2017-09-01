@@ -1,5 +1,6 @@
 import logging
 import itertools
+import heapq
 
 from .resistor import Set
 
@@ -31,24 +32,21 @@ class Regulator(object):
 
         # get possible resistor pairs
         logging.getLogger("regulator").debug("Calculating resistor combinations")
-        combinations = list(itertools.combinations(values, 2))
+        combinations = itertools.combinations(values, 2)
 
         # calculate voltages
         logging.getLogger("regulator").debug("Calculating regulator voltages")
-        voltages = list(map(self.regulated_voltage, combinations))
-        logging.getLogger("regulator").debug("Found %d combinations", len(voltages))
-
-        # add keys
-        voltages_with_keys = [(i, voltages[i]) for i in range(len(voltages))]
+        voltages = self.regulated_voltages(combinations)
 
         # sorted absolute voltage differences
         logging.getLogger("regulator").debug("Finding closest voltage matches")
-        sorted_abs = sorted(voltages_with_keys, key=lambda i: abs(i[1] - voltage))
+        return heapq.nsmallest(n_values, voltages, key=lambda i: abs(i[0] - voltage))
 
-        # return the lowest n_values voltages, and corresponding resistors
-        return [(voltages[i], *combinations[i]) for i, _ in sorted_abs[:n_values]]
+    def regulated_voltages(self, resistor_pairs):
+        for pair in resistor_pairs:
+            yield (self._regulated_voltage(pair), *pair)
 
-    def regulated_voltage(self, resistors):
+    def _regulated_voltage(self, resistors):
         if self.type is self.TYPE_LM317:
             return 1.25 * (1 + float(resistors[1].resistance)
                                / float(resistors[0].resistance))
