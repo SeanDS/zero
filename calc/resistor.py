@@ -67,14 +67,16 @@ class Set(object):
         self.series = int(series)
         self.tolerance = float(tolerance)
 
-    def get_values(self, max_exp=6, min_exp=0, max_parallel=None,
-                   min_parallel=2):
+    def get_values(self, max_exp=6, min_exp=0, max_series=1, min_series=2,
+                   max_parallel=1, min_parallel=2):
         """Get resistor values
 
         :param max_exp: maximum exponent
         :param min_exp: minimum exponent
-        :param max_parallel: maximum number of parallel combinations to compute
-        :param min_parallel: minimum number of parallel combinations to compute
+        :param max_series: maximum number of series combinations
+        :param min_series: minimum number of series combinations
+        :param max_parallel: maximum number of parallel combinations
+        :param min_parallel: minimum number of parallel combinations
         """
 
         max_exp = int(max_exp)
@@ -91,9 +93,17 @@ class Set(object):
             values.update([Resistor(v * 10 ** exp, tolerance=self.tolerance)
                            for v in base_numbers])
 
+        # copy of values without series and parallel combinations (this is so we
+        # don't produce parallel combinations of series combinations)
+        original_values = values.copy()
+
+        # compute series combinations
+        values.update(self.series_combinations(original_values, max_series,
+                      min_series))
+
         # compute parallel combinations
-        if max_parallel is not None:
-            values.update(self.parallel_values(values, max_parallel, min_parallel))
+        values.update(self.parallel_combinations(original_values, max_parallel,
+                      min_parallel))
 
         return list(values)
 
@@ -115,35 +125,66 @@ class Set(object):
         else:
             raise ValueError("Unrecognised resistor series")
 
-    def parallel_values(self, values, max_parallel=2, min_parallel=2):
+    def series_combinations(self, values, max_series=2, min_series=2):
+        """Returns series combinations of the specified set of values
+
+        :param values: set of values
+        :param max_series: maximum number of series resistors
+        :param min_series: minimum number of series resistors
+        """
+
+        # create series collections and add to set
+        values.update([Collection(resistors, vtype=Collection.TYPE_SERIES)
+                       for resistors in self._value_combinations(values,
+                                                                 max_series,
+                                                                 min_series)])
+
+        return list(values)
+
+    def parallel_combinations(self, values, max_parallel=2, min_parallel=2):
         """Returns parallel combinations of the specified set of values
 
         :param values: set of values
-        :param max_parallel: maximum number of parallel resistors to compute
-        :param min_parallel: minimum number of parallel resistors to compute
+        :param max_parallel: maximum number of parallel resistors
+        :param min_parallel: minimum number of parallel resistors
+        """
+
+        # create series collections and add to set
+        values.update([Collection(resistors, vtype=Collection.TYPE_PARALLEL)
+                       for resistors in self._value_combinations(values,
+                                                                 max_parallel,
+                                                                 min_parallel)])
+
+        return list(values)
+
+    def _value_combinations(self, values, max_count=2, min_count=2):
+        """Returns combinations of the specified set of values between \
+        min_count and max_count
+
+        :param values: set of values
+        :param max_count: maximum number of values in each combination
+        :param min_count: minimum number of values in each combination
         """
 
         values = set(values)
 
-        max_parallel = int(max_parallel)
-        min_parallel = int(min_parallel)
+        max_count = int(max_count)
+        min_count = int(min_count)
 
-        if max_parallel < 2 or min_parallel < 2:
-            raise ValueError("max_parallel and min_parallel must be >= 2")
-        elif min_parallel > max_parallel:
-            raise ValueError("max_parallel cannot be > min_parallel")
+        if max_count < 2:
+            return []
+        elif min_count < 2:
+            raise ValueError("min_count must be >= 2")
+        elif min_count > max_count:
+            raise ValueError("max_count must be >= min_count")
 
-        # list of tuples containing parallel resistor values
-        parallel_sets = []
+        # list of tuples containing combinations
+        sets = []
 
-        for n in range(min_parallel, max_parallel + 1):
-            parallel_sets.extend(itertools.combinations_with_replacement(values, n))
+        for n in range(min_count, max_count + 1):
+            sets.extend(itertools.combinations_with_replacement(values, n))
 
-        # compute parallel values and add to set
-        values.update([Collection(resistors, vtype=Collection.TYPE_PARALLEL)
-                       for resistors in parallel_sets])
-
-        return list(values)
+        return sets
 
 class Resistor(object):
     # tolerances, in percent (+/-)
@@ -262,9 +303,9 @@ class Collection(Resistor):
 
     def __str__(self):
         if self.vtype is self.TYPE_SERIES:
-            combined_resistances = "+".join([str(r) for r in self.resistors])
+            combined_resistances = " + ".join([str(r) for r in self.resistors])
         else:
-            combined_resistances = "||".join([str(r) for r in self.resistors])
+            combined_resistances = " || ".join([str(r) for r in self.resistors])
 
         return "{0}±{1}% ({2})".format(self.resistance, self.tolerance,
                                        combined_resistances)
