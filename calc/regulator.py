@@ -28,10 +28,11 @@ class Regulator(object):
         else:
             raise ValueError("Unknown regulator type")
 
-    def resistors_for_voltage(self, voltage, n_values, series=None, *args, **kwargs):
+    def resistors_for_voltage(self, voltage, n_values, series=None,
+                              tolerance=None, *args, **kwargs):
         voltage = float(voltage)
         n_values = int(n_values)
-        resistor_set = Set(series)
+        resistor_set = Set(series, tolerance)
 
         # get resistor values
         values = resistor_set.combinations(*args, **kwargs)

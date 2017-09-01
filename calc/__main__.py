@@ -85,6 +85,8 @@ class RegulatorResistors(Cmd):
                                  help="number of closest values to show")
         self.parser.add_argument('-s', '--series',
                                  help="resistor series")
+        self.parser.add_argument('-t', '--tolerance',
+                                 help="resistor tolerance")
         self.parser.add_argument('-v', '--verbose', action='store_true',
                                  help="enable verbose output")
         # self.parser.add_argument('field', nargs='?',
@@ -99,7 +101,8 @@ class RegulatorResistors(Cmd):
         num_values = int(args.num_values)
 
         matches = reg.resistors_for_voltage(voltage, n_values=num_values,
-                                            series=args.series)
+                                            series=args.series,
+                                            tolerance=args.tolerance)
 
         print('Closest {} matches for {}V target:'.format(num_values,
                                                           args.voltage))

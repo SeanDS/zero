@@ -63,6 +63,9 @@ class Set(object):
         if tolerance is None:
             logging.getLogger("resistor").info("Using gold (5%) tolerance by default")
             tolerance = Resistor.TOL_GOLD
+        else:
+            # format tolerance
+            tolerance = tolerance.strip().replace("%", "")
 
         self.series = int(series)
         self.tolerance = float(tolerance)
