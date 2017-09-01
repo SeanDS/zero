@@ -27,7 +27,7 @@ class Regulator(object):
         resistor_set = Set(series)
 
         # get resistor values
-        values = resistor_set.get_values(*args, **kwargs)
+        values = resistor_set.combinations(*args, **kwargs)
 
         # get possible resistor pairs
         logging.getLogger("regulator").debug("Calculating resistor combinations")
