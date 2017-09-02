@@ -87,6 +87,18 @@ class RegulatorResistors(Cmd):
                                  help="resistor series")
         self.parser.add_argument('-t', '--tolerance',
                                  help="resistor tolerance")
+        self.parser.add_argument('-e', '--max-exponent', default=5,
+                                 help="maximum exponent")
+        self.parser.add_argument('--min-exponent', default=0,
+                                 help="minimum exponent")
+        self.parser.add_argument('--max-series', default=1,
+                                 help="maximum series combinations")
+        self.parser.add_argument('--min-series', default=2,
+                                 help="minimum series combinations")
+        self.parser.add_argument('--max-parallel', default=1,
+                                 help="maximum parallel combinations")
+        self.parser.add_argument('--min-parallel', default=2,
+                                 help="minimum parallel combinations")
         self.parser.add_argument('-v', '--verbose', action='store_true',
                                  help="enable verbose output")
         # self.parser.add_argument('field', nargs='?',
@@ -102,7 +114,13 @@ class RegulatorResistors(Cmd):
 
         matches = reg.resistors_for_voltage(voltage, n_values=num_values,
                                             series=args.series,
-                                            tolerance=args.tolerance)
+                                            tolerance=args.tolerance,
+                                            max_exp=args.max_exponent,
+                                            min_exp=args.min_exponent,
+                                            max_series=args.max_series,
+                                            min_series=args.min_series,
+                                            max_parallel=args.max_parallel,
+                                            min_parallel=args.min_parallel)
 
         print('Closest {} matches for {}V target:'.format(num_values,
                                                           args.voltage))
