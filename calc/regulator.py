@@ -37,13 +37,12 @@ class Regulator(object):
         # get resistor values
         values = resistor_set.combinations(*args, **kwargs)
 
-        # get possible resistor pairs
-        logging.getLogger("regulator").debug("Calculating resistor combinations")
-        combinations = itertools.combinations(values, 2)
+        # get regulator resistor pairs
+        permutations = itertools.permutations(values, 2)
 
-        # calculate voltages
-        logging.getLogger("regulator").debug("Calculating regulator voltages")
-        voltages = self.regulated_voltages(combinations)
+        # calculate voltages for resistor pairs
+        logging.getLogger("regulator").debug("Generating regulator voltages")
+        voltages = self.regulated_voltages(permutations)
 
         # sorted absolute voltage differences
         logging.getLogger("regulator").debug("Finding closest voltage matches")
