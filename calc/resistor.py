@@ -1,6 +1,8 @@
 import logging
 import itertools
 
+from .format import SIFormatter
+
 class Set(object):
     E3     = 1
     E6     = 2
@@ -233,7 +235,8 @@ class Resistor(object):
         return str(self)
 
     def __str__(self):
-        return "{0}±{1}%".format(self.resistance, self.tolerance)
+        return "{} ± {}%".format(SIFormatter.format(self.resistance, "Ω"),
+                                 SIFormatter.format(self.tolerance))
 
 class Collection(Resistor):
     TYPE_SERIES = 1
@@ -305,5 +308,5 @@ class Collection(Resistor):
         else:
             combined_resistances = " || ".join([str(r) for r in self.resistors])
 
-        return "{0}±{1}% ({2})".format(self.resistance, self.tolerance,
-                                       combined_resistances)
+        return "{} ({})".format(super(Collection, self).__str__(),
+                                combined_resistances)

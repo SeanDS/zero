@@ -9,6 +9,7 @@ import textwrap
 import collections
 
 from .regulator import Regulator
+from .format import SIFormatter
 
 PROG = 'calc'
 DESC = 'Electronics calculator'
@@ -122,8 +123,10 @@ class RegulatorResistors(Cmd):
                                             max_parallel=args.max_parallel,
                                             min_parallel=args.min_parallel)
 
-        print('Closest {} matches for {}V target:'.format(num_values,
-                                                          args.voltage))
+        print("Closest {} matches "
+              "for {} target:".format(num_values,
+                                      SIFormatter.format(args.voltage, "V")))
+
         for match in matches:
             # how close, in percent, the match is to the desired voltage
             closeness = 100 * (1 - match[0] / voltage)
@@ -136,8 +139,10 @@ class RegulatorResistors(Cmd):
             else:
                 closeness_sign = "+"
 
-            print('V = {} ({}{}%), R1 = {}, R2 = {}'.format(match[0],
-                closeness_sign, closeness_str, match[1], match[2]))
+            print("V = {} ({}{}%), "
+                  "R1 = {}, R2 = {}".format(SIFormatter.format(match[0], "V"),
+                                            closeness_sign, closeness_str,
+                                            match[1], match[2]))
 
 class Help(Cmd):
     """Print manpage or command help (also '-h' after command)."""
