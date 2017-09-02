@@ -1,6 +1,5 @@
 import logging
 import itertools
-import math
 
 class Set(object):
     E3     = 1
