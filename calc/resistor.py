@@ -1,9 +1,6 @@
 import logging
 import itertools
-
-"""
-TODO: add min_ and max_series parameters
-"""
+import math
 
 class Set(object):
     E3     = 1
@@ -88,6 +85,18 @@ class Set(object):
         else:
             raise ValueError("Unrecognised resistor series")
 
+    def _get_base_resistors(self, min_exp, max_exp):
+        min_exp = int(min_exp)
+        max_exp = int(max_exp)
+
+        # base resistor numbers between 1 and 10 ohms
+        base_numbers = self._get_base_numbers()
+
+        # calculate exponents of the base numbers and fill values set
+        for exp in range(min_exp, max_exp + 1):
+            for v in base_numbers:
+                yield Resistor(v * 10 ** exp, tolerance=self.tolerance)
+
     def combinations(self, max_exp=6, min_exp=0, max_series=1, min_series=2,
                      max_parallel=1, min_parallel=2):
         """Get series/parallel resistor combinations
@@ -104,27 +113,17 @@ class Set(object):
         :param min_parallel: minimum number of parallel combinations
         """
 
-        max_exp = int(max_exp)
-        min_exp = int(min_exp)
-
-        # base resistor numbers between 1 and 10 ohms
-        base_numbers = self._get_base_numbers()
-
-        # list to store base resistor values from which combinations are
-        # computed
-        values = []
-
-        # calculate exponents of the base numbers and fill values set
-        for exp in range(min_exp, max_exp + 1):
-            values.extend([Resistor(v * 10 ** exp, tolerance=self.tolerance)
-                           for v in base_numbers])
+        # base resistor values from which combinations are computed
+        base_resistors = list(self._get_base_resistors(min_exp, max_exp))
 
         # yield single resistors
-        yield from values
+        yield from base_resistors
 
         # compute series and parallel combinations
-        yield from self.series_combinations(values, max_series, min_series)
-        yield from self.parallel_combinations(values, max_parallel, min_parallel)
+        yield from self.series_combinations(base_resistors, max_series,
+                                            min_series)
+        yield from self.parallel_combinations(base_resistors, max_parallel,
+                                              min_parallel)
 
     def unique_combinations(self, *args, **kwargs):
         """Guaranteed unique resistor combinations
