@@ -71,7 +71,7 @@ class Cmd(object):
         pass
 
 class RegulatorResistors(Cmd):
-    """Calculate regulator resistor values"""
+    """Calculate best regulator resistor permutations"""
 
     cmd = 'regres'
 
