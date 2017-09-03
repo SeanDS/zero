@@ -2,6 +2,7 @@ import logging
 import itertools
 import heapq
 
+from .misc import _n_comb_k
 from .format import SIFormatter
 
 class Set(object):
@@ -173,6 +174,30 @@ class Set(object):
         for n in range(min_count, max_count + 1):
             yield from itertools.combinations_with_replacement(values, n)
 
+    def n_combinations(self):
+        """Get number of possible combinations with the current settings"""
+
+        count = 0
+
+        # number of base resistors
+        n_base_resistors = len(list(self._base_resistors()))
+
+        # first count the base resistors
+        if self.min_series < 2 or self.min_parallel < 2:
+            count += n_base_resistors
+
+        # add on series resistors
+        if self.max_series >= 2:
+            for i in range(self.min_series, self.max_series + 1):
+                count += _n_comb_k(n_base_resistors, i, repetition=True)
+
+        # add on parallel resistors
+        if self.max_parallel >= 2:
+            for i in range(self.min_parallel, self.max_parallel + 1):
+                count += _n_comb_k(n_base_resistors, i, repetition=True)
+
+        return count
+
     def closest(self, resistance, n_values=3):
         """Returns closest resistors in set to target resistance
 
@@ -342,7 +367,7 @@ class Collection(Resistor):
                 combined_resistances = " || ".join([r.label(*args, **kwargs)
                                                     for r in self.resistors])
 
-            label += " ({})".format(constituents)
+            label += " ({})".format(combined_resistances)
 
         return label
 

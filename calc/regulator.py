@@ -3,6 +3,7 @@ import itertools
 import heapq
 
 from .resistor import Set
+from .misc import _n_perm_k, _print_progress
 
 class Regulator(object):
     TYPE_LM317 = 1
@@ -28,9 +29,15 @@ class Regulator(object):
         else:
             raise ValueError("Unknown regulator type")
 
-    def resistors_for_voltage(self, voltage, resistor_set, n_values=3):
+    def resistors_for_voltage(self, voltage, resistor_set, n_values=3,
+                              progress=True):
         voltage = float(voltage)
         n_values = int(n_values)
+
+        # calculate number of results
+        n_permutations = _n_perm_k(resistor_set.n_combinations(), 2)
+        logging.getLogger("regulator").info("Calculating %i permutations",
+                                            n_permutations)
 
         # get regulator resistor pairs using resistor set combinations
         permutations = itertools.permutations(resistor_set.combinations(), 2)
@@ -38,6 +45,10 @@ class Regulator(object):
         # calculate voltages for resistor pairs
         logging.getLogger("regulator").debug("Generating regulator voltages")
         voltages = self.regulated_voltages(permutations)
+
+        if progress:
+            # add progress bar between voltage and heapq generators
+            voltages = _print_progress(voltages, n_permutations)
 
         # sorted absolute voltage differences
         logging.getLogger("regulator").debug("Finding closest voltage matches")
