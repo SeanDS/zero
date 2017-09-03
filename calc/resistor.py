@@ -103,8 +103,7 @@ class Set(object):
         """Get series/parallel resistor combinations
 
         This returns a generator which yields non-unique resistor values or
-        series/parallel combinations of values. To obtain a unique set of
-        values, use :method:`~unique_combinations`.
+        series/parallel combinations of values.
 
         :param max_exp: maximum exponent
         :param min_exp: minimum exponent
@@ -125,16 +124,6 @@ class Set(object):
                                             min_series)
         yield from self.parallel_combinations(base_resistors, max_parallel,
                                               min_parallel)
-
-    def unique_combinations(self, *args, **kwargs):
-        """Guaranteed unique resistor combinations
-
-        This method returns a set of resistor combinations instead of the
-        generator used by :method:`~combinations`. It is more memory intensive
-        but guarantees unique combinations.
-        """
-
-        return set(self.combinations(*args, **kwargs))
 
     def series_combinations(self, values, max_series=2, min_series=2):
         """Returns series combinations of the specified set of values
