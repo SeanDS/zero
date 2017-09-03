@@ -1,4 +1,5 @@
 import logging
+import locale
 import itertools
 import heapq
 
@@ -38,6 +39,13 @@ class Regulator(object):
         n_permutations = _n_perm_k(resistor_set.n_combinations(), 2)
         logging.getLogger("regulator").info("Calculating %i permutations",
                                             n_permutations)
+
+        # warn user about excessively large permutations
+        if n_permutations > 1e8:
+            logging.getLogger("regulator").warning("Extremely large number of "
+                "permutations required (%s); consider choosing smaller "
+                "resistor series or number of exponents, series or parallel "
+                "resistors", locale.format("%d", n_permutations, grouping=True))
 
         # get regulator resistor pairs using resistor set combinations
         permutations = itertools.permutations(resistor_set.combinations(), 2)
