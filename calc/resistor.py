@@ -1,5 +1,6 @@
 import logging
 import itertools
+import heapq
 
 from .format import SIFormatter
 
@@ -36,7 +37,20 @@ class Set(object):
         3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1
     ]
 
-    def __init__(self, series=None, tolerance=None):
+    def __init__(self, series=None, tolerance=None, max_exp=6, min_exp=0,
+                 max_series=1, min_series=1, max_parallel=1, min_parallel=1):
+        """Initialise resistor set
+
+        :param series: resistor series
+        :param tolerance: resistor tolerance
+        :param max_exp: maximum exponent
+        :param min_exp: minimum exponent
+        :param max_series: maximum number of series combinations
+        :param min_series: minimum number of series combinations
+        :param max_parallel: maximum number of parallel combinations
+        :param min_parallel: minimum number of parallel combinations
+        """
+
         if series is None:
             logging.getLogger("resistor").info("Using E24 series by default")
             series = self.E24
@@ -67,8 +81,14 @@ class Set(object):
 
         self.series = int(series)
         self.tolerance = float(tolerance)
+        self.max_exp = int(max_exp)
+        self.min_exp = int(min_exp)
+        self.max_series = int(max_series)
+        self.min_series = int(min_series)
+        self.max_parallel = int(max_parallel)
+        self.min_parallel = int(min_parallel)
 
-    def _get_base_numbers(self):
+    def _base_numbers(self):
         if self.series is self.E192:
             return self.SERIES_E192
         elif self.series is self.E96:
@@ -86,94 +106,88 @@ class Set(object):
         else:
             raise ValueError("Unrecognised resistor series")
 
-    def _get_base_resistors(self, min_exp, max_exp):
-        min_exp = int(min_exp)
-        max_exp = int(max_exp)
+    def _base_resistors(self):
+        if self.min_exp > self.max_exp:
+            raise ValueError("max_exp must be >= min_exp")
 
         # base resistor numbers between 1 and 10 ohms
-        base_numbers = self._get_base_numbers()
+        base_numbers = self._base_numbers()
 
         # calculate exponents of the base numbers and fill values set
-        for exp in range(min_exp, max_exp + 1):
-            for v in base_numbers:
+        for exp in range(self.min_exp, self.max_exp + 1):
+            for v in self._base_numbers():
                 yield Resistor(v * 10 ** exp, tolerance=self.tolerance)
 
-    def combinations(self, max_exp=6, min_exp=0, max_series=1, min_series=2,
-                     max_parallel=1, min_parallel=2):
+    def combinations(self):
         """Get series/parallel resistor combinations
 
         This returns a generator which yields non-unique resistor values or
         series/parallel combinations of values.
-
-        :param max_exp: maximum exponent
-        :param min_exp: minimum exponent
-        :param max_series: maximum number of series combinations
-        :param min_series: minimum number of series combinations
-        :param max_parallel: maximum number of parallel combinations
-        :param min_parallel: minimum number of parallel combinations
         """
-
-        # base resistor values from which combinations are computed
-        base_resistors = list(self._get_base_resistors(min_exp, max_exp))
 
         # yield single resistors
-        yield from base_resistors
+        yield from self._base_resistors()
 
         # compute series and parallel combinations
-        yield from self.series_combinations(base_resistors, max_series,
-                                            min_series)
-        yield from self.parallel_combinations(base_resistors, max_parallel,
-                                              min_parallel)
+        yield from self._series_combinations()
+        yield from self._parallel_combinations()
 
-    def series_combinations(self, values, max_series=2, min_series=2):
-        """Returns series combinations of the specified set of values
-
-        :param values: set of values
-        :param max_series: maximum number of series resistors
-        :param min_series: minimum number of series resistors
-        """
+    def _series_combinations(self):
+        """Returns series combinations of the specified set of values"""
 
         # create series collections
-        for resistors in self._value_combinations(values, max_series,
-                                                  min_series):
+        for resistors in self._value_combinations(self._base_resistors(),
+                                                  self.min_series,
+                                                  self.max_series):
             yield Collection(resistors, vtype=Collection.TYPE_SERIES)
 
-    def parallel_combinations(self, values, max_parallel=2, min_parallel=2):
-        """Returns parallel combinations of the specified set of values
-
-        :param values: set of values
-        :param max_parallel: maximum number of parallel resistors
-        :param min_parallel: minimum number of parallel resistors
-        """
+    def _parallel_combinations(self):
+        """Returns parallel combinations of the specified set of values"""
 
         # create series collections
-        for resistors in self._value_combinations(values, max_parallel,
-                                                  min_parallel):
+        for resistors in self._value_combinations(self._base_resistors(),
+                                                  self.min_parallel,
+                                                  self.max_parallel):
             yield Collection(resistors, vtype=Collection.TYPE_PARALLEL)
 
-    def _value_combinations(self, values, max_count=2, min_count=2):
+    def _value_combinations(self, values, min_count, max_count):
         """Returns combinations of the specified set of values between \
         min_count and max_count
 
         :param values: set of values
-        :param max_count: maximum number of values in each combination
         :param min_count: minimum number of values in each combination
+        :param max_count: maximum number of values in each combination
         """
 
         values = list(values)
 
-        max_count = int(max_count)
         min_count = int(min_count)
+        max_count = int(max_count)
 
-        if max_count < 2:
-            return []
-        elif min_count < 2:
-            raise ValueError("min_count must be >= 2")
-        elif min_count > max_count:
+        if min_count > max_count:
             raise ValueError("max_count must be >= min_count")
+        elif max_count < 2:
+            return []
 
         for n in range(min_count, max_count + 1):
             yield from itertools.combinations_with_replacement(values, n)
+
+    def closest(self, resistance, n_values=3):
+        """Returns closest resistors in set to target resistance
+
+        :param resistance: target resistance
+        :param n_values: number of resistors to match
+        """
+
+        resistance = float(resistance)
+        n_values = int(n_values)
+
+        if resistance < 0:
+            raise ValueError("Resistance must be > 0")
+
+        logging.getLogger("resistor").debug("Finding closest resistor matches")
+        return heapq.nsmallest(n_values, self.combinations(),
+                               key=lambda i: abs(i.resistance - resistance))
 
 class Resistor(object):
     # tolerances, in percent (+/-)
