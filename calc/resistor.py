@@ -77,7 +77,7 @@ class Set(object):
             tolerance = Resistor.TOL_GOLD
         else:
             # format tolerance
-            tolerance = tolerance.strip().replace("%", "")
+            tolerance = str(tolerance).strip().replace("%", "")
 
         self.series = int(series)
         self.tolerance = float(tolerance)
@@ -125,8 +125,9 @@ class Set(object):
         series/parallel combinations of values.
         """
 
-        # yield single resistors
-        yield from self._base_resistors()
+        if self.min_series < 2 or self.min_parallel < 2:
+            # yield single resistors
+            yield from self._base_resistors()
 
         # compute series and parallel combinations
         yield from self._series_combinations()
@@ -234,12 +235,24 @@ class Resistor(object):
         """Absolute inverse tolerance"""
         return (1 / self.resistance) * self.tolerance / 100
 
+    def label(self, tolerance=True):
+        """Label for this resistor
+
+        :param tolerance: show tolerances
+        """
+
+        label = SIFormatter.format(self.resistance, "Ω")
+
+        if tolerance:
+            label += " ± {}%".format(SIFormatter.format(self.tolerance))
+
+        return label
+
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return "{} ± {}%".format(SIFormatter.format(self.resistance, "Ω"),
-                                 SIFormatter.format(self.tolerance))
+        return self.label()
 
 class Collection(Resistor):
     TYPE_SERIES = 1
@@ -305,11 +318,33 @@ class Collection(Resistor):
     def tolerance(self, tolerance):
         return NotImplemented
 
-    def __str__(self):
-        if self.vtype is self.TYPE_SERIES:
-            combined_resistances = " + ".join([str(r) for r in self.resistors])
-        else:
-            combined_resistances = " || ".join([str(r) for r in self.resistors])
+    def series_equivalent(self):
+        """Return collection with identical resistors in series"""
+        return Collection(self.resistors, self.TYPE_SERIES)
 
-        return "{} ({})".format(super(Collection, self).__str__(),
-                                combined_resistances)
+    def parallel_equivalent(self):
+        """Return collection with identical resistors in parallel"""
+        return Collection(self.resistors, self.TYPE_PARALLEL)
+
+    def label(self, constituents=True, *args, **kwargs):
+        """Label for this collection
+
+        :param constituents: show constituent resistors and tolerances
+        """
+
+        label = super(Collection, self).label(*args, **kwargs)
+
+        if constituents:
+            if self.vtype is self.TYPE_SERIES:
+                combined_resistances = " + ".join([r.label(*args, **kwargs)
+                                                   for r in self.resistors])
+            else:
+                combined_resistances = " || ".join([r.label(*args, **kwargs)
+                                                    for r in self.resistors])
+
+            label += " ({})".format(constituents)
+
+        return label
+
+    def __str__(self):
+        return self.label()
