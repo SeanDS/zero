@@ -83,7 +83,6 @@ class Regulator(object):
         permutations = itertools.permutations(resistor_set.combinations(), 2)
 
         # calculate voltages for resistor pairs
-        logging.getLogger("regulator").debug("Generating regulator voltages")
         voltages = self.regulated_voltages(permutations)
 
         if progress:
