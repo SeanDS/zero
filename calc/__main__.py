@@ -2,7 +2,6 @@
 
 """Electronics calculator"""
 
-import os
 import io
 import sys
 import abc
@@ -41,12 +40,11 @@ COMMANDS
 
 AUTHOR
     Sean Leavey <electronics@attackllama.com>
-""".format(prog=PROG,
-           desc=DESC,
-           synopsis=SYNOPSIS,
-           ).strip()
+""".format(prog=PROG, desc=DESC, synopsis=SYNOPSIS).strip()
 
 def enable_verbose_logs():
+    """Print logs to stdout"""
+
     # set up logger
     logging.basicConfig(
         level=logging.DEBUG,
@@ -60,16 +58,18 @@ class Cmd(object):
     cmd = ""
 
     def __init__(self):
-        """Initialize argument parser"""
+        """Initialise argument parser"""
 
         self.parser = argparse.ArgumentParser(
-            prog='{} {}'.format(PROG, self.cmd),
-            description=self.__doc__.strip(),
-            # formatter_class=argparse.RawDescriptionHelpFormatter,
+            prog="{} {}".format(PROG, self.cmd),
+            description=self.__doc__.strip()
         )
 
     def parse_args(self, args):
-        """Parse arguments and returned ArgumentParser Namespace object"""
+        """Parse arguments and return :class:`argparse.Namespace` object
+
+        :param args: arguments
+        """
 
         return self.parser.parse_args(args)
 
@@ -242,52 +242,88 @@ ALIAS = {
 ##################################################
 
 def format_commands(man=False):
-    prefix = ' '*8
+    """Generate documentation for available commands"""
+
+    # documentation indentation
+    prefix = " " * 8
+
+    # documentation text format
     wrapper = textwrap.TextWrapper(
         width=70,
         initial_indent=prefix,
         subsequent_indent=prefix,
         )
 
-    with io.StringIO() as f:
+    with io.StringIO() as stream:
         for name, func in CMDS.items():
             if man:
-                fo = func()
-                usage = fo.parser.format_usage()[len('usage: {} '.format(PROG)):].strip()
-                desc = wrapper.fill('\n'.join([l.strip() for l in fo.parser.description.splitlines() if l]))
-                f.write('  {}  \n'.format(usage))
-                f.write(desc+'\n')
-                f.write('\n')
+                command = func()
+
+                # format usage
+                usage = command.parser.format_usage()[len("usage: {} ".format(PROG)):].strip()
+
+                # format description
+                desc = wrapper.fill("\n".join([line.strip()
+                                               for line in command.parser.description.splitlines()
+                                               if line]))
+
+                # print documentation
+                stream.write("  {}  \n".format(usage))
+                stream.write(desc + "\n")
+                stream.write("\n")
             else:
                 desc = func.__doc__.splitlines()[0]
-                f.write('  {:10}{}\n'.format(name, desc))
-        output = f.getvalue()
+                stream.write("  {:10}{}\n".format(name, desc))
+
+        output = stream.getvalue()
 
     return output.rstrip()
 
 def get_func(cmd):
+    """Find command from specified string
+
+    :param cmd: command string
+    """
+
     if cmd in ALIAS:
+        # get the command the alias points to
         cmd = ALIAS[cmd]
+
     try:
+        # return command if it exists
         return CMDS[cmd]()
     except KeyError:
-        print('Unknown command:', cmd, file=sys.stderr)
+        # command not found; print error message
+        print("Unknown command:", cmd, file=sys.stderr)
         print("See 'help' for usage.", file=sys.stderr)
+
+        # exit with error code
         sys.exit(1)
 
 def main():
+    """Main program"""
+
     if len(sys.argv) < 2:
-        print('Command not specified.', file=sys.stderr)
-        print('usage: '+SYNOPSIS, file=sys.stderr)
+        # no command specified; print error message
+        print("Command not specified.", file=sys.stderr)
+        print("usage: " + SYNOPSIS, file=sys.stderr)
         print(file=sys.stderr)
+
+        # print commands
         print(format_commands(), file=sys.stderr)
+
+        # exit with error code
         sys.exit(1)
+
+    # parse command
     cmd = sys.argv[1]
+
+    # parse arguments
     args = sys.argv[2:]
+
+    # get and execute command
     func = get_func(cmd)
     func(func.parse_args(args))
 
-##################################################
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
