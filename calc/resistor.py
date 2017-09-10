@@ -4,7 +4,7 @@ import logging
 import itertools
 import heapq
 
-from .misc import _n_comb_k
+from .misc import _n_comb_k, _print_progress
 from .format import SIFormatter
 
 class Set(object):
@@ -207,11 +207,12 @@ class Set(object):
 
         return count
 
-    def closest(self, resistance, n_values=3):
+    def closest(self, resistance, n_values=3, progress=True):
         """Returns closest resistors in set to target resistance
 
         :param resistance: target resistance
         :param n_values: number of resistors to match
+        :param progress: show interactive progress bar
         """
 
         resistance = float(resistance)
@@ -220,8 +221,20 @@ class Set(object):
         if resistance < 0:
             raise ValueError("Resistance must be > 0")
 
+        # calculate number of results
+        n_combinations = self.n_combinations()
+        logging.getLogger("resistor").info("Calculating %i combinations",
+                                            n_combinations)
+
+        # generate combinations
+        combinations = self.combinations()
+
+        if progress:
+            # add progress bar between voltage and heapq generators
+            combinations = _print_progress(combinations, n_combinations)
+
         logging.getLogger("resistor").debug("Finding closest resistor matches")
-        return heapq.nsmallest(n_values, self.combinations(),
+        return heapq.nsmallest(n_values, combinations,
                                key=lambda i: abs(i.resistance - resistance))
 
 class Resistor(object):
