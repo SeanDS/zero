@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""Electronics calculator"""
+
 import os
 import io
 import sys

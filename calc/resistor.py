@@ -1,3 +1,5 @@
+"""Resistor calculations"""
+
 import logging
 import itertools
 import heapq
@@ -6,16 +8,20 @@ from .misc import _n_comb_k
 from .format import SIFormatter
 
 class Set(object):
-    E3     = 1
-    E6     = 2
-    E12    = 3
-    E24    = 4
-    E48    = 5
-    E96    = 6
-    E192   = 7
-    CUSTOM = 8
+    """Set of resistors and associated operations"""
 
-    SERIES_E192 = [
+    # resistor series
+    SERIES_E3 = 1
+    SERIES_E6 = 2
+    SERIES_E12 = 3
+    SERIES_E24 = 4
+    SERIES_E48 = 5
+    SERIES_E96 = 6
+    SERIES_E192 = 7
+    SERIES_CUSTOM = 8
+
+    # base values for E192 (from which E96 and E48 are derived)
+    VALUES_E192 = [
         1.00, 1.01, 1.02, 1.04, 1.05, 1.06, 1.07, 1.09, 1.10, 1.11, 1.13, 1.14,
         1.15, 1.17, 1.18, 1.20, 1.21, 1.23, 1.24, 1.26, 1.27, 1.29, 1.30, 1.32,
         1.33, 1.35, 1.37, 1.38, 1.40, 1.42, 1.43, 1.45, 1.47, 1.49, 1.50, 1.52,
@@ -33,7 +39,8 @@ class Set(object):
         7.50, 7.59, 7.68, 7.77, 7.87, 7.96, 8.06, 8.16, 8.25, 8.35, 8.45, 8.56,
         8.66, 8.76, 8.87, 8.98, 9.09, 9.20, 9.31, 9.42, 9.53, 9.65, 9.76, 9.88]
 
-    SERIES_E24 = [
+    # base values for E24 (from which E12, E6 and E3 are derived)
+    VALUES_E24 = [
         1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0,
         3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1
     ]
@@ -54,31 +61,31 @@ class Set(object):
 
         if series is None:
             logging.getLogger("resistor").info("Using E24 series by default")
-            series = self.E24
+            series = self.SERIES_E24
         else:
-            series = str(series).lower()
+            str_series = str(series).lower()
 
-            if series == "e3":
-                series = self.E3
-            elif series == "e6":
-                series = self.E6
-            elif series == "e12":
-                series = self.E12
-            elif series == "e24":
-                series = self.E24
-            elif series == "e48":
-                series = self.E48
-            elif series == "e96":
-                series = self.E96
-            elif series == "e192":
-                series = self.E192
+            if str_series == "e3":
+                series = self.SERIES_E3
+            elif str_series == "e6":
+                series = self.SERIES_E6
+            elif str_series == "e12":
+                series = self.SERIES_E12
+            elif str_series == "e24":
+                series = self.SERIES_E24
+            elif str_series == "e48":
+                series = self.SERIES_E48
+            elif str_series == "e96":
+                series = self.SERIES_E96
+            elif str_series == "e192":
+                series = self.SERIES_E192
 
         if tolerance is None:
             logging.getLogger("resistor").info("Using gold (5%) tolerance by default")
             tolerance = Resistor.TOL_GOLD
         else:
             # format tolerance
-            tolerance = str(tolerance).strip().replace("%", "")
+            tolerance = float(str(tolerance).strip().replace("%", ""))
 
         self.series = int(series)
         self.tolerance = float(tolerance)
@@ -90,34 +97,35 @@ class Set(object):
         self.min_parallel = int(min_parallel)
 
     def _base_numbers(self):
-        if self.series is self.E192:
-            return self.SERIES_E192
-        elif self.series is self.E96:
-            return self.SERIES_E192[::2]
-        elif self.series is self.E48:
-            return self.SERIES_E192[::4]
-        elif self.series is self.E24:
-            return self.SERIES_E24
-        elif self.series is self.E12:
-            return self.SERIES_E24[::2]
-        elif self.series is self.E6:
-            return self.SERIES_E24[::4]
-        elif self.series is self.E3:
-            return self.SERIES_E24[::8]
+        """Get set's numbers between 1 and 10"""
+
+        if self.series is self.SERIES_E192:
+            return self.VALUES_E192
+        elif self.series is self.SERIES_E96:
+            return self.VALUES_E192[::2]
+        elif self.series is self.SERIES_E48:
+            return self.VALUES_E192[::4]
+        elif self.series is self.SERIES_E24:
+            return self.VALUES_E24
+        elif self.series is self.SERIES_E12:
+            return self.VALUES_E24[::2]
+        elif self.series is self.SERIES_E6:
+            return self.VALUES_E24[::4]
+        elif self.series is self.SERIES_E3:
+            return self.VALUES_E24[::8]
         else:
             raise ValueError("Unrecognised resistor series")
 
     def _base_resistors(self):
+        """Calculate set's base resistors"""
+
         if self.min_exp > self.max_exp:
             raise ValueError("max_exp must be >= min_exp")
 
-        # base resistor numbers between 1 and 10 ohms
-        base_numbers = self._base_numbers()
-
         # calculate exponents of the base numbers and fill values set
         for exp in range(self.min_exp, self.max_exp + 1):
-            for v in self._base_numbers():
-                yield Resistor(v * 10 ** exp, tolerance=self.tolerance)
+            for base in self._base_numbers():
+                yield Resistor(base * 10 ** exp, tolerance=self.tolerance)
 
     def combinations(self):
         """Get series/parallel resistor combinations
@@ -152,7 +160,8 @@ class Set(object):
                                                   self.max_parallel):
             yield Collection(resistors, vtype=Collection.TYPE_PARALLEL)
 
-    def _value_combinations(self, values, min_count, max_count):
+    @staticmethod
+    def _value_combinations(values, min_count, max_count):
         """Returns combinations of the specified set of values between \
         min_count and max_count
 
@@ -171,8 +180,8 @@ class Set(object):
         elif max_count < 2:
             return []
 
-        for n in range(min_count, max_count + 1):
-            yield from itertools.combinations_with_replacement(values, n)
+        for count in range(min_count, max_count + 1):
+            yield from itertools.combinations_with_replacement(values, count)
 
     def n_combinations(self):
         """Get number of possible combinations with the current settings"""
@@ -216,38 +225,67 @@ class Set(object):
                                key=lambda i: abs(i.resistance - resistance))
 
 class Resistor(object):
+    """Represents a resistor or set of series or parallel resistors"""
+
     # tolerances, in percent (+/-)
     TOL_GREY = 0.05
     TOL_VIOLET = 0.1
     TOL_BLUE = 0.25
     TOL_GREEN = 0.5
-    TOL_BROWN = 1
-    TOL_RED = 2
-    TOL_GOLD = 5
-    TOL_SILVER = 10
-    TOL_NONE = 20
+    TOL_BROWN = 1.0
+    TOL_RED = 2.0
+    TOL_GOLD = 5.0
+    TOL_SILVER = 10.0
+    TOL_NONE = 20.0
 
-    def __init__(self, value, tolerance=None):
+    def __init__(self, value=None, tolerance=None):
+        """Instantiate a resistor
+
+        :param value: resistor value
+        :param tolerance: optional resistor tolerance
+        """
+
+        # default properties
+        self._resistance = None
+        self._tolerance = None
+
+        if value is not None:
+            self.resistance = float(value)
+
         if tolerance is None:
+            # default tolerance
             tolerance = self.TOL_NONE
 
-        self.resistance = float(value)
         self.tolerance = float(tolerance)
 
     @property
     def resistance(self):
+        """Get resistance in ohms"""
+
         return self._resistance
 
     @resistance.setter
     def resistance(self, resistance):
+        """Set resistance
+
+        :param resistance: resistance, in ohms
+        """
+
         self._resistance = float(resistance)
 
     @property
     def tolerance(self):
+        """Get tolerance in percent"""
+
         return self._tolerance
 
     @tolerance.setter
     def tolerance(self, tolerance):
+        """Set tolerance
+
+        :param tolerance: tolerance, in percent
+        """
+
         self._tolerance = float(tolerance)
 
     @property
@@ -280,21 +318,35 @@ class Resistor(object):
         return self.label()
 
 class Collection(Resistor):
+    """Represents a collection of resistors that behave like a single resistor"""
+
+    # configuration types
     TYPE_SERIES = 1
     TYPE_PARALLEL = 2
 
     def __init__(self, resistors, vtype=None):
+        """Instantiate a resistor collection
+
+        :param resistors: iterable containing :class:`Resistor` objects
+        :param vtype: configuration type (series or parallel)
+        """
+
+        # call parent
+        super(Collection, self).__init__()
+
+        # default to series
         if vtype is None:
             vtype = self.TYPE_SERIES
-
-        if vtype not in (self.TYPE_SERIES, self.TYPE_PARALLEL):
+        elif vtype not in (self.TYPE_SERIES, self.TYPE_PARALLEL):
             raise ValueError("Unrecognised vtype")
 
         self.resistors = list(resistors)
         self.vtype = vtype
 
-    @property
+    @Resistor.resistance.getter
     def resistance(self):
+        """Calculate resistance in ohms"""
+
         if self.vtype is self.TYPE_SERIES:
             # series sum
             return sum(resistor.resistance for resistor in self.resistors)
@@ -302,13 +354,9 @@ class Collection(Resistor):
             # parallel sum
             return 1 / sum(1 / resistor.resistance for resistor in self.resistors)
 
-    @resistance.setter
-    def resistance(self, resistance):
-        return NotImplemented
-
-    @property
+    @Resistor.tolerance.getter
     def tolerance(self):
-        """Tolerance of combination
+        """Tolerance of combination in percent
 
         Important note: this assumes that that resistors are independently
         random variables. Resistors from the same batch or line will not be
@@ -326,29 +374,27 @@ class Collection(Resistor):
         if self.vtype is self.TYPE_SERIES:
             # quadrature sum of absolute tolerances
             abs_q_sum = sum([resistor.abs_tolerance ** 2
-                        for resistor in self.resistors]) ** 0.5
+                             for resistor in self.resistors]) ** 0.5
 
             # express as percentage of total resistance
             return 100 * abs_q_sum / self.resistance
         else:
             # quadrature sum of absolute inverse tolerances
             abs_q_sum = sum([resistor.abs_inv_tolerance ** 2
-                        for resistor in self.resistors]) ** 0.5
+                             for resistor in self.resistors]) ** 0.5
 
             # express as percentage of total inverse resistance
             return 100 * abs_q_sum / sum([1 / resistor.resistance
                                           for resistor in self.resistors])
 
-    @tolerance.setter
-    def tolerance(self, tolerance):
-        return NotImplemented
-
     def series_equivalent(self):
         """Return collection with identical resistors in series"""
+
         return Collection(self.resistors, self.TYPE_SERIES)
 
     def parallel_equivalent(self):
         """Return collection with identical resistors in parallel"""
+
         return Collection(self.resistors, self.TYPE_PARALLEL)
 
     def label(self, constituents=True, *args, **kwargs):
