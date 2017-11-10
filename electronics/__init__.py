@@ -1,9 +1,9 @@
 import locale
-
-__version__ = "0.1.0"
-
-PROG = "electronics"
-DESC = "Electronics calculator and simulator utility"
+import version
 
 # use default locale (required for number formatting in log warnings)
 locale.setlocale(locale.LC_ALL, "")
+
+__version__ = version.VERSION
+DESCRIPTION = version.DESCRIPTION
+PROGRAM = version.PROGRAM

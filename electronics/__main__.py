@@ -10,12 +10,13 @@ import argparse
 import textwrap
 import collections
 
-from electronics import __version__, PROG, DESC
+from electronics import VERSION, DESCRIPTION, PROGRAM
 from .regulator import Regulator
 from .resistor import Set
 from .format import SIFormatter
 
-SYNOPSIS = "{} <command> [<args>...]".format(PROG)
+PROG = "electronics"
+SYNOPSIS = "{} <command> [<args>...]".format(PROGRAM)
 
 # NOTE: double spaces are interpreted by text2man to be paragraph
 # breaks.  NO DOUBLE SPACES.  Also two spaces at the end of a line
@@ -37,7 +38,7 @@ COMMANDS
 
 AUTHOR
     Sean Leavey <electronics@attackllama.com>
-""".format(prog=PROG, version=__version__, desc=DESC, synopsis=SYNOPSIS).strip()
+""".format(prog=PROGRAM, version=VERSION, desc=DESCRIPTION, synopsis=SYNOPSIS).strip()
 
 def enable_verbose_logs():
     """Print logs to stdout"""

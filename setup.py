@@ -2,12 +2,10 @@
 
 from setuptools import setup
 
-from electronics import __version__, PROG, DESC
+import version
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
-
-__version__ = electronics.__version__
 
 requirements = [
     "progressbar"
@@ -15,8 +13,8 @@ requirements = [
 
 setup(
     name="electronics.py",
-    version=__version__,
-    description=DESC,
+    version=version.VERSION,
+    description=version.DESCRIPTION,
     long_description=readme,
     author="Sean Leavey",
     author_email="electronics@attackllama.com",
@@ -26,7 +24,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            '%s = electronics:main' % PROG
+            '%s = electronics:main' % version.PROGRAM
         ]
     },
     install_requires=requirements,
