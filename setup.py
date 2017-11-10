@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-import version
+import electronics
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
@@ -13,8 +13,8 @@ requirements = [
 
 setup(
     name="electronics.py",
-    version=version.VERSION,
-    description=version.DESCRIPTION,
+    version=electronics.__version__,
+    description=electronics.DESCRIPTION,
     long_description=readme,
     author="Sean Leavey",
     author_email="electronics@attackllama.com",
@@ -24,7 +24,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            '%s = electronics:main' % version.PROGRAM
+            '%s = electronics:main' % electronics.PROGRAM
         ]
     },
     install_requires=requirements,
