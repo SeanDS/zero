@@ -10,7 +10,7 @@ import argparse
 import textwrap
 import collections
 
-from electronics import VERSION, DESCRIPTION, PROGRAM
+from electronics import __version__, DESCRIPTION, PROGRAM
 from .regulator import Regulator
 from .resistor import Set
 from .format import SIFormatter
@@ -38,7 +38,7 @@ COMMANDS
 
 AUTHOR
     Sean Leavey <electronics@attackllama.com>
-""".format(prog=PROGRAM, version=VERSION, desc=DESCRIPTION, synopsis=SYNOPSIS).strip()
+""".format(prog=PROGRAM, version=__version__, desc=DESCRIPTION, synopsis=SYNOPSIS).strip()
 
 def enable_verbose_logs():
     """Print logs to stdout"""
