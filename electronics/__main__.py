@@ -10,29 +10,26 @@ import argparse
 import textwrap
 import collections
 
+from electronics import __version__, PROG, DESC
 from .regulator import Regulator
 from .resistor import Set
 from .format import SIFormatter
 
-PROG = 'calc'
-DESC = 'Electronics calculator'
-
-SYNOPSIS = '{} <command> [<args>...]'.format(PROG)
+SYNOPSIS = "{} <command> [<args>...]".format(PROG)
 
 # NOTE: double spaces are interpreted by text2man to be paragraph
 # breaks.  NO DOUBLE SPACES.  Also two spaces at the end of a line
 # indicate an element in a tag list.
 MANPAGE = """
 NAME
-  {prog} - {desc}
+  {prog} {version}
 
 SYNOPSIS
   {synopsis}
 
 DESCRIPTION
 
-  Electronics calculator utility. Provides tools to calculate resistor values
-  for regulator circuits.
+  {desc}
 
 COMMANDS
 
@@ -40,7 +37,7 @@ COMMANDS
 
 AUTHOR
     Sean Leavey <electronics@attackllama.com>
-""".format(prog=PROG, desc=DESC, synopsis=SYNOPSIS).strip()
+""".format(prog=PROG, version=__version__, desc=DESC, synopsis=SYNOPSIS).strip()
 
 def enable_verbose_logs():
     """Print logs to stdout"""

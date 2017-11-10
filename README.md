@@ -1,12 +1,11 @@
-# Electronics calculator
+# electronics.py
 
-A tool for matching standard resistors, calculating regulator resistors
-and other useful outputs.
+Electronics calculator and simulator utility.
 
-## Prerequisites
-
-  - python3
-  - python3-progressbar
+## Installation
+```bash
+pip3 install git+https://github.com/SeanDS/electronics.py.git
+```
 
 ## Credits
 Sean Leavey <electronics@attackllama.com>
