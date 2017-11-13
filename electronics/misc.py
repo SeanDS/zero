@@ -1,6 +1,7 @@
 """Miscellaneous functions"""
 
 import math
+import numpy as np
 import progressbar
 
 def _n_comb_k(total, choose, repetition=False):
@@ -47,11 +48,12 @@ def _binom(total, choose):
     else:
         return 0
 
-def _print_progress(generator, total):
+def _print_progress(generator, total, update=100000):
     """Print progress of generator with known length
 
     :param generator: generator to print progress for
     :param total: number of items generator will produce
+    :param update: number of items to yield before next updating display
     """
 
     # set up progress bar
@@ -66,7 +68,7 @@ def _print_progress(generator, total):
     for item in generator:
         count += 1
 
-        if count % 100000 == 0:
+        if count % update == 0:
             pbar.update(100 * count // total)
 
         yield item
@@ -76,3 +78,6 @@ def _print_progress(generator, total):
 
     # newline before next text
     print()
+
+def db(magnitude):
+    return 20 * np.log10(magnitude)

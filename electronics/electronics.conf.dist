@@ -1,0 +1,11 @@
+[constants]
+kB = 1.3806488e-23
+T = 298.15
+
+[format]
+table = fancy_grid
+
+[plot]
+size_x = 8
+size_y = 6
+default_sig_tf_title = %s -> %s transfer function

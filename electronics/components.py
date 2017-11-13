@@ -1,11 +1,25 @@
 """Resistor calculations"""
 
+import abc
 import logging
+import numpy as np
 import itertools
 import heapq
 
 from .misc import _n_comb_k, _print_progress
 from .format import SIFormatter
+from .config import ElectronicsConfig
+
+CONF = ElectronicsConfig()
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+
+        return cls._instances[cls]
 
 class Set(object):
     """Set of resistors and associated operations"""
@@ -125,7 +139,8 @@ class Set(object):
         # calculate exponents of the base numbers and fill values set
         for exp in range(self.min_exp, self.max_exp + 1):
             for base in self._base_numbers():
-                yield Resistor(base * 10 ** exp, tolerance=self.tolerance)
+                value = base *10 ** exp
+                yield Resistor(value=value, tolerance=self.tolerance)
 
     def combinations(self):
         """Get series/parallel resistor combinations
@@ -149,7 +164,8 @@ class Set(object):
         for resistors in self._value_combinations(self._base_resistors(),
                                                   self.min_series,
                                                   self.max_series):
-            yield Collection(resistors, vtype=Collection.TYPE_SERIES)
+            yield ResistorCollection(resistors=resistors,
+                                     vtype=ResistorCollection.TYPE_SERIES)
 
     def _parallel_combinations(self):
         """Returns parallel combinations of the specified set of values"""
@@ -158,7 +174,8 @@ class Set(object):
         for resistors in self._value_combinations(self._base_resistors(),
                                                   self.min_parallel,
                                                   self.max_parallel):
-            yield Collection(resistors, vtype=Collection.TYPE_PARALLEL)
+            yield ResistorCollection(resistors=resistors,
+                                     vtype=ResistorCollection.TYPE_PARALLEL)
 
     @staticmethod
     def _value_combinations(values, min_count, max_count):
@@ -237,54 +254,96 @@ class Set(object):
         return heapq.nsmallest(n_values, combinations,
                                key=lambda i: abs(i.resistance - resistance))
 
-class Resistor(object):
-    """Represents a resistor or set of series or parallel resistors"""
+class Component(object, metaclass=abc.ABCMeta):
+    def __init__(self, name=None, nodes=None):
+        if name is not None:
+            name = str(name)
 
-    # tolerances, in percent (+/-)
-    TOL_GREY = 0.05
-    TOL_VIOLET = 0.1
-    TOL_BLUE = 0.25
-    TOL_GREEN = 0.5
-    TOL_BROWN = 1.0
-    TOL_RED = 2.0
-    TOL_GOLD = 5.0
-    TOL_SILVER = 10.0
-    TOL_NONE = 20.0
+        if nodes is None:
+            nodes = []
 
-    def __init__(self, value=None, tolerance=None):
-        """Instantiate a resistor
+        self.name = name
+        self.nodes = list(nodes)
 
-        :param value: resistor value
-        :param tolerance: optional resistor tolerance
-        """
+    def noise_voltage(self, *args):
+        return 0
 
-        # default properties
-        self._resistance = None
-        self._tolerance = None
+    def noise_current(self, *args):
+        return 0
 
-        if value is not None:
-            self.resistance = float(value)
+    @abc.abstractmethod
+    def equation(self):
+        return NotImplemented
 
-        if tolerance is None:
-            # default tolerance
-            tolerance = self.TOL_NONE
+    @abc.abstractmethod
+    def label(self):
+        return NotImplemented
 
-        self.tolerance = float(tolerance)
+class PassiveComponent(Component, metaclass=abc.ABCMeta):
+    UNIT = "?"
+
+    def __init__(self, value=None, tolerance=None, node1=None, node2=None,
+                 *args, **kwargs):
+        super(PassiveComponent, self).__init__(nodes=[node1, node2], *args,
+                                               **kwargs)
+
+        self.value = value
+        self.tolerance = tolerance
+
+        # register component as sink for node 1 and source for node 2
+        self.node1.add_sink(self) # current flows into here...
+        self.node2.add_source(self) # and out of here
 
     @property
-    def resistance(self):
-        """Get resistance in ohms"""
+    def value(self):
+        return self._value
 
-        return self._resistance
+    @value.setter
+    def value(self, value):
+        if value is not None:
+            value = float(value)
 
-    @resistance.setter
-    def resistance(self, resistance):
-        """Set resistance
+        self._value = value
 
-        :param resistance: resistance, in ohms
-        """
+    @property
+    def node1(self):
+        return self.nodes[0]
 
-        self._resistance = float(resistance)
+    @node1.setter
+    def node1(self, node):
+        self.nodes[0] = node
+
+    @property
+    def node2(self):
+        return self.nodes[1]
+
+    @node2.setter
+    def node2(self, node):
+        self.nodes[1] = node
+
+    def equation(self):
+        # nodal potential equation coefficients
+        # impedance * current + voltage = 0
+        coefficients = []
+
+        # add impedance
+        coefficients.append(ImpedanceCoefficient(component=self,
+                                                 value=self.impedance))
+
+        # add input node coefficient
+        if self.node1 is not Gnd():
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node1,
+                                                   value=-1))
+
+        # add output node coefficient
+        if self.node2 is not Gnd():
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node2,
+                                                   value=1))
+
+        # create and return equation
+        return Equation(coefficients)
 
     @property
     def tolerance(self):
@@ -299,27 +358,27 @@ class Resistor(object):
         :param tolerance: tolerance, in percent
         """
 
-        self._tolerance = float(tolerance)
+        if tolerance is not None:
+            tolerance = float(tolerance)
+
+        self._tolerance = tolerance
 
     @property
     def abs_tolerance(self):
         """Absolute tolerance"""
-        return self.resistance * self.tolerance / 100
+        return self.value * self.tolerance / 100
 
     @property
     def abs_inv_tolerance(self):
         """Absolute inverse tolerance"""
-        return (1 / self.resistance) * self.tolerance / 100
+        return (1 / self.value) * self.tolerance / 100
 
-    def label(self, tolerance=True):
-        """Label for this resistor
+    def label(self):
+        """Label for this passive component"""
 
-        :param tolerance: show tolerances
-        """
+        label = SIFormatter.format(self.value, self.UNIT)
 
-        label = SIFormatter.format(self.resistance, "Ω")
-
-        if tolerance:
+        if self.tolerance:
             label += " ± {}%".format(SIFormatter.format(self.tolerance))
 
         return label
@@ -330,14 +389,214 @@ class Resistor(object):
     def __str__(self):
         return self.label()
 
-class Collection(Resistor):
+    @abc.abstractmethod
+    def impedance(self, frequency):
+        return NotImplemented
+
+class OpAmp(Component, metaclass=abc.ABCMeta):
+    # DC gain
+    A0 = np.inf
+
+    # gain-bandwidth product (Hz)
+    GBW = np.inf
+
+    # delay (s)
+    DELAY = 0
+
+    # array of additional zeros (Hz)
+    ZEROS = np.array([])
+
+    # array of additional poles
+    POLES = np.array([])
+
+    # voltage noise (V/sqrt(Hz))
+    VN = 0
+
+    # current noise (A/sqrt(Hz))
+    IN = 0
+
+    # voltage noise corner frequency (Hz)
+    VC = 0
+
+    # current noise corner frequency (Hz)
+    IC = 0
+
+    # maximum output voltage amplitude (V)
+    VMAX = 0
+
+    # maximum output current amplitude (A)
+    IMAX = 0
+
+    # maximum slew rate (V/s)
+    SR = 0
+
+    def __init__(self, node1=None, node2=None, node3=None, *args, **kwargs):
+        super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
+
+        # register component as source for node 3
+        # nodes 1 and 2 don't source or sink current (ideally)
+        self.node3.add_source(self) # current flows out of here
+
+    @property
+    def node1(self):
+        return self.nodes[0]
+
+    @node1.setter
+    def node1(self, node):
+        self.nodes[0] = node
+
+    @property
+    def node2(self):
+        return self.nodes[1]
+
+    @node2.setter
+    def node2(self, node):
+        self.nodes[1] = node
+
+    @property
+    def node3(self):
+        return self.nodes[2]
+
+    @node3.setter
+    def node3(self, node):
+        self.nodes[2] = node
+
+    def equation(self):
+        # nodal potential equation coefficients
+        # V[n3] = H(s) (V[n1] - V[n2])
+        coefficients = []
+
+        # add non-inverting input node coefficient
+        if self.node1 is not Gnd():
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node1,
+                                                   value=-1))
+
+        # add inverting input node coefficient
+        if self.node2 is not Gnd():
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node2,
+                                                   value=1))
+
+        # add output node coefficient
+        if self.node2 is not Gnd():
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node3,
+                                                   value=self.inverse_gain))
+
+        # create and return equation
+        return Equation(coefficients)
+
+    def gain(self, frequency):
+        return (self.A0 / (1 + self.A0 * 1j * frequency / self.GBW)
+                * np.exp(-1j * 2 * np.pi * self.DELAY * frequency)
+                * np.prod(1 + 1j * frequency / self.ZEROS)
+                / np.prod(1 + 1j * frequency / self.POLES))
+
+    def inverse_gain(self, *args, **kwargs):
+        return 1 / self.gain(*args, **kwargs)
+
+    def noise_voltage(self, frequency, *args):
+        return self.VN * np.sqrt(1 + self.VC / frequency)
+
+    def noise_current(self, frequency, *args):
+        return self.IN * np.sqrt(1 + self.IC / frequency)
+
+    def label(self):
+        return "OpAmp?"
+
+class Resistor(PassiveComponent):
+    """Represents a resistor or set of series or parallel resistors"""
+
+    UNIT = "Ω"
+
+    # tolerances, in percent (+/-)
+    TOL_GREY = 0.05
+    TOL_VIOLET = 0.1
+    TOL_BLUE = 0.25
+    TOL_GREEN = 0.5
+    TOL_BROWN = 1.0
+    TOL_RED = 2.0
+    TOL_GOLD = 5.0
+    TOL_SILVER = 10.0
+    TOL_NONE = 20.0
+
+    @property
+    def resistance(self):
+        """Get resistance in ohms"""
+
+        return self.value
+
+    @resistance.setter
+    def resistance(self, resistance):
+        """Set resistance
+
+        :param resistance: resistance, in ohms
+        """
+
+        self.value = float(resistance)
+
+    def impedance(self, *args):
+        return self.resistance
+
+    def noise_voltage(self, frequency):
+        return np.sqrt(4 * CONF["constants"]["kB"] * CONF["constants"]["T"]
+                       * self.resistance)
+
+class Capacitor(PassiveComponent):
+    """Represents a capacitor or set of series or parallel capacitors"""
+
+    UNIT = "F"
+
+    @property
+    def capacitance(self):
+        """Get capacitance in farads"""
+
+        return self.value
+
+    @capacitance.setter
+    def capacitance(self, capacitance):
+        """Set capacitance
+
+        :param capacitance: capacitance, in farads
+        """
+
+        self.value = float(capacitance)
+
+    def impedance(self, frequency):
+        return 1 / (2 * np.pi * 1j * frequency * self.capacitance)
+
+class Inductor(PassiveComponent):
+    """Represents an inductor or set of series or parallel inductors"""
+
+    UNIT = "H"
+
+    @property
+    def inductance(self):
+        """Get inductance in henries"""
+
+        return self.value
+
+    @inductance.setter
+    def inductance(self, inductance):
+        """Set inductance
+
+        :param inductance: inductance, in henries
+        """
+
+        self.value = float(inductance)
+
+    def impedance(self, frequency):
+        return 2 * np.pi * 1j * frequency * self.inductance
+
+class ResistorCollection(Resistor):
     """Represents a collection of resistors that behave like a single resistor"""
 
     # configuration types
     TYPE_SERIES = 1
     TYPE_PARALLEL = 2
 
-    def __init__(self, resistors, vtype=None):
+    def __init__(self, resistors, vtype=None, *args, **kwargs):
         """Instantiate a resistor collection
 
         :param resistors: iterable containing :class:`Resistor` objects
@@ -345,7 +604,7 @@ class Collection(Resistor):
         """
 
         # call parent
-        super(Collection, self).__init__()
+        super(ResistorCollection, self).__init__(*args, **kwargs)
 
         # default to series
         if vtype is None:
@@ -356,8 +615,8 @@ class Collection(Resistor):
         self.resistors = list(resistors)
         self.vtype = vtype
 
-    @Resistor.resistance.getter
-    def resistance(self):
+    @Resistor.value.getter
+    def value(self):
         """Calculate resistance in ohms"""
 
         if self.vtype is self.TYPE_SERIES:
@@ -400,15 +659,19 @@ class Collection(Resistor):
             return 100 * abs_q_sum / sum([1 / resistor.resistance
                                           for resistor in self.resistors])
 
+    def noise_voltage(self, frequency):
+        # TODO: add noise voltage calculation
+        return NotImplemented
+
     def series_equivalent(self):
         """Return collection with identical resistors in series"""
 
-        return Collection(self.resistors, self.TYPE_SERIES)
+        return ResistorCollection(self.resistors, self.TYPE_SERIES)
 
     def parallel_equivalent(self):
         """Return collection with identical resistors in parallel"""
 
-        return Collection(self.resistors, self.TYPE_PARALLEL)
+        return ResistorCollection(self.resistors, self.TYPE_PARALLEL)
 
     def label(self, constituents=True, *args, **kwargs):
         """Label for this collection
@@ -416,7 +679,7 @@ class Collection(Resistor):
         :param constituents: show constituent resistors and tolerances
         """
 
-        label = super(Collection, self).label(*args, **kwargs)
+        label = super(ResistorCollection, self).label(*args, **kwargs)
 
         if constituents:
             if self.vtype is self.TYPE_SERIES:
@@ -430,5 +693,100 @@ class Collection(Resistor):
 
         return label
 
+class Node(object):
+    def __init__(self, name):
+        self.name = str(name)
+
+        # current sources and sinks
+        self.sources = set()
+        self.sinks = set()
+
+    def add_source(self, component):
+        self.sources.add(component)
+
+    def add_sink(self, component):
+        self.sinks.add(component)
+
+    def equation(self):
+        # nodal current equation coefficients
+        # current out - current in = 0
+        coefficients = []
+
+        for source in self.sources:
+            # add source coefficient
+            if source is not Gnd():
+                coefficients.append(CurrentCoefficient(component=source,
+                                                       value=1))
+
+        for sink in self.sinks:
+            # add sink coefficient
+            if sink is not Gnd():
+                coefficients.append(CurrentCoefficient(component=sink,
+                                                       value=-1))
+
+        # create and return equation
+        return Equation(coefficients)
+
     def __str__(self):
-        return self.label()
+        return self.name
+
+    def __repr__(self):
+        return str(self)
+
+class Gnd(Node, metaclass=Singleton):
+    def __init__(self):
+        return super(Gnd, self).__init__(name="Gnd")
+
+class BaseCoefficient(object, metaclass=abc.ABCMeta):
+    TYPE_IMPEDANCE = 0
+    TYPE_CURRENT = 1
+    TYPE_VOLTAGE = 2
+
+    def __init__(self, value, coefficient_type):
+
+        self.value = value
+        self.coefficient_type = coefficient_type
+
+    @property
+    def coefficient_type(self):
+        return self._coefficient_type
+
+    @coefficient_type.setter
+    def coefficient_type(self, coefficient_type):
+        if coefficient_type not in [self.TYPE_IMPEDANCE,
+                                    self.TYPE_CURRENT,
+                                    self.TYPE_VOLTAGE]:
+            raise ValueError("Unrecognised coefficient type")
+
+        self._coefficient_type = coefficient_type
+
+class ImpedanceCoefficient(BaseCoefficient):
+    def __init__(self, component, *args, **kwargs):
+        self.component = component
+
+        return super(ImpedanceCoefficient, self).__init__(
+            coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
+
+class CurrentCoefficient(BaseCoefficient):
+    def __init__(self, component, *args, **kwargs):
+        self.component = component
+
+        return super(CurrentCoefficient, self).__init__(
+            coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
+
+class VoltageCoefficient(BaseCoefficient):
+    def __init__(self, node, *args, **kwargs):
+        self.node = node
+
+        return super(VoltageCoefficient, self).__init__(
+            coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
+
+class Equation(object):
+    def __init__(self, coefficients):
+        self.coefficients = []
+
+        for coefficient in coefficients:
+            self.add_coefficient(coefficient)
+
+    def add_coefficient(self, coefficient):
+        self.coefficients.append(coefficient)
