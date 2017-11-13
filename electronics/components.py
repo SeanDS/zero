@@ -2,7 +2,7 @@
 
 import abc
 import logging
-from typing import Sequence, Generator, List, Any
+from typing import TypeVar, Union, Callable, Sequence, Generator, List, Any
 import numpy as np
 import itertools
 import heapq
@@ -12,6 +12,9 @@ from .format import SIFormatter
 from .config import ElectronicsConfig
 
 CONF = ElectronicsConfig()
+
+# type alias for numbers
+Number = TypeVar('Number', int, float, complex, np.number)
 
 class Singleton(type):
     """Metaclass implementing the singleton pattern"""
@@ -28,7 +31,7 @@ class Singleton(type):
 class Component(object, metaclass=abc.ABCMeta):
     """Class representing a circuit component"""
 
-    def __init__(self, name=None, nodes=None):
+    def __init__(self, name: str=None, nodes: Sequence['Node']=None):
         """Instantiate a new component
 
         :param name: component name
@@ -44,10 +47,12 @@ class Component(object, metaclass=abc.ABCMeta):
         self.name = name
         self.nodes = list(nodes)
 
-    def noise_voltage(self, *args):
+    def noise_voltage(self, *args) -> Number:
+        # no noise by default
         return 0
 
-    def noise_current(self, *args):
+    def noise_current(self, *args) -> Number:
+        # no noise by default
         return 0
 
     @abc.abstractmethod
@@ -59,6 +64,8 @@ class Component(object, metaclass=abc.ABCMeta):
         return NotImplemented
 
 class PassiveComponent(Component, metaclass=abc.ABCMeta):
+    """Represents a passive component"""
+
     UNIT = "?"
 
     def __init__(self, value=None, tolerance=None, node1=None, node2=None,
@@ -76,33 +83,33 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
             self.node2.add_source(self) # and out of here
 
     @property
-    def value(self):
+    def value(self) -> float:
         return self._value
 
     @value.setter
-    def value(self, value):
+    def value(self, value: Number):
         if value is not None:
             value = float(value)
 
         self._value = value
 
     @property
-    def node1(self):
+    def node1(self) -> 'Node':
         return self.nodes[0]
 
     @node1.setter
-    def node1(self, node):
+    def node1(self, node: 'Node'):
         self.nodes[0] = node
 
     @property
-    def node2(self):
+    def node2(self) -> 'Node':
         return self.nodes[1]
 
     @node2.setter
-    def node2(self, node):
+    def node2(self, node: 'Node'):
         self.nodes[1] = node
 
-    def equation(self):
+    def equation(self) -> 'Equation':
         # nodal potential equation coefficients
         # impedance * current + voltage = 0
         coefficients = []
@@ -127,13 +134,13 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         return Equation(coefficients)
 
     @property
-    def tolerance(self):
+    def tolerance(self) -> float:
         """Get tolerance in percent"""
 
         return self._tolerance
 
     @tolerance.setter
-    def tolerance(self, tolerance):
+    def tolerance(self, tolerance: float):
         """Set tolerance
 
         :param tolerance: tolerance, in percent
@@ -145,16 +152,16 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         self._tolerance = tolerance
 
     @property
-    def abs_tolerance(self):
+    def abs_tolerance(self) -> float:
         """Absolute tolerance"""
         return self.value * self.tolerance / 100
 
     @property
-    def abs_inv_tolerance(self):
+    def abs_inv_tolerance(self) -> float:
         """Absolute inverse tolerance"""
         return (1 / self.value) * self.tolerance / 100
 
-    def label(self):
+    def label(self) -> str:
         """Label for this passive component"""
 
         label = SIFormatter.format(self.value, self.UNIT)
@@ -175,6 +182,8 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         return NotImplemented
 
 class OpAmp(Component, metaclass=abc.ABCMeta):
+    """Represents an op-amp"""
+
     # DC gain
     A0 = np.inf
 
@@ -211,7 +220,9 @@ class OpAmp(Component, metaclass=abc.ABCMeta):
     # maximum slew rate (V/s)
     SR = 0
 
-    def __init__(self, node1=None, node2=None, node3=None, *args, **kwargs):
+    def __init__(self, node1: 'Node'=None, node2: 'Node'=None,
+                 node3: 'Node'=None, *args, **kwargs):
+        # call parent constructor
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
         # register component as source for node 3
@@ -219,30 +230,30 @@ class OpAmp(Component, metaclass=abc.ABCMeta):
         self.node3.add_source(self) # current flows out of here
 
     @property
-    def node1(self):
+    def node1(self) -> 'Node':
         return self.nodes[0]
 
     @node1.setter
-    def node1(self, node):
+    def node1(self, node: 'Node'):
         self.nodes[0] = node
 
     @property
-    def node2(self):
+    def node2(self) -> 'Node':
         return self.nodes[1]
 
     @node2.setter
-    def node2(self, node):
+    def node2(self, node: 'Node'):
         self.nodes[1] = node
 
     @property
-    def node3(self):
+    def node3(self) -> 'Node':
         return self.nodes[2]
 
     @node3.setter
-    def node3(self, node):
+    def node3(self, node: 'Node'):
         self.nodes[2] = node
 
-    def equation(self):
+    def equation(self) -> 'Equation':
         # nodal potential equation coefficients
         # V[n3] = H(s) (V[n1] - V[n2])
         coefficients = []
@@ -268,23 +279,23 @@ class OpAmp(Component, metaclass=abc.ABCMeta):
         # create and return equation
         return Equation(coefficients)
 
-    def gain(self, frequency):
+    def gain(self, frequency: Number) -> Number:
         return (self.A0 / (1 + self.A0 * 1j * frequency / self.GBW)
                 * np.exp(-1j * 2 * np.pi * self.DELAY * frequency)
                 * np.prod(1 + 1j * frequency / self.ZEROS)
                 / np.prod(1 + 1j * frequency / self.POLES))
 
-    def inverse_gain(self, *args, **kwargs):
+    def inverse_gain(self, *args, **kwargs) -> Number:
         return 1 / self.gain(*args, **kwargs)
 
-    def noise_voltage(self, frequency, *args):
+    def noise_voltage(self, frequency: Number) -> Number:
         return self.VN * np.sqrt(1 + self.VC / frequency)
 
-    def noise_current(self, frequency, *args):
+    def noise_current(self, frequency: Number) -> Number:
         return self.IN * np.sqrt(1 + self.IC / frequency)
 
-    def label(self):
-        return "OpAmp?"
+    def label(self) -> str:
+        return self.name
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
@@ -303,13 +314,13 @@ class Resistor(PassiveComponent):
     TOL_NONE = 20.0
 
     @property
-    def resistance(self):
+    def resistance(self) -> float:
         """Get resistance in ohms"""
 
         return self.value
 
     @resistance.setter
-    def resistance(self, resistance):
+    def resistance(self, resistance: float):
         """Set resistance
 
         :param resistance: resistance, in ohms
@@ -317,12 +328,12 @@ class Resistor(PassiveComponent):
 
         self.value = float(resistance)
 
-    def impedance(self, *args):
+    def impedance(self, *args) -> float:
         return self.resistance
 
-    def noise_voltage(self, frequency):
-        return np.sqrt(4 * CONF["constants"]["kB"] * CONF["constants"]["T"]
-                       * self.resistance)
+    def noise_voltage(self, *args) -> Number:
+        return np.sqrt(4 * float(CONF["constants"]["kB"])
+                       * float(CONF["constants"]["T"]) * self.resistance)
 
 class Capacitor(PassiveComponent):
     """Represents a capacitor or set of series or parallel capacitors"""
@@ -330,13 +341,13 @@ class Capacitor(PassiveComponent):
     UNIT = "F"
 
     @property
-    def capacitance(self):
+    def capacitance(self) -> float:
         """Get capacitance in farads"""
 
         return self.value
 
     @capacitance.setter
-    def capacitance(self, capacitance):
+    def capacitance(self, capacitance: float):
         """Set capacitance
 
         :param capacitance: capacitance, in farads
@@ -344,7 +355,7 @@ class Capacitor(PassiveComponent):
 
         self.value = float(capacitance)
 
-    def impedance(self, frequency):
+    def impedance(self, frequency: Number) -> Number:
         return 1 / (2 * np.pi * 1j * frequency * self.capacitance)
 
 class Inductor(PassiveComponent):
@@ -353,13 +364,13 @@ class Inductor(PassiveComponent):
     UNIT = "H"
 
     @property
-    def inductance(self):
+    def inductance(self) -> float:
         """Get inductance in henries"""
 
         return self.value
 
     @inductance.setter
-    def inductance(self, inductance):
+    def inductance(self, inductance: float):
         """Set inductance
 
         :param inductance: inductance, in henries
@@ -367,7 +378,7 @@ class Inductor(PassiveComponent):
 
         self.value = float(inductance)
 
-    def impedance(self, frequency):
+    def impedance(self, frequency: Number) -> Number:
         return 2 * np.pi * 1j * frequency * self.inductance
 
 class ResistorCollection(Resistor):
@@ -377,14 +388,15 @@ class ResistorCollection(Resistor):
     TYPE_SERIES = 1
     TYPE_PARALLEL = 2
 
-    def __init__(self, resistors, vtype=None, *args, **kwargs):
+    def __init__(self, resistors: Sequence[Resistor], vtype: int=None,
+                 *args, **kwargs):
         """Instantiate a resistor collection
 
-        :param resistors: iterable containing :class:`Resistor` objects
+        :param resistors: resistors in the collection
         :param vtype: configuration type (series or parallel)
         """
 
-        # call parent
+        # call parent constructor
         super(ResistorCollection, self).__init__(*args, **kwargs)
 
         # default to series
@@ -397,7 +409,7 @@ class ResistorCollection(Resistor):
         self.vtype = vtype
 
     @Resistor.value.getter
-    def value(self):
+    def value(self) -> float:
         """Calculate resistance in ohms"""
 
         if self.vtype is self.TYPE_SERIES:
@@ -408,7 +420,7 @@ class ResistorCollection(Resistor):
             return 1 / sum(1 / resistor.resistance for resistor in self.resistors)
 
     @Resistor.tolerance.getter
-    def tolerance(self):
+    def tolerance(self) -> float:
         """Tolerance of combination in percent
 
         Important note: this assumes that that resistors are independently
@@ -440,21 +452,21 @@ class ResistorCollection(Resistor):
             return 100 * abs_q_sum / sum([1 / resistor.resistance
                                           for resistor in self.resistors])
 
-    def noise_voltage(self, frequency):
+    def noise_voltage(self, frequency: Number) -> Number:
         # TODO: add noise voltage calculation
         return NotImplemented
 
-    def series_equivalent(self):
+    def series_equivalent(self) -> 'ResistorCollection':
         """Return collection with identical resistors in series"""
 
         return ResistorCollection(self.resistors, self.TYPE_SERIES)
 
-    def parallel_equivalent(self):
+    def parallel_equivalent(self) -> 'ResistorCollection':
         """Return collection with identical resistors in parallel"""
 
         return ResistorCollection(self.resistors, self.TYPE_PARALLEL)
 
-    def label(self, constituents=True, *args, **kwargs):
+    def label(self, constituents: bool=True, *args, **kwargs) -> str:
         """Label for this collection
 
         :param constituents: show constituent resistors and tolerances
@@ -475,20 +487,27 @@ class ResistorCollection(Resistor):
         return label
 
 class Node(object):
-    def __init__(self, name):
+    """Represents a circuit node (connection between components)"""
+
+    def __init__(self, name: str):
+        """Instantiate a new node
+
+        :param name: node name
+        """
+
         self.name = str(name)
 
         # current sources and sinks
         self.sources = set()
         self.sinks = set()
 
-    def add_source(self, component):
+    def add_source(self, component: Component) -> None:
         self.sources.add(component)
 
-    def add_sink(self, component):
+    def add_sink(self, component: Component) -> None:
         self.sinks.add(component)
 
-    def equation(self):
+    def equation(self) -> 'Equation':
         # nodal current equation coefficients
         # current out - current in = 0
         coefficients = []
@@ -515,25 +534,62 @@ class Node(object):
         return str(self)
 
 class Gnd(Node, metaclass=Singleton):
+    """Node representing ground potential
+
+    Objects of this class are always the same instance.
+    """
+
     def __init__(self):
+        """Instantiate a ground node"""
+
+        # call parent constructor
         return super(Gnd, self).__init__(name="Gnd")
 
+class Equation(object):
+    def __init__(self, coefficients: Sequence['BaseCoefficient']):
+        """Instantiate a new equation
+
+        :param coefficients: coefficients that make up the equation
+        """
+
+        self.coefficients = []
+
+        for coefficient in coefficients:
+            self.add_coefficient(coefficient)
+
+    def add_coefficient(self, coefficient: 'BaseCoefficient') -> None:
+        """Add coefficient to equation
+
+        :param coefficient: coefficient to add
+        """
+
+        self.coefficients.append(coefficient)
+
 class BaseCoefficient(object, metaclass=abc.ABCMeta):
+    # coefficient types
     TYPE_IMPEDANCE = 0
     TYPE_CURRENT = 1
     TYPE_VOLTAGE = 2
 
-    def __init__(self, value, coefficient_type):
+    def __init__(self, value: Union[Number, Callable[[Number], Number]],
+                 coefficient_type: int):
+        """Instantiate a new coefficient
+
+        :param value: coefficient value, which may be either a number or a \
+                      callable which returns a number
+        :param coefficient_type: coefficient type number
+        """
 
         self.value = value
         self.coefficient_type = coefficient_type
 
     @property
-    def coefficient_type(self):
+    def coefficient_type(self) -> int:
         return self._coefficient_type
 
     @coefficient_type.setter
     def coefficient_type(self, coefficient_type):
+        # validate coefficient
         if coefficient_type not in [self.TYPE_IMPEDANCE,
                                     self.TYPE_CURRENT,
                                     self.TYPE_VOLTAGE]:
@@ -542,35 +598,43 @@ class BaseCoefficient(object, metaclass=abc.ABCMeta):
         self._coefficient_type = coefficient_type
 
 class ImpedanceCoefficient(BaseCoefficient):
-    def __init__(self, component, *args, **kwargs):
+    def __init__(self, component: Component, *args, **kwargs):
+        """Instantiate a new impedance coefficient
+
+        :param component: component this impedance corresponds to
+        """
+
         self.component = component
 
+        # call parent constructor
         return super(ImpedanceCoefficient, self).__init__(
             coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
 
 class CurrentCoefficient(BaseCoefficient):
-    def __init__(self, component, *args, **kwargs):
+    def __init__(self, component: Component, *args, **kwargs):
+        """Instantiate a new current coefficient
+
+        :param component: component this current corresponds to
+        """
+
         self.component = component
 
+        # call parent constructor
         return super(CurrentCoefficient, self).__init__(
             coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
 
 class VoltageCoefficient(BaseCoefficient):
-    def __init__(self, node, *args, **kwargs):
+    def __init__(self, node: Node, *args, **kwargs):
+        """Instantiate a new voltage coefficient
+
+        :param node: node this voltage corresponds to
+        """
+
         self.node = node
 
+        # call parent constructor
         return super(VoltageCoefficient, self).__init__(
             coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
-
-class Equation(object):
-    def __init__(self, coefficients):
-        self.coefficients = []
-
-        for coefficient in coefficients:
-            self.add_coefficient(coefficient)
-
-    def add_coefficient(self, coefficient):
-        self.coefficients.append(coefficient)
 
 class Set(object):
     """Set of resistors and associated operations"""
@@ -612,7 +676,7 @@ class Set(object):
 
     def __init__(self, series: str=None, tolerance: str=None, max_exp: int=6,
                  min_exp: int=0, max_series: int=1, min_series: int=1,
-                 max_parallel: int=1, min_parallel: int=1) -> None:
+                 max_parallel: int=1, min_parallel: int=1):
         """Initialise resistor set
 
         :param series: resistor series
