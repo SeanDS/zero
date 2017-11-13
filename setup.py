@@ -9,7 +9,9 @@ with open("README.md") as readme_file:
 
 requirements = [
     "progressbar",
-    "tabulate"
+    "tabulate",
+    "sphinx-autodoc-typehints",
+    "sphinx-bootstrap-theme"
 ]
 
 setup(
