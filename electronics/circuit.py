@@ -271,9 +271,7 @@ class Solution(object):
     def sig_tf(self, sig_tf):
         if sig_tf is not None:
             # dimension sanity checks
-            if sig_tf.shape[0] != self.circuit.dim_size:
-                raise ValueError("sig_tf doesn't fit this solution")
-            elif sig_tf.shape[1] != self.n_frequencies:
+            if sig_tf.shape != (self.circuit.dim_size, self.n_frequencies):
                 raise ValueError("sig_tf doesn't fit this solution")
 
         self._sig_tf = sig_tf
@@ -286,10 +284,8 @@ class Solution(object):
     def noise_tf(self, noise_tf):
         if noise_tf is not None:
             # dimension sanity checks
-            if noise_tf.shape[0] != self.circuit.dim_size:
-                raise ValueError("noise_tf doesn't fit this solution")
-            elif noise_tf.shape[1] != self.n_frequencies:
-                raise ValueError("noise_tf doesn't fit this solution")
+            if noise_tf.shape != (self.circuit.dim_size, self.n_frequencies):
+                raise ValueError("sig_tf doesn't fit this solution")
 
         self._noise_tf = noise_tf
 
