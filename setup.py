@@ -10,7 +10,7 @@ with open("README.md") as readme_file:
 requirements = [
     "numpy",
     "scipy",
-    "matplotlib"
+    "matplotlib",
     "progressbar",
     "appdirs",
     "tabulate",
