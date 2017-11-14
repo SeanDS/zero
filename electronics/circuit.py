@@ -327,7 +327,8 @@ class Solution(object):
                              title=formatted_title)
 
     @staticmethod
-    def _plot_tfs(frequencies, tfs, legend=None, legend_loc="best", title=None):
+    def _plot_tfs(frequencies, tfs, legend=None, legend_loc="best", title=None,
+                  xlim=None, ylim=None):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
@@ -348,7 +349,15 @@ class Solution(object):
         if legend:
             ax1.legend(legend, loc=legend_loc)
 
-        # set axis properties
+        # limits
+        if xlim:
+            ax1.set_xlim(xlim)
+            ax2.set_xlim(xlim)
+        if ylim:
+            ax1.set_ylim(ylim)
+            ax2.set_ylim(ylim)
+
+        # set other axis properties
         ax2.set_xlabel("Frequency (Hz)")
         ax1.set_ylabel("Magnitude (dB)")
         ax2.set_ylabel("Phase (°)")
