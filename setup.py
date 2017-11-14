@@ -34,7 +34,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            '%s = electronics:main' % electronics.PROGRAM
+            '%s = electronics.__main__:main' % electronics.PROGRAM
         ]
     },
     install_requires=requirements,
