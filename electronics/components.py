@@ -120,7 +120,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
                                                    value=1))
 
         # create and return equation
-        return Equation(coefficients)
+        return ComponentEquation(self, coefficients=coefficients)
 
     @property
     def tolerance(self) -> float:
@@ -304,7 +304,7 @@ class OpAmp(Component):
                                                    value=self.inverse_gain))
 
         # create and return equation
-        return Equation(coefficients)
+        return ComponentEquation(self, coefficients=coefficients)
 
     def gain(self, frequency: Number) -> Number:
         return (self._a0 / (1 + self._a0 * 1j * frequency / self._gbw)
@@ -566,7 +566,7 @@ class Node(object):
                                                        value=-1))
 
         # create and return equation
-        return Equation(coefficients)
+        return NodeEquation(self, coefficients=coefficients)
 
     def __str__(self):
         return self.name
@@ -586,7 +586,7 @@ class Gnd(Node, metaclass=Singleton):
         # call parent constructor
         return super(Gnd, self).__init__(name="Gnd")
 
-class Equation(object):
+class Equation(object, metaclass=abc.ABCMeta):
     def __init__(self, coefficients: Sequence['BaseCoefficient']):
         """Instantiate a new equation
 
@@ -605,6 +605,30 @@ class Equation(object):
         """
 
         self.coefficients.append(coefficient)
+
+class ComponentEquation(Equation):
+    def __init__(self, component: Component, *args, **kwargs):
+        """Instantiate a new component equation
+
+        :param component: component this equation represents
+        """
+
+        # call parent constructor
+        super(ComponentEquation, self).__init__(*args, **kwargs)
+
+        self.component = component
+
+class NodeEquation(Equation):
+    def __init__(self, node: Node, *args, **kwargs):
+        """Instantiate a new node equation
+
+        :param node: node this equation represents
+        """
+
+        # call parent constructor
+        super(NodeEquation, self).__init__(*args, **kwargs)
+
+        self.node = node
 
 class BaseCoefficient(object, metaclass=abc.ABCMeta):
     # coefficient types

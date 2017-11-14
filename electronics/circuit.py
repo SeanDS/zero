@@ -68,11 +68,6 @@ class Circuit(object):
         if node not in self.nodes:
             self.nodes.append(node)
 
-    @property
-    def dim_size(self):
-        """Matrix dimension size"""
-        return self.n_components + self.n_nodes
-
     def _construct_matrix(self):
         LOGGER.debug("constructing matrix")
 
@@ -83,38 +78,38 @@ class Circuit(object):
         self._matrix_callables = dict()
 
         # Ohm's law / op-amp voltage gain equations
-        for component_index, equation in enumerate(self.component_equations()):
+        for equation in self.component_equations():
             for coefficient in equation.coefficients:
                 # default indices
-                row = component_index
-                column = component_index
+                row = self._component_matrix_index(equation.component)
+                column = self._component_matrix_index(equation.component)
 
                 if isinstance(coefficient, ImpedanceCoefficient):
                     # don't change indices
                     pass
                 elif isinstance(coefficient, VoltageCoefficient):
                     # includes extra I[in] column (at index == self.n_components)
-                    column = self.n_components + self.node_index(coefficient.node)
+                    column = self._voltage_node_matrix_index(coefficient.node)
                 else:
                     raise ValueError("Invalid coefficient type")
 
+                # fetch (potentially frequency-dependent) impedance
                 if callable(coefficient.value):
+                    # copy function
                     self._matrix_callables[(row, column)] = coefficient.value
                 else:
+                    # copy value
                     self._matrix[row, column] = coefficient.value
 
         # first Kirchoff law equations
-        for node_index, equation in enumerate(self.node_equations()):
+        for equation in self.node_equations():
             for coefficient in equation.coefficients:
                 if not isinstance(coefficient, CurrentCoefficient):
                     raise ValueError("Invalid coefficient type")
 
-                # get component index
-                component_index = self.component_index(coefficient.component)
-
                 # subtract 1 since 0th row is first component
-                row = self.n_components - 1 + node_index
-                column = component_index
+                row = self._current_node_matrix_index(equation.node)
+                column = self._component_matrix_index(coefficient.component)
 
                 if callable(coefficient.value):
                     self._matrix_callables[(row, column)] = coefficient.value
@@ -122,11 +117,11 @@ class Circuit(object):
                     self._matrix[row, column] = coefficient.value
 
         # input voltage
-        self._matrix[self.n_components + self.n_nodes - 1,
-                     self.n_components + self.node_index(self.input_node)] = 1
+        self._matrix[self._last_index,
+                     self._voltage_node_matrix_index(self.input_node)] = 1
 
         # input current
-        self._matrix[self.n_components - 1 + self.node_index(self.input_node),
+        self._matrix[self._current_node_matrix_index(self.input_node),
                      self.n_components] = 1
 
     def matrix(self, frequency):
@@ -158,7 +153,7 @@ class Circuit(object):
 
         # output vector
         # the last row sets the input voltage to 1
-        y = sparse((self.dim_size, 1))
+        y = self._results_matrix(1)
         y[-1, 0] = 1
 
         # create frequency generator with progress bar
@@ -167,13 +162,31 @@ class Circuit(object):
         # frequency loop
         for index, frequency in enumerate(freq_gen):
             # get matrix for this frequency
-            m = self.matrix(frequency)
+            matrix = self.matrix(frequency)
 
-            # solve
-            sig_tf[:, index] = spsolve(m, y)
+            # solve transfer functions
+            sig_tf[:, index] = spsolve(matrix, y)
 
         # create solution
         return Solution(self, frequencies, sig_tf)
+
+    @property
+    def dim_size(self):
+        """Matrix dimension size"""
+        return self.n_components + self.n_nodes
+
+    @property
+    def _last_index(self):
+        return self.dim_size - 1
+
+    def _component_matrix_index(self, component):
+        return self.components.index(component)
+
+    def _voltage_node_matrix_index(self, node):
+        return self.n_components + self.node_index(node)
+
+    def _current_node_matrix_index(self, node):
+        return self.n_components + self.node_index(node) - 1
 
     def _results_matrix(self, depth):
         return np.zeros((self.dim_size, depth), dtype="complex64")
@@ -183,9 +196,6 @@ class Circuit(object):
 
     def node_equations(self):
         return [node.equation() for node in self.nodes]
-
-    def component_index(self, component):
-        return self.components.index(component)
 
     def node_index(self, node):
         return self.nodes.index(node)
@@ -328,7 +338,8 @@ class Solution(object):
 
     @staticmethod
     def _plot_tfs(frequencies, tfs, legend=None, legend_loc="best", title=None,
-                  xlim=None, ylim=None):
+                  xlim=None, ylim=None, xlabel="Frequency (Hz)",
+                  ylabel_mag="Magnitude (dB)", ylabel_phase="Phase (°)"):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
@@ -358,9 +369,9 @@ class Solution(object):
             ax2.set_ylim(ylim)
 
         # set other axis properties
-        ax2.set_xlabel("Frequency (Hz)")
-        ax1.set_ylabel("Magnitude (dB)")
-        ax2.set_ylabel("Phase (°)")
+        ax2.set_xlabel(xlabel)
+        ax1.set_ylabel(ylabel_mag)
+        ax2.set_ylabel(ylabel_phase)
         ax1.grid(True)
         ax2.grid(True)
 
