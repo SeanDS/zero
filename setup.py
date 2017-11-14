@@ -8,7 +8,11 @@ with open("README.md") as readme_file:
     readme = readme_file.read()
 
 requirements = [
+    "numpy",
+    "scipy",
+    "matplotlib"
     "progressbar",
+    "appdirs",
     "tabulate",
     "sphinx-autodoc-typehints",
     "sphinx-bootstrap-theme"
