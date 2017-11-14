@@ -44,7 +44,9 @@ print(circuit.print_matrix(frequency=frequencies[0]))
 #circuit.print_equations(frequency=frequencies[0])
 
 # solve circuit
-solution = circuit.solve(frequencies)
+solution = circuit.solve(frequencies, noise_node=nout)
 
 # plot
-solution.plot_sig_tf()
+solution.plot_tf()
+solution.plot_noise()
+solution.show()

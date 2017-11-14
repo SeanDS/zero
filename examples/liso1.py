@@ -28,4 +28,5 @@ parser.load("whitening.fil")
 solution = parser.circuit().solve(frequencies)
 
 # plot
-solution.plot_sig_tf()
+solution.plot_tf()
+solution.show()

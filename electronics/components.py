@@ -2,7 +2,8 @@
 
 import abc
 import logging
-from typing import TypeVar, Union, Callable, Sequence, Generator, List, Any
+from typing import (TypeVar, Union, Callable, Sequence, Generator, List, Dict,
+                    Any)
 import numpy as np
 import itertools
 import heapq
@@ -20,11 +21,13 @@ Number = TypeVar('Number', int, float, complex, np.number)
 class Component(object, metaclass=abc.ABCMeta):
     """Class representing a circuit component"""
 
-    def __init__(self, name: str=None, nodes: Sequence['Node']=None):
+    def __init__(self, name: str=None, nodes: Sequence['Node']=None,
+                 noise_current_nodes: Sequence['Node']=None):
         """Instantiate a new component
 
         :param name: component name
         :param nodes: associated component nodes
+        :param noise_current_nodes: nodes which contribute to current noise
         """
 
         if name is not None:
@@ -35,14 +38,35 @@ class Component(object, metaclass=abc.ABCMeta):
 
         self.name = name
         self.nodes = list(nodes)
+        self.noise_current_nodes = noise_current_nodes
 
     def noise_voltage(self, *args) -> Number:
         # no noise by default
         return 0
 
-    def noise_current(self, *args) -> Number:
-        # no noise by default
+    def noise_currents(self, frequency: Number) -> Dict['Node', Number]:
+        return {node: self.node_noise_current(node, frequency)
+                for node in self.noise_current_nodes}
+
+    def node_noise_current(self, node: 'Node', frequency: Number) -> Number:
         return 0
+
+    @property
+    def noise_current_nodes(self):
+        return self._noise_current_nodes
+
+    @noise_current_nodes.setter
+    def noise_current_nodes(self, nodes):
+        if nodes is None:
+            nodes = []
+
+        nodes = list(nodes)
+
+        if not set(nodes).issubset(set(self.nodes)):
+            raise ValueError("A noise current node was specified that is"
+                             "not a node of this component")
+
+        self._noise_current_nodes = nodes
 
     @abc.abstractmethod
     def equation(self):
@@ -207,6 +231,9 @@ class OpAmp(Component):
         # set model and populate properties
         self.model = model
 
+        # update noise current nodes in case they've been set
+        self._update_noise_current_nodes()
+
     @property
     def model(self):
         return self._model
@@ -243,8 +270,8 @@ class OpAmp(Component):
             self._in = data["in"]
         if "vc" in data:
             self._vc = data["vc"]
-        if "iv" in data:
-            self._iv = data["iv"]
+        if "ic" in data:
+            self._ic = data["ic"]
         if "vmax" in data:
             self._vmax = data["vmax"]
         if "imax" in data:
@@ -259,6 +286,7 @@ class OpAmp(Component):
     @node1.setter
     def node1(self, node: 'Node'):
         self.nodes[0] = node
+        self._update_noise_current_nodes()
 
     @property
     def node2(self) -> 'Node':
@@ -267,6 +295,7 @@ class OpAmp(Component):
     @node2.setter
     def node2(self, node: 'Node'):
         self.nodes[1] = node
+        self._update_noise_current_nodes()
 
     @property
     def node3(self) -> 'Node':
@@ -275,6 +304,18 @@ class OpAmp(Component):
     @node3.setter
     def node3(self, node: 'Node'):
         self.nodes[2] = node
+        self._update_noise_current_nodes()
+
+    def _update_noise_current_nodes(self):
+        noise_nodes = []
+
+        # input nodes contribute to noise unless they're grounded
+        if self.node1 is not None and self.node1 != Gnd():
+            noise_nodes.append(self.node1)
+        if self.node2 is not None and self.node2 != Gnd():
+            noise_nodes.append(self.node2)
+
+        self.noise_current_nodes = noise_nodes
 
     def equation(self) -> 'Equation':
         # register component as source for node 3
@@ -318,7 +359,8 @@ class OpAmp(Component):
     def noise_voltage(self, frequency: Number) -> Number:
         return self._vn * np.sqrt(1 + self._vc / frequency)
 
-    def noise_current(self, frequency: Number) -> Number:
+    def node_noise_current(self, node: 'Node', frequency: Number) -> Number:
+        # ignore node; noise is same at both
         return self._in * np.sqrt(1 + self._ic / frequency)
 
     def label(self) -> str:

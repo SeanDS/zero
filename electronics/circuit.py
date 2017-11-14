@@ -20,10 +20,11 @@ def sparse(*args, **kwargs):
     return lil_matrix(dtype="complex64", *args, **kwargs)
 
 class Circuit(object):
-    def __init__(self, input_node=None):
+    def __init__(self, input_node=None, input_impedance=0):
         self.components = []
         self.nodes = []
         self.input_node = input_node
+        self.input_impedance = input_impedance
 
         # default matrix
         self._matrix = None
@@ -143,13 +144,21 @@ class Circuit(object):
         # convert to CSR for efficient solving
         return m.tocsr()
 
-    def solve(self, frequencies):
+    def solve(self, frequencies, noise_node=None):
         # number of frequencies to calculate
         n_freqs = len(frequencies)
 
-        # signal and noise transfer function results matrices
-        sig_tf = self._results_matrix(n_freqs)
-        noise_tf = self._results_matrix(n_freqs)
+        compute_noise = False
+        noise = None
+
+        if noise_node is not None:
+            compute_noise = True
+
+            # noise results matrix
+            noise = self._results_matrix(n_freqs)
+
+        # signal results matrices
+        sig_tfs = self._results_matrix(n_freqs)
 
         # output vector
         # the last row sets the input voltage to 1
@@ -160,15 +169,64 @@ class Circuit(object):
         freq_gen = _print_progress(frequencies, n_freqs, update=10)
 
         # frequency loop
-        for index, frequency in enumerate(freq_gen):
+        for freq_index, frequency in enumerate(freq_gen):
             # get matrix for this frequency
             matrix = self.matrix(frequency)
 
             # solve transfer functions
-            sig_tf[:, index] = spsolve(matrix, y)
+            sig_tfs[:, freq_index] = spsolve(matrix, y)
+
+            if compute_noise:
+                noise[:, freq_index] = self._noise_at_node(noise_node, matrix,
+                                                           frequency)
 
         # create solution
-        return Solution(self, frequencies, sig_tf)
+        return Solution(self, frequencies, sig_tfs, noise, noise_node)
+
+    def _noise_at_node(self, node, matrix, frequency):
+        e_n = self._results_matrix(1)
+        e_n[self._voltage_node_matrix_index(node), 0] = 1
+
+        # set input impedance
+        # NOTE: this issues a SparseEfficiencyWarning
+        matrix[self._last_index, self.n_components] = self.input_impedance
+
+        # solve, giving transfer function from each component/node to the
+        # output (size = nx0)
+        y_hat = spsolve(matrix.T, e_n)
+
+        # noise current/voltage input vector (original size = nx1, squeezed
+        # size = nx0)
+        k = self._noise_input_vector(frequency)
+
+        # noise at output (size = nx1)
+        return np.abs(y_hat * k)
+
+    def _noise_input_vector(self, frequency):
+        # empty noise current/voltage input vector (size = nx0)
+        k = self._results_matrix()
+
+        # fill vector
+        for component in self.components:
+            # component matrix index
+            component_index = self._component_matrix_index(component)
+
+            # component noise potential
+            k[component_index] = component.noise_voltage(frequency)
+
+            # FIXME: should really loop over all nodes in circuit separately
+            # and add noises in quadrature (in case multiple noise current
+            # sources are connected to the same node)
+
+            # component noise currents
+            for node, noise_current in component.noise_currents(frequency).items():
+                # current node matrix index
+                node_index = self._current_node_matrix_index(node)
+
+                # node noise current
+                k[node_index] = noise_current
+
+        return k
 
     @property
     def dim_size(self):
@@ -188,8 +246,8 @@ class Circuit(object):
     def _current_node_matrix_index(self, node):
         return self.n_components + self.node_index(node) - 1
 
-    def _results_matrix(self, depth):
-        return np.zeros((self.dim_size, depth), dtype="complex64")
+    def _results_matrix(self, *depth):
+        return np.zeros((self.dim_size, *depth), dtype="complex64")
 
     def component_equations(self):
         return [component.equation() for component in self.components]
@@ -242,12 +300,13 @@ class Circuit(object):
         m_array = np.abs(self.matrix(*args, **kwargs).toarray())
 
         # tabulate data
-        table = tabulate(m_array, self.headers(),
+        table = tabulate(m_array, self.headers,
                          tablefmt=CONF["format"]["table"])
 
         # output
         print(table, file=stream)
 
+    @property
     def headers(self):
         return [self.formatted_element(n) for n in range(self.dim_size)]
 
@@ -263,58 +322,62 @@ class Circuit(object):
             raise ValueError("Invalid element index")
 
 class Solution(object):
-    def __init__(self, circuit, frequencies, sig_tf=None, noise_tf=None):
+    def __init__(self, circuit, frequencies, sig_tfs=None, noise=None,
+                 noise_node=None):
         self.circuit = circuit
         self.frequencies = frequencies
-        self.sig_tf = sig_tf
-        self.noise_tf = noise_tf
+        self.sig_tfs = sig_tfs
+        self.noise = noise
+        self.noise_node = noise_node
 
     @property
     def n_frequencies(self):
         return len(list(self.frequencies))
 
     @property
-    def sig_tf(self):
-        return self._sig_tf
+    def sig_tfs(self):
+        return self._sig_tfs
 
-    @sig_tf.setter
-    def sig_tf(self, sig_tf):
-        if sig_tf is not None:
+    @sig_tfs.setter
+    def sig_tfs(self, sig_tfs):
+        if sig_tfs is not None:
             # dimension sanity checks
-            if sig_tf.shape != (self.circuit.dim_size, self.n_frequencies):
-                raise ValueError("sig_tf doesn't fit this solution")
+            if sig_tfs.shape != (self.circuit.dim_size, self.n_frequencies):
+                raise ValueError("sig_tfs doesn't fit this solution")
 
-        self._sig_tf = sig_tf
+        self._sig_tfs = sig_tfs
 
     @property
-    def noise_tf(self):
-        return self._noise_tf
+    def noise(self):
+        return self._noise
 
-    @noise_tf.setter
-    def noise_tf(self, noise_tf):
-        if noise_tf is not None:
+    @noise.setter
+    def noise(self, noise):
+        if noise is not None:
             # dimension sanity checks
-            if noise_tf.shape != (self.circuit.dim_size, self.n_frequencies):
-                raise ValueError("sig_tf doesn't fit this solution")
+            if noise.shape != (self.circuit.dim_size, self.n_frequencies):
+                raise ValueError("noise doesn't fit this solution")
 
-        self._noise_tf = noise_tf
+        self._noise = noise
 
     def _result_node_index(self, node):
         return (self.circuit.n_components
                 + self.circuit.node_index(node))
 
-    def plot_sig_tf(self, output_nodes=None, title=None):
+    def plot_tf(self, output_nodes=None, title=None):
         if output_nodes is None:
             # all nodes except ground
             output_nodes = list(self.circuit.non_gnd_nodes)
         elif isinstance(output_nodes, Node):
             output_nodes = [output_nodes]
 
-        # output node indices in sig_tf
+        output_nodes = list(output_nodes)
+
+        # output node indices in sig_tfs
         node_indices = [self._result_node_index(node) for node in output_nodes]
 
         # transfer function
-        tfs = self.sig_tf[node_indices, :]
+        tfs = self.sig_tfs[node_indices, :]
 
         # legend
         node_labels = ["%s -> %s" % (self.circuit.input_node, node)
@@ -322,7 +385,7 @@ class Solution(object):
 
         # plot title
         if not title:
-            title = CONF["plot"]["default_sig_tf_title"]
+            title = "%s -> %s"
 
         # make list with output nodes
         if len(output_nodes) > 1:
@@ -333,22 +396,22 @@ class Solution(object):
         formatted_title = title % (self.circuit.input_node,
                                    output_node_list)
 
-        return self._plot_tfs(self.frequencies, tfs, legend=node_labels,
-                             title=formatted_title)
+        return self._plot_bode(self.frequencies, tfs, labels=node_labels,
+                               title=formatted_title)
 
     @staticmethod
-    def _plot_tfs(frequencies, tfs, legend=None, legend_loc="best", title=None,
-                  xlim=None, ylim=None, xlabel="Frequency (Hz)",
-                  ylabel_mag="Magnitude (dB)", ylabel_phase="Phase (°)"):
+    def _plot_bode(frequencies, tfs, labels, legend=True, legend_loc="best",
+                   title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
+                   ylabel_mag="Magnitude (dB)", ylabel_phase="Phase (°)"):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
         ax1 = fig.add_subplot(211)
         ax2 = fig.add_subplot(212, sharex=ax1)
 
-        for tf in tfs:
+        for label, tf in zip(labels, tfs):
             # plot magnitude
-            ax1.semilogx(frequencies, db(np.abs(tf)))
+            ax1.semilogx(frequencies, db(np.abs(tf)), label=label)
 
             # plot phase
             ax2.semilogx(frequencies, np.angle(tf) * 180 / np.pi)
@@ -358,7 +421,7 @@ class Solution(object):
 
         # legend
         if legend:
-            ax1.legend(legend, loc=legend_loc)
+            ax1.legend(loc=legend_loc)
 
         # limits
         if xlim:
@@ -375,4 +438,80 @@ class Solution(object):
         ax1.grid(True)
         ax2.grid(True)
 
+    def plot_noise(self, total=True, individual=True, title=None):
+        if self.noise is None:
+            raise Exception("noise was not computed in this solution")
+
+        if not total and not individual:
+            raise Exception("At least one of total and individual flags must "
+                            "be set")
+
+        # default noise contributions
+        noise = np.zeros((0, self.n_frequencies))
+
+        # default legend
+        labels = []
+
+        if individual:
+            # add noise contributions
+            noise = np.vstack([noise, self.noise])
+
+            # add noise labels
+            labels += self.circuit.headers
+        if total:
+            # incoherent sum of noise
+            sum_noise = np.sqrt(np.sum(np.power(self.noise, 2), axis=0))
+
+            # add sum noise
+            noise = np.vstack([noise, sum_noise])
+
+            # add sum label
+            labels.append("Sum")
+
+        # plot title
+        if not title:
+            title = "Noise constributions at %s" % self.noise_node
+
+        return self._plot_noise(self.frequencies, noise, labels=labels,
+                                title=title)
+
+    @staticmethod
+    def _plot_noise(frequencies, noise, labels, legend=True, legend_loc="best",
+                    title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
+                    ylabel="Noise ()"):
+        # create figure
+        fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
+                                  float(CONF["plot"]["size_y"])))
+        ax = fig.gca()
+
+        # plot noise from each source
+        for label, source in zip(labels, noise):
+            if np.all(source) == 0:
+                # skip zero noise
+                LOGGER.info("skipping zero noise source %s", label)
+
+                # skip this iteration
+                continue
+
+            ax.loglog(frequencies, source, label=label)
+
+        # overall figure title
+        fig.suptitle(title)
+
+        # legend
+        if legend:
+            ax.legend(loc=legend_loc)
+
+        # limits
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_ylim(ylim)
+
+        # set other axis properties
+        ax.set_ylabel(ylabel)
+        ax.grid(True)
+
+    @staticmethod
+    def show():
         plt.show()
