@@ -1,4 +1,4 @@
-"""Resistor calculations"""
+"""Electronic components"""
 
 import abc
 import logging
@@ -7,26 +7,15 @@ import numpy as np
 import itertools
 import heapq
 
-from .misc import _n_comb_k, _print_progress
+from .misc import Singleton, _n_comb_k, _print_progress
 from .format import SIFormatter
-from .config import ElectronicsConfig
+from .config import ElectronicsConfig, OpAmpLibrary
 
 CONF = ElectronicsConfig()
+LIBRARY = OpAmpLibrary()
 
 # type alias for numbers
 Number = TypeVar('Number', int, float, complex, np.number)
-
-class Singleton(type):
-    """Metaclass implementing the singleton pattern"""
-
-    # list of children
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-
-        return cls._instances[cls]
 
 class Component(object, metaclass=abc.ABCMeta):
     """Class representing a circuit component"""
@@ -76,12 +65,6 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         self.value = value
         self.tolerance = tolerance
 
-        # register component as sink for node 1 and source for node 2
-        if self.node1:
-            self.node1.add_sink(self) # current flows into here...
-        if self.node2:
-            self.node2.add_source(self) # and out of here
-
     @property
     def value(self) -> float:
         return self._value
@@ -89,7 +72,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     @value.setter
     def value(self, value: Number):
         if value is not None:
-            value = float(value)
+            value = SIFormatter.parse(value)
 
         self._value = value
 
@@ -110,6 +93,12 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         self.nodes[1] = node
 
     def equation(self) -> 'Equation':
+        # register component as sink for node 1 and source for node 2
+        if self.node1:
+            self.node1.add_sink(self) # current flows into here...
+        if self.node2:
+            self.node2.add_source(self) # and out of here
+
         # nodal potential equation coefficients
         # impedance * current + voltage = 0
         coefficients = []
@@ -181,53 +170,87 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     def impedance(self, frequency):
         return NotImplemented
 
-class OpAmp(Component, metaclass=abc.ABCMeta):
-    """Represents an op-amp"""
+class OpAmp(Component):
+    """Represents an (almost) ideal op-amp"""
 
-    # DC gain
-    A0 = np.inf
-
-    # gain-bandwidth product (Hz)
-    GBW = np.inf
-
-    # delay (s)
-    DELAY = 0
-
-    # array of additional zeros (Hz)
-    ZEROS = np.array([])
-
-    # array of additional poles
-    POLES = np.array([])
-
-    # voltage noise (V/sqrt(Hz))
-    VN = 0
-
-    # current noise (A/sqrt(Hz))
-    IN = 0
-
-    # voltage noise corner frequency (Hz)
-    VC = 0
-
-    # current noise corner frequency (Hz)
-    IC = 0
-
-    # maximum output voltage amplitude (V)
-    VMAX = 0
-
-    # maximum output current amplitude (A)
-    IMAX = 0
-
-    # maximum slew rate (V/s)
-    SR = 0
-
-    def __init__(self, node1: 'Node'=None, node2: 'Node'=None,
+    def __init__(self, model: str=None, node1: 'Node'=None, node2: 'Node'=None,
                  node3: 'Node'=None, *args, **kwargs):
         # call parent constructor
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
-        # register component as source for node 3
-        # nodes 1 and 2 don't source or sink current (ideally)
-        self.node3.add_source(self) # current flows out of here
+        # default properties
+        # DC gain
+        self._a0 = 1e12
+        # gain-bandwidth product (Hz)
+        self._gbw = 1e15
+        # delay (s)
+        self._delay = 1e-9
+        # array of additional zeros (Hz)
+        self._zeros = np.array([])
+        # array of additional poles
+        self._poles = np.array([])
+        # voltage noise (V/sqrt(Hz))
+        self._vn = 0
+        # current noise (A/sqrt(Hz))
+        self._in = 0
+        # voltage noise corner frequency (Hz)
+        self._vc = 1
+        # current noise corner frequency (Hz)
+        self._iv = 1
+        # maximum output voltage amplitude (V)
+        self._vmax = 12
+        # maximum output current amplitude (A)
+        self._imax = 0.02
+        # maximum slew rate (V/s)
+        self._sr = 1e12
+
+        # set model and populate properties
+        self.model = model
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, model):
+        model = str(model).upper()
+
+        if not LIBRARY.has_data(model):
+            raise ValueError("Unrecognised op-amp type: %s" % model)
+
+        self._model = model
+
+        # set data
+        self._set_model_data(model)
+
+    def _set_model_data(self, model):
+        # get library data
+        data = LIBRARY.get_data(model)
+
+        if "a0" in data:
+            self._a0 = data["a0"]
+        if "gbw" in data:
+            self._gbw = data["gbw"]
+        if "delay" in data:
+            self._delay = data["delay"]
+        if "zeros" in data:
+            self._zeros = data["zeros"]
+        if "poles" in data:
+            self._poles = data["poles"]
+        if "vn" in data:
+            self._vn = data["vn"]
+        if "in" in data:
+            self._in = data["in"]
+        if "vc" in data:
+            self._vc = data["vc"]
+        if "iv" in data:
+            self._iv = data["iv"]
+        if "vmax" in data:
+            self._vmax = data["vmax"]
+        if "imax" in data:
+            self._imax = data["imax"]
+        if "sr" in data:
+            self._sr = data["sr"]
 
     @property
     def node1(self) -> 'Node':
@@ -254,6 +277,10 @@ class OpAmp(Component, metaclass=abc.ABCMeta):
         self.nodes[2] = node
 
     def equation(self) -> 'Equation':
+        # register component as source for node 3
+        # nodes 1 and 2 don't source or sink current (ideally)
+        self.node3.add_source(self) # current flows out of here
+
         # nodal potential equation coefficients
         # V[n3] = H(s) (V[n1] - V[n2])
         coefficients = []
@@ -280,19 +307,19 @@ class OpAmp(Component, metaclass=abc.ABCMeta):
         return Equation(coefficients)
 
     def gain(self, frequency: Number) -> Number:
-        return (self.A0 / (1 + self.A0 * 1j * frequency / self.GBW)
-                * np.exp(-1j * 2 * np.pi * self.DELAY * frequency)
-                * np.prod(1 + 1j * frequency / self.ZEROS)
-                / np.prod(1 + 1j * frequency / self.POLES))
+        return (self._a0 / (1 + self._a0 * 1j * frequency / self._gbw)
+                * np.exp(-1j * 2 * np.pi * self._delay * frequency)
+                * np.prod(1 + 1j * frequency / self._zeros)
+                / np.prod(1 + 1j * frequency / self._poles))
 
     def inverse_gain(self, *args, **kwargs) -> Number:
         return 1 / self.gain(*args, **kwargs)
 
     def noise_voltage(self, frequency: Number) -> Number:
-        return self.VN * np.sqrt(1 + self.VC / frequency)
+        return self._vn * np.sqrt(1 + self._vc / frequency)
 
     def noise_current(self, frequency: Number) -> Number:
-        return self.IN * np.sqrt(1 + self.IC / frequency)
+        return self._in * np.sqrt(1 + self._ic / frequency)
 
     def label(self) -> str:
         return self.name
@@ -495,11 +522,25 @@ class Node(object):
         :param name: node name
         """
 
-        self.name = str(name)
+        self.name = name
 
         # current sources and sinks
         self.sources = set()
         self.sinks = set()
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        name = str(name)
+
+        # only Gnd() node can be called "gnd"
+        if self.__class__.__name__ == "Node" and name.lower() == "gnd":
+            raise ValueError("Ground nodes must be created with Gnd()")
+
+        self._name = name
 
     def add_source(self, component: Component) -> None:
         self.sources.add(component)

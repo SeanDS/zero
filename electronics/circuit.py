@@ -9,7 +9,7 @@ import logging
 from tabulate import tabulate
 
 from .config import ElectronicsConfig
-from .components import (Gnd, ImpedanceCoefficient, CurrentCoefficient,
+from .components import (Node, Gnd, ImpedanceCoefficient, CurrentCoefficient,
                          VoltageCoefficient)
 from .misc import _print_progress, db
 
@@ -20,11 +20,10 @@ def sparse(*args, **kwargs):
     return lil_matrix(dtype="complex64", *args, **kwargs)
 
 class Circuit(object):
-    def __init__(self, input_node=None, output_node=None):
+    def __init__(self, input_node=None):
         self.components = []
         self.nodes = []
         self.input_node = input_node
-        self.output_node = output_node
 
         # default matrix
         self._matrix = None
@@ -38,20 +37,18 @@ class Circuit(object):
         self._input_node = node
 
     @property
-    def output_node(self):
-        return self._output_node
-
-    @output_node.setter
-    def output_node(self, node):
-        self._output_node = node
-
-    @property
     def n_components(self):
         return len(self.components)
 
     @property
     def n_nodes(self):
         return len(self.nodes)
+
+    @property
+    def non_gnd_nodes(self):
+        for node in self.nodes:
+            if node != Gnd():
+                yield node
 
     def add_component(self, component):
         if component in self.components:
@@ -77,7 +74,7 @@ class Circuit(object):
         return self.n_components + self.n_nodes
 
     def _construct_matrix(self):
-        LOGGER.info("constructing matrix")
+        LOGGER.debug("constructing matrix")
 
         # create matrix
         self._matrix = sparse((self.dim_size, self.dim_size))
@@ -152,9 +149,6 @@ class Circuit(object):
         return m.tocsr()
 
     def solve(self, frequencies):
-        if not self.output_node:
-            raise Exception("No output node specified")
-
         # number of frequencies to calculate
         n_freqs = len(frequencies)
 
@@ -303,37 +297,60 @@ class Solution(object):
         return (self.circuit.n_components
                 + self.circuit.node_index(node))
 
-    def plot_sig_tf(self, output_node, title=None):
-        # output node index in sig_tf
-        node_index = self._result_node_index(output_node)
+    def plot_sig_tf(self, output_nodes=None, title=None):
+        if output_nodes is None:
+            # all nodes except ground
+            output_nodes = list(self.circuit.non_gnd_nodes)
+        elif isinstance(output_nodes, Node):
+            output_nodes = [output_nodes]
+
+        # output node indices in sig_tf
+        node_indices = [self._result_node_index(node) for node in output_nodes]
 
         # transfer function
-        tf = self.sig_tf[node_index, :]
+        tfs = self.sig_tf[node_indices, :]
+
+        # legend
+        node_labels = ["%s -> %s" % (self.circuit.input_node, node)
+                       for node in output_nodes]
 
         # plot title
         if not title:
             title = CONF["plot"]["default_sig_tf_title"]
 
+        # make list with output nodes
+        if len(output_nodes) > 1:
+            output_node_list = "[%s]" % ", ".join([str(node) for node in output_nodes])
+        else:
+            output_node_list = str(output_nodes[0])
+
         formatted_title = title % (self.circuit.input_node,
-                                   output_node)
+                                   output_node_list)
 
-        return self._plot_tf(tf, title=formatted_title)
+        return self._plot_tfs(self.frequencies, tfs, legend=node_labels,
+                             title=formatted_title)
 
-    def _plot_tf(self, tf, title=None):
+    @staticmethod
+    def _plot_tfs(frequencies, tfs, legend=None, legend_loc="best", title=None):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
         ax1 = fig.add_subplot(211)
         ax2 = fig.add_subplot(212, sharex=ax1)
 
-        # plot magnitude
-        ax1.semilogx(self.frequencies, db(np.abs(tf)))
+        for tf in tfs:
+            # plot magnitude
+            ax1.semilogx(frequencies, db(np.abs(tf)))
 
-        # plot phase
-        ax2.semilogx(self.frequencies, np.angle(tf) * 180 / np.pi)
+            # plot phase
+            ax2.semilogx(frequencies, np.angle(tf) * 180 / np.pi)
 
         # overall figure title
         fig.suptitle(title)
+
+        # legend
+        if legend:
+            ax1.legend(legend, loc=legend_loc)
 
         # set axis properties
         ax2.set_xlabel("Frequency (Hz)")

@@ -25,6 +25,9 @@ setup(
     packages=[
         "electronics"
     ],
+    package_data={
+        "electronics": ["electronics.conf.dist", "library.conf.dist"],
+    },
     entry_points={
         'console_scripts': [
             '%s = electronics:main' % electronics.PROGRAM

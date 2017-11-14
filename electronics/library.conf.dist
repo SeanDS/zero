@@ -1,0 +1,95 @@
+# Op-amp library from LISO (Gerhard Heinzel)
+#
+# Everything is in SI units:
+#   - 'a0': DC open loop gain
+#   - 'gbw': gain-bandwidth product for typical operating frequencies
+#   - 'vn': voltage noise spectral density (V / sqrt(Hz))
+#   - 'in': current noise spectral density (A / sqrt(Hz))
+#   - 'vc' voltage noise 1/f corner frequency
+#   - 'ic': current noise 1/f corner frequency
+#   - 'pole': pole frequency in the op-amp's open-loop response
+#   - 'zero': zero frequency in the op-amp's open-loop response
+#
+# Options that are not specified for a particular op-amp default to standard
+# values. Depending on the parameter, the default can be drastically different
+# from that of a particular op-amp, so be careful.
+#
+# Note that multiple pole/zero frequencies can be defined for each op-amp,
+# and complex values can be specified by providing the q-factor after the
+# frequency, e.g. "pole [1M] [10M 1.8]". These values are converted
+# into single complex values internally.
+#
+# Unless mentioned explicitly, values are "typical" for the cheapest grade
+# at 25 degrees. a0 should usually be uncritical; these are entered for
+# large loads. The 1/f corner frequencies 'vc' and 'ic' (in Hz) are often
+# not well defined. Poles and zeroes of the open-loop transfer function
+# are interpreted as additional features to the 1/f frequency response
+# given by a0 and gbw.
+#
+# 'vmax' (in volts), 'imax' (in amperes) and 'sr' (in V/s) describe the
+# output capabilities (used by the 'maxinput' command).
+#
+# Identical components with different names can be specified for the root
+# component by specifying their names separated with spaces using the
+# "aliases" entry, e.g. "aliases = op27 op47". This will create identical,
+# but distinct op-amp classes.
+#
+# Please note: this library is experimental, incomplete and may be wrong.
+# Whenever the individual op-amp properties become important, you must
+# check yourself that the correct values are entered below.
+
+[op07]
+# Rout = 90 Ohm, Cin = 23 pF (measured)
+a0 = 4e5
+gbw = 561k # fitted from measurement
+vn = 10e-9
+vc = 1
+in = 0.13e-12
+ic = 100
+vmax = 12
+imax = 0.02
+sr = 0.3e6
+poles = [2M] # fitted from measurement
+delay = 74n # fitted from measurement
+
+[op177]
+a0 = 6e6
+gbw = 721k # fitted from measurement
+vn = 9.4e-9 # from measurement
+vc = 1.2 # from measurement
+in = 0.2e-12 # from measurement
+ic = 2.5 # from measurement
+poles = [7.53M 1.78] [1.66M] # fitted from measurement
+delay = 30n # fitted from measurement
+vmax = 12
+imax = 0.02
+sr = 0.3e6
+
+[lt1124]
+# improved dual/quad OP27
+aliases = lt1125
+a0 = 15e6      # from data sheet
+gbw = 14.6M    # fitted from measured data ghh 4/2002
+poles = [200k] [200k] # fitted from measured data ghh 4/2002
+zeros = [800k] [800k] [9.4M] # fitted from measured data ghh 4/2002
+delay = 18.9n  # fitted from measured data ghh 4/2002
+vn = 2.7n      # from data sheet
+vc = 2.3       # from data sheet
+in = 0.3p      # from data sheet
+ic = 100       # from data sheet
+sr = 4.5e6     # from data sheet
+vmax = 12      # from data sheet
+imax = 0.02    # from data sheet
+
+[tl074]
+aliases = tl084
+a0 = 200e3
+gbw = 3M
+vn = 18n
+vc = 300
+in = 0.01p
+ic = 300 # guess
+vmax = 12
+imax = 0.0166666666666667
+sr = 13e6
+delay = 25n # from (hand-drawn) curve in data sheet

@@ -2,6 +2,8 @@
 
 import abc
 import math
+import re
+from typing import Any
 
 class BaseFormatter(metaclass=abc.ABCMeta):
     """Abstract class for all formatters"""
@@ -37,9 +39,17 @@ class SIFormatter(BaseFormatter):
     """
 
     # exponents and their SI prefixes
-    unit_prefixes = {-24: "y", -21: "z", -18: "a", -15: "f", -12: "p", -9: "n",
+    UNIT_PREFICES = {-24: "y", -21: "z", -18: "a", -15: "f", -12: "p", -9: "n",
                      -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G", 12: "T",
                      15: "E", 18: "Z", 21: "Y"}
+
+    # other strings used to represent prefices
+    PREFIX_ALIASES = {"u": "µ"}
+
+    # regular expression to find values with unit prefixes in text
+    # this technically allows strings with both exponents and unit prefices,
+    # like ".1e-6.M", but these should fail later validation
+    VALUE_REGEX = re.compile("^([+-]?\d*\.?\d*)([eE]([+-]?\d*\.?\d*))?([\w])?")
 
     @classmethod
     def format(cls, value, unit=""):
@@ -55,13 +65,13 @@ class SIFormatter(BaseFormatter):
         exponent_index = int(math.floor(cls.exponent(value) / 3))
 
         # check for out of range exponents
-        if not (min(cls.unit_prefixes.keys())
+        if not (min(cls.UNIT_PREFICES.keys())
                 < exponent_index
-                < max(cls.unit_prefixes.keys())):
+                < max(cls.UNIT_PREFICES.keys())):
             raise ValueError("{} out of range".format(value))
 
         # create suffix with unit
-        suffix = cls.unit_prefixes[exponent_index * 3] + unit
+        suffix = cls.UNIT_PREFICES[exponent_index * 3] + unit
 
         # numerals without scale; should always be < 1000 (10 ** 3)
         numerals = value * (10 ** -(exponent_index * 3))
@@ -76,3 +86,43 @@ class SIFormatter(BaseFormatter):
 
         # return formatted string with space between numeral and unit if present
         return "{0} {1}".format(result, suffix) if suffix else result
+
+    @classmethod
+    def prefices(cls):
+        yield from cls.UNIT_PREFICES.values()
+        yield from cls.PREFIX_ALIASES.keys()
+
+    @classmethod
+    def parse(cls, value_str: Any) -> float:
+        if isinstance(value_str, (int, float)):
+            return float(value_str)
+
+        # find floating point numbers and optional unit prefix
+        results = cls.VALUE_REGEX.findall(value_str)[0]
+
+        # first result is the base number
+        base = float(results[0])
+
+        if results[1] != '' and results[3] != '':
+            raise Exception("Cannot specify both exponent and unit prefix")
+
+        # handle exponent
+        if results[1] != '':
+            # prefix specified
+            exponent = float(results[2])
+        elif results[3] != '':
+            exponent = cls.unit_exponent(results[3])
+        else:
+            exponent = 0
+
+        # return float equivalent
+        return base * 10 ** exponent
+
+    @classmethod
+    def unit_exponent(cls, prefix: str) -> int:
+        if prefix in cls.PREFIX_ALIASES:
+            prefix = cls.PREFIX_ALIASES[prefix]
+
+        for exponent, this_prefix in cls.UNIT_PREFICES.items():
+            if this_prefix == prefix:
+                return exponent

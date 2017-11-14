@@ -4,6 +4,18 @@ import math
 import numpy as np
 import progressbar
 
+class Singleton(type):
+    """Metaclass implementing the singleton pattern"""
+
+    # list of children
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+
+        return cls._instances[cls]
+
 def _n_comb_k(total, choose, repetition=False):
     """Number of combinations of n things taken k at a time
 
