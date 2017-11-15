@@ -339,7 +339,7 @@ class OpAmp(Component):
                                                    value=1))
 
         # add output node coefficient
-        if self.node2 is not Gnd():
+        if self.node3 is not Gnd():
             # voltage
             coefficients.append(VoltageCoefficient(node=self.node3,
                                                    value=self.inverse_gain))

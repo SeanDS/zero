@@ -22,7 +22,9 @@ def sparse(*args, **kwargs):
 class Circuit(object):
     def __init__(self, input_node=None, input_impedance=0):
         self.components = []
-        self.nodes = []
+        # ensure ground node is always first node (required for matrix node
+        # index methods to correctly function)
+        self.nodes = [Gnd()]
         self.input_node = input_node
         self.input_impedance = input_impedance
 
@@ -68,6 +70,11 @@ class Circuit(object):
     def add_node(self, node):
         if node not in self.nodes:
             self.nodes.append(node)
+
+    def get_node(self, node_name):
+        for node in self.nodes:
+            if node.name == node_name:
+                return node
 
     def _construct_matrix(self):
         LOGGER.debug("constructing matrix")
@@ -117,11 +124,11 @@ class Circuit(object):
                 else:
                     self._matrix[row, column] = coefficient.value
 
-        # input voltage
+        # set input voltage to 1
         self._matrix[self._last_index,
                      self._voltage_node_matrix_index(self.input_node)] = 1
 
-        # input current
+        # set input current to 1
         self._matrix[self._current_node_matrix_index(self.input_node),
                      self.n_components] = 1
 
@@ -163,7 +170,7 @@ class Circuit(object):
         # output vector
         # the last row sets the input voltage to 1
         y = self._results_matrix(1)
-        y[-1, 0] = 1
+        y[self._last_index, 0] = 1
 
         # create frequency generator with progress bar
         freq_gen = _print_progress(frequencies, n_freqs, update=10)
@@ -271,7 +278,7 @@ class Circuit(object):
             first = True
 
             for column in range(m.shape[1]):
-                element = np.abs(m[row, column])
+                element = m[row, column]
 
                 if element == 0:
                     # don't print
@@ -296,12 +303,20 @@ class Circuit(object):
                 print(" = 0", file=stream)
 
     def print_matrix(self, stream=sys.stdout, *args, **kwargs):
-        # get matrix as numpy array of absolute values
-        m_array = np.abs(self.matrix(*args, **kwargs).toarray())
+        # get matrix
+        matrix = self.matrix(*args, **kwargs)
+
+        # convert complex values to magnitudes (leaving others, like -1, alone)
+        for row in range(matrix.shape[0]):
+            for column in range(matrix.shape[1]):
+                if np.iscomplex(matrix[row, column]):
+                    matrix[row, column] = np.abs(matrix[row, column])
+
+        # get matrix as numpy array
+        array = matrix.toarray()
 
         # tabulate data
-        table = tabulate(m_array, self.headers,
-                         tablefmt=CONF["format"]["table"])
+        table = tabulate(array, self.headers, tablefmt=CONF["format"]["table"])
 
         # output
         print(table, file=stream)

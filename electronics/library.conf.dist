@@ -52,6 +52,18 @@ sr = 0.3e6
 poles = [2M] # fitted from measurement
 delay = 74n # fitted from measurement
 
+[op27]
+a0 = 1.5e6
+gbw = 8e6
+vn = 3.2e-9
+vc = 2.7 # from PMI data sheet
+in = 0.4e-12
+ic = 140 # from PMI data sheet
+poles = [6e6]
+vmax = 12
+imax = 0.02
+sr = 2.8e6
+
 [op177]
 a0 = 6e6
 gbw = 721k # fitted from measurement
@@ -64,6 +76,21 @@ delay = 30n # fitted from measurement
 vmax = 12
 imax = 0.02
 sr = 0.3e6
+
+[op270]
+# data from data sheet
+a0 = 700e3
+gbw = 6e6
+poles = [1.32M]
+zeros = [1.73M] [20M]
+delay = 21n
+vn = 3.2e-9
+vc = 2.7 # from PMI data sheet
+in = 0.6e-12
+ic = 140 # from PMI data sheet
+vmax = 13.5
+imax = 0.002 # 10V in 5 k
+sr = 2.4e6
 
 [lt1124]
 # improved dual/quad OP27

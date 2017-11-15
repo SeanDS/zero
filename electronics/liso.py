@@ -30,15 +30,11 @@ class CircuitParser(object):
             raise Exception("File not loaded")
 
         # create empty circuit
-        circuit = Circuit()
+        circuit = Circuit(self.input_node, self.input_impedance)
 
         # add components
         for component in self.components:
             circuit.add_component(component)
-
-        # set input node
-        circuit.input_node = self.input_node
-        # TODO: set input impedance
 
         return circuit
 
@@ -124,11 +120,12 @@ class CircuitParser(object):
         directive = tokens[0]
 
         if directive == "uinput":
-            if len(tokens) > 2:
-                # floating input
+            if len(tokens) > 3:
+                # TODO: handle floating input
                 self.input_node_2 = self._get_node(tokens[2])
-
-            self.input_node = self._get_node(tokens[1])
-            self.input_impedance = tokens[2]
+                self.input_impedance = tokens[3]
+            else:
+                self.input_node = self._get_node(tokens[1])
+                self.input_impedance = tokens[2]
         else:
             raise ValueError("Unknown directive: %s" % directive)
