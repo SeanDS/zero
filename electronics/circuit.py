@@ -26,7 +26,7 @@ class Circuit(object):
         # index methods to correctly function)
         self.nodes = [Gnd()]
         self.input_node = input_node
-        self.input_impedance = input_impedance
+        self.input_impedance = float(input_impedance)
 
         # default matrix
         self._matrix = None
