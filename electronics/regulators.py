@@ -18,6 +18,7 @@ class Regulator(object):
         """Instantiate a new regulator class
 
         :param reg_type: regulator type
+        :type reg_type: str
         """
 
         # default type
@@ -27,7 +28,10 @@ class Regulator(object):
 
     @property
     def type(self):
-        """Regulator type getter"""
+        """Regulator type getter
+
+        :rtype: int
+        """
 
         return self._type
 
@@ -36,6 +40,7 @@ class Regulator(object):
         """Regulator type setter
 
         :param reg_type: regulator type
+        :type reg_type: str
         """
 
         reg_type = str(reg_type).lower()
@@ -54,9 +59,16 @@ class Regulator(object):
         """Generate best resistors combinations for the specified voltage
 
         :param voltage: target voltage
+        :type voltage: float
         :param resistor_set: resistor series to generate combinations of
+        :type resistor_set: :class:`.components.Set`
         :param n_values: number of best combinations to generate
+        :type n_values: int
         :param progress: show interactive progress bar
+        :type progress: bool
+        :return: closest voltages and the resistor pair that makes them, \
+                 ranked by closeness
+        :rtype: List[Tuple[float, Resistor, Resistor]]
         """
 
         voltage = float(voltage)
@@ -94,10 +106,12 @@ class Regulator(object):
         return heapq.nsmallest(n_values, voltages, key=lambda i: abs(i[0] - voltage))
 
     def regulated_voltages(self, resistor_pairs):
-        """Calculate regulated voltages given an iterable specifying pairs
+        """Calculate regulated voltages given a sequence specifying pairs
 
-        :param resistor_pairs: iterable containing pairs of \
-                               :class:`resistor.Resistor` objects
+        :param resistor_pairs: pair of resistors
+        :type: Sequence[List[Resistor, Resistor]]
+        :return: regulated voltage and the corresponding resistor collection
+        :rtype: Generator[Tuple[float, Resistor, Resistor]]
         """
 
         for pair in resistor_pairs:
@@ -107,10 +121,13 @@ class Regulator(object):
         """Calculate regulated voltage for a pair of resistors
 
         :param resistors: iterable containing :class:`resistor.Resistor` objects
+        :type resistors: List[Resistor, Resistor]
+        :return: regulated voltage
+        :rtype: float
         """
 
         if self.type in [self.TYPE_LM317, self.TYPE_LM337]:
             return 1.25 * (1 + float(resistors[1].resistance)
                            / float(resistors[0].resistance))
-        else:
-            raise ValueError("Unknown regulator type")
+
+        raise ValueError("Unknown regulator type")
