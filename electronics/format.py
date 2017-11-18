@@ -3,7 +3,6 @@
 import abc
 import math
 import re
-from typing import Any
 
 class BaseFormatter(metaclass=abc.ABCMeta):
     """Abstract class for all formatters"""
@@ -13,16 +12,23 @@ class BaseFormatter(metaclass=abc.ABCMeta):
         """Method to format the specified value and unit
 
         :param value: value to format
-        :unit: optional unit to append
+        :type value: Numeric
+        :param unit: optional unit to append
+        :type unit: str
+        :return: formatted value and unit
+        :rtype: str
         """
 
-        raise NotImplementedError
+        return NotImplemented
 
     @staticmethod
     def exponent(value):
         """Calculate the exponent of 10 corresponding to the specified value
 
         :param value: value to find exponent of 10 for
+        :type value: Numeric
+        :return: exponent of 10 for the given value
+        :rtype: float
         """
 
         if value == 0:
@@ -46,7 +52,7 @@ class SIFormatter(BaseFormatter):
     # other strings used to represent prefices
     PREFIX_ALIASES = {"u": "µ"}
 
-    # regular expression to find values with unit prefixes in text
+    # regular expression to find values with unit prefixes in text;
     # this technically allows strings with both exponents and unit prefices,
     # like ".1e-6.M", but these should fail later validation
     VALUE_REGEX = re.compile("^([+-]?\d*\.?\d*)([eE]([+-]?\d*\.?\d*))?([\w])?")
@@ -56,7 +62,11 @@ class SIFormatter(BaseFormatter):
         """Method to format the specified value and unit
 
         :param value: value to format
-        :unit: optional unit to append
+        :type value: Numeric
+        :param unit: optional unit to append
+        :type unit: str
+        :return: formatted value and unit
+        :rtype: str
         """
 
         value = float(value)
@@ -89,21 +99,39 @@ class SIFormatter(BaseFormatter):
 
     @classmethod
     def prefices(cls):
+        """Get unit prefices, including aliases
+
+        :return: unit prefices/aliases
+        :rtype: Generator[str]
+        """
+
         yield from cls.UNIT_PREFICES.values()
         yield from cls.PREFIX_ALIASES.keys()
 
     @classmethod
-    def parse(cls, value_str: Any) -> float:
-        if isinstance(value_str, (int, float)):
-            return float(value_str)
+    def parse(cls, value):
+        """Parse value string as number
 
-        # find floating point numbers and optional unit prefix
-        results = cls.VALUE_REGEX.findall(value_str)[0]
+        :param value: value to parse
+        :type value: str
+        :return: parsed number, without units or prefix
+        :rtype: float
+        """
 
-        # first result is the base number
+        # don't need to handle units if there aren't any
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        # find floating point numbers and optional unit prefix in string
+        results = cls.VALUE_REGEX.findall(value)[0]
+
+        # first result should be the base number
         base = float(results[0])
 
         if results[1] != '' and results[3] != '':
+            # both exponent and unit prefix are specified, but this is
+            # ambiguous (does the unit prefix apply to the number or the
+            # exponent?)
             raise Exception("Cannot specify both exponent and unit prefix")
 
         # handle exponent
@@ -111,18 +139,34 @@ class SIFormatter(BaseFormatter):
             # prefix specified
             exponent = float(results[2])
         elif results[3] != '':
+            # exponent specified
             exponent = cls.unit_exponent(results[3])
         else:
+            # neither prefix nor exponent
             exponent = 0
 
         # return float equivalent
         return base * 10 ** exponent
 
     @classmethod
-    def unit_exponent(cls, prefix: str) -> int:
+    def unit_exponent(cls, prefix):
+        """Return exponent equivalent of unit prefix
+
+        :param prefix: unit prefix
+        :type prefix: str
+        :return: exponent
+        :rtype: int
+        :raises ValueError: if prefix is unknown
+        """
+
         if prefix in cls.PREFIX_ALIASES:
+            # use real prefix for this alias
             prefix = cls.PREFIX_ALIASES[prefix]
 
+        # find exponent in prefix dict
         for exponent, this_prefix in cls.UNIT_PREFICES.items():
             if this_prefix == prefix:
                 return exponent
+
+        # prefix not found
+        raise ValueError("Unknown prefix")
