@@ -7,7 +7,7 @@ from typing import Generator, Callable, Sequence, List, Dict
 
 class CircuitParser(object):
     COMPONENTS = ["r", "c", "l", "op"]
-    DIRECTIVES = ["uinput"]
+    DIRECTIVES = {"input_voltage": ["uinput", "vinput"]}
 
     COMMENT_REGEX = re.compile("#.*?$")
 
@@ -66,6 +66,17 @@ class CircuitParser(object):
             # remove comments and extra whitespace and split into parts
             yield re.sub(cls.COMMENT_REGEX, "", line).split()
 
+    @property
+    def directives(self):
+        """Get sequence of supported directives
+
+        :return: directives
+        :rtype: Generator[str]
+        """
+
+        for directive_list in self.DIRECTIVES.values():
+            yield from directive_list
+
     def _parse_tokens(self, tokens):
         """Parse LISO tokens as commands
 
@@ -82,7 +93,7 @@ class CircuitParser(object):
         if command in self.COMPONENTS:
             # this is a component
             self._parse_component(command, tokens[1:])
-        elif command in self.DIRECTIVES:
+        elif command in self.directives:
             # this is a directive
             self._parse_directive(command, tokens[1:])
 
@@ -198,9 +209,10 @@ class CircuitParser(object):
         :type directive: str
         :param options: directive options
         :type options: Sequence[str]
+        :raises ValueError: if directive is unknown
         """
 
-        if directive in ["uinput", "vinput"]:
+        if directive in self.DIRECTIVES["input_voltage"]:
             if len(options) > 3:
                 # TODO: handle floating input
                 self.input_node_2 = self._get_node(options[1])
