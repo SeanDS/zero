@@ -22,15 +22,13 @@ frequencies = np.logspace(0, 6, 1000)
 
 # create parser
 parser = CircuitParser()
-parser.load("x.fil")
+parser.load("liso2.fil")
 
 # get circuit from parser
 circuit = parser.circuit()
 # solve it
-solution = parser.circuit().solve(frequencies,
-                                  noise_node=circuit.get_node("no"))
+solution = parser.circuit().solve(frequencies)
 
 # plot
 solution.plot_tf()
-solution.plot_noise()
 solution.show()

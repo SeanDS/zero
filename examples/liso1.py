@@ -22,13 +22,12 @@ frequencies = np.logspace(0, 6, 1000)
 
 # create parser
 parser = CircuitParser()
-parser.load("whitening.fil")
+parser.load("liso1.fil")
 
 # get circuit from parser
 circuit = parser.circuit()
 # solve it
-solution = circuit.solve(frequencies,
-                                  noise_node=circuit.get_node("nout"))
+solution = circuit.solve(frequencies)
 
 # plot
 solution.plot_tf()

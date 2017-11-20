@@ -40,7 +40,7 @@ class Component(object, metaclass=abc.ABCMeta):
         self.nodes = list(nodes)
         self.noise_current_nodes = noise_current_nodes
 
-    def noise_voltage(self, *args) -> Number:
+    def noise_voltage(self, frequency: Number) -> Number:
         # no noise by default
         return 0
 
@@ -101,22 +101,22 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         self._value = value
 
     @property
-    def node1(self) -> 'Node':
+    def node1(self):
         return self.nodes[0]
 
     @node1.setter
-    def node1(self, node: 'Node'):
+    def node1(self, node):
         self.nodes[0] = node
 
     @property
-    def node2(self) -> 'Node':
+    def node2(self):
         return self.nodes[1]
 
     @node2.setter
-    def node2(self, node: 'Node'):
+    def node2(self, node):
         self.nodes[1] = node
 
-    def equation(self) -> 'Equation':
+    def equation(self):
         # register component as sink for node 1 and source for node 2
         if self.node1:
             self.node1.add_sink(self) # current flows into here...
@@ -197,8 +197,8 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 class OpAmp(Component):
     """Represents an (almost) ideal op-amp"""
 
-    def __init__(self, model: str=None, node1: 'Node'=None, node2: 'Node'=None,
-                 node3: 'Node'=None, *args, **kwargs):
+    def __init__(self, model: str=None, node1=None, node2=None,
+                 node3=None, *args, **kwargs):
         # call parent constructor
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
@@ -628,7 +628,7 @@ class Gnd(Node, metaclass=Singleton):
         # call parent constructor
         return super(Gnd, self).__init__(name="Gnd")
 
-class Equation(object, metaclass=abc.ABCMeta):
+class BaseEquation(object, metaclass=abc.ABCMeta):
     def __init__(self, coefficients: Sequence['BaseCoefficient']):
         """Instantiate a new equation
 
@@ -648,7 +648,7 @@ class Equation(object, metaclass=abc.ABCMeta):
 
         self.coefficients.append(coefficient)
 
-class ComponentEquation(Equation):
+class ComponentEquation(BaseEquation):
     def __init__(self, component: Component, *args, **kwargs):
         """Instantiate a new component equation
 
@@ -660,7 +660,7 @@ class ComponentEquation(Equation):
 
         self.component = component
 
-class NodeEquation(Equation):
+class NodeEquation(BaseEquation):
     def __init__(self, node: Node, *args, **kwargs):
         """Instantiate a new node equation
 

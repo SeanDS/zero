@@ -300,7 +300,7 @@ class OpAmpLibrary(BaseConfig):
         :param token: string containing frequency and optional q-factor
         :type token: str
         :return: list of frequencies
-        :rtype: List[:class:`np.complex128` or float]
+        :rtype: List[Numpy scalar or float]
         """
 
         frequencies = []

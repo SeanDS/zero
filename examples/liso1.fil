@@ -11,3 +11,4 @@ op o1 lt1124 nin nm nout
 freq log 1 100k 100
 uinput nin 0
 uoutput nout:db:deg
+noise nout

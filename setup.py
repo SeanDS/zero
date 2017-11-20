@@ -14,7 +14,6 @@ requirements = [
     "progressbar",
     "appdirs",
     "tabulate",
-    "sphinx-autodoc-typehints",
     "sphinx-bootstrap-theme"
 ]
 

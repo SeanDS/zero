@@ -9,51 +9,134 @@ import logging
 from tabulate import tabulate
 
 from .config import ElectronicsConfig
-from .components import (Node, Gnd, ImpedanceCoefficient, CurrentCoefficient,
-                         VoltageCoefficient)
+from .components import (Component, Node, Gnd, ImpedanceCoefficient,
+                         CurrentCoefficient, VoltageCoefficient)
 from .misc import _print_progress, db
 
 LOGGER = logging.getLogger("circuit")
 CONF = ElectronicsConfig()
 
 def sparse(*args, **kwargs):
+    """Create new complex-valued sparse matrix
+
+    :return: sparse matrix
+    :rtype: :class:`~lil_matrix`
+    """
+
     return lil_matrix(dtype="complex64", *args, **kwargs)
 
 class Circuit(object):
-    def __init__(self, input_node=None, input_impedance=0):
+    """Represents an electronic circuit containing linear components"""
+
+    def __init__(self):
+        """Instantiate a new circuit
+
+        A circuit can contain linear components like resistors, capacitors,
+        inductors and op-amps.
+
+        Default input, output and noise nodes and impedances can be set with
+        `defaults`
+        """
+
+        # default circuit options; can be overridden by external code (e.g.
+        # LISO file parser)
+        self.defaults = {
+            "input_nodes": [],
+            "output_nodes": [],
+            "noise_node": None,
+            "input_impedance": 0
+        }
+
+        # solver parameters
+        self.input_nodes = None
+        self.noise_node = None
+        self.input_impedance = None
         self.components = []
         # ensure ground node is always first node (required for matrix node
         # index methods to correctly function)
         self.nodes = [Gnd()]
-        self.input_node = input_node
-        self.input_impedance = float(input_impedance)
-
-        # default matrix
         self._matrix = None
 
     @property
-    def input_node(self):
-        return self._input_node
-
-    @input_node.setter
-    def input_node(self, node):
-        self._input_node = node
-
-    @property
-    def n_components(self):
-        return len(self.components)
-
-    @property
-    def n_nodes(self):
-        return len(self.nodes)
-
-    @property
     def non_gnd_nodes(self):
+        """Get nodes in circuit, excluding ground
+
+        :return: non-ground nodes
+        :rtype: Generator[:class:`~Node`]
+        """
+
         for node in self.nodes:
             if node != Gnd():
                 yield node
 
+    @property
+    def n_components(self):
+        """Get number of components in circuit
+
+        :return: number of components
+        :rtype: int
+        """
+
+        return len(self.components)
+
+    @property
+    def default_input_nodes(self):
+        """Get default circuit input nodes
+
+        :return: default input nodes
+        :rtype: Sequence[:class:`~Node`]
+        """
+
+        return self.defaults["input_nodes"]
+
+    @property
+    def default_output_nodes(self):
+        """Get default circuit output nodes
+
+        :return: default output nodes
+        :rtype: Sequence[:class:`~Node`]
+        """
+
+        return self.defaults["output_nodes"]
+
+    @property
+    def default_noise_node(self):
+        """Get default circuit noise node
+
+        :return: default noise node
+        :rtype: :class:`~Node`
+        """
+
+        return self.defaults["noise_node"]
+
+    @property
+    def default_input_impedance(self):
+        """Get default circuit input impedance
+
+        :return: default input impedance
+        :rtype: float
+        """
+
+        return self.defaults["input_impedance"]
+
+    @property
+    def n_nodes(self):
+        """Get number of nodes in circuit
+
+        :return: number of nodes
+        :rtype: int
+        """
+
+        return len(self.nodes)
+
     def add_component(self, component):
+        """Add component to circuit
+
+        :param component: component to add
+        :type component: :class:`~Component`
+        :raises ValueError: if component is already in the circuit
+        """
+
         if component in self.components:
             raise ValueError("Component %s already in circuit" % component)
 
@@ -62,21 +145,52 @@ class Circuit(object):
 
         # register component's nodes
         for node in component.nodes:
-            if node is None:
-                raise Exception("Node cannot be none")
-
             self.add_node(node)
 
+        # reset matrix
+        self._matrix = None
+
     def add_node(self, node):
+        """Add node to circuit
+
+        :param node: node to add
+        :type node: :class:`~Node`
+        :raises Exception: if one of the component's nodes is unspecified
+        """
+
+        if node is None:
+            raise Exception("Node cannot be none")
+
         if node not in self.nodes:
             self.nodes.append(node)
 
     def get_node(self, node_name):
+        """Get circuit node by name
+
+        :param node_name: name of node to fetch
+        :type node_name: str
+        :return: node
+        :rtype: :class:`~Node`
+        :raises ValueError: if node not found
+        """
+
         for node in self.nodes:
             if node.name == node_name:
                 return node
 
+        raise ValueError("Node not found")
+
     def _construct_matrix(self):
+        """Construct matrix representing the circuit
+
+        This constructs a sparse matrix containing the voltage and current
+        equations for each component and the (optional) input and output nodes.
+        The matrix is stored internally in the object so that it can be reused
+        as long as the circuit is not changed. Frequency dependent impedances
+        are stored as callables so that their values can be quickly calculated
+        for a particular frequency during solving.
+        """
+
         LOGGER.debug("constructing matrix")
 
         # create matrix
@@ -85,7 +199,7 @@ class Circuit(object):
         # dict of methods that accept a frequency parameter
         self._matrix_callables = dict()
 
-        # Ohm's law / op-amp voltage gain equations
+        # Kirchoff's voltage law / op-amp voltage gain equations
         for equation in self.component_equations():
             for coefficient in equation.coefficients:
                 # default indices
@@ -109,7 +223,7 @@ class Circuit(object):
                     # copy value
                     self._matrix[row, column] = coefficient.value
 
-        # first Kirchoff law equations
+        # Kirchoff's current law
         for equation in self.node_equations():
             for coefficient in equation.coefficients:
                 if not isinstance(coefficient, CurrentCoefficient):
@@ -125,72 +239,201 @@ class Circuit(object):
                     self._matrix[row, column] = coefficient.value
 
         # set input voltage to 1
+        # FIXME: support floating inputs
         self._matrix[self._last_index,
-                     self._voltage_node_matrix_index(self.input_node)] = 1
+                     self._voltage_node_matrix_index(self.input_nodes[0])] = 1
 
         # set input current to 1
-        self._matrix[self._current_node_matrix_index(self.input_node),
+        self._matrix[self._current_node_matrix_index(self.input_nodes[0]),
                      self.n_components] = 1
 
     def matrix(self, frequency):
+        """Calculate and return circuit matrix for a given frequency
+
+        Matrix is returned in compressed sparse row (CSR) format for easy
+        row access. Further structural modification of the returned matrix is
+        inefficient. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html.
+
+        :param frequency: frequency at which to calculate circuit impedances
+        :type frequency: float or Numpy scalar
+        :return: circuit matrix
+        :rtype: :class:`scipy.sparse.spmatrix`
+        """
+
+        # generate base matrix if necessary
         if self._matrix is None:
             # build matrix without frequency dependent values
             self._construct_matrix()
 
         # copy matrix
-        m = self._matrix.copy()
+        matrix = self._matrix.copy()
 
         # substitute frequency into matrix elements
         for coordinates in self._matrix_callables:
-            row = coordinates[0]
-            column = coordinates[1]
+            # extract row and column from tuple
+            row, column = coordinates
 
             # call method with current frequency and store in new matrix
-            m[row, column] = self._matrix_callables[coordinates](frequency)
+            matrix[row, column] = self._matrix_callables[coordinates](frequency)
 
         # convert to CSR for efficient solving
-        return m.tocsr()
+        return matrix.tocsr()
 
-    def solve(self, frequencies, noise_node=None):
+    def solve(self, frequencies, input_nodes=[], input_impedance=0,
+              noise_node=None, print_progress=True, progress_stream=sys.stdout):
+        """Solve matrix for a given input and/or output
+
+        If the input node(s) is/are specified, transfer functions are calculated
+        from it to all other nodes in the circuit. If the noise node is
+        specified, the noise from all nodes in the circuit projected to the
+        noise node is calculated.
+
+        The input and noise nodes can be specified directly, or left as
+        defaults. If no default value has previously been set for the circuit
+        (for instance from a circuit definition file), then the relevant
+        transfer function or noise calculation is not performed. If the input
+        node(s) is/are specified, the specified input impedance is also used.
+        The circuit's default input impedance is only used if the circuit's
+        default input nodes are also being used.
+
+        :param frequencies: sequence of frequencies to solve circuit for
+        :type frequencies: Sequence[Numpy scalar or float]
+        :param input_nodes: (optional) input nodes to calculate transfer \
+                            functions from
+        :type input_nodes: Sequence[:class:`~Node`]
+        :param input_impedance: (optional) input impedance to assume
+        :type input_impedance: float
+        :param noise_node: (optional) node to project noise to
+        :type noise_node: :class:`~Node`
+        :param print_progress: whether to print solve progress to stream
+        :type print_progress: bool
+        :param progress_stream: stream to print progress to
+        :type progress_stream: :class:`io.IOBase`
+        :raises Exception: if neither an input nor noise node is specified
+        """
+
         # number of frequencies to calculate
         n_freqs = len(frequencies)
 
+        input_nodes = list(input_nodes)
+        input_impedance = float(input_impedance)
+
+        # default values
+        compute_tfs = False
         compute_noise = False
+        tfs = None
         noise = None
 
+        # work out which input node to use, if any
+        if len(input_nodes):
+            # use input nodes and impedance specified in this call
+            self.input_nodes = input_nodes
+            self.input_impedance = input_impedance
+            compute_tfs = True
+
+            # warn user if node is different from default
+            if set(input_nodes) != set(self.default_input_nodes):
+                # warn user that nodes differ
+                LOGGER.warning("specified input nodes (%s) are not the same as "
+                               "circuit's defaults (%s)",
+                               ", ".join([str(node) for node in input_nodes]),
+                               ", ".join([str(node) for node
+                                          in self.default_input_nodes]))
+        else:
+            if len(self.default_input_nodes):
+                # use default input node
+                self.input_nodes = self.default_input_nodes
+                self.input_impedance = self.default_input_impedance
+                LOGGER.info("using default input nodes: %s",
+                            ", ".join([str(node) for node in self.input_nodes]))
+
+                compute_tfs = True
+
+        # work out which noise node to use, if any
         if noise_node is not None:
+            # use noise node specified in this call
+            self.noise_node = noise_node
             compute_noise = True
 
+            # warn user if node is different from default
+            if (self.default_noise_node is not None
+                and noise_node != self.default_noise_node):
+                # warn user that nodes differ
+                LOGGER.warning("specified noise node (%s) is not the same as "
+                               "circuit's default (%s)", noise_node,
+                               self.default_noise_node)
+        else:
+            if self.default_noise_node is not None:
+                # use default noise node
+                self.noise_node = self.default_noise_node
+                LOGGER.info("Using default noise node: %s", self.noise_node)
+
+                compute_noise = True
+
+        # check that we're solving something
+        if not compute_tfs and not compute_noise:
+            raise Exception("no solution requested (specify an input node, a "
+                            "noise node, or both)")
+
+        if compute_tfs:
+            # signal results matrix
+            tfs = self._results_matrix(n_freqs)
+
+            # input vector
+            # the last row sets the input voltage to 1
+            y = self._results_matrix(1)
+            y[self._last_index, 0] = 1
+
+        if compute_noise:
             # noise results matrix
             noise = self._results_matrix(n_freqs)
 
-        # signal results matrices
-        sig_tfs = self._results_matrix(n_freqs)
+        if print_progress:
+            # update progress every 1% of the way there
+            update = n_freqs // 100
 
-        # output vector
-        # the last row sets the input voltage to 1
-        y = self._results_matrix(1)
-        y[self._last_index, 0] = 1
+            # if there are less than 100 frequencies, update progress after
+            # every frequency
+            if update == 0:
+                update += 1
 
-        # create frequency generator with progress bar
-        freq_gen = _print_progress(frequencies, n_freqs, update=10)
+            # create frequency generator with progress bar
+            freq_gen = _print_progress(frequencies, n_freqs, update=update,
+                                       stream=progress_stream)
+        else:
+            # just use provided frequency sequence
+            freq_gen = frequencies
 
         # frequency loop
         for freq_index, frequency in enumerate(freq_gen):
             # get matrix for this frequency
             matrix = self.matrix(frequency)
 
-            # solve transfer functions
-            sig_tfs[:, freq_index] = spsolve(matrix, y)
+            if compute_tfs:
+                # solve transfer functions
+                tfs[:, freq_index] = spsolve(matrix, y)
 
             if compute_noise:
-                noise[:, freq_index] = self._noise_at_node(noise_node, matrix,
-                                                           frequency)
+                noise[:, freq_index] = self._noise_at_node(self.noise_node,
+                                                           matrix, frequency)
 
         # create solution
-        return Solution(self, frequencies, sig_tfs, noise, noise_node)
+        return Solution(self, frequencies, tfs, noise, self.noise_node)
 
     def _noise_at_node(self, node, matrix, frequency):
+        """Compute noise from components projected to the specified node
+
+        :param node: node to project noise to
+        :type node: :class:`~Node`
+        :param matrix: circuit matrix
+        :type matrix: :class:`scipy.sparse.spmatrix` or :class:`np.ndarray`
+        :param frequency: frequency at which to compute noise
+        :type frequency: float or Numpy scalar
+        :return: vector containing noise from each circuit component/node
+        :rtype: :class:`np.ndarray`
+        """
+
+        # create column vector
         e_n = self._results_matrix(1)
         e_n[self._voltage_node_matrix_index(node), 0] = 1
 
@@ -210,6 +453,17 @@ class Circuit(object):
         return np.abs(y_hat * k)
 
     def _noise_input_vector(self, frequency):
+        """Create noise input vector at a given frequency
+
+        Creates an nx1 column vector containing the voltage and current noise at
+        each component and node, respectively.
+
+        :param frequency: frequency at which to compute noise
+        :type frequency: float or Numpy scalar
+        :return: noise input column vector
+        :rtype: :class:`~np.ndarray`
+        """
+
         # empty noise current/voltage input vector (size = nx0)
         k = self._results_matrix()
 
@@ -237,39 +491,119 @@ class Circuit(object):
 
     @property
     def dim_size(self):
-        """Matrix dimension size"""
+        """Circuit matrix dimension size
+
+        :return: number of rows/columns in circuit matrix
+        :rtype: int
+        """
+
         return self.n_components + self.n_nodes
 
     @property
     def _last_index(self):
+        """Circuit matrix index corresponding to last row/column
+
+        :return: last index
+        :rtype: int
+        """
+
         return self.dim_size - 1
 
     def _component_matrix_index(self, component):
+        """Circuit matrix index corresponding to a component
+
+        :param component: component to get index for
+        :type component: :class:`~Component`
+        :return: component index
+        :rtype: int
+        """
+
         return self.components.index(component)
 
     def _voltage_node_matrix_index(self, node):
+        """Circuit matrix index corresponding to a voltage at a node
+
+        :param node: node to get index for
+        :type node: :class:`~Node`
+        :return: node index
+        :rtype: int
+        """
+
         return self.n_components + self.node_index(node)
 
     def _current_node_matrix_index(self, node):
+        """Circuit matrix index corresponding to a current through a node
+
+        :param node: node to get index for
+        :type node: :class:`~Node`
+        :return: node index
+        :rtype: int
+        """
+
         return self.n_components + self.node_index(node) - 1
 
     def _results_matrix(self, *depth):
+        """Get empty matrix of specified size
+
+        The results matrix always has n rows, where n is the number of
+        components and nodes in the circuit. The column size, and the size of
+        any additional dimensions, can be specified with subsequent ``depth``
+        parameters.
+
+        :param depth: size of index 1...x
+        :type depth: int
+        :return: empty results matrix
+        :rtype: :class:`~np.ndarray`
+        """
+
         return np.zeros((self.dim_size, *depth), dtype="complex64")
 
     def component_equations(self):
+        """Get linear equations representing components in circuit
+
+        :return: sequence of component equations
+        :rtype: Generator[ComponentEquation]
+        """
+
         return [component.equation() for component in self.components]
 
     def node_equations(self):
+        """Get linear equations representing nodes in circuit
+
+        :return: sequence of node equations
+        :rtype: Generator[NodeEquation]
+        """
+
         return [node.equation() for node in self.nodes]
 
     def node_index(self, node):
+        """Get node serial number
+
+        :param node: node
+        :type node: :class:`~Node`
+        :return: node serial number
+        :rtype: int
+        """
+
         return self.nodes.index(node)
 
     def coefficients(self):
+        """Get circuit component and node equation coefficients
+
+        :return: sequence of equation coefficients
+        :rtype: Generator[BaseCoefficient]
+        """
+
         for equation in self.equations:
             yield from equation.coefficients
 
     def print_equations(self, stream=sys.stdout, *args, **kwargs):
+        """Pretty print circuit equations
+
+        :param stream: stream to print to
+        :type stream: :class:`io.IOBase`
+        """
+
         # get matrix
         m = self.matrix(*args, **kwargs)
 
@@ -303,6 +637,12 @@ class Circuit(object):
                 print(" = 0", file=stream)
 
     def print_matrix(self, stream=sys.stdout, *args, **kwargs):
+        """Pretty print circuit matrix
+
+        :param stream: stream to print to
+        :type stream: :class:`io.IOBase`
+        """
+
         # get matrix
         matrix = self.matrix(*args, **kwargs)
 
@@ -316,16 +656,28 @@ class Circuit(object):
         array = matrix.toarray()
 
         # tabulate data
-        table = tabulate(array, self.headers, tablefmt=CONF["format"]["table"])
+        table = tabulate(array, self.column_headers,
+                         tablefmt=CONF["format"]["table"])
 
         # output
         print(table, file=stream)
 
     @property
-    def headers(self):
+    def column_headers(self):
+        """Get column headers for matrix elements"""
+
         return [self.formatted_element(n) for n in range(self.dim_size)]
 
     def formatted_element(self, index):
+        """Format matrix element for pretty printer
+
+        Determines if the specified ``index`` refers to a component, voltage
+        or current node, and prints information accordingly.
+
+        :param index: index to format
+        :type index: int
+        """
+
         if index < self.n_components:
             return "i[%s]" % self.components[index].name
         elif index == self.n_components:
@@ -337,11 +689,13 @@ class Circuit(object):
             raise ValueError("Invalid element index")
 
 class Solution(object):
-    def __init__(self, circuit, frequencies, sig_tfs=None, noise=None,
+    """Represents a solution to the simulated circuit"""
+
+    def __init__(self, circuit, frequencies, tfs=None, noise=None,
                  noise_node=None):
         self.circuit = circuit
         self.frequencies = frequencies
-        self.sig_tfs = sig_tfs
+        self.tfs = tfs
         self.noise = noise
         self.noise_node = noise_node
 
@@ -350,17 +704,17 @@ class Solution(object):
         return len(list(self.frequencies))
 
     @property
-    def sig_tfs(self):
-        return self._sig_tfs
+    def tfs(self):
+        return self._tfs
 
-    @sig_tfs.setter
-    def sig_tfs(self, sig_tfs):
-        if sig_tfs is not None:
+    @tfs.setter
+    def tfs(self, tfs):
+        if tfs is not None:
             # dimension sanity checks
-            if sig_tfs.shape != (self.circuit.dim_size, self.n_frequencies):
-                raise ValueError("sig_tfs doesn't fit this solution")
+            if tfs.shape != (self.circuit.dim_size, self.n_frequencies):
+                raise ValueError("tfs doesn't fit this solution")
 
-        self._sig_tfs = sig_tfs
+        self._tfs = tfs
 
     @property
     def noise(self):
@@ -380,22 +734,39 @@ class Solution(object):
                 + self.circuit.node_index(node))
 
     def plot_tf(self, output_nodes=None, title=None):
-        if output_nodes is None:
-            # all nodes except ground
-            output_nodes = list(self.circuit.non_gnd_nodes)
-        elif isinstance(output_nodes, Node):
-            output_nodes = [output_nodes]
+        # work out which output nodes to plot
+        if output_nodes is not None:
+            # use output node specified in this call
+            output_nodes = list(output_nodes)
 
-        output_nodes = list(output_nodes)
+            # warn user if node is different from default
+            if set(output_nodes) != set(self.circuit.default_output_nodes):
+                # warn user that nodes differ
+                LOGGER.warning("specified output nodes (%s) are not the same as"
+                               " circuit's defaults (%s)",
+                               ", ".join([str(node) for node in output_nodes]),
+                               ", ".join([str(node) for node
+                                          in self.circuit.default_output_nodes]))
+        else:
+            if len(self.circuit.default_output_nodes):
+                # use default output nodes
+                output_nodes = self.circuit.default_output_nodes
+                LOGGER.info("using default output nodes: %s",
+                            ", ".join([str(node) for node in output_nodes]))
+            else:
+                # plot all output nodes
+                output_nodes = list(self.circuit.non_gnd_nodes)
+                LOGGER.info("plotting all output nodes")
 
-        # output node indices in sig_tfs
+        # output node indices in tfs
         node_indices = [self._result_node_index(node) for node in output_nodes]
 
         # transfer function
-        tfs = self.sig_tfs[node_indices, :]
+        tfs = self.tfs[node_indices, :]
 
         # legend
-        node_labels = ["%s -> %s" % (self.circuit.input_node, node)
+        # FIXME: support floating inputs
+        node_labels = ["%s -> %s" % (self.circuit.input_nodes[0], node)
                        for node in output_nodes]
 
         # plot title
@@ -408,7 +779,8 @@ class Solution(object):
         else:
             output_node_list = str(output_nodes[0])
 
-        formatted_title = title % (self.circuit.input_node,
+        # FIXME: support floating inputs
+        formatted_title = title % (self.circuit.input_nodes[0],
                                    output_node_list)
 
         return self._plot_bode(self.frequencies, tfs, labels=node_labels,
@@ -458,7 +830,7 @@ class Solution(object):
             raise Exception("noise was not computed in this solution")
 
         if not total and not individual:
-            raise Exception("At least one of total and individual flags must "
+            raise Exception("at least one of total and individual flags must "
                             "be set")
 
         # default noise contributions
@@ -472,7 +844,7 @@ class Solution(object):
             noise = np.vstack([noise, self.noise])
 
             # add noise labels
-            labels += self.circuit.headers
+            labels += self.circuit.column_headers
         if total:
             # incoherent sum of noise
             sum_noise = np.sqrt(np.sum(np.power(self.noise, 2), axis=0))
@@ -485,7 +857,7 @@ class Solution(object):
 
         # plot title
         if not title:
-            title = "Noise constributions at %s" % self.noise_node
+            title = "Noise contributions at %s" % self.noise_node
 
         return self._plot_noise(self.frequencies, noise, labels=labels,
                                 title=title)
@@ -499,16 +871,19 @@ class Solution(object):
                                   float(CONF["plot"]["size_y"])))
         ax = fig.gca()
 
+        skips = []
         # plot noise from each source
         for label, source in zip(labels, noise):
             if np.all(source) == 0:
                 # skip zero noise
-                LOGGER.info("skipping zero noise source %s", label)
+                skips.append(label)
 
                 # skip this iteration
                 continue
 
             ax.loglog(frequencies, source, label=label)
+
+        LOGGER.info("skipping zero noise source %s", ", ".join(skips))
 
         # overall figure title
         fig.suptitle(title)
@@ -529,4 +904,6 @@ class Solution(object):
 
     @staticmethod
     def show():
+        """Show plots"""
+
         plt.show()

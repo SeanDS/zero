@@ -1,13 +1,17 @@
+import logging
 import re
 
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
                          Gnd)
-from typing import Generator, Callable, Sequence, List, Dict
+
+LOGGER = logging.getLogger("liso")
 
 class CircuitParser(object):
     COMPONENTS = ["r", "c", "l", "op"]
-    DIRECTIVES = {"input_voltage": ["uinput", "vinput"]}
+    DIRECTIVES = {"input_nodes": ["uinput", "vinput"],
+                  "output_nodes": ["uoutput", "voutput"],
+                  "noise_node": ["noise"]}
 
     COMMENT_REGEX = re.compile("#.*?$")
 
@@ -15,8 +19,10 @@ class CircuitParser(object):
         # default values
         self.components = []
         self.nodes = {}
-        self.input_node = None
+        self.input_nodes = []
         self.input_impedance = 0
+        self.output_nodes = []
+        self.noise_node = None
         self.loaded = False
 
     def load(self, filepath):
@@ -34,17 +40,23 @@ class CircuitParser(object):
         self.loaded = True
 
     def circuit(self):
-        """Get circuit object representing LISO model
+        """Get circuit representing LISO model
 
         :return: circuit object
         :rtype: :class:`~Circuit`
         """
 
         if not self.loaded:
-            raise Exception("File not loaded")
+            raise Exception("file not loaded")
 
         # create empty circuit
-        circuit = Circuit(self.input_node, self.input_impedance)
+        circuit = Circuit()
+
+        # set defaults
+        circuit.defaults["input_nodes"] = self.input_nodes
+        circuit.defaults["input_impedance"] = self.input_impedance
+        circuit.defaults["output_nodes"] = self.output_nodes
+        circuit.defaults["noise_node"] = self.noise_node
 
         # add components
         for component in self.components:
@@ -212,13 +224,71 @@ class CircuitParser(object):
         :raises ValueError: if directive is unknown
         """
 
-        if directive in self.DIRECTIVES["input_voltage"]:
-            if len(options) > 3:
-                # TODO: handle floating input
-                self.input_node_2 = self._get_node(options[1])
-                self.input_impedance = int(options[2])
-            else:
-                self.input_node = self._get_node(options[0])
-                self.input_impedance = int(options[1])
+        if directive in self.DIRECTIVES["input_nodes"]:
+            self._parse_input_nodes(options)
+        elif directive in self.DIRECTIVES["output_nodes"]:
+            self._parse_output_nodes(options[0])
+        elif directive in self.DIRECTIVES["noise_node"]:
+            self._parse_noise_node(options[0])
         else:
             raise ValueError("Unknown directive: %s" % directive)
+
+    def _parse_input_nodes(self, node_options):
+        """Parse LISO token as input node directive
+
+        :param node_options: input node options
+        :type node_options: Sequence[str]
+        """
+
+        self.input_nodes = [self._get_node(node_options[0])]
+
+        if len(node_options) > 3:
+            # floating input
+            self.input_nodes.append(self._get_node(node_options[1]))
+            self.input_impedance = float(node_options[2])
+        else:
+            self.input_impedance = float(node_options[1])
+
+    def _parse_output_nodes(self, output_str):
+        """Parse LISO token as output node directive
+
+        :param output_str: output node name, and (unused) plot scaling \
+                           separated by colons
+        :type output_str: str
+        """
+
+        # split options by colon
+        options = output_str.split(":")
+
+        # only use first option, which is the node name
+        self.add_output_node(self._get_node(options[0]))
+        # FIXME: parse list of output nodes
+
+    def _parse_noise_node(self, node_str):
+        """Parse LISO token as noise node directive
+
+        :param node_str: noise node name, and (unused) plot scaling \
+                         separated by colons
+        :type node_str: str
+        """
+
+        # split options by colon
+        options = node_str.split(":")
+
+        # only use first option, which is the node name
+        self.noise_node = self._get_node(options[0])
+
+        if len(options) > 1:
+            LOGGER.warning("ignoring plot options in noise command")
+
+    def add_output_node(self, node):
+        """Add output node
+
+        :param node: output node to add
+        :type node: :class:`~Node`
+        """
+
+        if node in self.output_nodes:
+            raise ValueError("output node already added")
+
+        self.output_nodes.append(node)
