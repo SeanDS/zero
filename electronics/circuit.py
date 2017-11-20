@@ -693,6 +693,21 @@ class Solution(object):
 
     def __init__(self, circuit, frequencies, tfs=None, noise=None,
                  noise_node=None):
+        """Instantiate a new solution
+
+        :param circuit: circuit this solution represents
+        :type circuit: :class:`~Circuit`
+        :param frequencies: sequence of frequencies this solution contains \
+                            results for
+        :type frequencies: :class:`~np.ndarray`
+        :param tfs: transfer function solutions
+        :type tfs: :class:`~np.ndarray`
+        :param noise: noise solutions
+        :type noise: :class:`~np.ndarray`
+        :param noise_node: node ``noise`` represents
+        :type noise_node: :class:`~Node`
+        """
+
         self.circuit = circuit
         self.frequencies = frequencies
         self.tfs = tfs
