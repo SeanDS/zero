@@ -35,7 +35,7 @@ class Circuit(object):
         inductors and op-amps.
 
         Default input, output and noise nodes and impedances can be set with
-        `defaults`
+        ``defaults``
         """
 
         # default circuit options; can be overridden by external code (e.g.
