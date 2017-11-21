@@ -164,6 +164,22 @@ class Circuit(object):
         if node not in self.nodes:
             self.nodes.append(node)
 
+    def get_component(self, component_name):
+        """Get circuit component by name
+
+        :param component_name: name of component to fetch
+        :type component_name: str
+        :return: component
+        :rtype: :class:`~Component`
+        :raises ValueError: if component not found
+        """
+
+        for component in self.components:
+            if component.name == component_name:
+                return component
+
+        raise ValueError("component not found")
+
     def get_node(self, node_name):
         """Get circuit node by name
 
@@ -178,7 +194,7 @@ class Circuit(object):
             if node.name == node_name:
                 return node
 
-        raise ValueError("Node not found")
+        raise ValueError("node not found")
 
     def _construct_matrix(self):
         """Construct matrix representing the circuit
