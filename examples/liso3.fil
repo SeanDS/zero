@@ -7,3 +7,6 @@ c c2 4.7n nsum gnd
 c c5 122p no nm
 op op1 op27 gnd nm no
 uinput nin 50
+
+freq log 1 1M 100
+uoutput no
