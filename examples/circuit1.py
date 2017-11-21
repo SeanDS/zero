@@ -31,7 +31,7 @@ c2 = Capacitor(name="c2", value=47e-12, node1=nm, node2=nout)
 op = OpAmp(name="o1", model="LT1124", node1=nin, node2=nm, node3=nout)
 
 # create circuit with input node
-circuit = Circuit(input_node=nin)
+circuit = Circuit()
 # add components
 circuit.add_component(c1)
 circuit.add_component(r1)
@@ -44,7 +44,7 @@ print(circuit.print_matrix(frequency=frequencies[0]))
 #circuit.print_equations(frequency=frequencies[0])
 
 # solve circuit
-solution = circuit.solve(frequencies, noise_node=nout)
+solution = circuit.solve(frequencies, input_nodes=[nin], noise_node=nout)
 
 # plot
 solution.plot_tf()

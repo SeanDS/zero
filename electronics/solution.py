@@ -13,8 +13,7 @@ CONF = ElectronicsConfig()
 class Solution(object):
     """Represents a solution to the simulated circuit"""
 
-    def __init__(self, circuit, frequencies, tfs=None, noise=None,
-                 noise_node=None):
+    def __init__(self, circuit, frequencies, tfs=None, noise=None, noise_node=None):
         """Instantiate a new solution
 
         :param circuit: circuit this solution represents
@@ -71,6 +70,9 @@ class Solution(object):
                 + self.circuit.node_index(node))
 
     def plot_tf(self, output_nodes=None, title=None):
+        if self.tfs is None:
+            raise Exception("transfer functions were not computed in this solution")
+
         # work out which output nodes to plot
         if output_nodes is not None:
             # use output node specified in this call

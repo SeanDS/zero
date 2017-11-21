@@ -238,16 +238,7 @@ class Circuit(object):
                 else:
                     self._matrix[row, column] = coefficient.value
 
-        # set input voltage to 1
-        # FIXME: support floating inputs
-        self._matrix[self._last_index,
-                     self._voltage_node_matrix_index(self.input_nodes[0])] = 1
-
-        # set input current to 1
-        self._matrix[self._current_node_matrix_index(self.input_nodes[0]),
-                     self.n_components] = 1
-
-    def matrix(self, frequency):
+    def matrix(self, frequency, set_input=False):
         """Calculate and return circuit matrix for a given frequency
 
         Matrix is returned in compressed sparse row (CSR) format for easy
@@ -256,14 +247,30 @@ class Circuit(object):
 
         :param frequency: frequency at which to calculate circuit impedances
         :type frequency: float or Numpy scalar
+        :param set_input: set input voltage/current
+        :type set_input: bool
         :return: circuit matrix
         :rtype: :class:`scipy.sparse.spmatrix`
+        :raises Exception: if ``set_input`` is True but no inputs are specified
         """
 
         # generate base matrix if necessary
         if self._matrix is None:
             # build matrix without frequency dependent values
             self._construct_matrix()
+
+        if set_input:
+            if self.input_nodes is None or not len(self.input_nodes):
+                raise Exception("no input nodes specified")
+
+            # set input voltage to 1
+            # FIXME: support floating inputs
+            self._matrix[self._last_index,
+                         self._voltage_node_matrix_index(self.input_nodes[0])] = 1
+
+            # set input current to 1
+            self._matrix[self._current_node_matrix_index(self.input_nodes[0]),
+                         self.n_components] = 1
 
         # copy matrix
         matrix = self._matrix.copy()
@@ -332,11 +339,11 @@ class Circuit(object):
             compute_tfs = True
 
             # warn user if node is different from default
-            if set(input_nodes) != set(self.default_input_nodes):
+            if set(self.input_nodes) != set(self.default_input_nodes):
                 # warn user that nodes differ
                 LOGGER.warning("specified input nodes (%s) are not the same as "
                                "circuit's defaults (%s)",
-                               ", ".join([str(node) for node in input_nodes]),
+                               ", ".join([str(node) for node in self.input_nodes]),
                                ", ".join([str(node) for node
                                           in self.default_input_nodes]))
         else:
@@ -407,7 +414,7 @@ class Circuit(object):
         # frequency loop
         for freq_index, frequency in enumerate(freq_gen):
             # get matrix for this frequency
-            matrix = self.matrix(frequency)
+            matrix = self.matrix(frequency, set_input=True)
 
             if compute_tfs:
                 # solve transfer functions
