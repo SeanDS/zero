@@ -31,5 +31,4 @@ solution = circuit.solve(frequencies)
 
 # plot
 solution.plot_tf()
-solution.plot_noise()
 solution.show()
