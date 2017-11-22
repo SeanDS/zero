@@ -54,6 +54,7 @@ class Circuit(object):
         self.components = []
         # ensure ground node is always first node (required for matrix node
         # index methods to correctly function)
+        # FIXME: this shouldn't be necessary
         self.nodes = [Gnd()]
         self._matrix = None
 
@@ -706,7 +707,7 @@ class Circuit(object):
         elif index == self.n_components:
             # input current
             return "i[in]"
-        elif index < self.n_components + 1 + self.n_nodes:
+        elif index <= self.dim_size:
             return "V[%s]" % self.nodes[index - self.n_components]
-        else:
-            raise ValueError("Invalid element index")
+
+        raise ValueError("invalid element index")

@@ -31,8 +31,9 @@ class DataSet(object, metaclass=abc.ABCMeta):
         self.sink = sink
         self.series = series
 
+    @property
     @abc.abstractmethod
-    def description(self):
+    def label(self):
         return NotImplemented
 
 class TransferFunction(DataSet):
@@ -42,8 +43,9 @@ class TransferFunction(DataSet):
         # call parent constructor
         super(TransferFunction, self).__init__(*args, **kwargs)
 
-    def description(self):
-        return "transfer function from %s to %s" % (self.source, self.sink)
+    @property
+    def label(self):
+        return "%s to %s" % (self.source, self.sink)
 
 class NoiseSpectrum(DataSet):
     """Noise data series"""
@@ -66,6 +68,6 @@ class NoiseSpectrum(DataSet):
     def noise_name(self):
         return self.NAMES[self.noise_type]
 
-    def description(self):
-        return "%s noise at %s from %s" % (self.noise_name, self.sink,
-                                           self.source)
+    @property
+    def label(self):
+        return "%s noise %s to %s" % (self.noise_name, self.source, self.sink)

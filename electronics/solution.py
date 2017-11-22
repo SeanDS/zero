@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import abc
 
 from .config import ElectronicsConfig
+from .data import Series, TransferFunction
 from .misc import db
 
 LOGGER = logging.getLogger("solution")
@@ -14,7 +15,8 @@ CONF = ElectronicsConfig()
 class Solution(object):
     """Represents a solution to the simulated circuit"""
 
-    def __init__(self, circuit, frequencies, tfs=None, noise=None, noise_node=None):
+    def __init__(self, circuit, frequencies, tfs=None, noise=None,
+                 noise_node=None):
         """Instantiate a new solution
 
         :param circuit: circuit this solution represents
@@ -32,46 +34,111 @@ class Solution(object):
 
         self.circuit = circuit
         self.frequencies = frequencies
-        self.tfs = tfs
-        self.noise = noise
-        self.noise_node = noise_node
+
+        # defaults
+        self.functions = []
+
+        # process inputs
+        self._handle_tfs(tfs)
+        self._handle_noise(noise, noise_node)
+
+    def _handle_tfs(self, tfs):
+        if tfs is None:
+            return
+
+        # dimension sanity checks
+        if tfs.shape != (self.circuit.dim_size, self.n_frequencies):
+            raise ValueError("tfs doesn't fit this solution")
+
+        # create functions from each row
+        for tf, sink in zip(tfs, self.circuit.non_gnd_nodes):
+            # source is always input node
+            source = self.circuit.input_nodes[0]
+
+            # create series
+            series = Series(x=self.frequencies, y=tf)
+
+            # create transfer function
+            self.add_function(TransferFunction(source=source, sink=sink,
+                                               series=series))
+
+    def _handle_noise(self, noise, sink):
+        if noise is None:
+            return
+
+        # dimension sanity checks
+        if noise.shape != (self.circuit.dim_size, self.n_frequencies):
+            raise ValueError("noise doesn't fit this solution")
+
+        # noise sources
+        # FIXME: use components/nodes
+        sources = self.circuit.column_headers
+
+        # skipped noise sources
+        skips = []
+
+        # create functions from each row
+        for spectrum, source in zip(noise, sources):
+            if np.all(spectrum) == 0:
+                # skip zero noise source
+                skips.append(source)
+
+                # skip this iteration
+                continue
+
+            # FIXME: use isinstance() to set proper noise type
+
+        if len(skips):
+            LOGGER.info("skipped zero noise sources %s", ", ".join(skips))
+
+    def add_function(self, function):
+        if function in self.functions:
+            raise ValueError("duplicate function")
+
+        self.functions.append(function)
+
+    @property
+    def output_nodes(self):
+        """Get output nodes in solution
+
+        :return: output nodes
+        :rtype: Sequence[:class:`Node`]
+        """
+
+        return [function.sink for function in self.transfer_functions()]
 
     @property
     def n_frequencies(self):
         return len(list(self.frequencies))
 
-    @property
-    def tfs(self):
-        return self._tfs
+    def _filter_function(self, _class, sources=[], sinks=[]):
+        functions = [function for function in self.functions
+                     if isinstance(function, _class)]
 
-    @tfs.setter
-    def tfs(self, tfs):
-        if tfs is not None:
-            # dimension sanity checks
-            if tfs.shape != (self.circuit.dim_size, self.n_frequencies):
-                raise ValueError("tfs doesn't fit this solution")
+        # filter by source
+        if len(sources):
+            functions = [function for function in functions
+                         if function.source in sources]
 
-        self._tfs = tfs
+        # filter by sink
+        if len(sinks):
+            functions = [function for function in functions
+                         if function.sink in sinks]
 
-    @property
-    def noise(self):
-        return self._noise
+        return functions
 
-    @noise.setter
-    def noise(self, noise):
-        if noise is not None:
-            # dimension sanity checks
-            if noise.shape != (self.circuit.dim_size, self.n_frequencies):
-                raise ValueError("noise doesn't fit this solution")
+    def transfer_functions(self, *args, **kwargs):
+        return self._filter_function(TransferFunction, *args, **kwargs)
 
-        self._noise = noise
+    def noise_functions(self, *args, **kwargs):
+        return self._filter_function(NoiseSpectrum, *args, **kwargs)
 
     def _result_node_index(self, node):
         return (self.circuit.n_components
                 + self.circuit.node_index(node))
 
     def plot_tf(self, output_nodes=None, title=None):
-        if self.tfs is None:
+        if not len(self.transfer_functions()):
             raise Exception("transfer functions were not computed in this solution")
 
         # work out which output nodes to plot
@@ -79,55 +146,20 @@ class Solution(object):
             # use output node specified in this call
             output_nodes = list(output_nodes)
 
-            # warn user if node is different from default
-            if set(output_nodes) != set(self.circuit.default_output_nodes):
-                # warn user that nodes differ
-                LOGGER.warning("specified output nodes (%s) are not the same as"
-                               " circuit's defaults (%s)",
-                               ", ".join([str(node) for node in output_nodes]),
-                               ", ".join([str(node) for node
-                                          in self.circuit.default_output_nodes]))
+            if not set(output_nodes).issubset(set(self.output_nodes)):
+                raise ValueError("not all specified output nodes were computed "
+                                 "in solution")
         else:
-            if len(self.circuit.default_output_nodes):
-                # use default output nodes
-                output_nodes = self.circuit.default_output_nodes
-                LOGGER.info("using default output nodes: %s",
-                            ", ".join([str(node) for node in output_nodes]))
-            else:
-                # plot all output nodes
-                output_nodes = list(self.circuit.non_gnd_nodes)
-                LOGGER.info("plotting all output nodes")
+            # plot all output nodes
+            output_nodes = self.output_nodes
 
-        # output node indices in tfs
-        node_indices = [self._result_node_index(node) for node in output_nodes]
+        # get transfer functions to specified output nodes
+        tfs = self.transfer_functions(sinks=output_nodes)
 
-        # transfer function
-        tfs = self.tfs[node_indices, :]
-
-        # legend
-        # FIXME: support floating inputs
-        node_labels = ["%s -> %s" % (self.circuit.input_nodes[0], node)
-                       for node in output_nodes]
-
-        # plot title
-        if not title:
-            title = "%s -> %s"
-
-        # make list with output nodes
-        if len(output_nodes) > 1:
-            output_node_list = "[%s]" % ", ".join([str(node) for node in output_nodes])
-        else:
-            output_node_list = str(output_nodes[0])
-
-        # FIXME: support floating inputs
-        formatted_title = title % (self.circuit.input_nodes[0],
-                                   output_node_list)
-
-        return self._plot_bode(self.frequencies, tfs, labels=node_labels,
-                               title=formatted_title)
+        return self._plot_bode(self.frequencies, tfs, title=title)
 
     @staticmethod
-    def _plot_bode(frequencies, tfs, labels, legend=True, legend_loc="best",
+    def _plot_bode(frequencies, tfs, legend=True, legend_loc="best",
                    title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
                    ylabel_mag="Magnitude (dB)", ylabel_phase="Phase (°)"):
         # create figure
@@ -136,15 +168,16 @@ class Solution(object):
         ax1 = fig.add_subplot(211)
         ax2 = fig.add_subplot(212, sharex=ax1)
 
-        for label, tf in zip(labels, tfs):
+        for tf in tfs:
             # plot magnitude
-            ax1.semilogx(frequencies, db(np.abs(tf)), label=label)
+            ax1.semilogx(tf.series.x, db(np.abs(tf.series.y)), label=tf.label)
 
             # plot phase
-            ax2.semilogx(frequencies, np.angle(tf) * 180 / np.pi)
+            ax2.semilogx(tf.series.x, np.angle(tf.series.y) * 180 / np.pi)
 
         # overall figure title
-        fig.suptitle(title)
+        if title:
+            fig.suptitle(title)
 
         # legend
         if legend:
@@ -185,6 +218,7 @@ class Solution(object):
 
             # add noise labels
             labels += self.circuit.column_headers
+
         if total:
             # incoherent sum of noise
             sum_noise = np.sqrt(np.sum(np.power(self.noise, 2), axis=0))
