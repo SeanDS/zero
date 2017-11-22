@@ -8,7 +8,7 @@ import logging
 from tabulate import tabulate
 
 from .config import ElectronicsConfig
-from .components import (Component, Node, Gnd, ImpedanceCoefficient,
+from .components import (Component, Input, Node, Gnd, ImpedanceCoefficient,
                          CurrentCoefficient, VoltageCoefficient)
 from .solution import Solution
 from .misc import _print_progress
@@ -52,10 +52,7 @@ class Circuit(object):
         self.noise_node = None
         self.input_impedance = None
         self.components = []
-        # ensure ground node is always first node (required for matrix node
-        # index methods to correctly function)
-        # FIXME: this shouldn't be necessary
-        self.nodes = [Gnd()]
+        self.nodes = []
         self._matrix = None
 
     @property
@@ -255,7 +252,7 @@ class Circuit(object):
                 else:
                     self._matrix[row, column] = coefficient.value
 
-    def matrix(self, frequency, set_input=False):
+    def matrix(self, frequency):
         """Calculate and return circuit matrix for a given frequency
 
         Matrix is returned in compressed sparse row (CSR) format for easy
@@ -264,8 +261,6 @@ class Circuit(object):
 
         :param frequency: frequency at which to calculate circuit impedances
         :type frequency: float or Numpy scalar
-        :param set_input: set input voltage/current
-        :type set_input: bool
         :return: circuit matrix
         :rtype: :class:`scipy.sparse.spmatrix`
         :raises Exception: if ``set_input`` is True but no inputs are specified
@@ -275,19 +270,6 @@ class Circuit(object):
         if self._matrix is None:
             # build matrix without frequency dependent values
             self._construct_matrix()
-
-        if set_input:
-            if self.input_nodes is None or not len(self.input_nodes):
-                raise Exception("no input nodes specified")
-
-            # set input voltage to 1
-            # FIXME: support floating inputs
-            self._matrix[self._last_index,
-                         self._voltage_node_matrix_index(self.input_nodes[0])] = 1
-
-            # set input current to 1
-            self._matrix[self._current_node_matrix_index(self.input_nodes[0]),
-                         self.n_components] = 1
 
         # copy matrix
         matrix = self._matrix.copy()
@@ -373,6 +355,20 @@ class Circuit(object):
 
                 compute_tfs = True
 
+        # create input component
+        input_component = Input()
+
+        # set nodes
+        if len(self.input_nodes) == 2:
+            input_component.node1 = self.input_nodes[1]
+        else:
+            input_component.node1 = Gnd()
+
+        input_component.node2 = self.input_nodes[0]
+
+        # add input
+        self.add_component(input_component)
+
         # work out which noise node to use, if any
         if noise_node is not None:
             # use noise node specified in this call
@@ -404,9 +400,10 @@ class Circuit(object):
             tfs = self._results_matrix(n_freqs)
 
             # input vector
-            # the last row sets the input voltage to 1
             y = self._results_matrix(1)
-            y[self._last_index, 0] = 1
+
+            # set input voltage
+            y[self._input_index, 0] = 1
 
         if compute_noise:
             # noise results matrix
@@ -431,7 +428,7 @@ class Circuit(object):
         # frequency loop
         for freq_index, frequency in enumerate(freq_gen):
             # get matrix for this frequency
-            matrix = self.matrix(frequency, set_input=True)
+            matrix = self.matrix(frequency)
 
             if compute_tfs:
                 # solve transfer functions
@@ -514,6 +511,11 @@ class Circuit(object):
         return k
 
     @property
+    def _input_index(self):
+        # FIXME: support current inputs
+        return self._component_matrix_index(Input())
+
+    @property
     def dim_size(self):
         """Circuit matrix dimension size
 
@@ -521,7 +523,7 @@ class Circuit(object):
         :rtype: int
         """
 
-        return self.n_components + self.n_nodes
+        return self.n_components + len(list(self.non_gnd_nodes))
 
     @property
     def _last_index(self):
@@ -564,7 +566,7 @@ class Circuit(object):
         :rtype: int
         """
 
-        return self.n_components + self.node_index(node) - 1
+        return self.n_components + self.node_index(node)
 
     def _results_matrix(self, *depth):
         """Get empty matrix of specified size
@@ -598,10 +600,13 @@ class Circuit(object):
         :rtype: Generator[NodeEquation]
         """
 
-        return [node.equation() for node in self.nodes]
+        return [node.equation() for node in self.non_gnd_nodes]
 
     def node_index(self, node):
         """Get node serial number
+
+        This does not include the ground node, so the first non-ground node
+        has serial number 0.
 
         :param node: node
         :type node: :class:`~Node`
@@ -609,7 +614,10 @@ class Circuit(object):
         :rtype: int
         """
 
-        return self.nodes.index(node)
+        if node == Gnd():
+            raise ValueError("ground node does not have an index")
+
+        return list(self.non_gnd_nodes).index(node)
 
     def coefficients(self):
         """Get circuit component and node equation coefficients
@@ -651,11 +659,12 @@ class Circuit(object):
                 first = False
 
                 if np.abs(element) != 1:
-                    print("%g" % np.abs(element), end="", file=stream)
+                    print("(%g%+gi)" % (np.real(element), np.imag(element)),
+                          end="", file=stream)
 
                 print(" %s " % self.formatted_element(column), end="", file=stream)
 
-            if row == m.shape[0] - 1:
+            if row == self._input_index:
                 print(" = 1", file=stream)
             else:
                 print(" = 0", file=stream)
@@ -704,10 +713,7 @@ class Circuit(object):
 
         if index < self.n_components:
             return "i[%s]" % self.components[index].name
-        elif index == self.n_components:
-            # input current
-            return "i[in]"
         elif index <= self.dim_size:
-            return "V[%s]" % self.nodes[index - self.n_components]
+            return "V[%s]" % list(self.non_gnd_nodes)[index - self.n_components]
 
         raise ValueError("invalid element index")

@@ -103,6 +103,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @node1.setter
     def node1(self, node):
+        # FIXME: remove old node's sources/sinks
         self.nodes[0] = node
 
     @property
@@ -111,6 +112,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @node2.setter
     def node2(self, node):
+        # FIXME: remove old node's sources/sinks
         self.nodes[1] = node
 
     def equation(self):
@@ -362,6 +364,18 @@ class OpAmp(Component):
 
     def label(self):
         return self.name
+
+class Input(PassiveComponent, metaclass=Singleton):
+    """Represents the circuit input"""
+
+    def __init__(self, *args, **kwargs):
+        super(Input, self).__init__(name="input", *args, **kwargs)
+
+    def impedance(self, *args):
+        return 0
+
+    def label(self):
+        return "input"
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""

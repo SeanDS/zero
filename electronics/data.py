@@ -17,7 +17,11 @@ class ComplexSeries(Series):
     """Complex data series"""
 
     def __init__(self, x, magnitude, phase, magnitude_scale, phase_scale):
-        # TODO: handle scales
+        if magnitude_scale == "db":
+            magnitude = 10 ** (magnitude / 20)
+        else:
+            raise Exception("cannot handle scale %s", magnitude_scale)
+
         # convert magnitude and phase to complex
         complex = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
 

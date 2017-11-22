@@ -1,16 +1,20 @@
 """Miscellaneous functions"""
 
+import abc
 import sys
 import math
 import numpy as np
 import progressbar
 from typing import Any, Generator, Dict
 
-class Singleton(type):
+class Singleton(abc.ABCMeta):
     """Metaclass implementing the singleton pattern
 
     This ensures that there is only ever one instance of a class that
     inherits this one.
+
+    This is a subclass of ABCMeta so that it can be used as a metaclass of a
+    subclass of an ABCMeta class.
     """
 
     # list of children

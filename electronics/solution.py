@@ -50,8 +50,15 @@ class Solution(object):
         if tfs.shape != (self.circuit.dim_size, self.n_frequencies):
             raise ValueError("tfs doesn't fit this solution")
 
+        # output node indices in tfs
+        node_indices = [self._result_node_index(node)
+                        for node in self.circuit.non_gnd_nodes]
+
+        # node transfer functions
+        node_tfs = tfs[node_indices, :]
+
         # create functions from each row
-        for tf, sink in zip(tfs, self.circuit.non_gnd_nodes):
+        for tf, sink in zip(node_tfs, self.circuit.non_gnd_nodes):
             # source is always input node
             source = self.circuit.input_nodes[0]
 

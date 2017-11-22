@@ -39,12 +39,13 @@ circuit.add_component(r2)
 circuit.add_component(c2)
 circuit.add_component(op)
 
-print("Circuit matrix for f = %d" % frequencies[0])
-print(circuit.print_matrix(frequency=frequencies[0]))
-#circuit.print_equations(frequency=frequencies[0])
-
 # solve circuit
 solution = circuit.solve(frequencies, input_nodes=[nin], noise_node=nout)
+
+print("Circuit matrix for f = %d" % frequencies[0])
+circuit.print_matrix(frequency=frequencies[0])
+print("Circuit equations for f = %d" % frequencies[0])
+circuit.print_equations(frequency=frequencies[0])
 
 # plot
 solution.plot_tf()

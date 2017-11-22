@@ -27,7 +27,12 @@ parser.load("liso3.fil")
 # get circuit from parser
 circuit = parser.circuit()
 # solve it
-solution = parser.circuit().solve(frequencies)
+solution = circuit.solve(frequencies)
+
+print("Circuit matrix for f = %d" % frequencies[0])
+circuit.print_matrix(frequency=frequencies[0])
+print("Circuit equations for f = %d" % frequencies[0])
+circuit.print_equations(frequency=frequencies[0])
 
 # plot
 solution.plot_tf()
