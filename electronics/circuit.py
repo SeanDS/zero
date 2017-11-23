@@ -685,8 +685,8 @@ class Circuit(object):
                 if np.iscomplex(matrix[row, column]):
                     matrix[row, column] = np.abs(matrix[row, column])
 
-        # get matrix as numpy array
-        array = matrix.toarray()
+        # remove imaginary parts (which are all zero) and convert to numpy array
+        array = matrix.real.toarray()
 
         # tabulate data
         table = tabulate(array, self.column_headers,
