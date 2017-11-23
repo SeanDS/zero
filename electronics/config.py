@@ -105,7 +105,6 @@ class OpAmpLibrary(BaseConfig):
 
     # compiled regular expressions for parsing op-amp data
     COMMENT_REGEX = re.compile("\s*\#.*$")
-    BRACKET_REGEX = re.compile("\[([\w\d\s.+\-]*)\]")
 
     def __init__(self, *args, **kwargs):
         """Instantiate a new op-amp library"""
@@ -187,34 +186,38 @@ class OpAmpLibrary(BaseConfig):
 
         # add other op-amp data
         if "a0" in opamp_data:
-            class_data["a0"] = self._clean_parse_param(opamp_data["a0"])
+            class_data["a0"] = self._parse_param(opamp_data["a0"])
         if "gbw" in opamp_data:
-            class_data["gbw"] = self._clean_parse_param(opamp_data["gbw"])
+            class_data["gbw"] = self._parse_param(opamp_data["gbw"])
         if "delay" in opamp_data:
-            class_data["delay"] = self._clean_parse_param(opamp_data["delay"])
+            class_data["delay"] = self._parse_param(opamp_data["delay"])
         if "vn" in opamp_data:
-            class_data["vn"] = self._clean_parse_param(opamp_data["vn"])
+            class_data["vn"] = self._parse_param(opamp_data["vn"])
         if "in" in opamp_data:
-            class_data["in"] = self._clean_parse_param(opamp_data["in"])
+            class_data["in"] = self._parse_param(opamp_data["in"])
         if "vc" in opamp_data:
-            class_data["vc"] = self._clean_parse_param(opamp_data["vc"])
+            class_data["vc"] = self._parse_param(opamp_data["vc"])
         if "ic" in opamp_data:
-            class_data["ic"] = self._clean_parse_param(opamp_data["ic"])
+            class_data["ic"] = self._parse_param(opamp_data["ic"])
         if "vmax" in opamp_data:
-            class_data["vmax"] = self._clean_parse_param(opamp_data["vmax"])
+            class_data["vmax"] = self._parse_param(opamp_data["vmax"])
         if "imax" in opamp_data:
-            class_data["imax"] = self._clean_parse_param(opamp_data["imax"])
+            class_data["imax"] = self._parse_param(opamp_data["imax"])
         if "sr" in opamp_data:
-            class_data["sr"] = self._clean_parse_param(opamp_data["sr"])
+            class_data["sr"] = self._parse_param(opamp_data["sr"])
 
         # add data to library
         self.add_data(section, class_data)
 
         # check if there are aliases
         if "aliases" in opamp_data:
+            # get individual aliases
+            aliases = [alias.strip() for alias
+                       in opamp_data["aliases"].split(",")]
+
             # create new op-amps for each alias using identical data
-            for alias_name in opamp_data["aliases"].split():
-                self.add_data(alias_name, class_data)
+            for alias in aliases:
+                self.add_data(alias, class_data)
 
     def add_data(self, name, data):
         """Add op-amp data to library
@@ -236,8 +239,10 @@ class OpAmpLibrary(BaseConfig):
         # set data
         self.data[name] = data
 
-    def _clean_parse_param(self, param):
-        """Clean and parse as a float an op-amp config parameter
+    def _parse_param(self, param):
+        """Parse as a float an op-amp config parameter
+
+        This also strips out comments.
 
         :param param: parameter to clean and parse
         :type param: str
@@ -271,24 +276,23 @@ class OpAmpLibrary(BaseConfig):
     def _parse_freq_set(self, entry):
         """Parse string list of frequencies and q-factors as a numpy array
 
+        This also strips out comments.
+
         :param entry: list of frequencies to split
         :type entry: str
         :return: array of complex frequencies
         :rtype: :class:`~np.array`
         """
 
+        # strip out comments
+        entry = self._strip_comments(entry)
+
         # split into groups defined by square brackets
-        freq_tokens = self._split_frequencies(entry)
+        freq_tokens = [freq.strip() for freq in entry.split(",")]
 
         values = []
 
-        for token in freq_tokens:
-            value = self._parse_freq_str(token)
-
-            if value is not None:
-                values.extend(value)
-
-        return np.array(values)
+        return np.array([self._parse_freq_str(token) for token in freq_tokens])
 
     def _parse_freq_str(self, token):
         """Parse token as complex frequency/frequencies
@@ -312,7 +316,9 @@ class OpAmpLibrary(BaseConfig):
         frequency = SIFormatter.parse(parts[0])
 
         # q-factor is second, if present
-        if len(parts) > 1:
+        if len(parts) == 1:
+            frequencies.append(frequency)
+        elif len(parts) == 2:
             # calculate complex frequency using q-factor
             qfactor = SIFormatter.parse(parts[1])
             theta = np.arccos(1 / (2 * qfactor))
@@ -321,22 +327,6 @@ class OpAmpLibrary(BaseConfig):
             frequencies.append(frequency * np.exp(-1j * theta))
             frequencies.append(frequency * np.exp(1j * theta))
         else:
-            frequencies.append(frequency)
+            raise Exception("invalid frequency list")
 
         return frequencies
-
-    def _split_frequencies(self, entry):
-        """Split list of frequencies into sequence of individual frequencies
-
-        Will split e.g. "[7.5M 1.78] [1.6M]" into ["7.5M 1.78", "1.6M"].
-        This also strips out comments.
-
-        :param entry: list of frequencies to split
-        :type entry: str
-        :return: individual frequency strings
-        :rtype: Sequence[str]
-        """
-
-        # split individual groups of frequencies and optional q-factors by
-        # searching for groups of square brackets
-        return re.findall(self.BRACKET_REGEX, entry)

@@ -16,8 +16,8 @@
 #
 # Note that multiple pole/zero frequencies can be defined for each op-amp,
 # and complex values can be specified by providing the q-factor after the
-# frequency, e.g. "pole [1M] [10M 1.8]". These values are converted
-# into single complex values internally.
+# frequency, e.g. "pole 100k, 1M 1.8, 3M". These values are converted into
+# single complex values internally.
 #
 # Unless mentioned explicitly, values are "typical" for the cheapest grade
 # at 25 degrees. a0 should usually be uncritical; these are entered for
@@ -31,7 +31,7 @@
 #
 # Identical components with different names can be specified for the root
 # component by specifying their names separated with spaces using the
-# "aliases" entry, e.g. "aliases = op27 op47". This will create identical,
+# "aliases" entry, e.g. "aliases = op27, op47". This will create identical,
 # but distinct op-amp classes.
 #
 # Please note: this library is experimental, incomplete and may be wrong.
@@ -49,7 +49,7 @@ ic = 100
 vmax = 12
 imax = 0.02
 sr = 0.3e6
-poles = [2M] # fitted from measurement
+poles = 2M # fitted from measurement
 delay = 74n # fitted from measurement
 
 [op27]
@@ -59,7 +59,7 @@ vn = 3.2e-9
 vc = 2.7 # from PMI data sheet
 in = 0.4e-12
 ic = 140 # from PMI data sheet
-poles = [6e6]
+poles = 6e6
 vmax = 12
 imax = 0.02
 sr = 2.8e6
@@ -71,7 +71,7 @@ vn = 9.4e-9 # from measurement
 vc = 1.2 # from measurement
 in = 0.2e-12 # from measurement
 ic = 2.5 # from measurement
-poles = [7.53M 1.78] [1.66M] # fitted from measurement
+poles = 7.53M 1.78, 1.66M # fitted from measurement
 delay = 30n # fitted from measurement
 vmax = 12
 imax = 0.02
@@ -81,8 +81,8 @@ sr = 0.3e6
 # data from data sheet
 a0 = 700e3
 gbw = 6e6
-poles = [1.32M]
-zeros = [1.73M] [20M]
+poles = 1.32M
+zeros = 1.73M, 20M
 delay = 21n
 vn = 3.2e-9
 vc = 2.7 # from PMI data sheet
@@ -97,8 +97,8 @@ sr = 2.4e6
 aliases = lt1125
 a0 = 15e6      # from data sheet
 gbw = 14.6M    # fitted from measured data ghh 4/2002
-poles = [200k] [200k] # fitted from measured data ghh 4/2002
-zeros = [800k] [800k] [9.4M] # fitted from measured data ghh 4/2002
+poles = 200k, 200k # fitted from measured data ghh 4/2002
+zeros = 800k, 800k, 9.4M # fitted from measured data ghh 4/2002
 delay = 18.9n  # fitted from measured data ghh 4/2002
 vn = 2.7n      # from data sheet
 vc = 2.3       # from data sheet
