@@ -287,7 +287,7 @@ class OpAmpLibrary(BaseConfig):
         # strip out comments
         entry = self._strip_comments(entry)
 
-        # split into groups defined by square brackets
+        # split into groups delimited by commas
         freq_tokens = [freq.strip() for freq in entry.split(",")]
 
         return np.array([self._parse_freq_str(token) for token in freq_tokens])
