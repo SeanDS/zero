@@ -290,8 +290,6 @@ class OpAmpLibrary(BaseConfig):
         # split into groups defined by square brackets
         freq_tokens = [freq.strip() for freq in entry.split(",")]
 
-        values = []
-
         return np.array([self._parse_freq_str(token) for token in freq_tokens])
 
     def _parse_freq_str(self, token):
