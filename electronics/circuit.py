@@ -23,6 +23,9 @@ def sparse(*args, **kwargs):
     :rtype: :class:`~lil_matrix`
     """
 
+    # complex64 gives real and imaginary parts each represented as 32-bit floats
+    # with 8 bits exponent and 23 bits mantissa, giving between 6 and 7 digits
+    # of precision; good enough for most purposes
     return lil_matrix(dtype="complex64", *args, **kwargs)
 
 class Circuit(object):

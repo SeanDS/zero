@@ -5,7 +5,6 @@ import sys
 import math
 import numpy as np
 import progressbar
-from typing import Any, Generator, Dict
 
 class Singleton(abc.ABCMeta):
     """Metaclass implementing the singleton pattern
