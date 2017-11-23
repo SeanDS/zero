@@ -3,6 +3,8 @@
 import abc
 import numpy as np
 
+from .misc import db
+
 class Series(object):
     """Data series"""
 
@@ -35,6 +37,10 @@ class DataSet(object, metaclass=abc.ABCMeta):
         self.sink = sink
         self.series = series
 
+    @abc.abstractmethod
+    def draw(self, *axes):
+        return NotImplemented
+
     @property
     @abc.abstractmethod
     def label(self):
@@ -46,6 +52,24 @@ class TransferFunction(DataSet):
     def __init__(self, *args, **kwargs):
         # call parent constructor
         super(TransferFunction, self).__init__(*args, **kwargs)
+
+    def _draw_magnitude(self, axes):
+        """Add magnitude plot to axes"""
+
+        axes.semilogx(self.series.x, db(np.abs(self.series.y)),
+                      label=self.label)
+
+    def _draw_phase(self, axes):
+        """Add phase plot to axes"""
+
+        axes.semilogx(self.series.x, np.angle(self.series.y) * 180 / np.pi)
+
+    def draw(self, *axes):
+        if len(axes) != 2:
+            raise ValueError("two axes (magnitude and phase) must be provided")
+
+        self._draw_magnitude(axes[0])
+        self._draw_phase(axes[1])
 
     @property
     def label(self):
@@ -67,6 +91,14 @@ class NoiseSpectrum(DataSet):
         super(NoiseSpectrum, self).__init__(*args, **kwargs)
 
         self.noise_type = noise_type
+
+    def draw(self, *axes):
+        if len(axes) != 1:
+            raise ValueError("only one axis supported")
+
+        axes = axes[0]
+
+        axes.loglog(self.series.x, self.series.y, label=self.label)
 
     @property
     def noise_name(self):

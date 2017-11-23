@@ -7,7 +7,6 @@ import abc
 
 from .config import ElectronicsConfig
 from .data import Series, TransferFunction
-from .misc import db
 
 LOGGER = logging.getLogger("solution")
 CONF = ElectronicsConfig()
@@ -176,11 +175,7 @@ class Solution(object):
         ax2 = fig.add_subplot(212, sharex=ax1)
 
         for tf in tfs:
-            # plot magnitude
-            ax1.semilogx(tf.series.x, db(np.abs(tf.series.y)), label=tf.label)
-
-            # plot phase
-            ax2.semilogx(tf.series.x, np.angle(tf.series.y) * 180 / np.pi)
+            tf.draw(ax1, ax2)
 
         # overall figure title
         if title:
@@ -262,7 +257,7 @@ class Solution(object):
                 # skip this iteration
                 continue
 
-            ax.loglog(frequencies, source, label=label)
+            source.draw(ax)
 
         LOGGER.info("skipping zero noise source %s", ", ".join(skips))
 
