@@ -98,19 +98,9 @@ class TransferFunction(SingleDataSet):
 class NoiseSpectrum(SingleDataSet):
     """Noise data series"""
 
-    NOISE_JOHNSON = 1
-    NOISE_OPAMP_VOLTAGE = 2
-    NOISE_OPAMP_CURRENT = 3
-
-    NAMES = {NOISE_JOHNSON: "Johnson",
-             NOISE_OPAMP_VOLTAGE: "Op-amp voltage",
-             NOISE_OPAMP_CURRENT: "Op-amp current"}
-
-    def __init__(self, noise_type, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         # call parent constructor
         super(NoiseSpectrum, self).__init__(*args, **kwargs)
-
-        self.noise_type = noise_type
 
     def draw(self, *axes):
         if len(axes) != 1:
@@ -122,11 +112,12 @@ class NoiseSpectrum(SingleDataSet):
 
     @property
     def noise_name(self):
-        return self.NAMES[self.noise_type]
+        # FIXME: get noise type from source
+        return "%s[%s]" % (self.source.name, "unknown")
 
     @property
     def label(self):
-        return "%s noise %s to %s" % (self.noise_name, self.source, self.sink)
+        return "%s to %s" % (self.noise_name, self.sink)
 
 class MultiNoiseSpectrum(DataSet):
     """Noise data series from multiple sources to a single sink"""
@@ -152,6 +143,8 @@ class MultiNoiseSpectrum(DataSet):
         super(MultiNoiseSpectrum, self).__init__(sources=sources, sinks=[sink],
                                                  series_list=series, *args,
                                                  **kwargs)
+
+        self.noise_names = [spectrum.noise_name for spectrum in spectra]
 
     def draw(self, *axes):
         if len(axes) != 1:
@@ -179,5 +172,5 @@ class MultiNoiseSpectrum(DataSet):
 
     @property
     def label(self):
-        sources = ", ".join(self.sources)
-        return "total noise %s to %s" % (sources, self.sink)
+        return "total %s to %s" % (", ".join(self.noise_names),
+                                         self.sink)

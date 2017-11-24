@@ -77,8 +77,7 @@ class Solution(object):
             raise ValueError("noise doesn't fit this solution")
 
         # noise sources
-        # FIXME: use components/nodes
-        sources = self.circuit.column_headers
+        sources = self.circuit.elements
 
         # skipped noise sources
         skips = []
@@ -95,10 +94,12 @@ class Solution(object):
             series = Series(x=self.frequencies, y=spectrum)
 
             self.add_function(NoiseSpectrum(source=source, sink=sink,
-                                            series=series, noise_type=1))
+                                            series=series))
 
         if len(skips):
-            LOGGER.info("skipped zero noise sources %s", ", ".join(skips))
+            LOGGER.info("skipped zero noise sources %s",
+                        ", ".join([self.circuit.format_element(skip)
+                                   for skip in skips]))
 
     def add_function(self, function):
         if function in self.functions:

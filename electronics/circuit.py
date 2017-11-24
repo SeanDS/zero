@@ -31,6 +31,14 @@ def sparse(*args, **kwargs):
 class Circuit(object):
     """Represents an electronic circuit containing linear components"""
 
+    NOISE_JOHNSON = 1
+    NOISE_OPAMP_VOLTAGE = 2
+    NOISE_OPAMP_CURRENT = 3
+
+    NOISE_NAMES = {NOISE_JOHNSON: "Johnson",
+                   NOISE_OPAMP_VOLTAGE: "Op-amp voltage",
+                   NOISE_OPAMP_CURRENT: "Op-amp current"}
+
     def __init__(self):
         """Instantiate a new circuit
 
@@ -651,7 +659,7 @@ class Circuit(object):
             # flag to suppress leading sign
             first = True
 
-            for column in range(m.shape[1]):
+            for column, header in zip(range(m.shape[1]), self.column_headers):
                 element = m[row, column]
 
                 if element == 0:
@@ -670,7 +678,7 @@ class Circuit(object):
                     print("(%g%+gi)" % (np.real(element), np.imag(element)),
                           end="", file=stream)
 
-                print(" %s " % self.formatted_element(column), end="", file=stream)
+                print(" %s " % header, end="", file=stream)
 
             if row == self._input_index:
                 print(" = 1", file=stream)
@@ -707,21 +715,36 @@ class Circuit(object):
     def column_headers(self):
         """Get column headers for matrix elements"""
 
-        return [self.formatted_element(n) for n in range(self.dim_size)]
+        return [self.format_element(element)
+                for element in self.elements]
 
-    def formatted_element(self, index):
-        """Format matrix element for pretty printer
+    @property
+    def elements(self):
+        """Matrix elements
 
-        Determines if the specified ``index`` refers to a component, voltage
-        or current node, and prints information accordingly.
+        Returns a sequence of elements - either components or nodes - in the
+        order in which they appear in the matrix
 
-        :param index: index to format
-        :type index: int
+        :return: elements
+        :rtype: Generator[:class:`~Component` or :class:`~Node`]
         """
 
-        if index < self.n_components:
-            return "i[%s]" % self.components[index].name
-        elif index <= self.dim_size:
-            return "V[%s]" % list(self.non_gnd_nodes)[index - self.n_components]
+        yield from self.components
+        yield from self.non_gnd_nodes
 
-        raise ValueError("invalid element index")
+    def format_element(self, element):
+        """Format matrix element for pretty printer
+
+        Determines if the specified ``element`` refers to a component current
+        or a voltage node and prints information accordingly.
+
+        :param element: element to format
+        :type element: :class:`~Component` or :class:`~Node`
+        """
+
+        if isinstance(element, Component):
+            return "i[%s]" % element.name
+        elif isinstance(element, Node):
+            return "V[%s]" % element.name
+
+        raise ValueError("invalid element")
