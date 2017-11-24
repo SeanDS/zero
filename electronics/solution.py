@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import abc
 
 from .config import ElectronicsConfig
-from .data import Series, TransferFunction
+from .data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
 
 LOGGER = logging.getLogger("solution")
 CONF = ElectronicsConfig()
@@ -92,7 +92,10 @@ class Solution(object):
                 # skip this iteration
                 continue
 
-            # FIXME: use isinstance() to set proper noise type
+            series = Series(x=self.frequencies, y=spectrum)
+
+            self.add_function(NoiseSpectrum(source=source, sink=sink,
+                                            series=series, noise_type=1))
 
         if len(skips):
             LOGGER.info("skipped zero noise sources %s", ", ".join(skips))
@@ -201,45 +204,23 @@ class Solution(object):
         ax2.grid(True)
 
     def plot_noise(self, total=True, individual=True, title=None):
-        if self.noise is None:
+        if not len(self.noise_functions()):
             raise Exception("noise was not computed in this solution")
 
         if not total and not individual:
             raise Exception("at least one of total and individual flags must "
                             "be set")
 
-        # default noise contributions
-        noise = np.zeros((0, self.n_frequencies))
-
-        # default legend
-        labels = []
-
-        if individual:
-            # add noise contributions
-            noise = np.vstack([noise, self.noise])
-
-            # add noise labels
-            labels += self.circuit.column_headers
+        noise = list(self.noise_functions())
 
         if total:
-            # incoherent sum of noise
-            sum_noise = np.sqrt(np.sum(np.power(self.noise, 2), axis=0))
+            # create combined noise spectrum
+            noise.append(MultiNoiseSpectrum(noise))
 
-            # add sum noise
-            noise = np.vstack([noise, sum_noise])
-
-            # add sum label
-            labels.append("Sum")
-
-        # plot title
-        if not title:
-            title = "Noise contributions at %s" % self.noise_node
-
-        return self._plot_noise(self.frequencies, noise, labels=labels,
-                                title=title)
+        return self._plot_noise(self.frequencies, noise, title=title)
 
     @staticmethod
-    def _plot_noise(frequencies, noise, labels, legend=True, legend_loc="best",
+    def _plot_noise(frequencies, noise, legend=True, legend_loc="best",
                     title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
                     ylabel="Noise ()"):
         # create figure
@@ -247,22 +228,12 @@ class Solution(object):
                                   float(CONF["plot"]["size_y"])))
         ax = fig.gca()
 
-        skips = []
-        # plot noise from each source
-        for label, source in zip(labels, noise):
-            if np.all(source) == 0:
-                # skip zero noise
-                skips.append(label)
-
-                # skip this iteration
-                continue
-
-            source.draw(ax)
-
-        LOGGER.info("skipping zero noise source %s", ", ".join(skips))
+        for spectrum in noise:
+            spectrum.draw(ax)
 
         # overall figure title
-        fig.suptitle(title)
+        if title:
+            fig.suptitle(title)
 
         # legend
         if legend:

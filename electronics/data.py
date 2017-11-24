@@ -32,10 +32,10 @@ class ComplexSeries(Series):
 class DataSet(object, metaclass=abc.ABCMeta):
     """Data set"""
 
-    def __init__(self, source, sink, series):
-        self.source = source
-        self.sink = sink
-        self.series = series
+    def __init__(self, sources, sinks, series_list):
+        self.sources = list(sources)
+        self.sinks = list(sinks)
+        self.series_list = list(series_list)
 
     @abc.abstractmethod
     def draw(self, *axes):
@@ -46,12 +46,32 @@ class DataSet(object, metaclass=abc.ABCMeta):
     def label(self):
         return NotImplemented
 
-class TransferFunction(DataSet):
-    """Transfer function data series"""
+class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
+    """Data set containing data from a single source to a single sink"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, source, sink, series):
         # call parent constructor
-        super(TransferFunction, self).__init__(*args, **kwargs)
+        super(SingleDataSet, self).__init__(sources=[source], sinks=[sink],
+                                            series_list=[series])
+
+    @property
+    def source(self):
+        return self.sources[0]
+
+    @property
+    def sink(self):
+        return self.sinks[0]
+
+    @property
+    def series(self):
+        return self.series_list[0]
+
+    @series.setter
+    def series(self, data):
+        self.series_list = [data]
+
+class TransferFunction(SingleDataSet):
+    """Transfer function data series"""
 
     def _draw_magnitude(self, axes):
         """Add magnitude plot to axes"""
@@ -75,7 +95,7 @@ class TransferFunction(DataSet):
     def label(self):
         return "%s to %s" % (self.source, self.sink)
 
-class NoiseSpectrum(DataSet):
+class NoiseSpectrum(SingleDataSet):
     """Noise data series"""
 
     NOISE_JOHNSON = 1
@@ -107,3 +127,57 @@ class NoiseSpectrum(DataSet):
     @property
     def label(self):
         return "%s noise %s to %s" % (self.noise_name, self.source, self.sink)
+
+class MultiNoiseSpectrum(DataSet):
+    """Noise data series from multiple sources to a single sink"""
+
+    def __init__(self, spectra, *args, **kwargs):
+        # use first spectrum to get sink and frequencies
+        sink = spectra[0].sink
+        frequencies = spectra[0].series.x
+
+        # check frequency axes are identical
+        if not np.all([frequencies == spectrum.series.x for spectrum in spectra]):
+            raise ValueError("specified spectra do not share same x-axis")
+
+        # check sinks are identical
+        if not all([sink == spectrum.sink for spectrum in spectra]):
+            raise Exception("cannot plot total noise for functions with "
+                            "different sinks")
+
+        sources = [spectrum.source for spectrum in spectra]
+        series = [spectrum.series for spectrum in spectra]
+
+        # call parent constructor
+        super(MultiNoiseSpectrum, self).__init__(sources=sources, sinks=[sink],
+                                                 series_list=series, *args,
+                                                 **kwargs)
+
+    def draw(self, *axes):
+        if len(axes) != 1:
+            raise ValueError("only one axis supported")
+
+        axes = axes[0]
+
+        axes.loglog(self.series.x, self.series.y, label=self.label)
+
+    @property
+    def series(self):
+        x = self.frequencies
+        y = np.sqrt(sum([data.y ** 2 for data in self.series_list]))
+
+        return Series(x, y)
+
+    @property
+    def frequencies(self):
+        # use first series
+        return self.series_list[0].x
+
+    @property
+    def sink(self):
+        return self.sinks[0]
+
+    @property
+    def label(self):
+        sources = ", ".join(self.sources)
+        return "total noise %s to %s" % (sources, self.sink)

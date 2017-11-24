@@ -463,7 +463,8 @@ class Circuit(object):
 
         # set input impedance
         # NOTE: this issues a SparseEfficiencyWarning
-        matrix[self._last_index, self.n_components] = self.input_impedance
+        index = self._component_matrix_index(Input())
+        matrix[index, index] = self.input_impedance
 
         # solve, giving transfer function from each component/node to the
         # output (size = nx0)
@@ -552,6 +553,8 @@ class Circuit(object):
     def _voltage_node_matrix_index(self, node):
         """Circuit matrix index corresponding to a voltage at a node
 
+        This represents a matrix column.
+
         :param node: node to get index for
         :type node: :class:`~Node`
         :return: node index
@@ -562,6 +565,8 @@ class Circuit(object):
 
     def _current_node_matrix_index(self, node):
         """Circuit matrix index corresponding to a current through a node
+
+        This represents a matrix row.
 
         :param node: node to get index for
         :type node: :class:`~Node`
