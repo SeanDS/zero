@@ -7,11 +7,11 @@ from scipy.sparse.linalg import spsolve
 import logging
 from tabulate import tabulate
 
-from .config import ElectronicsConfig
+from ..config import ElectronicsConfig
+from ..misc import _print_progress
 from .components import (Component, Input, Node, Gnd, ImpedanceCoefficient,
                          CurrentCoefficient, VoltageCoefficient)
 from .solution import Solution
-from .misc import _print_progress
 
 LOGGER = logging.getLogger("circuit")
 CONF = ElectronicsConfig()

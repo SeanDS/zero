@@ -5,7 +5,7 @@ import locale
 import itertools
 import heapq
 
-from .misc import _n_perm_k, _print_progress
+from ..misc import _n_perm_k, _print_progress
 
 class Regulator(object):
     """For calculating relevant regulator resistor values"""

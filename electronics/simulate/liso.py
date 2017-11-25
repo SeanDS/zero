@@ -5,10 +5,10 @@ import re
 import numpy as np
 from tempfile import NamedTemporaryFile
 
+from ..data import TransferFunction, NoiseSpectrum, Series, ComplexSeries
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
                          Gnd)
-from .data import TransferFunction, NoiseSpectrum, Series, ComplexSeries
 
 LOGGER = logging.getLogger("liso")
 

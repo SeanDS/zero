@@ -15,7 +15,7 @@ logger = logging.getLogger()
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-from electronics.liso import CircuitParser
+from electronics.simulate.liso import CircuitParser
 
 # frequency vector
 frequencies = np.logspace(0, 6, 1000)

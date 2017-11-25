@@ -11,8 +11,8 @@ import textwrap
 import collections
 
 from electronics import __version__, DESCRIPTION, PROGRAM
-from .regulators import Regulator
-from .components import Set
+from .calculate.regulators import Regulator
+from .calculate.components import Set
 from .format import SIFormatter
 
 PROG = "electronics"

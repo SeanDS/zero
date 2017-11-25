@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import abc
 
-from .config import ElectronicsConfig
-from .data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
+from ..config import ElectronicsConfig
+from ..data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
 
 LOGGER = logging.getLogger("solution")
 CONF = ElectronicsConfig()

@@ -26,10 +26,12 @@ setup(
     author_email="electronics@attackllama.com",
     url="https://github.com/SeanDS/electronics.py",
     packages=[
-        "electronics"
+        "electronics",
+        "electronics.calculate",
+        "electronics.simulate"
     ],
     package_data={
-        "electronics": ["electronics.conf.dist", "library.conf.dist"],
+        "electronics": ["electronics.conf.dist", "library.conf.dist"]
     },
     entry_points={
         'console_scripts': [

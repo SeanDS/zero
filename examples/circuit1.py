@@ -10,8 +10,9 @@ logger = logging.getLogger()
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-from electronics.circuit import Circuit
-from electronics.components import Resistor, Capacitor, OpAmp, Node, Gnd
+from electronics.simulate.circuit import Circuit
+from electronics.simulate.components import (Resistor, Capacitor, OpAmp, Node,
+                                             Gnd)
 from electronics.config import OpAmpLibrary as lib
 
 # frequency vector
