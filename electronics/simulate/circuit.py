@@ -419,17 +419,14 @@ class Circuit(object):
             # component noise potential
             k[component_index] = component.noise_voltage(frequency)
 
-            # FIXME: should really loop over all nodes in circuit separately
-            # and add noises in quadrature (in case multiple noise current
-            # sources are connected to the same node)
-
             # component noise currents
             for node, noise_current in component.noise_currents(frequency).items():
                 # current node matrix index
                 node_index = self._current_node_matrix_index(node)
 
-                # node noise current
-                k[node_index] = noise_current
+                # add node noise current in quadrature with existing noise
+                k[node_index] = np.sqrt(np.power(k[node_index], 2)
+                                        + np.power(noise_current, 2))
 
         return k
 
