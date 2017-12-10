@@ -171,7 +171,7 @@ class Solution(object):
     @staticmethod
     def _plot_bode(frequencies, tfs, legend=True, legend_loc="best",
                    title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
-                   ylabel_mag="Magnitude (dB)", ylabel_phase="Phase (°)"):
+                   ylabel_mag="Magnitude (dB)", ylabel_phase=r"Phase ($\degree$)"):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
@@ -223,7 +223,7 @@ class Solution(object):
     @staticmethod
     def _plot_noise(frequencies, noise, legend=True, legend_loc="best",
                     title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
-                    ylabel="Noise ()"):
+                    ylabel=r"Noise ($\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$)"):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
