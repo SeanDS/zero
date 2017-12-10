@@ -68,7 +68,7 @@ class CircuitParser(object):
                                  *args, **kwargs)
 
         if self.calc_tfs:
-            solution.plot_tf()
+            solution.plot_tf(output_nodes=self.output_nodes)
 
         if self.calc_noise:
             solution.plot_noise()
