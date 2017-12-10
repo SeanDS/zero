@@ -17,7 +17,7 @@ Component tools are most easily utilised via the command line. Run
 `electronics help` to get started.
 
 ### Simulator
-Simulator code based on [Elektrotickle](https://github.com/tobin/Elektrotickle/)
+Simulator code inspired by [Elektrotickle](https://github.com/tobin/Elektrotickle/)
 by Tobin Fricke, which is itself based on [LISO](http://www2.mpq.mpg.de/~ros/geo600_docu/soft/liso/manual.pdf)
 by Gerhard Heinzel.
 
