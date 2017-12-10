@@ -44,19 +44,7 @@ class Circuit(object):
 
         A circuit can contain linear components like resistors, capacitors,
         inductors and op-amps.
-
-        Default input, output and noise nodes and impedances can be set with
-        ``defaults``
         """
-
-        # default circuit options; can be overridden by external code (e.g.
-        # LISO file parser)
-        self.defaults = {
-            "input_nodes": [],
-            "output_nodes": [],
-            "noise_node": None,
-            "input_impedance": 0
-        }
 
         # solver parameters
         self.input_nodes = None
@@ -87,46 +75,6 @@ class Circuit(object):
         """
 
         return len(self.components)
-
-    @property
-    def default_input_nodes(self):
-        """Get default circuit input nodes
-
-        :return: default input nodes
-        :rtype: Sequence[:class:`~Node`]
-        """
-
-        return self.defaults["input_nodes"]
-
-    @property
-    def default_output_nodes(self):
-        """Get default circuit output nodes
-
-        :return: default output nodes
-        :rtype: Sequence[:class:`~Node`]
-        """
-
-        return self.defaults["output_nodes"]
-
-    @property
-    def default_noise_node(self):
-        """Get default circuit noise node
-
-        :return: default noise node
-        :rtype: :class:`~Node`
-        """
-
-        return self.defaults["noise_node"]
-
-    @property
-    def default_input_impedance(self):
-        """Get default circuit input impedance
-
-        :return: default input impedance
-        :rtype: float
-        """
-
-        return self.defaults["input_impedance"]
 
     @property
     def n_nodes(self):
@@ -296,7 +244,7 @@ class Circuit(object):
         # convert to CSR for efficient solving
         return matrix.tocsr()
 
-    def solve(self, frequencies, input_nodes=[], input_impedance=0,
+    def solve(self, frequencies, input_nodes=[], input_impedance=None,
               noise_node=None, print_progress=True, progress_stream=sys.stdout):
         """Solve matrix for a given input and/or output
 
@@ -305,13 +253,8 @@ class Circuit(object):
         specified, the noise from all nodes in the circuit projected to the
         noise node is calculated.
 
-        The input and noise nodes can be specified directly, or left as
-        defaults. If no default value has previously been set for the circuit
-        (for instance from a circuit definition file), then the relevant
-        transfer function or noise calculation is not performed. If the input
-        node(s) is/are specified, the specified input impedance is also used.
-        The circuit's default input impedance is only used if the circuit's
-        default input nodes are also being used.
+        If input nodes are specified, the specified input impedance must also
+        be specified.
 
         :param frequencies: sequence of frequencies to solve circuit for
         :type frequencies: Sequence[Numpy scalar or float]
@@ -326,6 +269,8 @@ class Circuit(object):
         :type print_progress: bool
         :param progress_stream: stream to print progress to
         :type progress_stream: :class:`io.IOBase`
+        :return: solution
+        :rtype: :class:`~Solution`
         :raises Exception: if neither an input nor noise node is specified
         """
 
@@ -333,7 +278,6 @@ class Circuit(object):
         n_freqs = len(frequencies)
 
         input_nodes = list(input_nodes)
-        input_impedance = float(input_impedance)
 
         # default values
         compute_tfs = False
@@ -345,39 +289,21 @@ class Circuit(object):
         if len(input_nodes):
             # use input nodes and impedance specified in this call
             self.input_nodes = input_nodes
-            self.input_impedance = input_impedance
+            self.input_impedance = float(input_impedance)
             compute_tfs = True
-
-            # warn user if node is different from default
-            if set(self.input_nodes) != set(self.default_input_nodes):
-                # warn user that nodes differ
-                LOGGER.warning("specified input nodes (%s) are not the same as "
-                               "circuit's defaults (%s)",
-                               ", ".join([str(node) for node in self.input_nodes]),
-                               ", ".join([str(node) for node
-                                          in self.default_input_nodes]))
-        else:
-            if len(self.default_input_nodes):
-                # use default input node
-                self.input_nodes = self.default_input_nodes
-                self.input_impedance = self.default_input_impedance
-                LOGGER.info("using default input nodes: %s",
-                            ", ".join([str(node) for node in self.input_nodes]))
-
-                compute_tfs = True
 
         # create input component
         input_component = Input()
 
         # set nodes
         if len(self.input_nodes) == 2:
+            # floating input
             input_component.node1 = self.input_nodes[1]
         else:
+            # input node specified with respect to ground
             input_component.node1 = Gnd()
 
         input_component.node2 = self.input_nodes[0]
-
-        # add input
         self.add_component(input_component)
 
         # work out which noise node to use, if any
@@ -385,21 +311,6 @@ class Circuit(object):
             # use noise node specified in this call
             self.noise_node = noise_node
             compute_noise = True
-
-            # warn user if node is different from default
-            if (self.default_noise_node is not None
-                and noise_node != self.default_noise_node):
-                # warn user that nodes differ
-                LOGGER.warning("specified noise node (%s) is not the same as "
-                               "circuit's default (%s)", noise_node,
-                               self.default_noise_node)
-        else:
-            if self.default_noise_node is not None:
-                # use default noise node
-                self.noise_node = self.default_noise_node
-                LOGGER.info("Using default noise node: %s", self.noise_node)
-
-                compute_noise = True
 
         # check that we're solving something
         if not compute_tfs and not compute_noise:

@@ -6,6 +6,7 @@ import numpy as np
 from tempfile import NamedTemporaryFile
 
 from ..data import TransferFunction, NoiseSpectrum, Series, ComplexSeries
+from ..format import SIFormatter
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
                          Gnd)
@@ -16,7 +17,8 @@ class CircuitParser(object):
     COMPONENTS = ["r", "c", "l", "op"]
     DIRECTIVES = {"input_nodes": ["uinput", "vinput"],
                   "output_nodes": ["uoutput", "voutput"],
-                  "noise_node": ["noise"]}
+                  "noise_node": ["noise"],
+                  "frequencies": ["freq"]}
 
     OUTPUT_MODE_TF = 1
     OUTPUT_MODE_NOISE = 2
@@ -25,6 +27,7 @@ class CircuitParser(object):
 
     def __init__(self):
         # default values
+        self.frequencies = None
         self.components = []
         self.nodes = {}
         self.input_nodes = []
@@ -48,7 +51,32 @@ class CircuitParser(object):
 
         self.loaded = True
 
-    def circuit(self):
+    def run(self, *args, **kwargs):
+        """Run LISO script
+
+        Optional arguments are passed to :meth:`~Circuit.solve`.
+        """
+
+        # get circuit
+        circuit = self._circuit()
+
+        # solve
+        solution = circuit.solve(frequencies=self.frequencies,
+                                 input_nodes=self.input_nodes,
+                                 input_impedance=self.input_impedance,
+                                 noise_node=self.noise_node,
+                                 *args, **kwargs)
+
+        if self.calc_tfs:
+            solution.plot_tf()
+
+        if self.calc_noise:
+            solution.plot_noise()
+
+        # display plots
+        solution.show()
+
+    def _circuit(self):
         """Get circuit representing LISO model
 
         :return: circuit object
@@ -61,17 +89,19 @@ class CircuitParser(object):
         # create empty circuit
         circuit = Circuit()
 
-        # set defaults
-        circuit.defaults["input_nodes"] = self.input_nodes
-        circuit.defaults["input_impedance"] = self.input_impedance
-        circuit.defaults["output_nodes"] = self.output_nodes
-        circuit.defaults["noise_node"] = self.noise_node
-
         # add components
         for component in self.components:
             circuit.add_component(component)
 
         return circuit
+
+    @property
+    def calc_tfs(self):
+        return len(self.output_nodes) > 0
+
+    @property
+    def calc_noise(self):
+        return self.noise_node is not None
 
     @property
     def output_mode(self):
@@ -253,6 +283,8 @@ class CircuitParser(object):
             self._parse_output_nodes(options[0])
         elif directive in self.DIRECTIVES["noise_node"]:
             self._parse_noise_node(options[0])
+        elif directive in self.DIRECTIVES["frequencies"]:
+            self._parse_frequencies(options)
         else:
             raise ValueError("Unknown directive: %s" % directive)
 
@@ -309,6 +341,29 @@ class CircuitParser(object):
 
         # set output mode
         self.output_mode = self.OUTPUT_MODE_NOISE
+
+    def _parse_frequencies(self, options):
+        """Parse LIGO token as frequency settings
+
+        :param options: frequency options
+        :type options: Sequence[str]
+        """
+
+        if len(options) != 4:
+            raise ValueError("syntax: freq lin|log start stop steps")
+
+        start = SIFormatter.parse(options[1])
+        stop = SIFormatter.parse(options[2])
+        # steps + 1
+        count = int(options[3]) + 1
+
+        if options[0] == "lin":
+            self.frequencies = np.linspace(start, stop, count)
+        elif options[0] == "log":
+            self.frequencies = np.logspace(np.log10(start), np.log10(stop),
+                                           count)
+        else:
+            raise ValueError("space function can be \"lin\" or \"log\"")
 
     def add_output_node(self, node):
         """Add output node

@@ -41,7 +41,8 @@ circuit.add_component(c2)
 circuit.add_component(op)
 
 # solve circuit
-solution = circuit.solve(frequencies, input_nodes=[nin], noise_node=nout)
+solution = circuit.solve(frequencies, input_nodes=[nin], input_impedance=0,
+                         noise_node=nout)
 
 print("Circuit matrix for f = %d" % frequencies[0])
 circuit.print_matrix(frequency=frequencies[0])

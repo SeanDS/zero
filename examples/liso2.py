@@ -23,17 +23,4 @@ frequencies = np.logspace(0, 6, 1000)
 # create parser
 parser = CircuitParser()
 parser.load("liso2.fil")
-
-# get circuit from parser
-circuit = parser.circuit()
-# solve it
-solution = circuit.solve(frequencies)
-
-print("Circuit matrix for f = %d" % frequencies[0])
-circuit.print_matrix(frequency=frequencies[0])
-print("Circuit equations for f = %d" % frequencies[0])
-circuit.print_equations(frequency=frequencies[0])
-
-# plot
-solution.plot_noise()
-solution.show()
+parser.run()
