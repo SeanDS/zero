@@ -3,6 +3,7 @@
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import abc
 
 from ..config import ElectronicsConfig
@@ -171,7 +172,10 @@ class Solution(object):
     @staticmethod
     def _plot_bode(frequencies, tfs, legend=True, legend_loc="best",
                    title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
-                   ylabel_mag="Magnitude (dB)", ylabel_phase=r"Phase ($\degree$)"):
+                   ylabel_mag="Magnitude (dB)",
+                   ylabel_phase=r"Phase ($\degree$)", xtick_major_step=20,
+                   xtick_minor_step=10, ytick_major_step=30,
+                   ytick_minor_step=15):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
@@ -203,6 +207,12 @@ class Solution(object):
         ax2.set_ylabel(ylabel_phase)
         ax1.grid(True)
         ax2.grid(True)
+
+        # magnitude and phase tick locators
+        ax1.yaxis.set_major_locator(MultipleLocator(base=xtick_major_step))
+        ax1.yaxis.set_minor_locator(MultipleLocator(base=xtick_minor_step))
+        ax2.yaxis.set_major_locator(MultipleLocator(base=ytick_major_step))
+        ax2.yaxis.set_minor_locator(MultipleLocator(base=ytick_minor_step))
 
     def plot_noise(self, total=True, individual=True, title=None):
         if not len(self.noise_functions()):
