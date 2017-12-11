@@ -15,7 +15,7 @@ CONF = ElectronicsConfig()
 class Solution(object):
     """Represents a solution to the simulated circuit"""
 
-    def __init__(self, circuit, frequencies, tfs=None, noise=None,
+    def __init__(self, circuit, frequencies, tfs=None, noise_spectra=None,
                  noise_node=None):
         """Instantiate a new solution
 
@@ -26,8 +26,8 @@ class Solution(object):
         :type frequencies: :class:`~np.ndarray`
         :param tfs: transfer function solutions
         :type tfs: :class:`~np.ndarray`
-        :param noise: noise solutions
-        :type noise: :class:`~np.ndarray`
+        :param noise_spectra: noise solutions
+        :type noise_spectra: :class:`~np.ndarray`
         :param noise_node: node ``noise`` represents
         :type noise_node: :class:`~Node`
         """
@@ -40,7 +40,7 @@ class Solution(object):
 
         # process inputs
         self._handle_tfs(tfs)
-        self._handle_noise(noise, noise_node)
+        self._handle_noise(noise_spectra, noise_node)
 
     def _handle_tfs(self, tfs):
         if tfs is None:
@@ -69,13 +69,13 @@ class Solution(object):
             self.add_function(TransferFunction(source=source, sink=sink,
                                                series=series))
 
-    def _handle_noise(self, noise, sink):
-        if noise is None:
+    def _handle_noise(self, noise_spectra, sink):
+        if noise_spectra is None:
             return
 
         # dimension sanity checks
-        if noise.shape != (self.circuit.dim_size, self.n_frequencies):
-            raise ValueError("noise doesn't fit this solution")
+        if noise_spectra.shape != (self.circuit.dim_size, self.n_frequencies):
+            raise ValueError("noise spectra don't fit this solution")
 
         # noise sources
         sources = self.circuit.elements
@@ -84,7 +84,7 @@ class Solution(object):
         skips = []
 
         # create functions from each row
-        for spectrum, source in zip(noise, sources):
+        for spectrum, source in zip(noise_spectra, sources):
             if np.all(spectrum) == 0:
                 # skip zero noise source
                 skips.append(source)
