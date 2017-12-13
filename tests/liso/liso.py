@@ -3,7 +3,7 @@ import glob
 import numpy as np
 import unittest
 
-from electronics.liso import CircuitParser, Runner
+from electronics.simulate.liso import CircuitParser, Runner
 
 class TestLiso(unittest.TestCase):
     REL_FIL_DIR = "."
@@ -23,11 +23,9 @@ class TestLiso(unittest.TestCase):
         parser = CircuitParser()
         parser.load(script)
 
-        # get circuit
-        circuit = parser.circuit()
-
-        # solve circuit
-        solution = circuit.solve(liso_frequencies)
+        # run LISO
+        parser.run()
+        solution = parser.solution
 
         # asset frequencies are the same (they should be)
         self.assertTrue(np.allclose(liso_frequencies, solution.frequencies))

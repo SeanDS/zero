@@ -19,15 +19,20 @@ class ComplexSeries(Series):
     """Complex data series"""
 
     def __init__(self, x, magnitude, phase, magnitude_scale, phase_scale):
-        if magnitude_scale == "db":
+        if magnitude_scale.lower() == "db":
             magnitude = 10 ** (magnitude / 20)
         else:
             raise Exception("cannot handle scale %s", magnitude_scale)
 
-        # convert magnitude and phase to complex
-        complex = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
+        if phase_scale.lower() == "degrees":
+            phase = np.radians(phase)
+        else:
+            raise Exception("cannot handle scale %s", phase_scale)
 
-        super(ComplexSeries, self).__init__(x=x, y=complex)
+        # convert magnitude and phase to complex
+        complex_ = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
+
+        super(ComplexSeries, self).__init__(x=x, y=complex_)
 
 class DataSet(object, metaclass=abc.ABCMeta):
     """Data set"""

@@ -36,6 +36,7 @@ class CircuitParser(object):
         self.noise_node = None
         self.loaded = False
         self._output_mode = None
+        self.solution = None
 
     def load(self, filepath):
         """Load and parses a LISO .fil circuit definition file
@@ -57,26 +58,26 @@ class CircuitParser(object):
         Optional arguments are passed to :meth:`~Circuit.solve`.
         """
 
-        # get circuit
-        circuit = self._circuit()
-
         # solve
-        solution = circuit.solve(frequencies=self.frequencies,
-                                 input_nodes=self.input_nodes,
-                                 input_impedance=self.input_impedance,
-                                 noise_node=self.noise_node,
-                                 *args, **kwargs)
+        self.solution = self.circuit().solve(frequencies=self.frequencies,
+                                             input_nodes=self.input_nodes,
+                                             input_impedance=self.input_impedance,
+                                             noise_node=self.noise_node,
+                                             *args, **kwargs)
+
+    def show(self):
+        """Show LISO results"""
 
         if self.calc_tfs:
-            solution.plot_tf(output_nodes=self.output_nodes)
+            self.solution.plot_tf(output_nodes=self.output_nodes)
 
         if self.calc_noise:
-            solution.plot_noise()
+            self.solution.plot_noise()
 
         # display plots
-        solution.show()
+        self.solution.show()
 
-    def _circuit(self):
+    def circuit(self):
         """Get circuit representing LISO model
 
         :return: circuit object
@@ -94,6 +95,39 @@ class CircuitParser(object):
             circuit.add_component(component)
 
         return circuit
+
+    def get_component(self, component_name):
+        """Get circuit component by name
+
+        :param component_name: name of component to fetch
+        :type component_name: str
+        :return: component
+        :rtype: :class:`~Component`
+        :raises ValueError: if component not found
+        """
+
+        for component in self.components:
+            if component.name == component_name:
+                return component
+
+        raise ValueError("component not found")
+
+    def get_node(self, node_name):
+        """Get circuit node by name
+
+        :param node_name: name of node to fetch
+        :type node_name: str
+        :return: node
+        :rtype: :class:`~Node`
+        :raises ValueError: if node not found
+        """
+
+        for component in self.components:
+            for node in component.nodes:
+                if node.name == node_name:
+                    return node
+
+        raise ValueError("node not found")
 
     @property
     def calc_tfs(self):
@@ -383,33 +417,32 @@ class Runner(object):
     def __init__(self, script_path):
         self.script_path = script_path
 
-    def run(self):
-        with NamedTemporaryFile() as out_path, NamedTemporaryFile() as gnu_path:
-            return self._liso_result(self.script_path, out_path.name,
-                                     gnu_path.name)
+    def run(self, plot=False):
+        with NamedTemporaryFile() as out_path:
+            return self._liso_result(self.script_path, out_path.name, plot)
 
-    def _liso_result(self, script_path, out_path, gnu_path):
+    def _liso_result(self, script_path, out_path, plot):
         """Get LISO results
 
         :param script_path: path to LISO ".fil" file
         :type script_path: str
         :param out_path: path to LISO ".out" file to be created
         :type out_path: str
-        :param gnu_path: path to LISO ".gnu" file to be created
-        :type gnu_path: str
+        :param plot: whether to show result with gnuplot
+        :type plot: bool
         :return: LISO output
         :rtype: :class:`~OutputParser`
         """
 
-        result = self._run_liso_process(script_path, out_path, gnu_path)
+        result = self._run_liso_process(script_path, out_path, plot)
 
         if result.returncode != 0:
             raise Exception("error during LISO run")
 
-        return OutputParser(script_path, out_path, gnu_path)
+        return OutputParser(script_path, out_path)
 
     @staticmethod
-    def _run_liso_process(script_path, out_path, gnu_path):
+    def _run_liso_process(script_path, out_path, plot):
         input_path = os.path.abspath(script_path)
 
         if not os.path.exists(input_path):
@@ -426,7 +459,11 @@ class Runner(object):
         liso_path = os.path.join(liso_dir, "fil_static")
 
         # LISO flags
-        flags = [input_path, out_path, gnu_path]
+        flags = [input_path, out_path]
+
+        # plotting
+        if not plot:
+            flags.append("-n")
 
         # run LISO
         return subprocess.run([liso_path, *flags])
@@ -434,17 +471,21 @@ class Runner(object):
 class OutputParser(object):
     """LISO output parser"""
 
-    TF_REGEX = re.compile("using\s\(\$(\d+)\):\(\$(\d+)\).+title\s\"(.+)\((\w+)\)\s\[.+\]\s(.*)\s\"")
-    NOISE_REGEX = re.compile("using\s\(\$(\d+)\):\(\$(\d+)\).+title\s\"(.+)\((\w+)\)\"")
+    TF_REGEX = re.compile("^\#\s+(\d+)\s+node:\s+(\w+)\s+(\w+)\s+(\w+)$",
+                          re.MULTILINE)
+    NOISE_REGEX = re.compile("^\#Noise is computed at node (\w+).*$\n^\#(.*)",
+                             re.MULTILINE)
+    NOISE_SOURCE_REGEX = re.compile("^([\w\d]+)(\((.*)\))?$")
 
-    def __init__(self, infile, outfile, gnufile):
+    def __init__(self, infile, outfile):
         # set file paths
         self.infile = infile
         self.outfile = outfile
-        self.gnufile = gnufile
 
         # defaults
+        self.parser = None
         self.functions = []
+        self.data = None
 
         self._parse()
 
@@ -455,49 +496,39 @@ class OutputParser(object):
         self.functions.append(function)
 
     def _parse(self):
-        """Parse LISO output and gnuplot files"""
+        """Parse LISO input and output files"""
 
         # parse circuit
-        parser = CircuitParser()
-        parser.load(self.infile)
-        self.circuit = parser.circuit()
+        self.parser = CircuitParser()
+        self.parser.load(self.infile)
 
-        # parse data file
-        self.data = self._parse_outfile(self.outfile)
+        # parse output data
+        self._parse_outfile_data(self.outfile)
 
-        # find series information using gnufile
-        with open(self.gnufile, "r") as obj:
-            lines = obj.readlines()
+    def _parse_outfile_data(self, filepath):
+        # parse data
+        self.data = np.genfromtxt(filepath)
 
-        tfs = self._match_tf_pairs(lines)
-        noise = self._match_noise_spectra(lines)
+        with open(filepath, "r") as obj:
+            metadata = obj.read()
 
-        self._process_tf_pairs(tfs)
-        self._process_noise_spectra(noise)
+        # parse metadata
+        self._process_tfs(self._match_tfs(metadata))
+        self._process_noise(self._match_noise(metadata))
 
-    def _process_tf_pairs(self, pairs):
+    def _process_tfs(self, tfs):
+        # source is the input
+        source = self.parser.input_nodes[0]
+
         # create series from matches
-        for pair in pairs.values():
-            signal_type = pair["db"]["signal_type"]
-            magnitude_match = pair["db"]
-            phase_match = pair["phase"]
+        for tf in tfs:
+            sink = self.parser.get_node(tf["output_node"])
 
-            # source is the input
-            source = self.circuit.default_input_nodes[0]
-
-            # get node or component depending on source
-            if signal_type == "U":
-                part = self.circuit.get_node(magnitude_match["part_name"])
-            elif signal_type == "I":
-                part = self.circuit.get_component(magnitude_match["part_name"])
-            else:
-                raise ValueError("unsupported signal type: %s" % signal_type)
-
-            frequencies = self.data[:, magnitude_match["x_index"]]
-            magnitude_data = self.data[:, magnitude_match["y_index"]]
-            phase_data = self.data[:, phase_match["y_index"]]
-            magnitude_scale = Series.SCALE_DB
-            phase_scale = Series.SCALE_DEG
+            frequencies = self.data[:, tf["x_index"]]
+            magnitude_data = self.data[:, tf["y_indices"][0]]
+            phase_data = self.data[:, tf["y_indices"][1]]
+            magnitude_scale = tf["y_scales"][0]
+            phase_scale = tf["y_scales"][1]
 
             # create data series
             series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
@@ -507,33 +538,21 @@ class OutputParser(object):
 
             function = TransferFunction(series=series,
                                         source=source,
-                                        sink=part)
+                                        sink=sink)
 
             self.add_function(function)
 
-    def _process_noise_spectra(self, noise_data):
+    def _process_noise(self, noise_data):
         # create series from matches
         for source_data in noise_data:
             # source is the component
-            source = self.circuit.get_component(source_data["component_name"])
+            source = self.parser.get_component(source_data["component_name"])
 
             # sink is the noise node
-            sink = self.circuit.default_noise_node
+            sink = self.parser.noise_node
 
             # noise classification
             noise_type = source_data["noise_type"]
-
-            # get node or component depending on source
-            if noise_type == "RNoise":
-                noise_type = NoiseSpectrum.NOISE_JOHNSON
-            elif noise_type == "OP UNoise":
-                noise_type = NoiseSpectrum.NOISE_OPAMP_VOLTAGE
-            elif noise_type == "OP INoise+":
-                noise_type = NoiseSpectrum.NOISE_OPAMP_CURRENT
-            elif noise_type == "OP INoise-":
-                noise_type = NoiseSpectrum.NOISE_OPAMP_CURRENT
-            else:
-                raise ValueError("unsupported noise type: %s" % noise_type)
 
             frequencies = self.data[:, source_data["x_index"]]
             spectrum = self.data[:, source_data["y_index"]]
@@ -543,95 +562,102 @@ class OutputParser(object):
 
             function = NoiseSpectrum(series=series,
                                      source=source,
-                                     sink=sink,
-                                     noise_type=noise_type)
+                                     sink=sink)#,
+                                     #noise_type=noise_type)
 
             self.add_function(function)
 
-    @staticmethod
-    def _parse_outfile(filepath):
-        return np.genfromtxt(filepath)
+    def _match_tfs(self, metadata):
+        """Matches output file transfer functions in the specified metadata
 
-    def _match_tf_pairs(self, lines):
-        """Matches gnuplot transfer functions in the specified lines
-
-        :param lines: gnuplot lines
-        :type lines: Sequence[str]
-        :return: series information, grouped by pairs of magnitudes and phases
-        :rtype: dict
+        :param metadata: output file text
+        :type metadata: str
+        :return: transfer functions
+        :rtype: list
         """
 
-        pairs = {}
+        tfs = []
 
-        for line in lines:
-            # find noise output
-            matches = re.findall(self.TF_REGEX, line)
+        # find transfer functions
+        matches = re.findall(self.TF_REGEX, metadata)
 
-            if len(matches) == 0:
-                continue
-            elif len(matches) > 1:
-                raise Exception("invalid gnuplot match")
+        for match in matches:
+            column = int(match[0])
 
-            match = matches[0]
+            y_scales = [match[2], match[3]]
+            y_indices = [column * 2 + 1, column * 2 + 2]
+            output_node = match[1]
 
-            if len(match) != 5:
-                raise Exception("invalid gnuplot match")
+            data = {"x_index": 0, # frequency always first
+                    "y_indices": y_indices,
+                    "y_scales": y_scales,
+                    "output_node": output_node}
 
-            x_index = int(match[0]) - 1
-            y_index = int(match[1]) - 1
-            signal_type = match[2]
-            part_name = match[3]
-            scale = match[4].lower()
+            tfs.append(data)
 
-            # unique identifier
-            identifier = "%s(%s)" % (signal_type, part_name)
+        return tfs
 
-            if identifier not in pairs.keys():
-                # create dict
-                pairs[identifier] = {}
+    def _match_noise(self, metadata):
+        """Matches output file noise spectra in the specified metadata
 
-            data = {"x_index": x_index,
-                    "y_index": y_index,
-                    "signal_type": signal_type,
-                    "part_name": part_name,
-                    "scale": scale}
-
-            # add this transfer function to pair
-            pairs[identifier][scale] = data
-
-        return pairs
-
-    def _match_noise_spectra(self, lines):
-        """Matches gnuplot noise spectra
-
-        :param lines: gnuplot lines
-        :type lines: Sequence[str]
+        :param metadata: output file text
+        :type metadata: str
         :return: series information
         :rtype: dict
         """
 
         noise = []
 
-        for line in lines:
-            # find noise output
-            matches = re.findall(self.NOISE_REGEX, line)
+        # find noise output
+        match = re.search(self.NOISE_REGEX, metadata)
 
-            if len(matches) == 0:
-                continue
-            elif len(matches) > 1:
-                raise Exception("invalid gnuplot match")
+        if not match:
+            # no matches
+            return noise
 
-            match = matches[0]
+        # should match noise node and noise source list
+        if len(match.groups()) != 2:
+            raise Exception("unexpected output file format")
 
-            if len(match) != 4:
-                raise Exception("invalid gnuplot match")
+        # first match is the noise node
+        sink = match.group(1)
 
-            noise.append({"x_index": int(match[0]) - 1,
-                          "y_index": int(match[1]) - 1,
-                          "noise_type": match[2],
-                          "component_name": match[3]})
+        # second match contains whitespace separated noise sources
+        sources = match.group(2).split()
+
+        for index, source in enumerate(sources, start=1):
+            component_name, noise_type = self._parse_noise_source(source)
+
+            noise.append({"x_index": 0, # frequency always first
+                          "y_index": index,
+                          "component_name": component_name,
+                          "noise_type": noise_type})
 
         return noise
+
+    @classmethod
+    def _parse_noise_source(cls, source_str):
+        # get rid of whitespace around string
+        source_str = source_str.strip()
+
+        # look for component name and brackets
+        tokens = re.findall(cls.NOISE_SOURCE_REGEX, source_str)[0]
+
+        component_name = tokens[0]
+
+        if tokens[2]:
+            # op-amp noise; check first character
+            if tokens[2][0] == "U":
+                noise_type = Circuit.NOISE_OPAMP_VOLTAGE
+            elif tokens[2][0] == "I":
+                noise_type = Circuit.NOISE_OPAMP_CURRENT
+            else:
+                print(tokens)
+                raise ValueError("unrecognised noise type")
+        else:
+            noise_type = Circuit.NOISE_JOHNSON
+
+        return component_name, noise_type
 
     @property
     def frequencies(self):

@@ -37,6 +37,10 @@ class Component(object, metaclass=abc.ABCMeta):
         self.nodes = list(nodes)
         self.noise_current_nodes = noise_current_nodes
 
+    def noise_sources(self):
+        # no noise sources by default
+        return []
+
     def noise_voltage(self, frequency):
         # no noise by default
         return 0
