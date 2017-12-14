@@ -5,7 +5,8 @@ import re
 import numpy as np
 from tempfile import NamedTemporaryFile
 
-from ..data import TransferFunction, NoiseSpectrum, Series, ComplexSeries
+from ..data import (VoltageTransferFunction, CurrentTransferFunction,
+                    NoiseSpectrum, Series, ComplexSeries)
 from ..format import SIFormatter
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
@@ -471,11 +472,19 @@ class Runner(object):
 class OutputParser(object):
     """LISO output parser"""
 
-    TF_REGEX = re.compile("^\#\s+(\d+)\s+node:\s+(\w+)\s+(\w+)\s+(\w+)$",
-                          re.MULTILINE)
-    NOISE_REGEX = re.compile("^\#Noise is computed at node (\w+).*$\n^\#(.*)",
-                             re.MULTILINE)
-    NOISE_SOURCE_REGEX = re.compile("^([\w\d]+)(\((.*)\))?$")
+    TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
+    TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
+    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) for .* :$")
+    # "0 node: nin dB Degrees"
+    TF_VOLTAGE_SINK_REGEX = re.compile("^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
+    # "#  0 C:c2 dB Degrees"
+    TF_CURRENT_SINK_REGEX = re.compile("^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
+    # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
+    #    #  r1 r3 r4 r6 op1(U) op1(I-) """
+    NOISE_VOLTAGE_SOURCE_REGEX = re.compile("^\#Noise is computed at node [\w\d]+ for .* :\n\#\s*([\w\d\s\(\)\-\+]*)\s*$",
+                                            re.MULTILINE)
+    # "o1(I+)"
+    NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
     def __init__(self, infile, outfile):
         # set file paths
@@ -510,25 +519,47 @@ class OutputParser(object):
         self.data = np.genfromtxt(filepath)
 
         with open(filepath, "r") as obj:
-            metadata = obj.read()
+            lines = obj.readlines()
 
-        # parse metadata
-        self._process_tfs(self._match_tfs(metadata))
-        self._process_noise(self._match_noise(metadata))
+        for line in lines:
+            if re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line):
+                self._parse_voltage_nodes(lines)
+            elif re.match(self.TF_CURRENT_OUTPUT_REGEX, line):
+                self._parse_current_components(lines)
+            elif re.match(self.NOISE_OUTPUT_REGEX, line):
+                self._parse_noise_components(lines)
 
-    def _process_tfs(self, tfs):
-        # source is the input
+    def _parse_voltage_nodes(self, lines):
+        """Matches output file voltage transfer functions
+
+        :param lines: output file lines
+        :type lines: Sequence[str]
+        """
+
+        # transfer function source is the input
         source = self.parser.input_nodes[0]
 
-        # create series from matches
-        for tf in tfs:
-            sink = self.parser.get_node(tf["output_node"])
+        # find transfer functions
+        for line in lines:
+            match = re.match(self.TF_VOLTAGE_SINK_REGEX, line)
 
-            frequencies = self.data[:, tf["x_index"]]
-            magnitude_data = self.data[:, tf["y_indices"][0]]
-            phase_data = self.data[:, tf["y_indices"][1]]
-            magnitude_scale = tf["y_scales"][0]
-            phase_scale = tf["y_scales"][1]
+            if not match:
+                continue
+
+            # data column index
+            column = int(match.group(1))
+
+            # voltage sink node
+            sink = self.parser.get_node(match.group(2))
+
+            # data
+            frequencies = self.data[:, 0] # frequency always first
+            magnitude_data = self.data[:, column * 2 + 1]
+            phase_data = self.data[:, column * 2 + 2]
+
+            # scales
+            magnitude_scale = match.group(3)
+            phase_scale = match.group(4)
 
             # create data series
             series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
@@ -536,123 +567,107 @@ class OutputParser(object):
                                    magnitude_scale=magnitude_scale,
                                    phase_scale=phase_scale)
 
-            function = TransferFunction(series=series,
-                                        source=source,
-                                        sink=sink)
+            self.add_function(VoltageTransferFunction(series=series,
+                                                      source=source,
+                                                      sink=sink))
 
-            self.add_function(function)
+    def _parse_current_components(self, lines):
+        """Matches output file current transfer functions
 
-    def _process_noise(self, noise_data):
-        # create series from matches
-        for source_data in noise_data:
-            # source is the component
-            source = self.parser.get_component(source_data["component_name"])
+        :param lines: output file lines
+        :type lines: Sequence[str]
+        """
 
-            # sink is the noise node
-            sink = self.parser.noise_node
+        # transfer function source is the input
+        source = self.parser.input_nodes[0]
 
-            # noise classification
-            noise_type = source_data["noise_type"]
+        # find transfer functions
+        for line in lines:
+            match = re.match(self.TF_CURRENT_SINK_REGEX, line)
 
-            frequencies = self.data[:, source_data["x_index"]]
-            spectrum = self.data[:, source_data["y_index"]]
+            if not match:
+                continue
+
+            # data column index
+            column = int(match.group(1))
+
+            # current sink component
+            sink = self.parser.get_component(match.group(3))
+
+            # data
+            frequencies = self.data[:, 0] # frequency always first
+            magnitude_data = self.data[:, column * 2 + 1]
+            phase_data = self.data[:, column * 2 + 2]
+
+            # scales
+            magnitude_scale = match.group(4)
+            phase_scale = match.group(5)
+
+            # create data series
+            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
+                                   phase=phase_data,
+                                   magnitude_scale=magnitude_scale,
+                                   phase_scale=phase_scale)
+
+            self.add_function(CurrentTransferFunction(series=series,
+                                                      source=source,
+                                                      sink=sink))
+
+    def _parse_noise_components(self, lines):
+        """Matches output file noise spectra
+
+        :param lines: output file lines
+        :type lines: Sequence[str]
+        """
+
+        # noise sink is the noise node
+        sink = self.parser.noise_node
+
+        # find noise component information
+        matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
+
+        # split into list
+        source_strs = matches.group(1).split()
+
+        for index, source_str in enumerate(source_strs, start=1):
+            # extract component and noise type
+            source_name, noise_type = self._parse_noise_component(source_str)
+
+            # noise source component
+            source = self.parser.get_component(source_name)
+
+            frequencies = self.data[:, 0] # frequency always first
+            spectrum = self.data[:, index]
 
             # create data series
             series = Series(x=frequencies, y=spectrum)
 
-            function = NoiseSpectrum(series=series,
-                                     source=source,
-                                     sink=sink)#,
-                                     #noise_type=noise_type)
-
-            self.add_function(function)
-
-    def _match_tfs(self, metadata):
-        """Matches output file transfer functions in the specified metadata
-
-        :param metadata: output file text
-        :type metadata: str
-        :return: transfer functions
-        :rtype: list
-        """
-
-        tfs = []
-
-        # find transfer functions
-        matches = re.findall(self.TF_REGEX, metadata)
-
-        for match in matches:
-            column = int(match[0])
-
-            y_scales = [match[2], match[3]]
-            y_indices = [column * 2 + 1, column * 2 + 2]
-            output_node = match[1]
-
-            data = {"x_index": 0, # frequency always first
-                    "y_indices": y_indices,
-                    "y_scales": y_scales,
-                    "output_node": output_node}
-
-            tfs.append(data)
-
-        return tfs
-
-    def _match_noise(self, metadata):
-        """Matches output file noise spectra in the specified metadata
-
-        :param metadata: output file text
-        :type metadata: str
-        :return: series information
-        :rtype: dict
-        """
-
-        noise = []
-
-        # find noise output
-        match = re.search(self.NOISE_REGEX, metadata)
-
-        if not match:
-            # no matches
-            return noise
-
-        # should match noise node and noise source list
-        if len(match.groups()) != 2:
-            raise Exception("unexpected output file format")
-
-        # first match is the noise node
-        sink = match.group(1)
-
-        # second match contains whitespace separated noise sources
-        sources = match.group(2).split()
-
-        for index, source in enumerate(sources, start=1):
-            component_name, noise_type = self._parse_noise_source(source)
-
-            noise.append({"x_index": 0, # frequency always first
-                          "y_index": index,
-                          "component_name": component_name,
-                          "noise_type": noise_type})
-
-        return noise
+            self.add_function(NoiseSpectrum(series=series,
+                                            source=source,
+                                            sink=sink))#,
+                                            #noise_type=noise_type)
 
     @classmethod
-    def _parse_noise_source(cls, source_str):
+    def _parse_noise_component(cls, source_str):
         # get rid of whitespace around string
         source_str = source_str.strip()
 
         # look for component name and brackets
-        tokens = re.findall(cls.NOISE_SOURCE_REGEX, source_str)[0]
+        match = re.match(cls.NOISE_COMPONENT_REGEX, source_str)
 
-        component_name = tokens[0]
+        component_name = match.group(1)
 
-        if tokens[2]:
+        # component noise type, e.g. I+ (or empty, for resistors)
+        noise_str = match.group(3)
+
+        # group 2 is not empty if noise type is specified
+        if match.group(2):
             # op-amp noise; check first character
-            if tokens[2][0] == "U":
+            if noise_str[0] == "U":
                 noise_type = Circuit.NOISE_OPAMP_VOLTAGE
-            elif tokens[2][0] == "I":
+            elif noise_str[0] == "I":
                 noise_type = Circuit.NOISE_OPAMP_CURRENT
             else:
-                print(tokens)
                 raise ValueError("unrecognised noise type")
         else:
             noise_type = Circuit.NOISE_JOHNSON

@@ -100,6 +100,14 @@ class TransferFunction(SingleDataSet):
     def label(self):
         return "%s to %s" % (self.source, self.sink)
 
+class VoltageTransferFunction(TransferFunction):
+    """Voltage transfer function data series"""
+    pass
+
+class CurrentTransferFunction(TransferFunction):
+    """Current transfer function data series"""
+    pass
+
 class NoiseSpectrum(SingleDataSet):
     """Noise data series"""
 
