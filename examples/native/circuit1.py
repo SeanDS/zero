@@ -1,15 +1,8 @@
 """Native circuit construction and simulation."""
 
-import logging
 import numpy as np
-
-# enable logging to stdout
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s'))
-logger = logging.getLogger()
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-
+from electronics import logging_on
+logging_on()
 from electronics.simulate.circuit import Circuit
 from electronics.simulate.components import (Resistor, Capacitor, OpAmp, Node,
                                              Gnd)

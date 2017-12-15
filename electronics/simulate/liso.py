@@ -1,3 +1,4 @@
+import sys
 import os.path
 import subprocess
 import logging
@@ -22,9 +23,6 @@ class CircuitParser(object):
                   "noise_node": ["noise"],
                   "frequencies": ["freq"]}
 
-    OUTPUT_MODE_TF = 1
-    OUTPUT_MODE_NOISE = 2
-
     COMMENT_REGEX = re.compile("#.*?$")
 
     def __init__(self):
@@ -37,7 +35,6 @@ class CircuitParser(object):
         self.output_nodes = []
         self.noise_node = None
         self.loaded = False
-        self._output_mode = None
         self.solution = None
 
     def load(self, filepath):
@@ -139,20 +136,6 @@ class CircuitParser(object):
     def calc_noise(self):
         return self.noise_node is not None
 
-    @property
-    def output_mode(self):
-        return self._output_mode
-
-    @output_mode.setter
-    def output_mode(self, mode):
-        if self._output_mode is not None:
-            raise ValueError("output mode already set")
-
-        if mode is not None:
-            mode = int(mode)
-
-        self._output_mode = mode
-
     @classmethod
     def _fil_tokens(cls, lines):
         """Extract LISO file tokens
@@ -236,6 +219,9 @@ class CircuitParser(object):
         node1 = self._get_node(options[2])
         node2 = self._get_node(options[3])
 
+        LOGGER.info("adding %s (%s, in %s, out %s)", name, value, node1,
+                    node2)
+
         return _class(name=name, value=value, node1=node1, node2=node2)
 
     def _create_resistor(self, *options):
@@ -277,6 +263,9 @@ class CircuitParser(object):
         node1 = self._get_node(options[2])
         node2 = self._get_node(options[3])
         node3 = self._get_node(options[4])
+
+        LOGGER.info("adding %s (%s, in+ %s, in- %s, out %s)", name, model,
+                    node1, node2, node3)
 
         return OpAmp(name=name, model=model, node1=node1, node2=node2,
                      node3=node3)
@@ -337,8 +326,15 @@ class CircuitParser(object):
             # floating input
             self.input_nodes.append(self._get_node(node_options[1]))
             self.input_impedance = float(node_options[2])
+
+            LOGGER.info("adding floating input nodes [%s] with impedance: %f",
+                        ", ".join(self.input_nodes), self.input_impedance)
         else:
             self.input_impedance = float(node_options[1])
+
+            LOGGER.info("adding input node %s with impedance %s",
+                        self.input_nodes[0],
+                        SIFormatter.format(self.input_impedance, "Ω"))
 
     def _parse_output_nodes(self, output_str):
         """Parse LISO token as output node directive
@@ -352,11 +348,11 @@ class CircuitParser(object):
         options = output_str.split(":")
 
         # only use first option, which is the node name
-        self.add_output_node(self._get_node(options[0]))
-        # FIXME: parse list of output nodes
+        node = self._get_node(options[0])
 
-        # set output mode
-        self.output_mode = self.OUTPUT_MODE_TF
+        LOGGER.info("adding output node %s", node)
+        self.add_output_node(node)
+        # FIXME: parse list of output nodes
 
     def _parse_noise_node(self, node_str):
         """Parse LISO token as noise node directive
@@ -370,13 +366,13 @@ class CircuitParser(object):
         options = node_str.split(":")
 
         # only use first option, which is the node name
-        self.noise_node = self._get_node(options[0])
+        node = self._get_node(options[0])
+
+        LOGGER.info("adding noise node %s", node)
+        self.noise_node = node
 
         if len(options) > 1:
             LOGGER.warning("ignoring plot options in noise command")
-
-        # set output mode
-        self.output_mode = self.OUTPUT_MODE_NOISE
 
     def _parse_frequencies(self, options):
         """Parse LIGO token as frequency settings
@@ -394,12 +390,18 @@ class CircuitParser(object):
         count = int(options[3]) + 1
 
         if options[0] == "lin":
+            scaling_str = "linear"
             self.frequencies = np.linspace(start, stop, count)
         elif options[0] == "log":
+            scaling_str = "logarithmic"
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
         else:
             raise ValueError("space function can be \"lin\" or \"log\"")
+
+        LOGGER.info("simulating %i frequencies between %s and %s with %s "
+                    "scaling", count, SIFormatter.format(start, "Hz"),
+                    SIFormatter.format(stop, "Hz"), scaling_str)
 
     def add_output_node(self, node):
         """Add output node
@@ -419,56 +421,90 @@ class Runner(object):
     def __init__(self, script_path):
         self.script_path = script_path
 
-    def run(self, plot=False):
-        with NamedTemporaryFile() as out_path:
-            return self._liso_result(self.script_path, out_path.name, plot)
+    def run(self, plot=False, liso_path=None, output_path=None):
+        self.liso_path = liso_path
 
-    def _liso_result(self, script_path, out_path, plot):
+        if not output_path:
+            temp_file = NamedTemporaryFile()
+            output_path = temp_file.name
+
+        return self._liso_result(self.script_path, output_path, plot)
+
+    def _liso_result(self, script_path, output_path, plot):
         """Get LISO results
 
         :param script_path: path to LISO ".fil" file
         :type script_path: str
-        :param out_path: path to LISO ".out" file to be created
-        :type out_path: str
+        :param output_path: path to LISO ".out" file to be created
+        :type output_path: str
         :param plot: whether to show result with gnuplot
         :type plot: bool
         :return: LISO output
         :rtype: :class:`~OutputParser`
         """
 
-        result = self._run_liso_process(script_path, out_path, plot)
+        result = self._run_liso_process(script_path, output_path, plot)
 
         if result.returncode != 0:
             raise Exception("error during LISO run")
 
-        return OutputParser(script_path, out_path)
+        return OutputParser(script_path, output_path)
 
-    @staticmethod
-    def _run_liso_process(script_path, out_path, plot):
+    def _run_liso_process(self, script_path, output_path, plot):
         input_path = os.path.abspath(script_path)
 
         if not os.path.exists(input_path):
             raise Exception("input file %s does not exist" % input_path)
 
-        # LISO binary directory
-        try:
-            liso_dir = os.environ["LISO_DIR"]
-        except KeyError:
-            raise Exception("environment variable \"LISO_DIR\" must point to the "
-                            "directory containing the \"fil_static\" LISO binary")
-
-        # LISO binary path
-        liso_path = os.path.join(liso_dir, "fil_static")
-
         # LISO flags
-        flags = [input_path, out_path]
+        flags = [input_path, output_path]
 
         # plotting
         if not plot:
             flags.append("-n")
 
+        liso_path = self.liso_path
+        LOGGER.debug("using LISO binary at %s", liso_path)
+
         # run LISO
         return subprocess.run([liso_path, *flags])
+
+    @property
+    def liso_path(self):
+        if self._liso_path is not None:
+            return self._liso_path
+
+        # use environment variable
+        try:
+            liso_dir = os.environ["LISO_DIR"]
+        except KeyError:
+            raise Exception("environment variable \"LISO_DIR\" must point to the "
+                            "directory containing the LISO binary")
+
+        return self.find_liso(liso_dir)
+
+    @liso_path.setter
+    def liso_path(self, path):
+        LOGGER.debug("setting LISO binary path to %s", path)
+        self._liso_path = path
+
+    @staticmethod
+    def find_liso(directory):
+        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+            # in order of preference
+            filenames = ["fil_static", "fil"]
+        elif sys.platform.startswith("win32"):
+            filenames = ["fil.exe"]
+        else:
+            raise EnvironmentError("unrecognised operating system")
+
+        for filename in filenames:
+            path = os.path.join(directory, filename)
+
+            if os.path.isfile(path):
+                return path
+
+        raise FileNotFoundError("no appropriate LISO binary found")
 
 class OutputParser(object):
     """LISO output parser"""
@@ -487,10 +523,14 @@ class OutputParser(object):
     # "o1(I+)"
     NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
-    def __init__(self, designation):
+    def __init__(self, script_path, output_path=None):
+        if output_path is None:
+            # use script path but with ".out" on end
+            output_path = os.path.splitext(script_path)[0] + os.path.extsep + "out"
+
         # set file paths
-        self.infile = designation + os.path.extsep + "fil"
-        self.outfile = designation + os.path.extsep + "out"
+        self.infile = script_path
+        self.outfile = output_path
 
         # defaults
         self.input_parser = None
