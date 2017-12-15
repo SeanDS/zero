@@ -138,6 +138,14 @@ class Solution(object):
 
         return functions
 
+    @property
+    def has_tfs(self):
+        return len(list(self.transfer_functions())) > 0
+
+    @property
+    def has_noise(self):
+        return len(list(self.noise_functions())) > 0
+
     def transfer_functions(self, *args, **kwargs):
         return self._filter_function(TransferFunction, *args, **kwargs)
 
@@ -147,6 +155,15 @@ class Solution(object):
     def _result_node_index(self, node):
         return (self.circuit.n_components
                 + self.circuit.node_index(node))
+
+    def plot(self):
+        """Plot all available functions"""
+
+        if self.has_tfs:
+            self.plot_tf()
+
+        if self.has_noise:
+            self.plot_noise()
 
     def plot_tf(self, output_nodes=None, title=None):
         if not len(self.transfer_functions()):

@@ -11,6 +11,7 @@ from ..format import SIFormatter
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
                          Gnd)
+from .solution import Solution
 
 LOGGER = logging.getLogger("liso")
 
@@ -486,15 +487,16 @@ class OutputParser(object):
     # "o1(I+)"
     NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
-    def __init__(self, infile, outfile):
+    def __init__(self, designation):
         # set file paths
-        self.infile = infile
-        self.outfile = outfile
+        self.infile = designation + os.path.extsep + "fil"
+        self.outfile = designation + os.path.extsep + "out"
 
         # defaults
-        self.parser = None
-        self.functions = []
+        self.input_parser = None
         self.data = None
+        self.functions = []
+        self._solution = None
 
         self._parse()
 
@@ -504,12 +506,36 @@ class OutputParser(object):
 
         self.functions.append(function)
 
+        # reset solution
+        self._solution = None
+
+    @property
+    def solution(self):
+        """Get solution object
+
+        :return: solution
+        :rtype: :class:`~Solution`
+        """
+
+        if self._solution is not None:
+            return self._solution
+
+        # create solution
+        self._solution = Solution(self.input_parser.circuit, self.frequencies,
+                                  noise_node=self.input_parser.noise_node)
+
+        # add functions
+        for function in self.functions:
+            self._solution.add_function(function)
+
+        return self._solution
+
     def _parse(self):
         """Parse LISO input and output files"""
 
         # parse circuit
-        self.parser = CircuitParser()
-        self.parser.load(self.infile)
+        self.input_parser = CircuitParser()
+        self.input_parser.load(self.infile)
 
         # parse output data
         self._parse_outfile_data(self.outfile)
@@ -537,7 +563,7 @@ class OutputParser(object):
         """
 
         # transfer function source is the input
-        source = self.parser.input_nodes[0]
+        source = self.input_parser.input_nodes[0]
 
         # find transfer functions
         for line in lines:
@@ -550,7 +576,7 @@ class OutputParser(object):
             column = int(match.group(1))
 
             # voltage sink node
-            sink = self.parser.get_node(match.group(2))
+            sink = self.input_parser.get_node(match.group(2))
 
             # data
             frequencies = self.data[:, 0] # frequency always first
@@ -579,7 +605,7 @@ class OutputParser(object):
         """
 
         # transfer function source is the input
-        source = self.parser.input_nodes[0]
+        source = self.input_parser.input_nodes[0]
 
         # find transfer functions
         for line in lines:
@@ -592,7 +618,7 @@ class OutputParser(object):
             column = int(match.group(1))
 
             # current sink component
-            sink = self.parser.get_component(match.group(3))
+            sink = self.input_parser.get_component(match.group(3))
 
             # data
             frequencies = self.data[:, 0] # frequency always first
@@ -621,7 +647,7 @@ class OutputParser(object):
         """
 
         # noise sink is the noise node
-        sink = self.parser.noise_node
+        sink = self.input_parser.noise_node
 
         # find noise component information
         matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
@@ -634,7 +660,7 @@ class OutputParser(object):
             source_name, noise_type = self._parse_noise_component(source_str)
 
             # noise source component
-            source = self.parser.get_component(source_name)
+            source = self.input_parser.get_component(source_name)
 
             frequencies = self.data[:, 0] # frequency always first
             spectrum = self.data[:, index]
