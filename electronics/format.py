@@ -44,6 +44,12 @@ class SIFormatter(BaseFormatter):
     https://github.com/ulikoehler/UliEngineering/.
     """
 
+    # supported units
+    SI_UNITS = ["m", "kg", "s", "A", "K", "mol", "cd", # base units
+                "rad", "sr", "Hz", "N", "Pa", "J", "W", # derived units
+                "C", "V", "F", "Ω", "S", "Wb", "T", "H",
+                "°C", "lm", "lx", "Bq", "Gy", "Sv", "kat"]
+
     # exponents and their SI prefixes
     UNIT_PREFICES = {-24: "y", -21: "z", -18: "a", -15: "f", -12: "p", -9: "n",
                      -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G", 12: "T",
@@ -52,10 +58,16 @@ class SIFormatter(BaseFormatter):
     # other strings used to represent prefices
     PREFIX_ALIASES = {"u": "µ"}
 
-    # regular expression to find values with unit prefixes in text;
+    # regular expression to find values with unit prefixes and units in text;
     # this technically allows strings with both exponents and unit prefices,
-    # like ".1e-6.M", but these should fail later validation
-    VALUE_REGEX = re.compile("^([+-]?\d*\.?\d*)([eE]([+-]?\d*\.?\d*))?([\w])?")
+    # like ".1e-6.MHz", but these should fail later validation
+    VALUE_REGEX = re.compile("^([+-]?\d*\.?\d*)" # base
+                             "([eE]([+-]?\d*\.?\d*))?\s*" # numeric exponent
+                             "([yzafpnuµmkMGTEZY])?" # unit prefix exponent
+                             "(m|kg|s|A|K|mol|cd|rad|" # SI unit
+                             "sr|Hz|N|Pa|J|W|C|V|F|Ω|"
+                             "S|Wb|T|H|°C|lm|lx|Bq|Gy"
+                             "|Sv|kat)?")
 
     @classmethod
     def format(cls, value, unit=""):
@@ -109,44 +121,44 @@ class SIFormatter(BaseFormatter):
         yield from cls.PREFIX_ALIASES.keys()
 
     @classmethod
-    def parse(cls, value):
+    def parse(cls, value_str):
         """Parse value string as number
 
-        :param value: value to parse
-        :type value: str
+        :param value_str: value to parse
+        :type value_str: str
         :return: parsed number, without units or prefix
         :rtype: float
         """
 
         # don't need to handle units if there aren't any
-        if isinstance(value, (int, float)):
-            return float(value)
+        if isinstance(value_str, (int, float)):
+            return float(value_str)
 
         # find floating point numbers and optional unit prefix in string
-        results = cls.VALUE_REGEX.findall(value)[0]
+        results = re.match(cls.VALUE_REGEX, value_str)
 
         # first result should be the base number
-        base = float(results[0])
+        base = float(results.group(1))
 
-        if results[1] != '' and results[3] != '':
+        if results.group(3) and results.group(4):
             # both exponent and unit prefix are specified, but this is
             # ambiguous (does the unit prefix apply to the number or the
             # exponent?)
-            raise Exception("Cannot specify both exponent and unit prefix")
+            raise ValueError("cannot specify both exponent and unit prefix")
 
         # handle exponent
-        if results[1] != '':
-            # prefix specified
-            exponent = float(results[2])
-        elif results[3] != '':
-            # exponent specified
-            exponent = cls.unit_exponent(results[3])
+        if results.group(3):
+            # exponent specified directly
+            exponent = float(results.group(3))
+        elif results.group(4):
+            # exponent specified as unit prefix
+            exponent = cls.unit_exponent(results.group(4))
         else:
             # neither prefix nor exponent
             exponent = 0
 
         # return float equivalent
-        return base * 10 ** exponent
+        return base * 10 ** exponent, results.group(5)
 
     @classmethod
     def unit_exponent(cls, prefix):
