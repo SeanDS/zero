@@ -132,7 +132,7 @@ class SIFormatter(BaseFormatter):
 
         # don't need to handle units if there aren't any
         if isinstance(value_str, (int, float)):
-            return float(value_str)
+            return float(value_str), None
 
         # find floating point numbers and optional unit prefix in string
         results = re.match(cls.VALUE_REGEX, value_str)
