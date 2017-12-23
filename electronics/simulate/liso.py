@@ -777,7 +777,8 @@ class Runner(object):
         LOGGER.debug("using LISO binary at %s", liso_path)
 
         # run LISO
-        return subprocess.run([liso_path, *flags])
+        return subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL)
 
     @property
     def liso_path(self):
