@@ -8,10 +8,9 @@ import heapq
 
 from ..misc import Singleton, NamedInstance, _n_comb_k, _print_progress
 from ..format import SIFormatter
-from ..config import ElectronicsConfig, OpAmpLibrary
+from ..config import ElectronicsConfig
 
 CONF = ElectronicsConfig()
-LIBRARY = OpAmpLibrary()
 
 class Component(object, metaclass=abc.ABCMeta):
     """Class representing a circuit component"""
@@ -216,27 +215,28 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 class OpAmp(Component):
     """Represents an (almost) ideal op-amp"""
 
-    def __init__(self, model=None, node1=None, node2=None, node3=None, *args,
-                 **kwargs):
+    def __init__(self, model, node1, node2, node3, a0=1e12, gbw=1e15,
+                 delay=1e-9, zeros=np.array([]), poles=np.array([]),
+                 v_noise=0, i_noise=0, v_corner=1, i_corner=1, v_max=12,
+                 i_max=0.02, slew_rate=1e12, *args, **kwargs):
         # call parent constructor
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
         # default properties
-        self.params = {
-            "a0": 1e12, # gain
-            "gbw": 1e15, # gain-bandwidth product (Hz)
-            "delay": 1e-9, # delay (s)
-            "zeros": np.array([]), # array of additional zeros
-            "poles": np.array([]), # array of additional poles
-            "vn": 0, # voltage noise (V/sqrt(Hz))
-            "in": 0, # current noise (A/sqrt(Hz))
-            "vc": 1, # voltage noise corner frequency (Hz)
-            "iv": 1, # current noise corner frequency (Hz)
-            "vmax": 12, # maximum output voltage amplitude (V)
-            "imax": 0.02, # maximum output current amplitude (A)
-            "sr": 1e12} # maximum slew rate (V/s)
+        self.params = {"a0": SIFormatter.parse(a0)[0], # gain
+                       "gbw": SIFormatter.parse(gbw)[0], # gain-bandwidth product (Hz)
+                       "delay": SIFormatter.parse(delay)[0], # delay (s)
+                       "zeros": zeros, # array of additional zeros
+                       "poles": poles, # array of additional poles
+                       "vn": SIFormatter.parse(v_noise)[0], # voltage noise (V/sqrt(Hz))
+                       "in": SIFormatter.parse(i_noise)[0], # current noise (A/sqrt(Hz))
+                       "vc": SIFormatter.parse(v_corner)[0], # voltage noise corner frequency (Hz)
+                       "ic": SIFormatter.parse(i_corner)[0], # current noise corner frequency (Hz)
+                       "vmax": SIFormatter.parse(v_max)[0], # maximum output voltage amplitude (V)
+                       "imax": SIFormatter.parse(i_max)[0], # maximum output current amplitude (A)
+                       "sr": SIFormatter.parse(slew_rate)[0]} # maximum slew rate (V/s)
 
-        # set model and populate properties
+        # set model name
         self.model = model
 
         # update noise current nodes in case they've been set
@@ -248,44 +248,7 @@ class OpAmp(Component):
 
     @model.setter
     def model(self, model):
-        model = str(model).upper()
-
-        if not LIBRARY.has_data(model):
-            raise ValueError("Unrecognised op-amp type: %s" % model)
-
-        self._model = model
-
-        # set data
-        self._set_model_data(model)
-
-    def _set_model_data(self, model):
-        # get library data
-        data = LIBRARY.get_data(model)
-
-        if "a0" in data:
-            self.params["a0"] = data["a0"]
-        if "gbw" in data:
-            self.params["gbw"] = data["gbw"]
-        if "delay" in data:
-            self.params["delay"] = data["delay"]
-        if "zeros" in data:
-            self.params["zeros"] = data["zeros"]
-        if "poles" in data:
-            self.params["poles"] = data["poles"]
-        if "vn" in data:
-            self.params["vn"] = data["vn"]
-        if "in" in data:
-            self.params["in"] = data["in"]
-        if "vc" in data:
-            self.params["vc"] = data["vc"]
-        if "ic" in data:
-            self.params["ic"] = data["ic"]
-        if "vmax" in data:
-            self.params["vmax"] = data["vmax"]
-        if "imax" in data:
-            self.params["imax"] = data["imax"]
-        if "sr" in data:
-            self.params["sr"] = data["sr"]
+        self._model = str(model).upper()
 
     @property
     def node1(self):

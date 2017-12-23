@@ -7,14 +7,16 @@ from scipy.sparse.linalg import spsolve
 import logging
 from tabulate import tabulate
 
-from ..config import ElectronicsConfig
+from ..config import ElectronicsConfig, OpAmpLibrary
 from ..misc import _print_progress
-from .components import (Component, Input, Node, ImpedanceCoefficient,
-                         CurrentCoefficient, VoltageCoefficient)
+from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
+                         Node, ImpedanceCoefficient, CurrentCoefficient,
+                         VoltageCoefficient)
 from .solution import Solution
 
 LOGGER = logging.getLogger("circuit")
 CONF = ElectronicsConfig()
+LIBRARY = OpAmpLibrary()
 
 def sparse(*args, **kwargs):
     """Create new complex-valued sparse matrix
@@ -142,6 +144,24 @@ class Circuit(object):
 
         # reset matrix
         self._matrix = None
+
+    def add_resistor(self, *args, **kwargs):
+        return self.add_component(Resistor(*args, **kwargs))
+
+    def add_capacitor(self, *args, **kwargs):
+        return self.add_component(Capacitor(*args, **kwargs))
+
+    def add_inductor(self, *args, **kwargs):
+        return self.add_component(Inductor(*args, **kwargs))
+
+    def add_opamp(self, *args, **kwargs):
+        return self.add_component(OpAmp(*args, **kwargs))
+
+    def add_library_opamp(self, model, *args, **kwargs):
+        data = LIBRARY.get_data(model)
+
+        self.add_opamp(model=OpAmpLibrary.format_name(model), *args, **kwargs,
+                       **data)
 
     def add_node(self, node):
         """Add node to circuit

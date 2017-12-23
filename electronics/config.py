@@ -128,7 +128,8 @@ class OpAmpLibrary(BaseConfig):
 
         self.loaded = True
 
-    def _format_name(self, name):
+    @classmethod
+    def format_name(cls, name):
         """Format op-amp name for use as a key in the data dict
 
         :param name: name to format
@@ -148,7 +149,7 @@ class OpAmpLibrary(BaseConfig):
         :rtype: dict
         """
 
-        return self.data[self._format_name(name)]
+        return self.data[self.format_name(name)]
 
     def has_data(self, name):
         """Check if op-amp data exists in library
@@ -159,7 +160,7 @@ class OpAmpLibrary(BaseConfig):
         :rtype: bool
         """
 
-        return self._format_name(name) in self.data.keys()
+        return self.format_name(name) in self.data.keys()
 
     def match(self, opamp):
         """Get model name of library op-amp given a specified op-amp
@@ -207,19 +208,19 @@ class OpAmpLibrary(BaseConfig):
         if "delay" in opamp_data:
             class_data["delay"] = self._parse_param(opamp_data["delay"])
         if "vn" in opamp_data:
-            class_data["vn"] = self._parse_param(opamp_data["vn"])
+            class_data["v_noise"] = self._parse_param(opamp_data["vn"])
         if "in" in opamp_data:
-            class_data["in"] = self._parse_param(opamp_data["in"])
+            class_data["i_noise"] = self._parse_param(opamp_data["in"])
         if "vc" in opamp_data:
-            class_data["vc"] = self._parse_param(opamp_data["vc"])
+            class_data["v_corner"] = self._parse_param(opamp_data["vc"])
         if "ic" in opamp_data:
-            class_data["ic"] = self._parse_param(opamp_data["ic"])
+            class_data["i_corner"] = self._parse_param(opamp_data["ic"])
         if "vmax" in opamp_data:
-            class_data["vmax"] = self._parse_param(opamp_data["vmax"])
+            class_data["v_max"] = self._parse_param(opamp_data["vmax"])
         if "imax" in opamp_data:
-            class_data["imax"] = self._parse_param(opamp_data["imax"])
+            class_data["i_max"] = self._parse_param(opamp_data["imax"])
         if "sr" in opamp_data:
-            class_data["sr"] = self._parse_param(opamp_data["sr"])
+            class_data["slew_rate"] = self._parse_param(opamp_data["sr"])
 
         # add data to library
         self.add_data(section, class_data)
@@ -244,7 +245,7 @@ class OpAmpLibrary(BaseConfig):
         :raises ValueError: if op-amp is already in library
         """
 
-        name = self._format_name(name)
+        name = self.format_name(name)
 
         if name in self.opamp_names:
             raise ValueError("Duplicate op-amp type: %s" % name)

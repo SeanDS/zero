@@ -4,10 +4,9 @@ import abc
 import numpy as np
 
 from .format import SIFormatter
-from .config import ElectronicsConfig, OpAmpLibrary
+from .config import ElectronicsConfig
 
 CONF = ElectronicsConfig()
-LIBRARY = OpAmpLibrary()
 
 class BaseComponent(object, metaclass=abc.ABCMeta):
     """Class representing a component"""

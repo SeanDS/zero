@@ -17,14 +17,12 @@ from tempfile import NamedTemporaryFile
 
 from ..data import (VoltageTransferFunction, CurrentTransferFunction,
                     NoiseSpectrum, Series, ComplexSeries)
-from ..config import OpAmpLibrary
 from ..format import SIFormatter
 from .circuit import Circuit
 from .components import Component, Resistor, Capacitor, Inductor, OpAmp, Node
 from .solution import Solution
 
 LOGGER = logging.getLogger("liso")
-LIBRARY = OpAmpLibrary()
 
 class BaseParser(object, metaclass=abc.ABCMeta):
     COMMENT_REGEX = re.compile("^#.*?$")
@@ -155,7 +153,8 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
         self._add_lcr(Inductor, *args, **kwargs)
 
-    def _add_opamp(self, name, model, node1_name, node2_name, node3_name):
+    def _add_opamp(self, name, model, node1_name, node2_name, node3_name, *args,
+                   **kwargs):
         """Add op-amp
 
         :return: new op-amp
@@ -171,7 +170,28 @@ class BaseParser(object, metaclass=abc.ABCMeta):
                     name, model, node1, node2, node3)
 
         self.circuit.add_component(OpAmp(name=name, model=model, node1=node1,
-                                         node2=node2, node3=node3))
+                                         node2=node2, node3=node3, *args,
+                                         **kwargs))
+
+    def _add_library_opamp(self, name, model, node1_name, node2_name,
+                           node3_name, *args, **kwargs):
+        """Add op-amp
+
+        :return: new op-amp
+        :rtype: :class:`~OpAmp`
+        """
+
+        # add nodes first
+        node1 = Node(node1_name)
+        node2 = Node(node2_name)
+        node3 = Node(node3_name)
+
+        LOGGER.info("adding op-amp [%s = %s, in+ %s, in- %s, out %s]",
+                    name, model, node1, node2, node3)
+
+        self.circuit.add_library_opamp(name=name, model=model, node1=node1,
+                                       node2=node2, node3=node3, *args,
+                                       **kwargs)
 
 class InputParser(BaseParser):
     COMPONENTS = ["r", "c", "l", "op"]
@@ -243,7 +263,7 @@ class InputParser(BaseParser):
         elif command == "l":
             self._add_inductor(*options)
         elif command == "op":
-            self._add_opamp(*options)
+            self._add_library_opamp(*options)
         else:
             raise ValueError("Unknown component: %s" % command)
 
@@ -497,40 +517,22 @@ class OutputParser(BaseParser):
         # extract op-amp data
         matches = re.findall(self.OPAMP_REGEX, content)
 
-        for (name, model, node1_name, node2_name, node3_name, gain, gbw, vn, vc,
-             _in, ic, vmax, imax, sr, delay, roots) in matches:
+        for (name, model, node1_name, node2_name, node3_name, a0, gbw,
+             v_noise, v_corner, i_noise, i_corner, v_max, i_max, slew_rate,
+             delay, roots) in matches:
             # parse roots
             zeros, poles = self._parse_opamp_roots(roots)
 
+            # convert slew rate from output file's V/us to V/s
+            slew_rate, _ = SIFormatter.parse(slew_rate)
+            slew_rate *= 1e6
+
             # create op-amp
-            opamp = OpAmp(name=name, model=model, node1=node1_name,
-                          node2=node2_name, node3=node3_name)
-            opamp.params["a0"] = gain
-            opamp.params["gbw"] = gbw
-            opamp.params["delay"] = delay
-            opamp.params["zeros"] = zeros
-            opamp.params["poles"] = poles
-            opamp.params["vn"] = vn
-            opamp.params["in"] = _in
-            opamp.params["vc"] = vc
-            opamp.params["ic"] = ic
-            opamp.params["vmax"] = vmax
-            opamp.params["imax"] = imax
-            opamp.params["sr"] = sr
-
-            match = LIBRARY.match(opamp)
-
-            if match:
-                LOGGER.debug("matched %s in library", match)
-            else:
-                # no matching model in library; add
-                user_model = "%s_user" % model
-                LIBRARY.add_data(user_model, opamp.params)
-
-                match = model
-
-            # add to circuit
-            self._add_opamp(name, match, node1_name, node2_name, node3_name)
+            self._add_opamp(name, model, node1_name, node2_name, node3_name,
+                            a0=a0, gbw=gbw, delay=delay, zeros=zeros,
+                            poles=poles, v_noise=v_noise, i_noise=i_noise,
+                            v_corner=v_corner, i_corner=i_corner, v_max=v_max,
+                            i_max=i_max, slew_rate=slew_rate)
 
     def _parse_opamp_roots(self, roots):
         # empty roots
@@ -538,6 +540,7 @@ class OutputParser(BaseParser):
         poles = np.array([])
 
         # TODO: parse
+        LOGGER.warning("poles/zeros not parsed")
 
         return zeros, poles
 
