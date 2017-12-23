@@ -6,7 +6,7 @@ import numpy as np
 import itertools
 import heapq
 
-from ..misc import Singleton, _n_comb_k, _print_progress
+from ..misc import Singleton, NamedInstance, _n_comb_k, _print_progress
 from ..format import SIFormatter
 from ..config import ElectronicsConfig, OpAmpLibrary
 
@@ -97,7 +97,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     @value.setter
     def value(self, value):
         if value is not None:
-            value = SIFormatter.parse(value)
+            value, _ = SIFormatter.parse(value)
 
         self._value = value
 
@@ -135,13 +135,13 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
                                                  value=self.impedance))
 
         # add input node coefficient
-        if self.node1 is not Gnd():
+        if self.node1 is not Node("gnd"):
             # voltage
             coefficients.append(VoltageCoefficient(node=self.node1,
                                                    value=-1))
 
         # add output node coefficient
-        if self.node2 is not Gnd():
+        if self.node2 is not Node("gnd"):
             # voltage
             coefficients.append(VoltageCoefficient(node=self.node2,
                                                    value=1))
@@ -313,9 +313,9 @@ class OpAmp(Component):
         noise_nodes = []
 
         # input nodes contribute to noise unless they're grounded
-        if self.node1 is not None and self.node1 != Gnd():
+        if self.node1 is not None and self.node1 != Node("gnd"):
             noise_nodes.append(self.node1)
-        if self.node2 is not None and self.node2 != Gnd():
+        if self.node2 is not None and self.node2 != Node("gnd"):
             noise_nodes.append(self.node2)
 
         self.noise_current_nodes = noise_nodes
@@ -330,19 +330,19 @@ class OpAmp(Component):
         coefficients = []
 
         # add non-inverting input node coefficient
-        if self.node1 is not Gnd():
+        if self.node1 is not Node("gnd"):
             # voltage
             coefficients.append(VoltageCoefficient(node=self.node1,
                                                    value=-1))
 
         # add inverting input node coefficient
-        if self.node2 is not Gnd():
+        if self.node2 is not Node("gnd"):
             # voltage
             coefficients.append(VoltageCoefficient(node=self.node2,
                                                    value=1))
 
         # add output node coefficient
-        if self.node3 is not Gnd():
+        if self.node3 is not Node("gnd"):
             # voltage
             coefficients.append(VoltageCoefficient(node=self.node3,
                                                    value=self.inverse_gain))
@@ -569,8 +569,11 @@ class ResistorCollection(Resistor):
 
         return label
 
-class Node(object):
-    """Represents a circuit node (connection between components)"""
+class Node(object, metaclass=NamedInstance):
+    """Represents a circuit node (connection between components)
+
+    Nodes are considered equal if they have the same case-independent name.
+    """
 
     def __init__(self, name):
         """Instantiate a new node
@@ -578,25 +581,11 @@ class Node(object):
         :param name: node name
         """
 
-        self.name = name
+        self.name = str(name)
 
         # current sources and sinks
         self.sources = set()
         self.sinks = set()
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        name = str(name)
-
-        # only Gnd() node can be called "gnd"
-        if self.__class__.__name__ == "Node" and name.lower() == "gnd":
-            raise ValueError("Ground nodes must be created with Gnd()")
-
-        self._name = name
 
     def add_source(self, component):
         self.sources.add(component)
@@ -611,13 +600,13 @@ class Node(object):
 
         for source in self.sources:
             # add source coefficient
-            if source is not Gnd():
+            if source is not Node("gnd"):
                 coefficients.append(CurrentCoefficient(component=source,
                                                        value=1))
 
         for sink in self.sinks:
             # add sink coefficient
-            if sink is not Gnd():
+            if sink is not Node("gnd"):
                 coefficients.append(CurrentCoefficient(component=sink,
                                                        value=-1))
 
@@ -629,18 +618,6 @@ class Node(object):
 
     def __repr__(self):
         return str(self)
-
-class Gnd(Node, metaclass=Singleton):
-    """Node representing ground potential
-
-    Objects of this class are always the same instance.
-    """
-
-    def __init__(self):
-        """Instantiate a ground node"""
-
-        # call parent constructor
-        return super(Gnd, self).__init__(name="Gnd")
 
 class BaseEquation(object, metaclass=abc.ABCMeta):
     def __init__(self, coefficients):

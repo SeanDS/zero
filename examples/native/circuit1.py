@@ -4,15 +4,14 @@ import numpy as np
 from electronics import logging_on
 logging_on()
 from electronics.simulate.circuit import Circuit
-from electronics.simulate.components import (Resistor, Capacitor, OpAmp, Node,
-                                             Gnd)
+from electronics.simulate.components import Resistor, Capacitor, OpAmp, Node
 from electronics.config import OpAmpLibrary as lib
 
 # frequency vector
 frequencies = np.logspace(0, 6, 1000)
 
 # create nodes
-gnd = Gnd()
+gnd = Node("gnd")
 n1 = Node("n1")
 nm = Node("nm")
 nout = Node("nout")
@@ -34,7 +33,7 @@ circuit.add_component(c2)
 circuit.add_component(op)
 
 # solve circuit
-solution = circuit.solve(frequencies, input_nodes=[nin], input_impedance=0,
+solution = circuit.solve(frequencies, input_node_p=nin, input_impedance=0,
                          noise_node=nout)
 
 print("Circuit matrix for f = %d" % frequencies[0])
