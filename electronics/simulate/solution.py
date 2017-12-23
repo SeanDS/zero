@@ -15,8 +15,7 @@ CONF = ElectronicsConfig()
 class Solution(object):
     """Represents a solution to the simulated circuit"""
 
-    def __init__(self, circuit, frequencies, tfs=None, noise_spectra=None,
-                 noise_node=None):
+    def __init__(self, circuit, frequencies):
         """Instantiate a new solution
 
         :param circuit: circuit this solution represents
@@ -24,12 +23,6 @@ class Solution(object):
         :param frequencies: sequence of frequencies this solution contains \
                             results for
         :type frequencies: :class:`~np.ndarray`
-        :param tfs: transfer function solutions
-        :type tfs: :class:`~np.ndarray`
-        :param noise_spectra: noise solutions
-        :type noise_spectra: :class:`~np.ndarray`
-        :param noise_node: node ``noise`` represents
-        :type noise_node: :class:`~Node`
         """
 
         self.circuit = circuit
@@ -38,13 +31,12 @@ class Solution(object):
         # defaults
         self.functions = []
 
-        # process inputs
-        self._handle_tfs(tfs)
-        self._handle_noise(noise_spectra, noise_node)
+    def add_tfs(self, tfs):
+        """Add a computed transfer matrix to the solution
 
-    def _handle_tfs(self, tfs):
-        if tfs is None:
-            return
+        :param tfs: transfer matrix
+        :type tfs: :class:`~np.ndarray`
+        """
 
         # dimension sanity checks
         if tfs.shape != (self.circuit.dim_size, self.n_frequencies):
@@ -60,7 +52,7 @@ class Solution(object):
         # create functions from each row
         for tf, sink in zip(node_tfs, self.circuit.non_gnd_nodes):
             # source is always input node
-            source = self.circuit.input_nodes[0]
+            source = self.circuit.input_node_p
 
             # create series
             series = Series(x=self.frequencies, y=tf)
@@ -69,9 +61,14 @@ class Solution(object):
             self.add_function(TransferFunction(source=source, sink=sink,
                                                series=series))
 
-    def _handle_noise(self, noise_spectra, sink):
-        if noise_spectra is None:
-            return
+    def add_noise(self, noise_spectra, sink):
+        """Add noise matrix to the solution
+
+        :param noise_spectra: noise matrix
+        :type noise_spectra: :class:`~np.ndarray`
+        :param noise_node: node ``noise`` represents
+        :type noise_node: :class:`~Node`
+        """
 
         # dimension sanity checks
         if noise_spectra.shape != (self.circuit.dim_size, self.n_frequencies):

@@ -6,11 +6,5 @@ logging_on()
 from electronics.simulate.liso import OutputParser, Runner
 
 # parse
-parser = OutputParser("liso1.fil")
-
-# solution
-solution = parser.solution
-
-# plot
-solution.plot()
-solution.show()
+parser = OutputParser("liso1.out")
+parser.show()

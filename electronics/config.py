@@ -250,7 +250,7 @@ class OpAmpLibrary(BaseConfig):
         :rtype: float
         """
 
-        return SIFormatter.parse(self._strip_comments(param))
+        return SIFormatter.parse(self._strip_comments(param))[0]
 
     @property
     def opamp_names(self):
@@ -311,14 +311,14 @@ class OpAmpLibrary(BaseConfig):
         parts = token.split()
 
         # frequency is always first in the list
-        frequency = SIFormatter.parse(parts[0])
+        frequency, _ = SIFormatter.parse(parts[0])
 
         # q-factor is second, if present
         if len(parts) == 1:
             frequencies.append(frequency)
         elif len(parts) == 2:
             # calculate complex frequency using q-factor
-            qfactor = SIFormatter.parse(parts[1])
+            qfactor, _ = SIFormatter.parse(parts[1])
             theta = np.arccos(1 / (2 * qfactor))
 
             # add negative/positive pair of poles/zeros

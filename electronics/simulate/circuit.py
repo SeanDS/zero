@@ -9,7 +9,7 @@ from tabulate import tabulate
 
 from ..config import ElectronicsConfig
 from ..misc import _print_progress
-from .components import (Component, Input, Node, Gnd, ImpedanceCoefficient,
+from .components import (Component, Input, Node, ImpedanceCoefficient,
                          CurrentCoefficient, VoltageCoefficient)
 from .solution import Solution
 
@@ -47,7 +47,8 @@ class Circuit(object):
         """
 
         # solver parameters
-        self.input_nodes = None
+        self.input_node_p = None
+        self.input_node_n = None
         self.noise_node = None
         self.input_impedance = None
         self.components = []
@@ -62,8 +63,10 @@ class Circuit(object):
         :rtype: Generator[:class:`~Node`]
         """
 
+        gnd = Node("gnd")
+
         for node in self.nodes:
-            if node != Gnd():
+            if node != gnd:
                 yield node
 
     @property
@@ -244,8 +247,9 @@ class Circuit(object):
         # convert to CSR for efficient solving
         return matrix.tocsr()
 
-    def solve(self, frequencies, input_nodes=[], input_impedance=None,
-              noise_node=None, print_progress=True, progress_stream=sys.stdout):
+    def solve(self, frequencies, input_node_p=None, input_node_n=None,
+              input_impedance=None, noise_node=None, print_progress=True,
+              progress_stream=sys.stdout):
         """Solve matrix for a given input and/or output
 
         If the input node(s) is/are specified, transfer functions are calculated
@@ -258,9 +262,13 @@ class Circuit(object):
 
         :param frequencies: sequence of frequencies to solve circuit for
         :type frequencies: Sequence[Numpy scalar or float]
-        :param input_nodes: (optional) input nodes to calculate transfer \
-                            functions from
-        :type input_nodes: Sequence[:class:`~Node`]
+        :param input_node_p: (optional) positive input node to calculate \
+                             transfer functions from
+        :type input_node_p: :class:`~Node`
+        :param input_node_n: (optional) negative input node to calculate \
+                             transfer functions from; if None then "gnd" is \
+                             assumed
+        :type input_node_n: :class:`~Node`
         :param input_impedance: (optional) input impedance to assume
         :type input_impedance: float
         :param noise_node: (optional) node to project noise to
@@ -277,39 +285,43 @@ class Circuit(object):
         # number of frequencies to calculate
         n_freqs = len(frequencies)
 
-        input_nodes = list(input_nodes)
-
         # default values
         compute_tfs = False
         compute_noise = False
         tfs = None
         noise = None
 
-        # work out which input node to use, if any
-        if len(input_nodes):
-            # use input nodes and impedance specified in this call
-            self.input_nodes = input_nodes
+        if input_node_n and not input_node_p:
+            raise ValueError("input_node_p must be specified alongside "
+                             "input_node_n")
+
+        if input_node_p:
+            self.input_node_p = input_node_p
+
+        if input_node_n:
+            self.input_node_n = input_node_n
+        else:
+            # use ground
+            self.input_node_n = Node("gnd")
+
+        if input_impedance:
             self.input_impedance = float(input_impedance)
-            compute_tfs = True
 
         # create input component
         input_component = Input()
-
-        # set nodes
-        if len(self.input_nodes) == 2:
-            # floating input
-            input_component.node1 = self.input_nodes[1]
-        else:
-            # input node specified with respect to ground
-            input_component.node1 = Gnd()
-
-        input_component.node2 = self.input_nodes[0]
+        input_component.node1 = self.input_node_n
+        input_component.node2 = self.input_node_p
         self.add_component(input_component)
 
         # work out which noise node to use, if any
-        if noise_node is not None:
+        if noise_node:
             # use noise node specified in this call
             self.noise_node = noise_node
+
+        # work out what to solve
+        if self.input_node_p:
+            compute_tfs = True
+        if self.noise_node:
             compute_noise = True
 
         # check that we're solving something
@@ -361,7 +373,15 @@ class Circuit(object):
                                                            matrix, frequency)
 
         # create solution
-        return Solution(self, frequencies, tfs, noise, self.noise_node)
+        solution = Solution(self, frequencies)
+
+        if compute_tfs:
+            solution.add_tfs(tfs)
+
+        if compute_noise:
+            solution.add_noise(noise, self.noise_node)
+
+        return solution
 
     def _noise_at_node(self, node, matrix, frequency):
         """Compute noise from components projected to the specified node
@@ -538,7 +558,7 @@ class Circuit(object):
         :rtype: int
         """
 
-        if node == Gnd():
+        if node == Node("gnd"):
             raise ValueError("ground node does not have an index")
 
         return list(self.non_gnd_nodes).index(node)

@@ -7,10 +7,8 @@ to any other node."""
 
 from electronics import logging_on
 logging_on()
-from electronics.simulate.liso import CircuitParser
+from electronics.simulate.liso import InputParser
 
 # create parser
-parser = CircuitParser()
-parser.load("liso2.fil")
-parser.run()
+parser = InputParser("liso2.fil")
 parser.show()

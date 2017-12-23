@@ -53,7 +53,7 @@ class PassiveComponent(BaseComponent, metaclass=abc.ABCMeta):
     @value.setter
     def value(self, value):
         if value is not None:
-            value = SIFormatter.parse(value)
+            value, _ = SIFormatter.parse(value)
 
         self._value = value
 

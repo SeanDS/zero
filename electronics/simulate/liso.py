@@ -1,10 +1,9 @@
 """LISO file parsing and running
 
 This module provides classes to parse LISO input and output files and to run
-native LISO binaries automatically. The parser classes share a base class which
-provides an interface to add components and settings to an electronics.py
-Circuit object. The input and output parsers implement methods to search and
-identify components and commands in their respective files.
+native LISO binaries automatically. The input and output parsers implement
+methods to search and identify components and commands in their respective
+files.
 """
 
 import sys
@@ -395,21 +394,21 @@ class OutputParser(BaseParser):
     # "o1(I+)"
     NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
-    def __init__(self, *args, **kwargs):
-        super(OutputParser, self).__init__(*args, **kwargs)
+    # input nodes
+    INPUT_NODE_REGEX = re.compile("\#Voltage input at node ([\w\d]+), impedance (\d+) Ohm")
 
+    def __init__(self, *args, **kwargs):
         # defaults
         self.data = None
         self.functions = []
+
+        super(OutputParser, self).__init__(*args, **kwargs)
 
     def add_function(self, function):
         if function in self.functions:
             raise ValueError("duplicate function")
 
         self.functions.append(function)
-
-        # reset solution
-        self.solution = None
 
     def solution(self):
         """Get circuit solution
@@ -419,8 +418,7 @@ class OutputParser(BaseParser):
         """
 
         # create solution
-        solution = Solution(self.circuit, self.frequencies,
-                            noise_node=self.noise_node)
+        solution = Solution(self.circuit, self.frequencies)
 
         # add functions
         for function in self.functions:
@@ -449,7 +447,8 @@ class OutputParser(BaseParser):
                 # nodes already defined by components
                 continue
 
-        # find input node
+        # find input node(s)
+        self._parse_input_nodes(lines)
 
     def _parse_lcr(self, description, content):
         # tokenise non-empty lines, stripping out comment hash
@@ -476,14 +475,32 @@ class OutputParser(BaseParser):
         # extract op-amp data
         pass
 
+    def _parse_input_nodes(self, lines):
+        for line in lines:
+            match = re.match(self.INPUT_NODE_REGEX, line)
+
+            if not match:
+                continue
+
+            # FIXME: support floating inputs
+            self.circuit.input_node_p = Node(match.group(1))
+            self.circuit.input_impedance = float(match.group(2))
+
+            LOGGER.info("adding input node %s with impedance %s",
+                        self.circuit.input_node_p,
+                        SIFormatter.format(self.circuit.input_impedance, "Ω"))
+
     def _parse_columns(self, lines):
         for line in lines:
             if re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line):
                 self._parse_voltage_nodes(lines)
             elif re.match(self.TF_CURRENT_OUTPUT_REGEX, line):
                 self._parse_current_components(lines)
-            elif re.match(self.NOISE_OUTPUT_REGEX, line):
-                self._parse_noise_components(lines)
+            else:
+                match = re.match(self.NOISE_OUTPUT_REGEX, line)
+
+                if match:
+                    self._parse_noise_components(match.group(1), lines)
 
     def _parse_voltage_nodes(self, lines):
         """Matches output file voltage transfer functions
@@ -493,7 +510,7 @@ class OutputParser(BaseParser):
         """
 
         # transfer function source is the input
-        source = self.input_node_p
+        source = self.circuit.input_node_p
 
         # find transfer functions
         for line in lines:
@@ -506,7 +523,7 @@ class OutputParser(BaseParser):
             column = int(match.group(1))
 
             # voltage sink node
-            sink = self.get_node(match.group(2))
+            sink = Node(match.group(2))
 
             # data
             frequencies = self.data[:, 0] # frequency always first
@@ -527,6 +544,9 @@ class OutputParser(BaseParser):
                                                       source=source,
                                                       sink=sink))
 
+            # add output node
+            self.add_output_node(sink)
+
     def _parse_current_components(self, lines):
         """Matches output file current transfer functions
 
@@ -535,7 +555,7 @@ class OutputParser(BaseParser):
         """
 
         # transfer function source is the input
-        source = self.input_node_p
+        source = self.circuit.input_node_p
 
         # find transfer functions
         for line in lines:
@@ -548,7 +568,7 @@ class OutputParser(BaseParser):
             column = int(match.group(1))
 
             # current sink component
-            sink = self.get_component(match.group(3))
+            sink = self.circuit.get_component(match.group(3))
 
             # data
             frequencies = self.data[:, 0] # frequency always first
@@ -569,28 +589,34 @@ class OutputParser(BaseParser):
                                                       source=source,
                                                       sink=sink))
 
-    def _parse_noise_components(self, lines):
+            # add output node
+            # FIXME: add output current components
+            #self.add_output_node(sink)
+
+    def _parse_noise_components(self, node_name, lines):
         """Matches output file noise spectra
 
+        :param node_name: name of noise sink node
+        :type node_name: str
         :param lines: output file lines
         :type lines: Sequence[str]
         """
 
-        # noise sink is the noise node
-        sink = self.noise_node
-
         # find noise component information
         matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
 
+        # noise sink is the noise node
+        self.circuit.noise_node = Node(node_name)
+
         # split into list
-        source_strs = matches.group(1).split()
+        source_strs = matches.group(2).split()
 
         for index, source_str in enumerate(source_strs, start=1):
             # extract component and noise type
             source_name, noise_type = self._parse_noise_component(source_str)
 
             # noise source component
-            source = self.get_component(source_name)
+            source = self.circuit.get_component(source_name)
 
             frequencies = self.data[:, 0] # frequency always first
             spectrum = self.data[:, index]
@@ -600,7 +626,7 @@ class OutputParser(BaseParser):
 
             self.add_function(NoiseSpectrum(series=series,
                                             source=source,
-                                            sink=sink))#,
+                                            sink=self.circuit.noise_node))#,
                                             #noise_type=noise_type)
 
     @classmethod
