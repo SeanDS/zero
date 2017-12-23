@@ -161,6 +161,21 @@ class OpAmpLibrary(BaseConfig):
 
         return self._format_name(name) in self.data.keys()
 
+    def match(self, opamp):
+        """Get model name of library op-amp given a specified op-amp
+
+        :param opamp: op-amp object to match
+        :type opamp: :class:`~OpAmp`
+        :return: model name, or None
+        :rtype: str or NoneType
+        """
+
+        for model in self.data:
+            if opamp.params == self.data[model]:
+                return model
+
+        return None
+
     def _parse_lib_data(self, section):
         """Parse op-amp data from config file
 
@@ -225,7 +240,7 @@ class OpAmpLibrary(BaseConfig):
         :param name: op-amp name
         :type name: str
         :param data: op-amp data
-        :type data: Dict[str, Dict[str, Any]]
+        :type data: Dict[str, Any]
         :raises ValueError: if op-amp is already in library
         """
 

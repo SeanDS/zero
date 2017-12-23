@@ -222,30 +222,19 @@ class OpAmp(Component):
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
         # default properties
-        # DC gain
-        self._a0 = 1e12
-        # gain-bandwidth product (Hz)
-        self._gbw = 1e15
-        # delay (s)
-        self._delay = 1e-9
-        # array of additional zeros (Hz)
-        self._zeros = np.array([])
-        # array of additional poles
-        self._poles = np.array([])
-        # voltage noise (V/sqrt(Hz))
-        self._vn = 0
-        # current noise (A/sqrt(Hz))
-        self._in = 0
-        # voltage noise corner frequency (Hz)
-        self._vc = 1
-        # current noise corner frequency (Hz)
-        self._iv = 1
-        # maximum output voltage amplitude (V)
-        self._vmax = 12
-        # maximum output current amplitude (A)
-        self._imax = 0.02
-        # maximum slew rate (V/s)
-        self._sr = 1e12
+        self.params = {
+            "a0": 1e12, # gain
+            "gbw": 1e15, # gain-bandwidth product (Hz)
+            "delay": 1e-9, # delay (s)
+            "zeros": np.array([]), # array of additional zeros
+            "poles": np.array([]), # array of additional poles
+            "vn": 0, # voltage noise (V/sqrt(Hz))
+            "in": 0, # current noise (A/sqrt(Hz))
+            "vc": 1, # voltage noise corner frequency (Hz)
+            "iv": 1, # current noise corner frequency (Hz)
+            "vmax": 12, # maximum output voltage amplitude (V)
+            "imax": 0.02, # maximum output current amplitude (A)
+            "sr": 1e12} # maximum slew rate (V/s)
 
         # set model and populate properties
         self.model = model
@@ -274,29 +263,29 @@ class OpAmp(Component):
         data = LIBRARY.get_data(model)
 
         if "a0" in data:
-            self._a0 = data["a0"]
+            self.params["a0"] = data["a0"]
         if "gbw" in data:
-            self._gbw = data["gbw"]
+            self.params["gbw"] = data["gbw"]
         if "delay" in data:
-            self._delay = data["delay"]
+            self.params["delay"] = data["delay"]
         if "zeros" in data:
-            self._zeros = data["zeros"]
+            self.params["zeros"] = data["zeros"]
         if "poles" in data:
-            self._poles = data["poles"]
+            self.params["poles"] = data["poles"]
         if "vn" in data:
-            self._vn = data["vn"]
+            self.params["vn"] = data["vn"]
         if "in" in data:
-            self._in = data["in"]
+            self.params["in"] = data["in"]
         if "vc" in data:
-            self._vc = data["vc"]
+            self.params["vc"] = data["vc"]
         if "ic" in data:
-            self._ic = data["ic"]
+            self.params["ic"] = data["ic"]
         if "vmax" in data:
-            self._vmax = data["vmax"]
+            self.params["vmax"] = data["vmax"]
         if "imax" in data:
-            self._imax = data["imax"]
+            self.params["imax"] = data["imax"]
         if "sr" in data:
-            self._sr = data["sr"]
+            self.params["sr"] = data["sr"]
 
     @property
     def node1(self):
@@ -367,20 +356,21 @@ class OpAmp(Component):
         return ComponentEquation(self, coefficients=coefficients)
 
     def gain(self, frequency):
-        return (self._a0 / (1 + self._a0 * 1j * frequency / self._gbw)
-                * np.exp(-1j * 2 * np.pi * self._delay * frequency)
-                * np.prod(1 + 1j * frequency / self._zeros)
-                / np.prod(1 + 1j * frequency / self._poles))
+        return (self.params["a0"]
+                / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
+                * np.exp(-1j * 2 * np.pi * self.params["delay"] * frequency)
+                * np.prod(1 + 1j * frequency / self.params["zeros"])
+                / np.prod(1 + 1j * frequency / self.params["poles"]))
 
     def inverse_gain(self, *args, **kwargs):
         return 1 / self.gain(*args, **kwargs)
 
     def noise_voltage(self, frequency):
-        return self._vn * np.sqrt(1 + self._vc / frequency)
+        return self.params["vn"] * np.sqrt(1 + self.params["vc"] / frequency)
 
     def node_noise_current(self, node, frequency):
         # ignore node; noise is same at both
-        return self._in * np.sqrt(1 + self._ic / frequency)
+        return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequency)
 
     def label(self):
         return self.name

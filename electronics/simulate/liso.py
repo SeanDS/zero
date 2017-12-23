@@ -17,12 +17,14 @@ from tempfile import NamedTemporaryFile
 
 from ..data import (VoltageTransferFunction, CurrentTransferFunction,
                     NoiseSpectrum, Series, ComplexSeries)
+from ..config import OpAmpLibrary
 from ..format import SIFormatter
 from .circuit import Circuit
 from .components import Component, Resistor, Capacitor, Inductor, OpAmp, Node
 from .solution import Solution
 
 LOGGER = logging.getLogger("liso")
+LIBRARY = OpAmpLibrary()
 
 class BaseParser(object, metaclass=abc.ABCMeta):
     COMMENT_REGEX = re.compile("^#.*?$")
@@ -379,6 +381,26 @@ class OutputParser(BaseParser):
     COMPONENT_REGEX = re.compile("^#(\d+) (op-amps?|capacitors?|resistors?|nodes?):([\s\S]+?)(?=\n#\S+)",
                                  re.MULTILINE)
 
+    # op-amp parameters
+    OPAMP_REGEX = re.compile("^#\s*\d+ " # count
+                             "([\w\d]+) " # name
+                             "([\w\d]+) " # model
+                             "'\+'=([\w\d]+) " # +in
+                             "'\-'=([\w\d]+) " # -in
+                             "'out'=([\w\d]+) " # out
+                             "a0=([\w\d\s\.]+) " # gain
+                             "gbw=([\w\d\s\.]+)^" # gbw
+                             "\#\s*un=([\w\d\s\.]+)\/sqrt\(Hz\) " # un
+                             "uc=([\w\d\s\.]+) " # uc
+                             "in=([\w\d\s\.]+)\/sqrt\(Hz\) " # in
+                             "ic=([\w\d\s\.]+)^" # ic
+                             "\#\s*umax=([\w\d\s\.]+) " # umax
+                             "imax=([\w\d\s\.]+) " # imax
+                             "sr=([\w\d\s\.]+)\/us " # sr
+                             "delay=([\w\d\s\.]+)" # delay
+                             "^\#\s*(.*)$", # poles / zeros
+                             re.MULTILINE)
+
     # data column definitions
     TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
     TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
@@ -473,7 +495,51 @@ class OutputParser(BaseParser):
 
     def _parse_opamp(self, description, content):
         # extract op-amp data
-        pass
+        matches = re.findall(self.OPAMP_REGEX, content)
+
+        for (name, model, node1_name, node2_name, node3_name, gain, gbw, vn, vc,
+             _in, ic, vmax, imax, sr, delay, roots) in matches:
+            # parse roots
+            zeros, poles = self._parse_opamp_roots(roots)
+
+            # create op-amp
+            opamp = OpAmp(name=name, model=model, node1=node1_name,
+                          node2=node2_name, node3=node3_name)
+            opamp.params["a0"] = gain
+            opamp.params["gbw"] = gbw
+            opamp.params["delay"] = delay
+            opamp.params["zeros"] = zeros
+            opamp.params["poles"] = poles
+            opamp.params["vn"] = vn
+            opamp.params["in"] = _in
+            opamp.params["vc"] = vc
+            opamp.params["ic"] = ic
+            opamp.params["vmax"] = vmax
+            opamp.params["imax"] = imax
+            opamp.params["sr"] = sr
+
+            match = LIBRARY.match(opamp)
+
+            if match:
+                LOGGER.debug("matched %s in library", match)
+            else:
+                # no matching model in library; add
+                user_model = "%s_user" % model
+                LIBRARY.add_data(user_model, opamp.params)
+
+                match = model
+
+            # add to circuit
+            self._add_opamp(name, match, node1_name, node2_name, node3_name)
+
+    def _parse_opamp_roots(self, roots):
+        # empty roots
+        zeros = np.array([])
+        poles = np.array([])
+
+        # TODO: parse
+
+        return zeros, poles
 
     def _parse_input_nodes(self, lines):
         for line in lines:
