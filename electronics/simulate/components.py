@@ -21,8 +21,8 @@ class Component(object, metaclass=abc.ABCMeta):
 
         :param name: component name
         :type name: str
-        :param nodes: associated component nodes
-        :type nodes: Sequence[:class:`~Node`]
+        :param nodes: associated component nodes or node names
+        :type nodes: Sequence[:class:`~Node`] or Sequence[str]
         :param noise_current_nodes: nodes which contribute to current noise
         :type noise_current_nodes: Sequence[:class:`~Node`]
         """
@@ -33,8 +33,11 @@ class Component(object, metaclass=abc.ABCMeta):
         if nodes is None:
             nodes = []
 
+        # defaults
+        self._nodes = []
+
         self.name = name
-        self.nodes = list(nodes)
+        self.nodes = nodes
         self.noise_current_nodes = noise_current_nodes
 
     def noise_sources(self):
@@ -51,6 +54,19 @@ class Component(object, metaclass=abc.ABCMeta):
 
     def node_noise_current(self, node, frequency):
         return 0
+
+    @property
+    def nodes(self):
+        return self._nodes
+
+    @nodes.setter
+    def nodes(self, nodes):
+        for node in list(nodes):
+            if not isinstance(node, Node):
+                # parse node name
+                node = Node(str(node))
+
+            self._nodes.append(node)
 
     @property
     def noise_current_nodes(self):

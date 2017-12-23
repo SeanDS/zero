@@ -162,6 +162,8 @@ class Solution(object):
         if self.has_noise:
             self.plot_noise()
 
+        self.show()
+
     def plot_tf(self, output_nodes=None, title=None):
         if not len(self.transfer_functions()):
             raise Exception("transfer functions were not computed in this solution")

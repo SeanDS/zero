@@ -47,13 +47,46 @@ class Circuit(object):
         """
 
         # solver parameters
-        self.input_node_p = None
-        self.input_node_n = None
-        self.noise_node = None
+        self._input_node_p = None
+        self._input_node_n = None
+        self._noise_node = None
         self.input_impedance = None
         self.components = []
         self.nodes = []
         self._matrix = None
+
+    @property
+    def input_node_p(self):
+        return self._input_node_p
+
+    @input_node_p.setter
+    def input_node_p(self, node):
+        if not isinstance(node, Node):
+            node = Node(node)
+
+        self._input_node_p = node
+
+    @property
+    def input_node_m(self):
+        return self._input_node_m
+
+    @input_node_m.setter
+    def input_node_m(self, node):
+        if not isinstance(node, Node):
+            node = Node(node)
+
+        self._input_node_m = node
+
+    @property
+    def noise_node(self):
+        return self._noise_node
+
+    @noise_node.setter
+    def noise_node(self, node):
+        if not isinstance(node, Node):
+            node = Node(node)
+
+        self._noise_node = node
 
     @property
     def non_gnd_nodes(self):
@@ -264,15 +297,15 @@ class Circuit(object):
         :type frequencies: Sequence[Numpy scalar or float]
         :param input_node_p: (optional) positive input node to calculate \
                              transfer functions from
-        :type input_node_p: :class:`~Node`
+        :type input_node_p: :class:`~Node` or str
         :param input_node_n: (optional) negative input node to calculate \
                              transfer functions from; if None then "gnd" is \
                              assumed
-        :type input_node_n: :class:`~Node`
+        :type input_node_n: :class:`~Node` or str
         :param input_impedance: (optional) input impedance to assume
         :type input_impedance: float
         :param noise_node: (optional) node to project noise to
-        :type noise_node: :class:`~Node`
+        :type noise_node: :class:`~Node` or str
         :param print_progress: whether to print solve progress to stream
         :type print_progress: bool
         :param progress_stream: stream to print progress to
@@ -304,7 +337,9 @@ class Circuit(object):
             # use ground
             self.input_node_n = Node("gnd")
 
-        if input_impedance:
+        # check if input impedance is specified (NOTE: cannot just evaluate
+        # boolean literal here, as 0 is a valid input impedance)
+        if input_impedance is not None:
             self.input_impedance = float(input_impedance)
 
         # create input component
@@ -340,6 +375,11 @@ class Circuit(object):
             y[self._input_index, 0] = 1
 
         if compute_noise:
+            # check if input impedance is specified
+            if self.input_impedance is None:
+                raise ValueError("input inpedance must be specified for noise "
+                                 "computation")
+
             # noise results matrix
             noise = self._results_matrix(n_freqs)
 
