@@ -124,7 +124,7 @@ class OpAmpLibrary(BaseConfig):
 
         # each section is a new op-amp
         for opamp in self.sections():
-            self._parse_opamp_data(opamp)
+            self._parse_lib_data(opamp)
 
         self.loaded = True
 
@@ -161,7 +161,7 @@ class OpAmpLibrary(BaseConfig):
 
         return self._format_name(name) in self.data.keys()
 
-    def _parse_opamp_data(self, section):
+    def _parse_lib_data(self, section):
         """Parse op-amp data from config file
 
         :param section: section of config file correponding to op-amp
