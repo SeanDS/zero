@@ -1,5 +1,15 @@
+"""LISO file parsing and running
+
+This module provides classes to parse LISO input and output files and to run
+native LISO binaries automatically. The parser classes share a base class which
+provides an interface to add components and settings to an electronics.py
+Circuit object. The input and output parsers implement methods to search and
+identify components and commands in their respective files.
+"""
+
 import sys
 import os.path
+import abc
 import subprocess
 import logging
 import re
@@ -10,123 +20,78 @@ from ..data import (VoltageTransferFunction, CurrentTransferFunction,
                     NoiseSpectrum, Series, ComplexSeries)
 from ..format import SIFormatter
 from .circuit import Circuit
-from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
-                         Gnd)
+from .components import Component, Resistor, Capacitor, Inductor, OpAmp, Node
 from .solution import Solution
 
 LOGGER = logging.getLogger("liso")
 
-class CircuitParser(object):
-    COMPONENTS = ["r", "c", "l", "op"]
-    DIRECTIVES = {"input_nodes": ["uinput", "vinput"],
-                  "output_nodes": ["uoutput", "voutput"],
-                  "noise_node": ["noise"],
-                  "frequencies": ["freq"]}
+class BaseParser(object, metaclass=abc.ABCMeta):
+    COMMENT_REGEX = re.compile("^#.*?$")
 
-    COMMENT_REGEX = re.compile("#.*?$")
-
-    def __init__(self):
-        # default values
-        self.frequencies = None
-        self.components = []
-        self.nodes = {}
-        self.input_nodes = []
-        self.input_impedance = 0
-        self.output_nodes = []
-        self.noise_node = None
-        self.loaded = False
-        self.solution = None
-
-    def load(self, filepath):
-        """Load and parses a LISO .fil circuit definition file
+    def __init__(self, filepath):
+        """Instantiate a LISO parser
 
         :param filepath: path to LISO file
         :type filepath: str
         """
 
-        # open file
-        with open(filepath, "r") as obj:
-            for tokens in self._fil_tokens(obj.readlines()):
-                self._parse_tokens(tokens)
+        # file to parse
+        self.filepath = filepath
 
-        self.loaded = True
+        # default circuit values
+        self.frequencies = None
+        self.output_nodes = set()
+        self.circuit = Circuit()
 
-    def run(self, *args, **kwargs):
-        """Run LISO script
+        self._load_file()
 
-        Optional arguments are passed to :meth:`~Circuit.solve`.
-        """
+    def add_output_node(self, node):
+        self.output_nodes.add(node)
 
-        # solve
-        self.solution = self.circuit().solve(frequencies=self.frequencies,
-                                             input_nodes=self.input_nodes,
-                                             input_impedance=self.input_impedance,
-                                             noise_node=self.noise_node,
-                                             *args, **kwargs)
+    def _load_file(self):
+        """Load and parse from file"""
+
+        with open(self.filepath, "r") as obj:
+            self.parse_lines(obj.readlines())
+
+    @abc.abstractmethod
+    def parse_lines(self, lines):
+        return NotImplemented
+
+    @abc.abstractmethod
+    def solution(self):
+        """Get solution"""
+        return NotImplemented
 
     def show(self):
         """Show LISO results"""
 
+        if not self.calc_tfs and not self.calc_noise:
+            LOGGER.warning("nothing to show")
+
+        solution = self.solution()
+
         if self.calc_tfs:
-            self.solution.plot_tf(output_nodes=self.output_nodes)
+            solution.plot_tf(output_nodes=list(self.output_nodes))
 
         if self.calc_noise:
-            self.solution.plot_noise()
+            solution.plot_noise()
 
         # display plots
-        self.solution.show()
+        solution.show()
 
-    def circuit(self):
-        """Get circuit representing LISO model
+    @classmethod
+    def tokenise(cls, line):
+        """Tokenise a LISO line
 
-        :return: circuit object
-        :rtype: :class:`~Circuit`
+        :param line: line to tokenise
+        :type line: str
+        :return: tokens that make up each line
+        :rtype: List[str]
         """
 
-        if not self.loaded:
-            raise Exception("file not loaded")
-
-        # create empty circuit
-        circuit = Circuit()
-
-        # add components
-        for component in self.components:
-            circuit.add_component(component)
-
-        return circuit
-
-    def get_component(self, component_name):
-        """Get circuit component by name
-
-        :param component_name: name of component to fetch
-        :type component_name: str
-        :return: component
-        :rtype: :class:`~Component`
-        :raises ValueError: if component not found
-        """
-
-        for component in self.components:
-            if component.name == component_name:
-                return component
-
-        raise ValueError("component not found")
-
-    def get_node(self, node_name):
-        """Get circuit node by name
-
-        :param node_name: name of node to fetch
-        :type node_name: str
-        :return: node
-        :rtype: :class:`~Node`
-        :raises ValueError: if node not found
-        """
-
-        for component in self.components:
-            for node in component.nodes:
-                if node.name == node_name:
-                    return node
-
-        raise ValueError("node not found")
+        # split into parts and remove extra whitespace
+        return [line.strip() for line in line.split()]
 
     @property
     def calc_tfs(self):
@@ -134,21 +99,88 @@ class CircuitParser(object):
 
     @property
     def calc_noise(self):
-        return self.noise_node is not None
+        return self.circuit.noise_node is not None
 
-    @classmethod
-    def _fil_tokens(cls, lines):
-        """Extract LISO file tokens
+    def _add_lcr(self, _class, name, value, node1_name, node2_name):
+        """Add new L, C or R component
 
-        :param lines: lines to parse
-        :type lines: Sequence[str]
-        :return: sequence of tokens that make up each line
-        :rtype: Generator[List[str]]
+        :param _class: component class to create
+        :type _class: type
+        :param name: component name
+        :type name: str
+        :param value: component value
+        :type value: float
+        :param node1_name: node 1 name
+        :type node1_name: str
+        :param node2_name: node 2 name
+        :type node2_name: str
+        :return: new component
+        :rtype: :class:`~Component`
         """
 
-        for line in lines:
-            # remove comments and extra whitespace and split into parts
-            yield re.sub(cls.COMMENT_REGEX, "", line).split()
+        node1 = Node(node1_name)
+        node2 = Node(node2_name)
+
+        LOGGER.info("adding %s [%s = %s, in %s, out %s]",
+                    _class.__name__.lower(), name, value, node1, node2)
+
+        self.circuit.add_component(_class(name=name, value=value, node1=node1,
+                                          node2=node2))
+
+    def _add_resistor(self, *args, **kwargs):
+        """Add resistor
+
+        :return: new resistor
+        :rtype: :class:`~Resistor`
+        """
+
+        self._add_lcr(Resistor, *args, **kwargs)
+
+    def _add_capacitor(self, *args, **kwargs):
+        """Add capacitor
+
+        :return: new capacitor
+        :rtype: :class:`~Capacitor`
+        """
+
+        self._add_lcr(Capacitor, *args, **kwargs)
+
+    def _add_inductor(self, *args, **kwargs):
+        """Add inductor
+
+        :return: new inductor
+        :rtype: :class:`~Inductor`
+        """
+
+        self._add_lcr(Inductor, *args, **kwargs)
+
+    def _add_opamp(self, name, model, node1_name, node2_name, node3_name):
+        """Add op-amp
+
+        :return: new op-amp
+        :rtype: :class:`~OpAmp`
+        """
+
+        # add nodes first
+        node1 = Node(node1_name)
+        node2 = Node(node2_name)
+        node3 = Node(node3_name)
+
+        LOGGER.info("adding op-amp [%s = %s, in+ %s, in- %s, out %s]",
+                    name, model, node1, node2, node3)
+
+        self.circuit.add_component(OpAmp(name=name, model=model, node1=node1,
+                                         node2=node2, node3=node3))
+
+class InputParser(BaseParser):
+    COMPONENTS = ["r", "c", "l", "op"]
+    DIRECTIVES = {"input_nodes": ["uinput", "vinput"],
+                  "output_nodes": ["uoutput", "voutput"],
+                  "noise_node": ["noise"],
+                  "frequencies": ["freq"]}
+
+    def __init__(self, *args, **kwargs):
+        super(InputParser, self).__init__(*args, **kwargs)
 
     @property
     def directives(self):
@@ -161,8 +193,21 @@ class CircuitParser(object):
         for directive_list in self.DIRECTIVES.values():
             yield from directive_list
 
+    def parse_lines(self, lines):
+        """Parses a list of LISO input file lines
+
+        :param lines: lines to parse
+        :type lines: Sequence[str]
+        """
+
+        # open file
+        with open(self.filepath, "r") as obj:
+            for tokens in [self.tokenise(line) for line in lines
+                           if not line.startswith("#")]:
+                self._parse_tokens(tokens)
+
     def _parse_tokens(self, tokens):
-        """Parse LISO tokens as commands
+        """Parse LISO input file tokens as commands
 
         :param tokens: tokens that make up a LISO line
         :type tokens: Sequence[str]
@@ -191,106 +236,15 @@ class CircuitParser(object):
         """
 
         if command == "r":
-            obj = self._create_resistor(options)
+            self._add_resistor(*options)
         elif command == "c":
-            obj = self._create_capacitor(options)
+            self._add_capacitor(*options)
         elif command == "l":
-            obj = self._create_inductor(options)
+            self._add_inductor(*options)
         elif command == "op":
-            obj = self._create_opamp(options)
+            self._add_opamp(*options)
         else:
             raise ValueError("Unknown component: %s" % command)
-
-        self.components.append(obj)
-
-    def _create_lcr(self, _class, options):
-        """Create new component
-
-        :param _class: component class to create
-        :type _class: type
-        :param options: component options
-        :type options: Sequence[str]
-        :return: new component
-        :rtype: :class:`~Component`
-        """
-
-        name = options[0]
-        value = options[1]
-        node1 = self._get_node(options[2])
-        node2 = self._get_node(options[3])
-
-        LOGGER.info("adding %s (%s, in %s, out %s)", name, value, node1,
-                    node2)
-
-        return _class(name=name, value=value, node1=node1, node2=node2)
-
-    def _create_resistor(self, *options):
-        """Create resistor
-
-        :return: new resistor
-        :rtype: :class:`~Resistor`
-        """
-
-        return self._create_lcr(Resistor, *options)
-
-    def _create_capacitor(self, *options):
-        """Create capacitor
-
-        :return: new capacitor
-        :rtype: :class:`~Capacitor`
-        """
-
-        return self._create_lcr(Capacitor, *options)
-
-    def _create_inductor(self, *options):
-        """Create inductor
-
-        :return: new inductor
-        :rtype: :class:`~Inductor`
-        """
-
-        return self._create_lcr(Inductor, *options)
-
-    def _create_opamp(self, options):
-        """Create op-amp
-
-        :return: new op-amp
-        :rtype: :class:`~OpAmp`
-        """
-
-        name = options[0]
-        model = options[1]
-        node1 = self._get_node(options[2])
-        node2 = self._get_node(options[3])
-        node3 = self._get_node(options[4])
-
-        LOGGER.info("adding %s (%s, in+ %s, in- %s, out %s)", name, model,
-                    node1, node2, node3)
-
-        return OpAmp(name=name, model=model, node1=node1, node2=node2,
-                     node3=node3)
-
-    def _get_node(self, node_name):
-        """Get node given its name
-
-        :param node_name: name of the node
-        :type node_name: str
-        :return: node
-        :rtype: :class:`~Node`
-        """
-
-        node_name = str(node_name)
-
-        if node_name not in self.nodes:
-            if node_name.lower() == "gnd":
-                # return ground node instance
-                node = Gnd()
-            else:
-                node = Node(node_name)
-
-            self.nodes[node_name] = node
-
-        return self.nodes[node_name]
 
     def _parse_directive(self, directive, options):
         """Parse LISO tokens as directive
@@ -320,21 +274,23 @@ class CircuitParser(object):
         :type node_options: Sequence[str]
         """
 
-        self.input_nodes = [self._get_node(node_options[0])]
+        # we always have at least a positive node
+        self.circuit.input_node_p = Node(node_options[0])
 
         if len(node_options) > 3:
             # floating input
-            self.input_nodes.append(self._get_node(node_options[1]))
-            self.input_impedance = float(node_options[2])
+            self.circuit.input_node_m = Node(node_options[1])
+            self.circuit.input_impedance = float(node_options[2])
 
-            LOGGER.info("adding floating input nodes [%s] with impedance: %f",
-                        ", ".join(self.input_nodes), self.input_impedance)
+            LOGGER.info("adding floating input nodes +%s, -%s with impedance "
+                        " %f", self.circuit.input_node_p,
+                        self.circuit.input_node_m, self.circuit.input_impedance)
         else:
-            self.input_impedance = float(node_options[1])
+            self.circuit.input_impedance = float(node_options[1])
 
             LOGGER.info("adding input node %s with impedance %s",
-                        self.input_nodes[0],
-                        SIFormatter.format(self.input_impedance, "Ω"))
+                        self.circuit.input_node_p,
+                        SIFormatter.format(self.circuit.input_impedance, "Ω"))
 
     def _parse_output_nodes(self, output_str):
         """Parse LISO token as output node directive
@@ -348,7 +304,7 @@ class CircuitParser(object):
         options = output_str.split(":")
 
         # only use first option, which is the node name
-        node = self._get_node(options[0])
+        node = Node(options[0])
 
         LOGGER.info("adding output node %s", node)
         self.add_output_node(node)
@@ -366,16 +322,16 @@ class CircuitParser(object):
         options = node_str.split(":")
 
         # only use first option, which is the node name
-        node = self._get_node(options[0])
+        node = Node(options[0])
 
-        LOGGER.info("adding noise node %s", node)
-        self.noise_node = node
+        LOGGER.info("setting noise node %s", node)
+        self.circuit.noise_node = node
 
         if len(options) > 1:
             LOGGER.warning("ignoring plot options in noise command")
 
     def _parse_frequencies(self, options):
-        """Parse LIGO token as frequency settings
+        """Parse LISO input file frequency options
 
         :param options: frequency options
         :type options: Sequence[str]
@@ -384,8 +340,8 @@ class CircuitParser(object):
         if len(options) != 4:
             raise ValueError("syntax: freq lin|log start stop steps")
 
-        start = SIFormatter.parse(options[1])
-        stop = SIFormatter.parse(options[2])
+        start, _ = SIFormatter.parse(options[1])
+        stop, _ = SIFormatter.parse(options[2])
         # steps + 1
         count = int(options[3]) + 1
 
@@ -403,17 +359,276 @@ class CircuitParser(object):
                     "scaling", count, SIFormatter.format(start, "Hz"),
                     SIFormatter.format(stop, "Hz"), scaling_str)
 
-    def add_output_node(self, node):
-        """Add output node
+    def solution(self, *args, **kwargs):
+        """Get circuit solution
 
-        :param node: output node to add
-        :type node: :class:`~Node`
+        Optional arguments are passed to :meth:`~Circuit.solve`.
+
+        :return: solution
+        :rtype: :class:`~Solution`
         """
 
-        if node in self.output_nodes:
-            raise ValueError("output node already added")
+        # solve
+        return self.circuit.solve(frequencies=self.frequencies, *args, **kwargs)
 
-        self.output_nodes.append(node)
+class OutputParser(BaseParser):
+    """LISO output parser"""
+
+    # circuit definitions
+    # match text after e.g. "#2 capacitors:" and before the first line with
+    # a non-whitespace character after the "#"
+    COMPONENT_REGEX = re.compile("^#(\d+) (op-amps?|capacitors?|resistors?|nodes?):([\s\S]+?)(?=\n#\S+)",
+                                 re.MULTILINE)
+
+    # data column definitions
+    TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
+    TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
+    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) for .* :$")
+    # "0 node: nin dB Degrees"
+    TF_VOLTAGE_SINK_REGEX = re.compile("^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
+    # "#  0 C:c2 dB Degrees"
+    TF_CURRENT_SINK_REGEX = re.compile("^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
+    # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
+    #    #  r1 r3 r4 r6 op1(U) op1(I-) """
+    NOISE_VOLTAGE_SOURCE_REGEX = re.compile("^\#Noise is computed at node [\w\d]+ for .* :\n\#\s*([\w\d\s\(\)\-\+]*)\s*$",
+                                            re.MULTILINE)
+    # "o1(I+)"
+    NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
+
+    def __init__(self, *args, **kwargs):
+        super(OutputParser, self).__init__(*args, **kwargs)
+
+        # defaults
+        self.data = None
+        self.functions = []
+
+    def add_function(self, function):
+        if function in self.functions:
+            raise ValueError("duplicate function")
+
+        self.functions.append(function)
+
+        # reset solution
+        self.solution = None
+
+    def solution(self):
+        """Get circuit solution
+
+        :return: solution
+        :rtype: :class:`~Solution`
+        """
+
+        # create solution
+        solution = Solution(self.circuit, self.frequencies,
+                            noise_node=self.noise_node)
+
+        # add functions
+        for function in self.functions:
+            solution.add_function(function)
+
+        return solution
+
+    def parse_lines(self, lines):
+        # parse data
+        self.data = np.genfromtxt(self.filepath)
+
+        # parse circuit and column definitions
+        self._parse_circuit(lines)
+        self._parse_columns(lines)
+
+    def _parse_circuit(self, lines):
+        text = "".join(lines)
+
+        # find components
+        for (count, description, content) in re.findall(self.COMPONENT_REGEX, text):
+            if description.startswith(("resistor", "capacitor", "inductor")):
+                self._parse_lcr(description, content)
+            elif description.startswith("op-amp"):
+                self._parse_opamp(description, content)
+            elif description.startswith("node"):
+                # nodes already defined by components
+                continue
+
+        # find input node
+
+    def _parse_lcr(self, description, content):
+        # tokenise non-empty lines, stripping out comment hash
+        for tokens in [self.tokenise(line.lstrip("#"))
+                       for line in content.splitlines() if line]:
+            name = tokens[1]
+
+            # parse value
+            value, _ = SIFormatter.parse(tokens[2] + tokens[3])
+
+            # nodes
+            node1_name = tokens[4]
+            node2_name = tokens[5]
+
+            # create component
+            if description.startswith("resistor"):
+                self._add_resistor(name, value, node1_name, node2_name)
+            elif description.startswith("capacitor"):
+                self._add_capacitor(name, value, node1_name, node2_name)
+            elif description.startswith("inductor"):
+                self._add_inductor(name, value, node1_name, node2_name)
+
+    def _parse_opamp(self, description, content):
+        # extract op-amp data
+        pass
+
+    def _parse_columns(self, lines):
+        for line in lines:
+            if re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line):
+                self._parse_voltage_nodes(lines)
+            elif re.match(self.TF_CURRENT_OUTPUT_REGEX, line):
+                self._parse_current_components(lines)
+            elif re.match(self.NOISE_OUTPUT_REGEX, line):
+                self._parse_noise_components(lines)
+
+    def _parse_voltage_nodes(self, lines):
+        """Matches output file voltage transfer functions
+
+        :param lines: output file lines
+        :type lines: Sequence[str]
+        """
+
+        # transfer function source is the input
+        source = self.input_node_p
+
+        # find transfer functions
+        for line in lines:
+            match = re.match(self.TF_VOLTAGE_SINK_REGEX, line)
+
+            if not match:
+                continue
+
+            # data column index
+            column = int(match.group(1))
+
+            # voltage sink node
+            sink = self.get_node(match.group(2))
+
+            # data
+            frequencies = self.data[:, 0] # frequency always first
+            magnitude_data = self.data[:, column * 2 + 1]
+            phase_data = self.data[:, column * 2 + 2]
+
+            # scales
+            magnitude_scale = match.group(3)
+            phase_scale = match.group(4)
+
+            # create data series
+            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
+                                   phase=phase_data,
+                                   magnitude_scale=magnitude_scale,
+                                   phase_scale=phase_scale)
+
+            self.add_function(VoltageTransferFunction(series=series,
+                                                      source=source,
+                                                      sink=sink))
+
+    def _parse_current_components(self, lines):
+        """Matches output file current transfer functions
+
+        :param lines: output file lines
+        :type lines: Sequence[str]
+        """
+
+        # transfer function source is the input
+        source = self.input_node_p
+
+        # find transfer functions
+        for line in lines:
+            match = re.match(self.TF_CURRENT_SINK_REGEX, line)
+
+            if not match:
+                continue
+
+            # data column index
+            column = int(match.group(1))
+
+            # current sink component
+            sink = self.get_component(match.group(3))
+
+            # data
+            frequencies = self.data[:, 0] # frequency always first
+            magnitude_data = self.data[:, column * 2 + 1]
+            phase_data = self.data[:, column * 2 + 2]
+
+            # scales
+            magnitude_scale = match.group(4)
+            phase_scale = match.group(5)
+
+            # create data series
+            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
+                                   phase=phase_data,
+                                   magnitude_scale=magnitude_scale,
+                                   phase_scale=phase_scale)
+
+            self.add_function(CurrentTransferFunction(series=series,
+                                                      source=source,
+                                                      sink=sink))
+
+    def _parse_noise_components(self, lines):
+        """Matches output file noise spectra
+
+        :param lines: output file lines
+        :type lines: Sequence[str]
+        """
+
+        # noise sink is the noise node
+        sink = self.noise_node
+
+        # find noise component information
+        matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
+
+        # split into list
+        source_strs = matches.group(1).split()
+
+        for index, source_str in enumerate(source_strs, start=1):
+            # extract component and noise type
+            source_name, noise_type = self._parse_noise_component(source_str)
+
+            # noise source component
+            source = self.get_component(source_name)
+
+            frequencies = self.data[:, 0] # frequency always first
+            spectrum = self.data[:, index]
+
+            # create data series
+            series = Series(x=frequencies, y=spectrum)
+
+            self.add_function(NoiseSpectrum(series=series,
+                                            source=source,
+                                            sink=sink))#,
+                                            #noise_type=noise_type)
+
+    @classmethod
+    def _parse_noise_component(cls, source_str):
+        # get rid of whitespace around string
+        source_str = source_str.strip()
+
+        # look for component name and brackets
+        match = re.match(cls.NOISE_COMPONENT_REGEX, source_str)
+
+        component_name = match.group(1)
+
+        # component noise type, e.g. I+ (or empty, for resistors)
+        noise_str = match.group(3)
+
+        # group 2 is not empty if noise type is specified
+        if match.group(2):
+            # op-amp noise; check first character
+            if noise_str[0] == "U":
+                noise_type = Circuit.NOISE_OPAMP_VOLTAGE
+            elif noise_str[0] == "I":
+                noise_type = Circuit.NOISE_OPAMP_CURRENT
+            else:
+                raise ValueError("unrecognised noise type")
+        else:
+            noise_type = Circuit.NOISE_JOHNSON
+
+        return component_name, noise_type
 
 class Runner(object):
     """LISO runner"""
@@ -448,7 +663,7 @@ class Runner(object):
         if result.returncode != 0:
             raise Exception("error during LISO run")
 
-        return OutputParser(script_path, output_path)
+        return OutputParser(output_path)
 
     def _run_liso_process(self, script_path, output_path, plot):
         input_path = os.path.abspath(script_path)
@@ -505,245 +720,3 @@ class Runner(object):
                 return path
 
         raise FileNotFoundError("no appropriate LISO binary found")
-
-class OutputParser(object):
-    """LISO output parser"""
-
-    TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
-    TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
-    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) for .* :$")
-    # "0 node: nin dB Degrees"
-    TF_VOLTAGE_SINK_REGEX = re.compile("^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
-    # "#  0 C:c2 dB Degrees"
-    TF_CURRENT_SINK_REGEX = re.compile("^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
-    # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
-    #    #  r1 r3 r4 r6 op1(U) op1(I-) """
-    NOISE_VOLTAGE_SOURCE_REGEX = re.compile("^\#Noise is computed at node [\w\d]+ for .* :\n\#\s*([\w\d\s\(\)\-\+]*)\s*$",
-                                            re.MULTILINE)
-    # "o1(I+)"
-    NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
-
-    def __init__(self, script_path, output_path=None):
-        if output_path is None:
-            # use script path but with ".out" on end
-            output_path = os.path.splitext(script_path)[0] + os.path.extsep + "out"
-
-        # set file paths
-        self.infile = script_path
-        self.outfile = output_path
-
-        # defaults
-        self.input_parser = None
-        self.data = None
-        self.functions = []
-        self._solution = None
-
-        self._parse()
-
-    def add_function(self, function):
-        if function in self.functions:
-            raise ValueError("duplicate function")
-
-        self.functions.append(function)
-
-        # reset solution
-        self._solution = None
-
-    @property
-    def solution(self):
-        """Get solution object
-
-        :return: solution
-        :rtype: :class:`~Solution`
-        """
-
-        if self._solution is not None:
-            return self._solution
-
-        # create solution
-        self._solution = Solution(self.input_parser.circuit, self.frequencies,
-                                  noise_node=self.input_parser.noise_node)
-
-        # add functions
-        for function in self.functions:
-            self._solution.add_function(function)
-
-        return self._solution
-
-    def _parse(self):
-        """Parse LISO input and output files"""
-
-        # parse circuit
-        self.input_parser = CircuitParser()
-        self.input_parser.load(self.infile)
-
-        # parse output data
-        self._parse_outfile_data(self.outfile)
-
-    def _parse_outfile_data(self, filepath):
-        # parse data
-        self.data = np.genfromtxt(filepath)
-
-        with open(filepath, "r") as obj:
-            lines = obj.readlines()
-
-        for line in lines:
-            if re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line):
-                self._parse_voltage_nodes(lines)
-            elif re.match(self.TF_CURRENT_OUTPUT_REGEX, line):
-                self._parse_current_components(lines)
-            elif re.match(self.NOISE_OUTPUT_REGEX, line):
-                self._parse_noise_components(lines)
-
-    def _parse_voltage_nodes(self, lines):
-        """Matches output file voltage transfer functions
-
-        :param lines: output file lines
-        :type lines: Sequence[str]
-        """
-
-        # transfer function source is the input
-        source = self.input_parser.input_nodes[0]
-
-        # find transfer functions
-        for line in lines:
-            match = re.match(self.TF_VOLTAGE_SINK_REGEX, line)
-
-            if not match:
-                continue
-
-            # data column index
-            column = int(match.group(1))
-
-            # voltage sink node
-            sink = self.input_parser.get_node(match.group(2))
-
-            # data
-            frequencies = self.data[:, 0] # frequency always first
-            magnitude_data = self.data[:, column * 2 + 1]
-            phase_data = self.data[:, column * 2 + 2]
-
-            # scales
-            magnitude_scale = match.group(3)
-            phase_scale = match.group(4)
-
-            # create data series
-            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
-                                   phase=phase_data,
-                                   magnitude_scale=magnitude_scale,
-                                   phase_scale=phase_scale)
-
-            self.add_function(VoltageTransferFunction(series=series,
-                                                      source=source,
-                                                      sink=sink))
-
-    def _parse_current_components(self, lines):
-        """Matches output file current transfer functions
-
-        :param lines: output file lines
-        :type lines: Sequence[str]
-        """
-
-        # transfer function source is the input
-        source = self.input_parser.input_nodes[0]
-
-        # find transfer functions
-        for line in lines:
-            match = re.match(self.TF_CURRENT_SINK_REGEX, line)
-
-            if not match:
-                continue
-
-            # data column index
-            column = int(match.group(1))
-
-            # current sink component
-            sink = self.input_parser.get_component(match.group(3))
-
-            # data
-            frequencies = self.data[:, 0] # frequency always first
-            magnitude_data = self.data[:, column * 2 + 1]
-            phase_data = self.data[:, column * 2 + 2]
-
-            # scales
-            magnitude_scale = match.group(4)
-            phase_scale = match.group(5)
-
-            # create data series
-            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
-                                   phase=phase_data,
-                                   magnitude_scale=magnitude_scale,
-                                   phase_scale=phase_scale)
-
-            self.add_function(CurrentTransferFunction(series=series,
-                                                      source=source,
-                                                      sink=sink))
-
-    def _parse_noise_components(self, lines):
-        """Matches output file noise spectra
-
-        :param lines: output file lines
-        :type lines: Sequence[str]
-        """
-
-        # noise sink is the noise node
-        sink = self.input_parser.noise_node
-
-        # find noise component information
-        matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
-
-        # split into list
-        source_strs = matches.group(1).split()
-
-        for index, source_str in enumerate(source_strs, start=1):
-            # extract component and noise type
-            source_name, noise_type = self._parse_noise_component(source_str)
-
-            # noise source component
-            source = self.input_parser.get_component(source_name)
-
-            frequencies = self.data[:, 0] # frequency always first
-            spectrum = self.data[:, index]
-
-            # create data series
-            series = Series(x=frequencies, y=spectrum)
-
-            self.add_function(NoiseSpectrum(series=series,
-                                            source=source,
-                                            sink=sink))#,
-                                            #noise_type=noise_type)
-
-    @classmethod
-    def _parse_noise_component(cls, source_str):
-        # get rid of whitespace around string
-        source_str = source_str.strip()
-
-        # look for component name and brackets
-        match = re.match(cls.NOISE_COMPONENT_REGEX, source_str)
-
-        component_name = match.group(1)
-
-        # component noise type, e.g. I+ (or empty, for resistors)
-        noise_str = match.group(3)
-
-        # group 2 is not empty if noise type is specified
-        if match.group(2):
-            # op-amp noise; check first character
-            if noise_str[0] == "U":
-                noise_type = Circuit.NOISE_OPAMP_VOLTAGE
-            elif noise_str[0] == "I":
-                noise_type = Circuit.NOISE_OPAMP_CURRENT
-            else:
-                raise ValueError("unrecognised noise type")
-        else:
-            noise_type = Circuit.NOISE_JOHNSON
-
-        return component_name, noise_type
-
-    @property
-    def frequencies(self):
-        if not len(self.functions):
-            raise Exception("no frequencies available (has LISO been run yet?)")
-
-        # use first function's x-axis
-        return self.functions[0].series.x
