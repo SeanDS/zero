@@ -421,6 +421,10 @@ class OutputParser(BaseParser):
                              "^\#\s*(.*)$", # poles / zeros
                              re.MULTILINE)
 
+    # op-amp roots
+    OPAMP_ROOT_REGEX = re.compile("(pole|zero) at ([\w\d\s\.]+) "
+                                  "\((real|Q=([\w\d\s\.]+))\)")
+
     # data column definitions
     TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
     TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
@@ -555,13 +559,38 @@ class OutputParser(BaseParser):
 
     def _parse_opamp_roots(self, roots):
         # empty roots
-        zeros = np.array([])
-        poles = np.array([])
+        zeros = []
+        poles = []
 
-        # TODO: parse
-        LOGGER.warning("poles/zeros not parsed")
+        # match roots
+        matches = re.findall(self.OPAMP_ROOT_REGEX, roots)
 
-        return zeros, poles
+        for root, frequency, plane, q_factor in matches:
+            roots = []
+
+            # parse frequency
+            frequency, _ = SIFormatter.parse(frequency)
+
+            if plane == "real":
+                roots.append(frequency)
+            else:
+                # calculate complex frequency using q-factor
+                q_factor, _ = SIFormatter.parse(q_factor)
+                theta = np.arccos(1 / (2 * qfactor))
+
+                # add negative/positive pair of poles/zeros
+                roots.append(frequency * np.exp(-1j * theta))
+                roots.append(frequency * np.exp(1j * theta))
+
+            if root == "zero":
+                zeros.extend(roots)
+            elif root == "pole":
+                poles.extend(roots)
+            else:
+                raise ValueError("unrecognised root type")
+
+        # sort ascending and return as numpy vectors
+        return np.array(sorted(zeros)), np.array(sorted(poles))
 
     def _parse_input_nodes(self, lines):
         for line in lines:
