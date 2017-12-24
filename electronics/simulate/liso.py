@@ -774,7 +774,7 @@ class OutputParser(BaseParser):
         self.circuit.noise_node = Node(node_name)
 
         # split into list
-        source_strs = matches.group(2).split()
+        source_strs = matches.group(1).split()
 
         found = 0
 
