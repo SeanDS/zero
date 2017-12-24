@@ -478,10 +478,11 @@ class OutputParser(BaseParser):
         self.data = np.genfromtxt(self.filepath)
 
         # parse circuit and column definitions
-        self._parse_circuit(lines)
+        self._parse_components(lines)
+        self._parse_input_nodes(lines)
         self._parse_columns(lines)
 
-    def _parse_circuit(self, lines):
+    def _parse_components(self, lines):
         text = "".join(lines)
 
         # find components
@@ -493,9 +494,6 @@ class OutputParser(BaseParser):
             elif description.startswith("node"):
                 # nodes already defined by components
                 continue
-
-        # find input node(s)
-        self._parse_input_nodes(lines)
 
     def _parse_lcr(self, count, description, content):
         count = int(count)
