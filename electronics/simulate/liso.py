@@ -483,9 +483,9 @@ class OutputParser(BaseParser):
         # find components
         for (count, description, content) in re.findall(self.COMPONENT_REGEX, text):
             if description.startswith(("resistor", "capacitor", "inductor")):
-                self._parse_lcr(description, content)
+                self._parse_lcr(count, description, content)
             elif description.startswith("op-amp"):
-                self._parse_opamp(description, content)
+                self._parse_opamp(count, description, content)
             elif description.startswith("node"):
                 # nodes already defined by components
                 continue
@@ -493,7 +493,10 @@ class OutputParser(BaseParser):
         # find input node(s)
         self._parse_input_nodes(lines)
 
-    def _parse_lcr(self, description, content):
+    def _parse_lcr(self, count, description, content):
+        count = int(count)
+        found = 0
+
         # tokenise non-empty lines, stripping out comment hash
         for tokens in [self.tokenise(line.lstrip("#"))
                        for line in content.splitlines() if line]:
@@ -513,10 +516,20 @@ class OutputParser(BaseParser):
                 self._add_capacitor(name, value, node1_name, node2_name)
             elif description.startswith("inductor"):
                 self._add_inductor(name, value, node1_name, node2_name)
+            else:
+                raise Exception("unrecognised component: %s" % description)
 
-    def _parse_opamp(self, description, content):
+            found += 1
+
+        if count != found:
+            raise Exception("expected %d component(s), parsed %d" % (count, found))
+
+    def _parse_opamp(self, count, description, content):
         # extract op-amp data
         matches = re.findall(self.OPAMP_REGEX, content)
+
+        count = int(count)
+        found = 0
 
         for (name, model, node1_name, node2_name, node3_name, a0, gbw,
              v_noise, v_corner, i_noise, i_corner, v_max, i_max, slew_rate,
@@ -534,6 +547,11 @@ class OutputParser(BaseParser):
                             poles=poles, v_noise=v_noise, i_noise=i_noise,
                             v_corner=v_corner, i_corner=i_corner, v_max=v_max,
                             i_max=i_max, slew_rate=slew_rate)
+
+            found += 1
+
+        if count != found:
+            raise Exception("expected %d op-amp(s), parsed %d" % (count, found))
 
     def _parse_opamp_roots(self, roots):
         # empty roots
