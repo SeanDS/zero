@@ -428,7 +428,7 @@ class OutputParser(BaseParser):
     # data column definitions
     TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
     TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
-    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) for .* :$")
+    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
     # "0 node: nin dB Degrees"
     TF_VOLTAGE_SINK_REGEX = re.compile("^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
     # "#  0 C:c2 dB Degrees"
@@ -622,25 +622,40 @@ class OutputParser(BaseParser):
 
     def _parse_columns(self, lines):
         for line in lines:
-            if re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line):
-                self._parse_voltage_nodes(lines)
-            elif re.match(self.TF_CURRENT_OUTPUT_REGEX, line):
-                self._parse_current_components(lines)
-            else:
-                match = re.match(self.NOISE_OUTPUT_REGEX, line)
+            voltage_match = re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line)
 
-                if match:
-                    self._parse_noise_components(match.group(1), lines)
+            if voltage_match:
+                self._parse_voltage_nodes(voltage_match.group(1), lines)
+                continue
 
-    def _parse_voltage_nodes(self, lines):
+            current_match = re.match(self.TF_CURRENT_OUTPUT_REGEX, line)
+
+            if current_match:
+                self._parse_current_components(current_match.group(1), lines)
+                continue
+
+            noise_match = re.match(self.NOISE_OUTPUT_REGEX, line)
+
+            if noise_match:
+                self._parse_noise_components(noise_match.group(1),
+                                             noise_match.group(3), lines)
+                continue
+
+    def _parse_voltage_nodes(self, count, lines):
         """Matches output file voltage transfer functions
 
+        :param count: number of voltage outputs
+        :type count: int
         :param lines: output file lines
         :type lines: Sequence[str]
         """
 
+        count = int(count)
+
         # transfer function source is the input
         source = self.circuit.input_node_p
+
+        found = 0
 
         # find transfer functions
         for line in lines:
@@ -677,15 +692,27 @@ class OutputParser(BaseParser):
             # add output node
             self.add_output_node(sink)
 
-    def _parse_current_components(self, lines):
+            found += 1
+
+        if count != found:
+            raise Exception("expected %d voltage output(s), parsed %d" %
+                            (count, found))
+
+    def _parse_current_components(self, count, lines):
         """Matches output file current transfer functions
 
+        :param count: number of current outputs
+        :type count: int
         :param lines: output file lines
         :type lines: Sequence[str]
         """
 
+        count = int(count)
+
         # transfer function source is the input
         source = self.circuit.input_node_p
+
+        found = 0
 
         # find transfer functions
         for line in lines:
@@ -723,14 +750,24 @@ class OutputParser(BaseParser):
             # FIXME: add output current components
             #self.add_output_node(sink)
 
-    def _parse_noise_components(self, node_name, lines):
+            found += 1
+
+        if count != found:
+            raise Exception("expected %d current output(s), parsed %d" %
+                            (count, found))
+
+    def _parse_noise_components(self, node_name, count, lines):
         """Matches output file noise spectra
 
         :param node_name: name of noise sink node
         :type node_name: str
+        :param count: number of noise sources
+        :type count: int
         :param lines: output file lines
         :type lines: Sequence[str]
         """
+
+        count = int(count)
 
         # find noise component information
         matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
@@ -740,6 +777,8 @@ class OutputParser(BaseParser):
 
         # split into list
         source_strs = matches.group(2).split()
+
+        found = 0
 
         for index, source_str in enumerate(source_strs, start=1):
             # extract component and noise type
@@ -758,6 +797,12 @@ class OutputParser(BaseParser):
                                             source=source,
                                             sink=self.circuit.noise_node))#,
                                             #noise_type=noise_type)
+
+            found += 1
+
+        if count != found:
+            raise Exception("expected %d noise source(s), parsed %d" %
+                            (count, found))
 
     @classmethod
     def _parse_noise_component(cls, source_str):
