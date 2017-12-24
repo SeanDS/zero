@@ -437,7 +437,8 @@ class OutputParser(BaseParser):
     NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
     # input nodes
-    INPUT_NODE_REGEX = re.compile("\#Voltage input at node ([\w\d]+), impedance (\d+) Ohm")
+    FIXED_INPUT_NODE_REGEX = re.compile("\#Voltage input at node ([\w\d]+), impedance (\d+) Ohm")
+    FLOATING_INPUT_NODES_REGEX = re.compile("\#Floating voltage input between nodes ([\w\d]+) and ([\w\d]+), impedance (\d+) Ohm")
 
     def __init__(self, *args, **kwargs):
         # defaults
@@ -546,18 +547,31 @@ class OutputParser(BaseParser):
 
     def _parse_input_nodes(self, lines):
         for line in lines:
-            match = re.match(self.INPUT_NODE_REGEX, line)
+            match_fixed = re.match(self.FIXED_INPUT_NODE_REGEX, line)
+            match_floating = re.match(self.FLOATING_INPUT_NODES_REGEX, line)
 
-            if not match:
-                continue
+            if match_fixed:
+                # fixed input
+                self.circuit.input_node_p = Node(match_fixed.group(1))
+                self.circuit.input_impedance = float(match_fixed.group(2))
 
-            # FIXME: support floating inputs
-            self.circuit.input_node_p = Node(match.group(1))
-            self.circuit.input_impedance = float(match.group(2))
+                LOGGER.info("adding input node %s with impedance %s",
+                            self.circuit.input_node_p,
+                            SIFormatter.format(self.circuit.input_impedance,
+                                               "Ω"))
+                return
+            elif match_floating:
+                # floating input
+                self.circuit.input_node_p = Node(match_floating.group(1))
+                self.circuit.input_node_m = Node(match_floating.group(2))
+                self.circuit.input_impedance = float(match_floating.group(3))
 
-            LOGGER.info("adding input node %s with impedance %s",
-                        self.circuit.input_node_p,
-                        SIFormatter.format(self.circuit.input_impedance, "Ω"))
+                LOGGER.info("adding floating input nodes +%s, -%s with "
+                            "impedance %s", self.circuit.input_node_p,
+                            self.circuit.input_node_m,
+                            SIFormatter.format(self.circuit.input_impedance,
+                                               "Ω"))
+                return
 
     def _parse_columns(self, lines):
         for line in lines:
