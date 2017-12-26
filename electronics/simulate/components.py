@@ -175,10 +175,10 @@ class OpAmp(Component):
                                     function=self._noise_voltage))
 
         # op-amp input current noise
-        if self.node1 != Node("gnd"):
+        if self.node1 is not Node("gnd"):
             self.add_noise(CurrentNoise(node=self.node1, component=self,
                                         function=self._noise_current))
-        if self.node2 != Node("gnd"):
+        if self.node2 is not Node("gnd"):
             self.add_noise(CurrentNoise(node=self.node2, component=self,
                                         function=self._noise_current))
 
