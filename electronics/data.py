@@ -112,7 +112,7 @@ class TransferFunction(SingleDataSet):
 
     @property
     def label(self):
-        return "%s to %s" % (self.source, self.sink)
+        return r"$\bf{%s}$ to $\bf{%s}$" % (self.source, self.sink)
 
     def __eq__(self, other):
         if self.label != other.label:
@@ -158,7 +158,7 @@ class NoiseSpectrum(SingleDataSet):
 
     @property
     def label(self):
-        return "%s to %s" % (self.noise_name, self.sink)
+        return r"$\bf{%s}$ to $\bf{%s}$" % (self.noise_name, self.sink)
 
     def __eq__(self, other):
         if self.label != other.label:
@@ -222,5 +222,4 @@ class MultiNoiseSpectrum(DataSet):
 
     @property
     def label(self):
-        return "total %s to %s" % (", ".join(self.noise_names),
-                                         self.sink)
+        return "incoherent sum"

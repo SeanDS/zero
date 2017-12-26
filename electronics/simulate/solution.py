@@ -145,9 +145,10 @@ class Solution(object):
 
     @staticmethod
     def _plot_bode(frequencies, tfs, legend=True, legend_loc="best",
-                   title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
-                   ylabel_mag="Magnitude (dB)",
-                   ylabel_phase=r"Phase ($\degree$)", xtick_major_step=20,
+                   title=None, xlim=None, ylim=None,
+                   xlabel=r"$\bf{Frequency}$ (Hz)",
+                   ylabel_mag=r"$\bf{Magnitude}$ (dB)",
+                   ylabel_phase=r"$\bf{Phase}$ ($\degree$)", xtick_major_step=20,
                    xtick_minor_step=10, ytick_major_step=30,
                    ytick_minor_step=15):
         # create figure
@@ -206,8 +207,9 @@ class Solution(object):
 
     @staticmethod
     def _plot_noise(frequencies, noise, legend=True, legend_loc="best",
-                    title=None, xlim=None, ylim=None, xlabel="Frequency (Hz)",
-                    ylabel=r"Noise ($\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$)"):
+                    title=None, xlim=None, ylim=None,
+                    xlabel=r"$\bf{Frequency}$ (Hz)",
+                    ylabel=r"$\bf{Noise}$ ($\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$)"):
         # create figure
         fig = plt.figure(figsize=(float(CONF["plot"]["size_x"]),
                                   float(CONF["plot"]["size_y"])))
@@ -231,6 +233,7 @@ class Solution(object):
             ax.set_ylim(ylim)
 
         # set other axis properties
+        ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.grid(True)
 
