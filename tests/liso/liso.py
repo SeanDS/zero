@@ -3,9 +3,11 @@ import glob
 import numpy as np
 import unittest
 
-from electronics.simulate.liso import CircuitParser, Runner
+from electronics import logging_on
+logging_on()
+from electronics.simulate.liso import Runner
 
-class TestLiso(unittest.TestCase):
+class TestLisoVsNative(unittest.TestCase):
     REL_FIL_DIR = "."
 
     def test_scripts(self):
@@ -13,24 +15,20 @@ class TestLiso(unittest.TestCase):
             output = self._liso_output(script)
 
             # compare output
-            self.compare_liso(script, output)
+            self.compare(output)
 
-    def compare_liso(self, script, liso_output):
+    def compare(self, liso_output):
         # frequencies
-        liso_frequencies = liso_output.frequencies
+        frequencies = liso_output.frequencies
 
-        # parse LISO script
-        parser = CircuitParser()
-        parser.load(script)
+        # get LISO solution
+        liso_solution = liso_output.solution()
 
-        # run LISO
-        parser.run()
-        solution = parser.solution
+        # run native
+        native_solution = liso_output.circuit.solve(frequencies)
 
-        # asset frequencies are the same (they should be)
-        self.assertTrue(np.allclose(liso_frequencies, solution.frequencies))
-
-        # TODO: test actual data
+        # check if they match
+        self.assertEqual(liso_solution, native_solution)
 
     def _liso_output(self, script):
         # run LISO and parse output

@@ -31,73 +31,31 @@ class Solution(object):
         # defaults
         self.functions = []
 
-    def add_tfs(self, tfs):
-        """Add a computed transfer matrix to the solution
+    def add_tf(self, tf):
+        """Add a transfer function to the solution
 
-        :param tfs: transfer matrix
-        :type tfs: :class:`~np.ndarray`
+        :param tf: transfer function
+        :type tf: :class:`~TransferFunction`
         """
 
         # dimension sanity checks
-        if tfs.shape != (self.circuit.dim_size, self.n_frequencies):
-            raise ValueError("tfs doesn't fit this solution")
+        if not np.all(tf.frequencies == self.frequencies):
+            raise ValueError("tf doesn't fit this solution")
 
-        # output node indices in tfs
-        node_indices = [self._result_node_index(node)
-                        for node in self.circuit.non_gnd_nodes]
+        self.add_function(tf)
 
-        # node transfer functions
-        node_tfs = tfs[node_indices, :]
+    def add_noise(self, noise_spectrum):
+        """Add noise spectrum to the solution
 
-        # create functions from each row
-        for tf, sink in zip(node_tfs, self.circuit.non_gnd_nodes):
-            # source is always input node
-            source = self.circuit.input_node_p
-
-            # create series
-            series = Series(x=self.frequencies, y=tf)
-
-            # create transfer function
-            self.add_function(TransferFunction(source=source, sink=sink,
-                                               series=series))
-
-    def add_noise(self, noise_spectra, sink):
-        """Add noise matrix to the solution
-
-        :param noise_spectra: noise matrix
-        :type noise_spectra: :class:`~np.ndarray`
-        :param noise_node: node ``noise`` represents
-        :type noise_node: :class:`~Node`
+        :param noise_spectrum: noise spectrum
+        :type noise_spectrum: :class:`~NoiseSpectrum`
         """
 
         # dimension sanity checks
-        if noise_spectra.shape != (self.circuit.dim_size, self.n_frequencies):
-            raise ValueError("noise spectra don't fit this solution")
+        if not np.all(noise_spectrum.frequencies == self.frequencies):
+            raise ValueError("noise spectrum doesn't fit this solution")
 
-        # noise sources
-        sources = self.circuit.elements
-
-        # skipped noise sources
-        skips = []
-
-        # create functions from each row
-        for spectrum, source in zip(noise_spectra, sources):
-            if np.all(spectrum) == 0:
-                # skip zero noise source
-                skips.append(source)
-
-                # skip this iteration
-                continue
-
-            series = Series(x=self.frequencies, y=spectrum)
-
-            self.add_function(NoiseSpectrum(source=source, sink=sink,
-                                            series=series))
-
-        if len(skips):
-            LOGGER.info("skipped zero noise sources %s",
-                        ", ".join([self.circuit.format_element(skip)
-                                   for skip in skips]))
+        self.add_function(noise_spectrum)
 
     def add_function(self, function):
         if function in self.functions:
@@ -281,3 +239,42 @@ class Solution(object):
         """Show plots"""
 
         plt.show()
+
+    def __eq__(self, other):
+        # check frequencies match
+        if np.all(self.frequencies != other.frequencies):
+            return False
+
+        # check circuits match
+        if self.circuit != other.circuit:
+            return False
+
+        print("%i / %i functions: " % (len(self.functions), len(other.functions)))
+        for f in self.functions:
+            print(f, f.__class__)
+        print()
+        for f in other.functions:
+            print(f, f.__class__)
+
+        # check functions match
+        other_tfs = other.transfer_functions()
+        other_noise = other.noise_functions()
+
+        for tf in self.transfer_functions():
+            # with builtin list object, "in" uses __eq__
+            if tf in other_tfs:
+                # we have a match
+                other_tfs.remove(tf)
+
+        for noise in self.noise_functions():
+            # with builtin list object, "in" uses __eq__
+            if noise in other_noise:
+                # we have a match
+                other_noise.remove(noise)
+
+        if len(other_tfs) > 0 or len(other_noise) > 0:
+            print([str(n) for n in other_noise])
+            # some functions didn't match
+            return False
+
+        return True

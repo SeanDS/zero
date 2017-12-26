@@ -51,6 +51,9 @@ class DataSet(object, metaclass=abc.ABCMeta):
     def label(self):
         return NotImplemented
 
+    def __str__(self):
+        return self.label
+
 class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing data from a single source to a single sink"""
 
@@ -78,16 +81,27 @@ class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
 class TransferFunction(SingleDataSet):
     """Transfer function data series"""
 
+    @property
+    def frequencies(self):
+        return self.series.x
+
+    @property
+    def magnitude(self):
+        return db(np.abs(self.series.y))
+
+    @property
+    def phase(self):
+        return np.angle(self.series.y) * 180 / np.pi
+
     def _draw_magnitude(self, axes):
         """Add magnitude plot to axes"""
 
-        axes.semilogx(self.series.x, db(np.abs(self.series.y)),
-                      label=self.label)
+        axes.semilogx(self.frequencies, self.magnitude, label=self.label)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
 
-        axes.semilogx(self.series.x, np.angle(self.series.y) * 180 / np.pi)
+        axes.semilogx(self.frequencies, self.phase)
 
     def draw(self, *axes):
         if len(axes) != 2:
@@ -100,6 +114,17 @@ class TransferFunction(SingleDataSet):
     def label(self):
         return "%s to %s" % (self.source, self.sink)
 
+    def __eq__(self, other):
+        if self.label != other.label:
+            return False
+        elif not np.all(self.frequencies == other.frequencies):
+            return False
+        elif not np.allclose(self.magnitude, other.magnitude):
+            return False
+        elif not np.allclose(self.phase, other.phase):
+            return False
+        return True
+
 class VoltageTransferFunction(TransferFunction):
     """Voltage transfer function data series"""
     pass
@@ -111,9 +136,13 @@ class CurrentTransferFunction(TransferFunction):
 class NoiseSpectrum(SingleDataSet):
     """Noise data series"""
 
-    def __init__(self, *args, **kwargs):
-        # call parent constructor
-        super(NoiseSpectrum, self).__init__(*args, **kwargs)
+    @property
+    def frequencies(self):
+        return self.series.x
+
+    @property
+    def spectrum(self):
+        return self.series.y
 
     def draw(self, *axes):
         if len(axes) != 1:
@@ -121,16 +150,24 @@ class NoiseSpectrum(SingleDataSet):
 
         axes = axes[0]
 
-        axes.loglog(self.series.x, self.series.y, label=self.label)
+        axes.loglog(self.frequencies, self.spectrum, label=self.label)
 
     @property
     def noise_name(self):
-        # FIXME: get noise type from source
-        return "%s[%s]" % (self.source.name, "unknown")
+        return str(self.source)
 
     @property
     def label(self):
         return "%s to %s" % (self.noise_name, self.sink)
+
+    def __eq__(self, other):
+        if self.label != other.label:
+            return False
+        elif not np.all(self.frequencies == other.frequencies):
+            return False
+        elif not np.allclose(self.spectrum, other.spectrum):
+            return False
+        return True
 
 class MultiNoiseSpectrum(DataSet):
     """Noise data series from multiple sources to a single sink"""

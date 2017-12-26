@@ -19,7 +19,8 @@ from ..data import (VoltageTransferFunction, CurrentTransferFunction,
                     NoiseSpectrum, Series, ComplexSeries)
 from ..format import SIFormatter
 from .circuit import Circuit
-from .components import Component, Resistor, Capacitor, Inductor, OpAmp, Node
+from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
+                         CurrentNoise, VoltageNoise, JohnsonNoise)
 from .solution import Solution
 
 LOGGER = logging.getLogger("liso")
@@ -390,7 +391,9 @@ class InputParser(BaseParser):
         """
 
         # solve
-        return self.circuit.solve(frequencies=self.frequencies, *args, **kwargs)
+        return self.circuit.solve(frequencies=self.frequencies,
+                                  output_nodes=self.output_nodes,
+                                  *args, **kwargs)
 
 class OutputParser(BaseParser):
     """LISO output parser"""
@@ -475,7 +478,9 @@ class OutputParser(BaseParser):
 
     def parse_lines(self, lines):
         # parse data
-        self.data = np.genfromtxt(self.filepath)
+        data = np.genfromtxt(self.filepath)
+        self.frequencies = data[:, 0]
+        self.data = data[:, 1:]
 
         # parse circuit and column definitions
         self._parse_components(lines)
@@ -669,16 +674,15 @@ class OutputParser(BaseParser):
             sink = Node(match.group(2))
 
             # data
-            frequencies = self.data[:, 0] # frequency always first
-            magnitude_data = self.data[:, column * 2 + 1]
-            phase_data = self.data[:, column * 2 + 2]
+            magnitude_data = self.data[:, column * 2]
+            phase_data = self.data[:, column * 2 + 1]
 
             # scales
             magnitude_scale = match.group(3)
             phase_scale = match.group(4)
 
             # create data series
-            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
+            series = ComplexSeries(x=self.frequencies, magnitude=magnitude_data,
                                    phase=phase_data,
                                    magnitude_scale=magnitude_scale,
                                    phase_scale=phase_scale)
@@ -726,16 +730,15 @@ class OutputParser(BaseParser):
             sink = self.circuit.get_component(match.group(3))
 
             # data
-            frequencies = self.data[:, 0] # frequency always first
-            magnitude_data = self.data[:, column * 2 + 1]
-            phase_data = self.data[:, column * 2 + 2]
+            magnitude_data = self.data[:, column * 2]
+            phase_data = self.data[:, column * 2 + 1]
 
             # scales
             magnitude_scale = match.group(4)
             phase_scale = match.group(5)
 
             # create data series
-            series = ComplexSeries(x=frequencies, magnitude=magnitude_data,
+            series = ComplexSeries(x=self.frequencies, magnitude=magnitude_data,
                                    phase=phase_data,
                                    magnitude_scale=magnitude_scale,
                                    phase_scale=phase_scale)
@@ -778,23 +781,18 @@ class OutputParser(BaseParser):
 
         found = 0
 
-        for index, source_str in enumerate(source_strs, start=1):
-            # extract component and noise type
-            source_name, noise_type = self._parse_noise_component(source_str)
+        for index, source_str in enumerate(source_strs):
+            # extract noise source
+            source = self._parse_noise_source(source_str)
 
-            # noise source component
-            source = self.circuit.get_component(source_name)
-
-            frequencies = self.data[:, 0] # frequency always first
             spectrum = self.data[:, index]
 
             # create data series
-            series = Series(x=frequencies, y=spectrum)
+            series = Series(x=self.frequencies, y=spectrum)
 
-            self.add_function(NoiseSpectrum(series=series,
-                                            source=source,
-                                            sink=self.circuit.noise_node))#,
-                                            #noise_type=noise_type)
+            self.add_function(NoiseSpectrum(source=source,
+                                            sink=self.circuit.noise_node,
+                                            series=series))
 
             found += 1
 
@@ -802,15 +800,14 @@ class OutputParser(BaseParser):
             raise Exception("expected %d noise source(s), parsed %d" %
                             (count, found))
 
-    @classmethod
-    def _parse_noise_component(cls, source_str):
+    def _parse_noise_source(self, source_str):
         # get rid of whitespace around string
         source_str = source_str.strip()
 
         # look for component name and brackets
-        match = re.match(cls.NOISE_COMPONENT_REGEX, source_str)
+        match = re.match(self.NOISE_COMPONENT_REGEX, source_str)
 
-        component_name = match.group(1)
+        component = self.circuit.get_component(match.group(1))
 
         # component noise type, e.g. I+ (or empty, for resistors)
         noise_str = match.group(3)
@@ -819,15 +816,26 @@ class OutputParser(BaseParser):
         if match.group(2):
             # op-amp noise; check first character
             if noise_str[0] == "U":
-                noise_type = Circuit.NOISE_OPAMP_VOLTAGE
+                noise_source = VoltageNoise(component=component)
             elif noise_str[0] == "I":
-                noise_type = Circuit.NOISE_OPAMP_CURRENT
-            else:
-                raise ValueError("unrecognised noise type")
-        else:
-            noise_type = Circuit.NOISE_JOHNSON
+                # work out node
+                if noise_str[1] == "+":
+                    # non-inverting node
+                    node = component.node1
+                elif noise_str[1] == "-":
+                    # inverting node
+                    node = component.node2
+                else:
+                    raise ValueError("unexpected current noise node")
 
-        return component_name, noise_type
+                noise_source = CurrentNoise(node=node, component=component)
+            else:
+                raise ValueError("unrecognised noise source")
+        else:
+            noise_source = JohnsonNoise(component=component,
+                                        resistance=component.resistance)
+
+        return noise_source
 
 class Runner(object):
     """LISO runner"""

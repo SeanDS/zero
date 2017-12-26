@@ -8,10 +8,11 @@ import logging
 from tabulate import tabulate
 
 from ..config import ElectronicsConfig, OpAmpLibrary
+from ..data import Series, TransferFunction, NoiseSpectrum
 from ..misc import _print_progress
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
-                         Node, ImpedanceCoefficient, CurrentCoefficient,
-                         VoltageCoefficient)
+                         Node, ComponentNoise, NodeNoise, ImpedanceCoefficient,
+                         CurrentCoefficient, VoltageCoefficient)
 from .solution import Solution
 
 LOGGER = logging.getLogger("circuit")
@@ -32,14 +33,6 @@ def sparse(*args, **kwargs):
 
 class Circuit(object):
     """Represents an electronic circuit containing linear components"""
-
-    NOISE_JOHNSON = 1
-    NOISE_OPAMP_VOLTAGE = 2
-    NOISE_OPAMP_CURRENT = 3
-
-    NOISE_NAMES = {NOISE_JOHNSON: "Johnson",
-                   NOISE_OPAMP_VOLTAGE: "Op-amp voltage",
-                   NOISE_OPAMP_CURRENT: "Op-amp current"}
 
     def __init__(self):
         """Instantiate a new circuit
@@ -301,17 +294,21 @@ class Circuit(object):
         return matrix.tocsr()
 
     def solve(self, frequencies, input_node_p=None, input_node_n=None,
-              input_impedance=None, noise_node=None, print_progress=True,
-              progress_stream=sys.stdout):
+              input_impedance=None, output_nodes=[], noise_node=None,
+              print_progress=True, progress_stream=sys.stdout):
         """Solve matrix for a given input and/or output
 
-        If the input node(s) is/are specified, transfer functions are calculated
-        from it to all other nodes in the circuit. If the noise node is
-        specified, the noise from all nodes in the circuit projected to the
-        noise node is calculated.
+        Settings provided to this method override settings specified in the
+        class. Only the frequency vector is strictly required.
 
-        If input nodes are specified, the specified input impedance must also
-        be specified.
+        If output nodes are specified, transfer functions are calculated from
+        the input to these nodes. If the noise node is specified, the noise from
+        all nodes in the circuit projected to the noise node is calculated.
+
+        The input source impedance is only used in noise calculations and can
+        therefore be ignored when only transfer functions are required.
+        Furthermore, for noise calculations, the distinction between voltage
+        and current inputs is ignored.
 
         :param frequencies: sequence of frequencies to solve circuit for
         :type frequencies: Sequence[Numpy scalar or float]
@@ -324,6 +321,9 @@ class Circuit(object):
         :type input_node_n: :class:`~Node` or str
         :param input_impedance: (optional) input impedance to assume
         :type input_impedance: float
+        :param output_nodes: output nodes to calculate transfer functions to; \
+                             specify "all" to compute all
+        :type output_nodes: List[:class:`~Node` or str] or str
         :param noise_node: (optional) node to project noise to
         :type noise_node: :class:`~Node` or str
         :param print_progress: whether to print solve progress to stream
@@ -344,13 +344,12 @@ class Circuit(object):
         tfs = None
         noise = None
 
+        # handle input nodes
         if input_node_n and not input_node_p:
             raise ValueError("input_node_p must be specified alongside "
                              "input_node_n")
-
         if input_node_p:
             self.input_node_p = input_node_p
-
         if input_node_n:
             self.input_node_n = input_node_n
         else:
@@ -368,13 +367,22 @@ class Circuit(object):
         input_component.node2 = self.input_node_p
         self.add_component(input_component)
 
+        # handle output nodes
+        if output_nodes == "all":
+            output_nodes = list(self.non_gnd_nodes)
+        else:
+            for index, node in enumerate(list(output_nodes)):
+                if not isinstance(node, Node):
+                    # parse node name
+                    output_nodes[index] = Node(str(node))
+
         # work out which noise node to use, if any
         if noise_node:
             # use noise node specified in this call
             self.noise_node = noise_node
 
         # work out what to solve
-        if self.input_node_p:
+        if len(output_nodes):
             compute_tfs = True
         if self.noise_node:
             compute_noise = True
@@ -400,8 +408,8 @@ class Circuit(object):
                 raise ValueError("input inpedance must be specified for noise "
                                  "computation")
 
-            # noise results matrix
-            noise = self._results_matrix(n_freqs)
+            # noise transfer matrix
+            noise_matrix = self._results_matrix(n_freqs)
 
         if print_progress:
             # update progress every 1% of the way there
@@ -420,39 +428,99 @@ class Circuit(object):
             freq_gen = frequencies
 
         # frequency loop
-        for freq_index, frequency in enumerate(freq_gen):
+        for index, frequency in enumerate(freq_gen):
             # get matrix for this frequency
             matrix = self.matrix(frequency)
 
             if compute_tfs:
                 # solve transfer functions
-                tfs[:, freq_index] = spsolve(matrix, y)
+                tfs[:, index] = spsolve(matrix, y)
 
             if compute_noise:
-                noise[:, freq_index] = self._noise_at_node(self.noise_node,
-                                                           matrix, frequency)
+                # response from all components and nodes to noise node
+                noise_matrix[:, index] = self._response_to_node(self.noise_node,
+                                                                matrix,
+                                                                frequency)
 
         # create solution
         solution = Solution(self, frequencies)
 
         if compute_tfs:
-            solution.add_tfs(tfs)
+            # output node indices
+            for node in output_nodes:
+                # transfer function
+                tf = tfs[self._voltage_node_matrix_index(node), :]
+
+                # create series
+                series = Series(x=frequencies, y=tf)
+
+                # add transfer function
+                solution.add_tf(TransferFunction(source=self.input_node_p,
+                                                 sink=node, series=series))
 
         if compute_noise:
-            solution.add_noise(noise, self.noise_node)
+            # skipped noise sources
+            skips = []
+
+            for noise in self.noise_sources:
+                # noise spectral density
+                spectral_density = noise.spectral_density(frequencies=frequencies)
+
+                if np.all(spectral_density) == 0:
+                    # skip zero noise source
+                    skips.append(noise)
+
+                    # skip this iteration
+                    continue
+
+                if isinstance(noise, ComponentNoise):
+                    # matrix component index
+                    index = self._component_matrix_index(noise.component)
+                elif isinstance(noise, NodeNoise):
+                    # matrix node index
+                    index = self._voltage_node_matrix_index(noise.node)
+                else:
+                    raise ValueError("unrecognised noise")
+
+                # response for this element
+                response = noise_matrix[index, :]
+
+                # multiply response from element to noise node by noise entering
+                # at that element, for all frequencies
+                projected_noise = np.abs(response * spectral_density)
+
+                # create series
+                series = Series(x=frequencies, y=projected_noise)
+
+                solution.add_noise(NoiseSpectrum(source=noise,
+                                                 sink=self.noise_node,
+                                                 series=series))
+
+            if len(skips):
+                LOGGER.info("skipped zero noise sources %s",
+                            ", ".join([noise for noise in skips]))
 
         return solution
 
-    def _noise_at_node(self, node, matrix, frequency):
-        """Compute noise from components projected to the specified node
+    def _response_to_node(self, node, matrix, frequency):
+        """Compute response from each circuit component/node to the specified \
+           node
 
-        :param node: node to project noise to
+        This is useful for e.g. projecting noise due to components in the
+        circuit to a particular node. Such a noise transfer matrix could be
+        computed by calling e.g. `np.abs(y_hat * k)` where `y_hat` is the output
+        of this method and `k` is a noise vector.
+
+        The circuit matrix must be provided, as this is manipulated in order to
+        compute the response at a particular node.
+
+        :param node: node to compute responses to
         :type node: :class:`~Node`
         :param matrix: circuit matrix
         :type matrix: :class:`scipy.sparse.spmatrix` or :class:`np.ndarray`
-        :param frequency: frequency at which to compute noise
+        :param frequency: frequency at which to compute response
         :type frequency: float or Numpy scalar
-        :return: vector containing noise from each circuit component/node
+        :return: transfer matrix from components/nodes to the specified node
         :rtype: :class:`np.ndarray`
         """
 
@@ -467,48 +535,7 @@ class Circuit(object):
 
         # solve, giving transfer function from each component/node to the
         # output (size = nx0)
-        y_hat = spsolve(matrix.T, e_n)
-
-        # noise current/voltage input vector (original size = nx1, squeezed
-        # size = nx0)
-        k = self._noise_input_vector(frequency)
-
-        # noise at output (size = nx1)
-        return np.abs(y_hat * k)
-
-    def _noise_input_vector(self, frequency):
-        """Create noise input vector at a given frequency
-
-        Creates an nx1 column vector containing the voltage and current noise at
-        each component and node, respectively.
-
-        :param frequency: frequency at which to compute noise
-        :type frequency: float or Numpy scalar
-        :return: noise input column vector
-        :rtype: :class:`~np.ndarray`
-        """
-
-        # empty noise current/voltage input vector (size = nx0)
-        k = self._results_matrix()
-
-        # fill vector
-        for component in self.components:
-            # component matrix index
-            component_index = self._component_matrix_index(component)
-
-            # component noise potential
-            k[component_index] = component.noise_voltage(frequency)
-
-            # component noise currents
-            for node, noise_current in component.noise_currents(frequency).items():
-                # current node matrix index
-                node_index = self._current_node_matrix_index(node)
-
-                # add node noise current in quadrature with existing noise
-                k[node_index] = np.sqrt(np.power(k[node_index], 2)
-                                        + np.power(noise_current, 2))
-
-        return k
+        return spsolve(matrix.T, e_n)
 
     @property
     def _input_index(self):
@@ -534,6 +561,13 @@ class Circuit(object):
         """
 
         return self.dim_size - 1
+
+    @property
+    def noise_sources(self):
+        """Noise sources in the circuit"""
+
+        for component in self.components:
+            yield from component.noise
 
     def _component_matrix_index(self, component):
         """Circuit matrix index corresponding to a component
