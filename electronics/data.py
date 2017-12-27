@@ -78,7 +78,7 @@ class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
     def series(self, data):
         self.series_list = [data]
 
-class TransferFunction(SingleDataSet):
+class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
     """Transfer function data series"""
 
     @property

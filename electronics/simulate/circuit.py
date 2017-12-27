@@ -8,7 +8,7 @@ import logging
 from tabulate import tabulate
 
 from ..config import ElectronicsConfig, OpAmpLibrary
-from ..data import Series, TransferFunction, NoiseSpectrum
+from ..data import Series, VoltageTransferFunction, NoiseSpectrum
 from ..misc import _print_progress
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
                          Node, ComponentNoise, NodeNoise, ImpedanceCoefficient,
@@ -460,8 +460,10 @@ class Circuit(object):
                 series = Series(x=frequencies, y=tf)
 
                 # add transfer function
-                solution.add_tf(TransferFunction(source=self.input_node_p,
-                                                 sink=node, series=series))
+                # FIXME: support current TFs too
+                solution.add_tf(VoltageTransferFunction(source=self.input_node_p,
+                                                        sink=node,
+                                                        series=series))
 
         if compute_noise:
             # skipped noise sources
