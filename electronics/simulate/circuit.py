@@ -94,7 +94,7 @@ class Circuit(object):
         gnd = Node("gnd")
 
         for node in self.nodes:
-            if node != gnd:
+            if node is not gnd:
                 yield node
 
     @property
@@ -126,7 +126,7 @@ class Circuit(object):
         """
 
         if component in self.components:
-            raise ValueError("Component %s already in circuit" % component)
+            raise ValueError("component %s already in circuit" % component)
 
         # add component to end of list
         self.components.append(component)
@@ -168,6 +168,11 @@ class Circuit(object):
             raise Exception("Node cannot be none")
 
         if node not in self.nodes:
+            # this is the first time this circuit has seen this node
+            # reset its sources and sinks
+            node.reset()
+
+            # add
             self.nodes.append(node)
 
     def get_component(self, component_name):

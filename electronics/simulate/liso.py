@@ -48,6 +48,9 @@ class BaseParser(object, metaclass=abc.ABCMeta):
     def add_output_node(self, node):
         self.output_nodes.add(node)
 
+    def set_noise_node(self, node):
+        self.circuit.noise_node = node
+
     def _load_file(self):
         """Load and parse from file"""
 
@@ -347,7 +350,7 @@ class InputParser(BaseParser):
         node = Node(options[0])
 
         LOGGER.info("setting noise node %s", node)
-        self.circuit.noise_node = node
+        self.set_noise_node(node)
 
         if len(options) > 1:
             LOGGER.warning("ignoring plot options in noise command")
@@ -774,7 +777,7 @@ class OutputParser(BaseParser):
         matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
 
         # noise sink is the noise node
-        self.circuit.noise_node = Node(node_name)
+        self.set_noise_node(Node(node_name))
 
         # split into list
         source_strs = matches.group(1).split()

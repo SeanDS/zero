@@ -395,6 +395,18 @@ class Node(object, metaclass=NamedInstance):
         # create and return equation
         return NodeEquation(self, coefficients=coefficients)
 
+    def reset(self):
+        """Remove all references to external objects
+
+        This is useful for when a node is re-used in a different circuit by
+        the same Python kernel. The named instance pattern results in the same
+        object as before being returned by the constructor, with references to
+        old circuits. Removing these references avoids bad references.
+        """
+
+        self.sources.clear()
+        self.sinks.clear()
+
     def __str__(self):
         return self.name
 
