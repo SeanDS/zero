@@ -8,3 +8,6 @@ table = fancy_grid
 [plot]
 size_x = 8
 size_y = 6
+
+[matplotlib]
+legend.fontsize = 9

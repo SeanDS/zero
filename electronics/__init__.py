@@ -1,5 +1,8 @@
 import logging
 import locale
+from matplotlib import rcParams
+
+from electronics.config import ElectronicsConfig
 
 # suppress warnings when the user code does not include a handler
 logging.getLogger().addHandler(logging.NullHandler())
@@ -10,6 +13,12 @@ locale.setlocale(locale.LC_ALL, "")
 __version__ = "0.2.2"
 DESCRIPTION = "Electronics calculator and simulator utility"
 PROGRAM = "electronics"
+
+# get config
+CONF = ElectronicsConfig()
+
+# update Matplotlib options with overrides from config
+rcParams.update(CONF["matplotlib"])
 
 def logging_on(level=logging.DEBUG,
                format_str="%(name)-8s - %(levelname)-8s - %(message)s"):
