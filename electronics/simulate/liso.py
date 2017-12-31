@@ -41,12 +41,16 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         # default circuit values
         self.frequencies = None
         self.output_nodes = set()
+        self.output_components = set()
         self.circuit = Circuit()
 
         self._load_file()
 
     def add_output_node(self, node):
         self.output_nodes.add(node)
+
+    def add_output_component(self, component):
+        self.output_components.add(component)
 
     def set_noise_node(self, node):
         self.circuit.noise_node = node
@@ -69,14 +73,15 @@ class BaseParser(object, metaclass=abc.ABCMeta):
     def show(self):
         """Show LISO results"""
 
-        if not self.calc_tfs and not self.calc_noise:
+        if not self.plottable:
             LOGGER.warning("nothing to show")
 
         solution = self.solution()
 
-        if self.calc_tfs:
-            solution.plot_tf(output_nodes=list(self.output_nodes))
-
+        if self.calc_voltage_tfs:
+            solution.plot_voltage_tfs(output_nodes=list(self.output_nodes))
+        if self.calc_current_tfs:
+            solution.plot_current_tfs(output_components=list(self.output_components))
         if self.calc_noise:
             solution.plot_noise()
 
@@ -97,12 +102,20 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         return [line.strip() for line in line.split()]
 
     @property
-    def calc_tfs(self):
+    def calc_voltage_tfs(self):
         return len(self.output_nodes) > 0
+
+    @property
+    def calc_current_tfs(self):
+        return len(self.output_components) > 0
 
     @property
     def calc_noise(self):
         return self.circuit.noise_node is not None
+
+    @property
+    def plottable(self):
+        return self.calc_voltage_tfs or self.calc_current_tfs or self.calc_noise
 
     def _add_lcr(self, _class, name, value, node1_name, node2_name):
         """Add new L, C or R component
@@ -404,7 +417,9 @@ class OutputParser(BaseParser):
     # circuit definitions
     # match text after e.g. "#2 capacitors:" and before the first line with
     # a non-whitespace character after the "#"
-    COMPONENT_REGEX = re.compile("^#(\d+) (op-amps?|capacitors?|resistors?|nodes?):([\s\S]+?)(?=\n#\S+)",
+    COMPONENT_REGEX = re.compile("^#(\d+) "
+                                 "(op-amps?|capacitors?|resistors?|nodes?):"
+                                 "([\s\S]+?)(?=\n#\S+)",
                                  re.MULTILINE)
 
     # op-amp parameters
@@ -434,21 +449,30 @@ class OutputParser(BaseParser):
     # data column definitions
     TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
     TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
-    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
+    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) "
+                                    "for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
     # "0 node: nin dB Degrees"
     TF_VOLTAGE_SINK_REGEX = re.compile("^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
     # "#  0 C:c2 dB Degrees"
     TF_CURRENT_SINK_REGEX = re.compile("^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
     # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
     #    #  r1 r3 r4 r6 op1(U) op1(I-) """
-    NOISE_VOLTAGE_SOURCE_REGEX = re.compile("^\#Noise is computed at node [\w\d]+ for .* :\n\#\s*([\w\d\s\(\)\-\+]*)\s*$",
+    NOISE_VOLTAGE_SOURCE_REGEX = re.compile("^\#Noise is computed at node "
+                                            "[\w\d]+ for .* :\n"
+                                            "\#\s*([\w\d\s\(\)\-\+]*)\s*$",
                                             re.MULTILINE)
     # "o1(I+)"
     NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
     # input nodes
-    FIXED_INPUT_NODE_REGEX = re.compile("\#Voltage input at node ([\w\d]+), impedance (\d+) Ohm")
-    FLOATING_INPUT_NODES_REGEX = re.compile("\#Floating voltage input between nodes ([\w\d]+) and ([\w\d]+), impedance (\d+) Ohm")
+    FIXED_VOLTAGE_INPUT_NODE_REGEX = re.compile("\#Voltage input at node "
+                                                "([\w\d]+), impedance (\d+) Ohm")
+    FIXED_CURRENT_INPUT_NODE_REGEX = re.compile("\#Current input into node "
+                                                "([\w\d]+), impedance (\d+) Ohm")
+    FLOATING_VOLTAGE_INPUT_NODES_REGEX = re.compile("\#Floating voltage input "
+                                                    "between nodes ([\w\d]+) "
+                                                    "and ([\w\d]+), impedance "
+                                                    "(\d+) Ohm")
 
     def __init__(self, *args, **kwargs):
         # defaults
@@ -600,27 +624,41 @@ class OutputParser(BaseParser):
 
     def _parse_input_nodes(self, lines):
         for line in lines:
-            match_fixed = re.match(self.FIXED_INPUT_NODE_REGEX, line)
-            match_floating = re.match(self.FLOATING_INPUT_NODES_REGEX, line)
+            match_fixed_current = re.match(self.FIXED_CURRENT_INPUT_NODE_REGEX, line)
+            match_fixed_voltage = re.match(self.FIXED_VOLTAGE_INPUT_NODE_REGEX, line)
+            match_floating_voltage = re.match(self.FLOATING_VOLTAGE_INPUT_NODES_REGEX, line)
 
-            if match_fixed:
-                # fixed input
-                self.circuit.input_node_p = Node(match_fixed.group(1))
-                self.circuit.input_impedance = float(match_fixed.group(2))
+            if match_fixed_current:
+                # fixed voltage input
+                self.circuit.input_type = Circuit.INPUT_TYPE_CURRENT
+                self.circuit.input_node_p = Node(match_fixed_current.group(1))
+                self.circuit.input_impedance = float(match_fixed_current.group(2))
 
-                LOGGER.info("adding input node %s with impedance %s",
-                            self.circuit.input_node_p,
+                LOGGER.info("adding fixed current input node %s with source "
+                            "impedance %s", self.circuit.input_node_p,
                             SIFormatter.format(self.circuit.input_impedance,
                                                "Ω"))
                 return
-            elif match_floating:
-                # floating input
-                self.circuit.input_node_p = Node(match_floating.group(1))
-                self.circuit.input_node_m = Node(match_floating.group(2))
-                self.circuit.input_impedance = float(match_floating.group(3))
+            elif match_fixed_voltage:
+                # fixed voltage input
+                self.circuit.input_type = Circuit.INPUT_TYPE_VOLTAGE
+                self.circuit.input_node_p = Node(match_fixed_voltage.group(1))
+                self.circuit.input_impedance = float(match_fixed_voltage.group(2))
 
-                LOGGER.info("adding floating input nodes +%s, -%s with "
+                LOGGER.info("adding fixed voltage input node %s with source "
                             "impedance %s", self.circuit.input_node_p,
+                            SIFormatter.format(self.circuit.input_impedance,
+                                               "Ω"))
+                return
+            elif match_floating_voltage:
+                # floating input
+                self.circuit.input_type = Circuit.INPUT_TYPE_VOLTAGE
+                self.circuit.input_node_p = Node(match_floating_voltage.group(1))
+                self.circuit.input_node_m = Node(match_floating_voltage.group(2))
+                self.circuit.input_impedance = float(match_floating_voltage.group(3))
+
+                LOGGER.info("adding floating voltage input nodes +%s, -%s with "
+                            "source impedance %s", self.circuit.input_node_p,
                             self.circuit.input_node_m,
                             SIFormatter.format(self.circuit.input_impedance,
                                                "Ω"))
@@ -911,7 +949,6 @@ class Runner(object):
 
     @liso_path.setter
     def liso_path(self, path):
-        LOGGER.debug("setting LISO binary path to %s", path)
         self._liso_path = path
 
     @staticmethod

@@ -8,7 +8,8 @@ import logging
 from tabulate import tabulate
 
 from ..config import ElectronicsConfig, OpAmpLibrary
-from ..data import Series, VoltageTransferFunction, NoiseSpectrum
+from ..data import (Series, CurrentTransferFunction, VoltageTransferFunction,
+                    NoiseSpectrum)
 from ..misc import _print_progress
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
                          Node, ComponentNoise, NodeNoise, ImpedanceCoefficient,
@@ -34,6 +35,10 @@ def sparse(*args, **kwargs):
 class Circuit(object):
     """Represents an electronic circuit containing linear components"""
 
+    # circuit input signal types
+    INPUT_TYPE_CURRENT = 1
+    INPUT_TYPE_VOLTAGE = 2
+
     def __init__(self):
         """Instantiate a new circuit
 
@@ -46,6 +51,7 @@ class Circuit(object):
         self._input_node_n = None
         self._noise_node = None
         self.input_impedance = None
+        self.input_type = None
         self.components = []
         self.nodes = []
         self._matrix = None
@@ -299,8 +305,8 @@ class Circuit(object):
         return matrix.tocsr()
 
     def solve(self, frequencies, input_node_p=None, input_node_n=None,
-              input_impedance=None, output_nodes=[], noise_node=None,
-              print_progress=True, progress_stream=sys.stdout):
+              input_impedance=None, output_components=[], output_nodes=[],
+              noise_node=None, print_progress=True, progress_stream=sys.stdout):
         """Solve matrix for a given input and/or output
 
         Settings provided to this method override settings specified in the
@@ -326,6 +332,9 @@ class Circuit(object):
         :type input_node_n: :class:`~Node` or str
         :param input_impedance: (optional) input impedance to assume
         :type input_impedance: float
+        :param output_components: output components to calculate transfer \
+                                  functions to; specify "all" to compute all
+        :type output_components: List[:class:`~Component` or str] or str
         :param output_nodes: output nodes to calculate transfer functions to; \
                              specify "all" to compute all
         :type output_nodes: List[:class:`~Node` or str] or str
@@ -372,7 +381,14 @@ class Circuit(object):
         input_component.node2 = self.input_node_p
         self.add_component(input_component)
 
-        # handle output nodes
+        # handle outputs
+        if output_components == "all":
+            output_components = list(self.components)
+        else:
+            for index, component in enumerate(list(output_components)):
+                if not isinstance(component, Component):
+                    # parse component name
+                    output_components[index] = Component(str(component))
         if output_nodes == "all":
             output_nodes = list(self.non_gnd_nodes)
         else:
@@ -387,15 +403,15 @@ class Circuit(object):
             self.noise_node = noise_node
 
         # work out what to solve
-        if len(output_nodes):
+        if len(output_components) or len(output_nodes):
             compute_tfs = True
         if self.noise_node:
             compute_noise = True
 
         # check that we're solving something
         if not compute_tfs and not compute_noise:
-            raise Exception("no solution requested (specify an input node, a "
-                            "noise node, or both)")
+            raise Exception("no solution requested (specify a combination of "
+                            "an input node, an input component or a noise node)")
 
         if compute_tfs:
             # signal results matrix
@@ -451,10 +467,39 @@ class Circuit(object):
         solution = Solution(self, frequencies)
 
         if compute_tfs:
+            # skipped tfs
+            skips = []
+
+            # output component indices
+            for component in output_components:
+                # transfer function
+                tf = tfs[self._component_matrix_index(component), :]
+
+                if np.all(tf) == 0:
+                    # skip zero tf
+                    skips.append(component)
+
+                    # skip this iteration
+                    continue
+
+                # create series
+                series = Series(x=frequencies, y=tf)
+
+                # add transfer function
+                solution.add_tf(CurrentTransferFunction(source=self.input_node_p,
+                                                        sink=component,
+                                                        series=series))
             # output node indices
             for node in output_nodes:
                 # transfer function
                 tf = tfs[self._voltage_node_matrix_index(node), :]
+
+                if np.all(tf) == 0:
+                    # skip zero tf
+                    skips.append(node)
+
+                    # skip this iteration
+                    continue
 
                 # create series
                 series = Series(x=frequencies, y=tf)
@@ -464,6 +509,10 @@ class Circuit(object):
                 solution.add_tf(VoltageTransferFunction(source=self.input_node_p,
                                                         sink=node,
                                                         series=series))
+
+            if len(skips):
+                LOGGER.info("skipped zero transfer functions: %s",
+                            ", ".join([str(tf) for tf in skips]))
 
         if compute_noise:
             # skipped noise sources
@@ -504,8 +553,8 @@ class Circuit(object):
                                                  series=series))
 
             if len(skips):
-                LOGGER.info("skipped zero noise sources %s",
-                            ", ".join([noise for noise in skips]))
+                LOGGER.info("skipped zero noise sources: %s",
+                            ", ".join([str(noise) for noise in skips]))
 
         return solution
 

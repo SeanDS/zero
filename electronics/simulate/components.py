@@ -55,9 +55,15 @@ class Component(object, metaclass=abc.ABCMeta):
     def add_noise(self, noise):
         self.noise.add(noise)
 
-    @abc.abstractmethod
     def label(self):
-        return NotImplemented
+        """Label for this passive component"""
+        return self.name
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return self.label()
 
 class PassiveComponent(Component, metaclass=abc.ABCMeta):
     """Represents a passive component"""
@@ -128,16 +134,6 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
         # create and return equation
         return ComponentEquation(self, coefficients=coefficients)
-
-    def label(self):
-        """Label for this passive component"""
-        return SIFormatter.format(self.value, self.UNIT)
-
-    def __repr__(self):
-        return self.name
-
-    def __str__(self):
-        return self.label()
 
     @abc.abstractmethod
     def impedance(self, frequency):
@@ -261,9 +257,6 @@ class OpAmp(Component):
         # ignore node; noise is same at both inputs
         return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
 
-    def label(self):
-        return self.name
-
 class Input(PassiveComponent, metaclass=Singleton):
     """Represents the circuit input"""
 
@@ -272,9 +265,6 @@ class Input(PassiveComponent, metaclass=Singleton):
 
     def impedance(self, *args):
         return 0
-
-    def label(self):
-        return "input"
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""

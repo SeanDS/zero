@@ -112,7 +112,13 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
 
     @property
     def label(self):
-        return r"$\bf{%s}$ to $\bf{%s}$" % (self.source, self.sink)
+        return r"$\bf{%s}$ to $\bf{%s}$ %s" % (self.source, self.sink,
+                                               self.unit_str)
+
+    @property
+    @abc.abstractmethod
+    def unit_str(self):
+        return NotImplemented
 
     def __eq__(self, other):
         if self.label != other.label:
@@ -127,11 +133,17 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
 
 class VoltageTransferFunction(TransferFunction):
     """Voltage transfer function data series"""
-    pass
+
+    @property
+    def unit_str(self):
+        return "(V/V)"
 
 class CurrentTransferFunction(TransferFunction):
     """Current transfer function data series"""
-    pass
+
+    @property
+    def unit_str(self):
+        return "(A/V)"
 
 class NoiseSpectrum(SingleDataSet):
     """Noise data series"""
