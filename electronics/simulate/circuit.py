@@ -260,7 +260,7 @@ class Circuit(object):
                     # includes extra I[in] column (at index == self.n_components)
                     column = self._node_matrix_index(coefficient.node)
                 else:
-                    raise ValueError("Invalid coefficient type")
+                    raise ValueError("invalid coefficient type")
 
                 # fetch (potentially frequency-dependent) impedance
                 if callable(coefficient.value):
@@ -274,9 +274,8 @@ class Circuit(object):
         for equation in self.node_equations:
             for coefficient in equation.coefficients:
                 if not isinstance(coefficient, CurrentCoefficient):
-                    raise ValueError("Invalid coefficient type")
+                    raise ValueError("invalid coefficient type")
 
-                # subtract 1 since 0th row is first component
                 row = self._node_matrix_index(equation.node)
                 column = self._component_matrix_index(coefficient.component)
 
@@ -318,9 +317,10 @@ class Circuit(object):
         # convert to CSR for efficient solving
         return matrix.tocsr()
 
-    def solve(self, frequencies, input_node_p=None, input_node_n=None,
-              input_impedance=None, output_components=[], output_nodes=[],
-              noise_node=None, print_progress=True, progress_stream=sys.stdout):
+    def solve(self, frequencies, input_type=None, input_node_p=None,
+              input_node_n=None, input_impedance=None, output_components=[],
+              output_nodes=[], noise_node=None, print_progress=True,
+              progress_stream=sys.stdout):
         """Solve matrix for a given input and/or output
 
         Settings provided to this method override settings specified in the
@@ -337,6 +337,8 @@ class Circuit(object):
 
         :param frequencies: sequence of frequencies to solve circuit for
         :type frequencies: Sequence[Numpy scalar or float]
+        :param input_type: input type, either voltage or current
+        :type input_type: int or str
         :param input_node_p: (optional) positive input node to calculate \
                              transfer functions from
         :type input_node_p: :class:`~Node` or str
@@ -371,6 +373,14 @@ class Circuit(object):
         compute_noise = False
         tfs = None
         noise = None
+
+        if input_type:
+            if input_type == "voltage" or input_type == self.INPUT_TYPE_VOLTAGE:
+                self.input_type = self.INPUT_TYPE_VOLTAGE
+            elif input_type == "current" or input_type == self.INPUT_TYPE_CURRENT:
+                self.input_type = self.INPUT_TYPE_CURRENT
+            else:
+                raise ValueError("invalid input type")
 
         # handle input nodes
         if input_node_n and not input_node_p:
@@ -428,14 +438,20 @@ class Circuit(object):
                             "input node, an input component or a noise node)")
 
         if compute_tfs:
+            # check input type is specified
+            if self.input_type is None:
+                raise ValueError("input type must be specified for transfer "
+                                 "function computation")
+
             # signal results matrix
             tfs = self._results_matrix(n_freqs)
 
             # input vector
             y = self._results_matrix(1)
 
-            # set input voltage
-            y[self._input_index, 0] = 1
+            if self.input_type == self.INPUT_TYPE_VOLTAGE:
+                # set input component's voltage
+                y[self._input_component_index, 0] = 1
 
         if compute_noise:
             # check if input impedance is specified
@@ -608,8 +624,7 @@ class Circuit(object):
         return solve(matrix.T, e_n)
 
     @property
-    def _input_index(self):
-        # FIXME: support current inputs
+    def _input_component_index(self):
         return self._component_matrix_index(Input())
 
     @property
@@ -759,7 +774,7 @@ class Circuit(object):
 
                 print(" %s " % header, end="", file=stream)
 
-            if row == self._input_index:
+            if row == self._input_component_index:
                 print(" = 1", file=stream)
             else:
                 print(" = 0", file=stream)

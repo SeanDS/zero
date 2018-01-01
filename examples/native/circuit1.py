@@ -21,9 +21,9 @@ circuit.add_library_opamp(name="o1", model="LT1124", node1="nin", node2="nm",
                           node3="nout")
 
 # solve circuit
-solution = circuit.solve(frequencies, input_node_p="nin", input_impedance=0,
-                         output_components="all", output_nodes="all",
-                         noise_node="nout")
+solution = circuit.solve(frequencies, input_type="voltage", input_node_p="nin",
+                         input_impedance=0, output_components="all",
+                         output_nodes="all", noise_node="nout")
 
 print("Circuit matrix for f = %d" % frequencies[0])
 circuit.print_matrix(frequency=frequencies[0])
