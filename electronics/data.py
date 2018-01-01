@@ -2,8 +2,26 @@
 
 import abc
 import numpy as np
+import logging
 
+from .config import ElectronicsConfig
 from .misc import db
+
+LOGGER = logging.getLogger("data")
+CONF = ElectronicsConfig()
+
+def frequencies_match(vector_a, vector_b):
+    return np.all(vector_a == vector_b)
+
+def magnitudes_match(vector_a, vector_b):
+    return np.allclose(vector_a, vector_b,
+                       rtol=float(CONF["data"]["magnitude_rel_tol"]),
+                       atol=float(CONF["data"]["magnitude_abs_tol"]))
+
+def phases_match(vector_a, vector_b):
+    return np.allclose(vector_a, vector_b,
+                       rtol=float(CONF["data"]["phase_rel_tol"]),
+                       atol=float(CONF["data"]["phase_abs_tol"]))
 
 class Series(object):
     """Data series"""
@@ -46,13 +64,12 @@ class DataSet(object, metaclass=abc.ABCMeta):
     def draw(self, *axes):
         return NotImplemented
 
-    @property
     @abc.abstractmethod
-    def label(self):
+    def label(self, tex=False):
         return NotImplemented
 
     def __str__(self):
-        return self.label
+        return self.label()
 
 class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing data from a single source to a single sink"""
@@ -96,7 +113,8 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
     def _draw_magnitude(self, axes):
         """Add magnitude plot to axes"""
 
-        axes.semilogx(self.frequencies, self.magnitude, label=self.label)
+        axes.semilogx(self.frequencies, self.magnitude,
+                      label=self.label(tex=True))
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
@@ -110,10 +128,14 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
         self._draw_magnitude(axes[0])
         self._draw_phase(axes[1])
 
-    @property
-    def label(self):
-        return r"$\bf{%s}$ to $\bf{%s}$ %s" % (self.source, self.sink,
-                                               self.unit_str)
+    def label(self, tex=False):
+        if tex:
+            format_str = r"$\bf{%s}$ to $\bf{%s}$ %s"
+        else:
+            format_str = "%s to %s %s"
+
+        return format_str % (self.source, self.sink,
+                             self.unit_str)
 
     @property
     @abc.abstractmethod
@@ -121,13 +143,19 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
         return NotImplemented
 
     def __eq__(self, other):
-        if self.label != other.label:
+        if self.label() != other.label():
             return False
-        elif not np.all(self.frequencies == other.frequencies):
+        elif not frequencies_match(self.frequencies, other.frequencies):
+            LOGGER.error("%s frequencies don't match: %s != %s", self,
+                         self.frequencies, other.frequencies)
             return False
-        elif not np.allclose(self.magnitude, other.magnitude):
+        elif not magnitudes_match(self.magnitude, other.magnitude):
+            LOGGER.error("%s magnitudes don't match: %s != %s", self,
+                         self.magnitude, other.magnitude)
             return False
-        elif not np.allclose(self.phase, other.phase):
+        elif not phases_match(self.phase, other.phase):
+            LOGGER.error("%s phases don't match: %s != %s", self,
+                         self.phase, other.phase)
             return False
         return True
 
@@ -162,18 +190,22 @@ class NoiseSpectrum(SingleDataSet):
 
         axes = axes[0]
 
-        axes.loglog(self.frequencies, self.spectrum, label=self.label)
+        axes.loglog(self.frequencies, self.spectrum, label=self.label(tex=True))
 
     @property
     def noise_name(self):
         return str(self.source)
 
-    @property
-    def label(self):
-        return r"$\bf{%s}$ to $\bf{%s}$" % (self.noise_name, self.sink)
+    def label(self, tex=False):
+        if tex:
+            format_str = r"$\bf{%s}$ to $\bf{%s}$"
+        else:
+            format_str = "%s to %s"
+
+        return format_str % (self.noise_name, self.sink)
 
     def __eq__(self, other):
-        if self.label != other.label:
+        if self.label() != other.label():
             return False
         elif not np.all(self.frequencies == other.frequencies):
             return False
@@ -214,7 +246,7 @@ class MultiNoiseSpectrum(DataSet):
 
         axes = axes[0]
 
-        axes.loglog(self.series.x, self.series.y, label=self.label)
+        axes.loglog(self.series.x, self.series.y, label=self.label(tex=True))
 
     @property
     def series(self):
@@ -232,6 +264,5 @@ class MultiNoiseSpectrum(DataSet):
     def sink(self):
         return self.sinks[0]
 
-    @property
-    def label(self):
+    def label(self, *args):
         return "incoherent sum"

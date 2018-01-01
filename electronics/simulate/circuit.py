@@ -32,6 +32,20 @@ def sparse(*args, **kwargs):
     # of precision; good enough for most purposes
     return lil_matrix(dtype="complex64", *args, **kwargs)
 
+def solve(A, b):
+    """Solve linear system
+
+    :param A: square matrix
+    :type A: :class:`~np.ndarray` or :class:`~scipy.sparse.spmatrix`
+    :param b: matrix or vector representing right hand side of matrix equation
+    :type b: :class:`~np.ndarray` or :class:`~scipy.sparse.spmatrix`
+    :return: solution
+    :rtype: :class:`~np.ndarray` or :class:`~scipy.sparse.spmatrix`
+    """
+
+    # permute specification chosen to minimise error with LISO
+    return spsolve(A, b, permc_spec="MMD_AT_PLUS_A")
+
 class Circuit(object):
     """Represents an electronic circuit containing linear components"""
 
@@ -455,7 +469,7 @@ class Circuit(object):
 
             if compute_tfs:
                 # solve transfer functions
-                tfs[:, index] = spsolve(matrix, y)
+                tfs[:, index] = solve(matrix, y)
 
             if compute_noise:
                 # response from all components and nodes to noise node
@@ -591,7 +605,7 @@ class Circuit(object):
 
         # solve, giving transfer function from each component/node to the
         # output (size = nx0)
-        return spsolve(matrix.T, e_n)
+        return solve(matrix.T, e_n)
 
     @property
     def _input_index(self):

@@ -26,7 +26,8 @@ class TestLisoVsNative(unittest.TestCase):
 
         # run native
         native_solution = liso_output.circuit.solve(frequencies,
-            output_nodes=list(liso_output.output_nodes))
+            output_nodes=list(liso_output.output_nodes),
+            output_components=list(liso_output.output_components))
 
         # check if they match
         self.assertEqual(liso_solution, native_solution)

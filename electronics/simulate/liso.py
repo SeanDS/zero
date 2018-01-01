@@ -408,6 +408,7 @@ class InputParser(BaseParser):
 
         # solve
         return self.circuit.solve(frequencies=self.frequencies,
+                                  output_components=self.output_components,
                                   output_nodes=self.output_nodes,
                                   *args, **kwargs)
 
@@ -478,6 +479,7 @@ class OutputParser(BaseParser):
         # defaults
         self.data = None
         self.functions = []
+        self._found_column_count = 0
 
         super(OutputParser, self).__init__(*args, **kwargs)
 
@@ -665,6 +667,13 @@ class OutputParser(BaseParser):
                 return
 
     def _parse_columns(self, lines):
+        # reset column count
+        # A global count is required for situations where both voltage and
+        # current outputs are requested. In this case, the current output
+        # column indices are count from 0 even though they appear after the
+        # voltage output columns.
+        self._found_column_count = 0
+
         for line in lines:
             voltage_match = re.match(self.TF_VOLTAGE_OUTPUT_REGEX, line)
 
@@ -717,6 +726,8 @@ class OutputParser(BaseParser):
             # data
             magnitude_data = self.data[:, column * 2]
             phase_data = self.data[:, column * 2 + 1]
+
+            self._found_column_count += 2
 
             # scales
             magnitude_scale = match.group(3)
@@ -771,8 +782,8 @@ class OutputParser(BaseParser):
             sink = self.circuit.get_component(match.group(3))
 
             # data
-            magnitude_data = self.data[:, column * 2]
-            phase_data = self.data[:, column * 2 + 1]
+            magnitude_data = self.data[:, self._found_column_count + column * 2]
+            phase_data = self.data[:, self._found_column_count + column * 2 + 1]
 
             # scales
             magnitude_scale = match.group(4)
@@ -789,8 +800,7 @@ class OutputParser(BaseParser):
                                                       sink=sink))
 
             # add output node
-            # FIXME: add output current components
-            #self.add_output_node(sink)
+            self.add_output_component(sink)
 
             found += 1
 

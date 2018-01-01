@@ -146,13 +146,14 @@ class Solution(object):
 
         self.show()
 
-    def plot_tfs(self, output_components=None, output_nodes=None, *args,
-                 **kwargs):
+    def plot_tfs(self, figure=None, output_components=None, output_nodes=None,
+                 *args, **kwargs):
         if not self.has_tfs:
             raise Exception("transfer functions were not computed in this "
                             "solution")
 
-        figure = self.bode_figure()
+        if figure is None:
+            figure = self.bode_figure()
 
         if self.has_voltage_tfs:
             self.plot_voltage_tfs(figure=figure, output_nodes=output_nodes,
@@ -354,12 +355,14 @@ class Solution(object):
         if self.circuit != other.circuit:
             return False
 
-        print("%i / %i functions: " % (len(self.functions), len(other.functions)))
+        LOGGER.info("comparing %i / %i functions" % (len(self.functions),
+                                                     len(other.functions)))
+        LOGGER.info("first solution's functions:")
         for f in self.functions:
-            print(f, f.__class__)
-        print()
+            LOGGER.info("%s (%s)", f, f.__class__)
+        LOGGER.info("second solution's functions:")
         for f in other.functions:
-            print(f, f.__class__)
+            LOGGER.info("%s (%s)", f, f.__class__)
 
         # check functions match
         other_tfs = other.transfer_functions()
@@ -378,7 +381,8 @@ class Solution(object):
                 other_noise.remove(noise)
 
         if len(other_tfs) > 0 or len(other_noise) > 0:
-            print([str(n) for n in other_noise])
+            LOGGER.info("non-matches: %s",
+                        ", ".join([str(n) for n in other_tfs + other_noise]))
             # some functions didn't match
             return False
 
