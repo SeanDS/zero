@@ -247,7 +247,7 @@ class Circuit(object):
         self._matrix_callables = dict()
 
         # Kirchoff's voltage law / op-amp voltage gain equations
-        for equation in self.component_equations():
+        for equation in self.component_equations:
             for coefficient in equation.coefficients:
                 # default indices
                 row = self._component_matrix_index(equation.component)
@@ -258,7 +258,7 @@ class Circuit(object):
                     pass
                 elif isinstance(coefficient, VoltageCoefficient):
                     # includes extra I[in] column (at index == self.n_components)
-                    column = self._voltage_node_matrix_index(coefficient.node)
+                    column = self._node_matrix_index(coefficient.node)
                 else:
                     raise ValueError("Invalid coefficient type")
 
@@ -271,13 +271,13 @@ class Circuit(object):
                     self._matrix[row, column] = coefficient.value
 
         # Kirchoff's current law
-        for equation in self.node_equations():
+        for equation in self.node_equations:
             for coefficient in equation.coefficients:
                 if not isinstance(coefficient, CurrentCoefficient):
                     raise ValueError("Invalid coefficient type")
 
                 # subtract 1 since 0th row is first component
-                row = self._current_node_matrix_index(equation.node)
+                row = self._node_matrix_index(equation.node)
                 column = self._component_matrix_index(coefficient.component)
 
                 if callable(coefficient.value):
@@ -424,8 +424,8 @@ class Circuit(object):
 
         # check that we're solving something
         if not compute_tfs and not compute_noise:
-            raise Exception("no solution requested (specify a combination of "
-                            "an input node, an input component or a noise node)")
+            raise Exception("no output requested (specify a combination of an "
+                            "input node, an input component or a noise node)")
 
         if compute_tfs:
             # signal results matrix
@@ -506,7 +506,7 @@ class Circuit(object):
             # output node indices
             for node in output_nodes:
                 # transfer function
-                tf = tfs[self._voltage_node_matrix_index(node), :]
+                tf = tfs[self._node_matrix_index(node), :]
 
                 if np.all(tf) == 0:
                     # skip zero tf
@@ -548,7 +548,7 @@ class Circuit(object):
                     index = self._component_matrix_index(noise.component)
                 elif isinstance(noise, NodeNoise):
                     # matrix node index
-                    index = self._voltage_node_matrix_index(noise.node)
+                    index = self._node_matrix_index(noise.node)
                 else:
                     raise ValueError("unrecognised noise")
 
@@ -596,7 +596,7 @@ class Circuit(object):
 
         # create column vector
         e_n = self._results_matrix(1)
-        e_n[self._voltage_node_matrix_index(node), 0] = 1
+        e_n[self._node_matrix_index(node), 0] = 1
 
         # set input impedance
         # NOTE: this issues a SparseEfficiencyWarning
@@ -650,23 +650,8 @@ class Circuit(object):
 
         return self.components.index(component)
 
-    def _voltage_node_matrix_index(self, node):
-        """Circuit matrix index corresponding to a voltage at a node
-
-        This represents a matrix column.
-
-        :param node: node to get index for
-        :type node: :class:`~Node`
-        :return: node index
-        :rtype: int
-        """
-
-        return self.n_components + self.node_index(node)
-
-    def _current_node_matrix_index(self, node):
-        """Circuit matrix index corresponding to a current through a node
-
-        This represents a matrix row.
+    def _node_matrix_index(self, node):
+        """Circuit matrix index corresponding to a node
 
         :param node: node to get index for
         :type node: :class:`~Node`
@@ -692,6 +677,7 @@ class Circuit(object):
 
         return np.zeros((self.dim_size, *depth), dtype="complex64")
 
+    @property
     def component_equations(self):
         """Get linear equations representing components in circuit
 
@@ -701,6 +687,7 @@ class Circuit(object):
 
         return [component.equation() for component in self.components]
 
+    @property
     def node_equations(self):
         """Get linear equations representing nodes in circuit
 
