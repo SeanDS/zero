@@ -1,0 +1,11 @@
+c c1 10e-6 gnd n1
+r r1 430 n1 nm
+r r2 43e3 nm nout
+c c2 47e-12 nm nout
+op o1 LT1124 nin nm nout
+
+freq log 1 1M 1000
+
+uinput nin 0
+ioutput all
+uoutput all

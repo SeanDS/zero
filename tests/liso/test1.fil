@@ -5,6 +5,8 @@ r r6 65 nin gnd
 c c2 4.7n nsum gnd
 c c5 122p no nm
 op op1 lt1124 gnd nm no
+
+freq log 1 10M 1000
+
 uinput nin 50
-freq log 1 10M 100
 noise no all
