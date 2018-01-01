@@ -23,6 +23,11 @@ def phases_match(vector_a, vector_b):
                        rtol=float(CONF["data"]["phase_rel_tol"]),
                        atol=float(CONF["data"]["phase_abs_tol"]))
 
+def spectra_match(vector_a, vector_b):
+    return np.allclose(vector_a, vector_b,
+                       rtol=float(CONF["data"]["noise_rel_tol"]),
+                       atol=float(CONF["data"]["noise_abs_tol"]))
+
 class Series(object):
     """Data series"""
 
@@ -207,9 +212,9 @@ class NoiseSpectrum(SingleDataSet):
     def __eq__(self, other):
         if self.label() != other.label():
             return False
-        elif not np.all(self.frequencies == other.frequencies):
+        elif not frequencies_match(self.frequencies, other.frequencies):
             return False
-        elif not np.allclose(self.spectrum, other.spectrum):
+        elif not spectra_match(self.spectrum, other.spectrum):
             return False
         return True
 

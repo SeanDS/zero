@@ -17,3 +17,5 @@ magnitude_abs_tol = 1e-6
 magnitude_rel_tol = 1e-5
 phase_abs_tol = 1e-6
 phase_rel_tol = 1e-5
+noise_abs_tol = 1e-8
+noise_rel_tol = 1e-5
