@@ -269,5 +269,5 @@ class MultiNoiseSpectrum(DataSet):
     def sink(self):
         return self.sinks[0]
 
-    def label(self, *args):
+    def label(self, *args, **kwargs):
         return "incoherent sum"
