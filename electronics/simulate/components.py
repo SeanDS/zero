@@ -257,14 +257,53 @@ class OpAmp(Component):
         # ignore node; noise is same at both inputs
         return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
 
-class Input(PassiveComponent, metaclass=Singleton):
+class Input(Component, metaclass=Singleton):
     """Represents the circuit input"""
 
-    def __init__(self, *args, **kwargs):
-        super(Input, self).__init__(name="input", *args, **kwargs)
+    def __init__(self, node_n, node_p, *args, **kwargs):
+        # call parent constructor
+        super(Input, self).__init__(name="input", nodes=[node_n, node_p], *args,
+                                    **kwargs)
 
-    def impedance(self, *args):
-        return 0
+    @property
+    def node_n(self):
+        return self.nodes[0]
+
+    @node_n.setter
+    def node_n(self, node):
+        self.nodes[0] = node
+
+    @property
+    def node_p(self):
+        return self.nodes[1]
+
+    @node_p.setter
+    def node_p(self, node):
+        self.nodes[1] = node
+
+    def equation(self):
+        # register source and sink
+        self.node_p.add_source(self) # current flows out of here...
+        self.node_n.add_sink(self) # ...and into here
+
+        # nodal potential equation coefficients
+        # impedance * current + voltage = 0
+        coefficients = []
+
+        # add negative node coefficient
+        if self.node_n is not Node("gnd"):
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node_n,
+                                                   value=-1))
+
+        # add positive node coefficient
+        if self.node_p is not Node("gnd"):
+            # voltage
+            coefficients.append(VoltageCoefficient(node=self.node_p,
+                                                   value=1))
+
+        # create and return equation
+        return ComponentEquation(self, coefficients=coefficients)
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""

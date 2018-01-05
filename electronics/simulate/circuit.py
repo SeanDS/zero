@@ -400,9 +400,8 @@ class Circuit(object):
             self.input_impedance = float(input_impedance)
 
         # create input component
-        input_component = Input()
-        input_component.node1 = self.input_node_n
-        input_component.node2 = self.input_node_p
+        input_component = Input(node_n=self.input_node_n,
+                                node_p=self.input_node_p)
         self.add_component(input_component)
 
         # handle outputs
@@ -412,14 +411,14 @@ class Circuit(object):
             for index, component in enumerate(list(output_components)):
                 if not isinstance(component, Component):
                     # parse component name
-                    output_components[index] = Component(str(component))
+                    output_components[index] = self.get_component(component)
         if output_nodes == "all":
             output_nodes = list(self.non_gnd_nodes)
         else:
             for index, node in enumerate(list(output_nodes)):
                 if not isinstance(node, Node):
                     # parse node name
-                    output_nodes[index] = Node(str(node))
+                    output_nodes[index] = self.get_node(node)
 
         # work out which noise node to use, if any
         if noise_node:
@@ -447,15 +446,7 @@ class Circuit(object):
             tfs = self._results_matrix(n_freqs)
 
             # input vector
-            y = self._results_matrix(1)
-
-            if self.input_type is self.INPUT_TYPE_VOLTAGE:
-                # set input node's voltage
-                y[self._input_component_index, 0] = 1
-            elif self.input_type is self.INPUT_TYPE_CURRENT:
-                # set input node's current
-                #y[self._input_node_index, 0] = 1
-                pass
+            y = self._input_vector
 
         if compute_noise:
             # check if input impedance is specified
@@ -715,6 +706,21 @@ class Circuit(object):
         return np.zeros((self.dim_size, *depth), dtype="complex64")
 
     @property
+    def _input_vector(self):
+        y = self._results_matrix(1)
+
+        if self.input_type is self.INPUT_TYPE_VOLTAGE:
+            # set input node's voltage
+            y[self._input_component_index, 0] = 1
+        elif self.input_type is self.INPUT_TYPE_CURRENT:
+            # set input node's current
+            y[self._input_node_index, 0] = 1
+        else:
+            raise ValueError("unexpected input type")
+
+        return y
+
+    @property
     def component_equations(self):
         """Get linear equations representing components in circuit
 
@@ -796,10 +802,16 @@ class Circuit(object):
 
                 print(" %s " % header, end="", file=stream)
 
-            if row == self._input_component_index:
-                print(" = 1", file=stream)
-            else:
-                print(" = 0", file=stream)
+            if self.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+                if row == self._input_component_index:
+                    print(" = 1", file=stream)
+                else:
+                    print(" = 0", file=stream)
+            elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
+                if row == self._input_node_index:
+                    print(" = 1", file=stream)
+                else:
+                    print(" = 0", file=stream)
 
     def print_matrix(self, stream=sys.stdout, *args, **kwargs):
         """Pretty print circuit matrix
@@ -808,8 +820,11 @@ class Circuit(object):
         :type stream: :class:`io.IOBase`
         """
 
-        # get matrix
-        matrix = self.matrix(*args, **kwargs)
+        # get matrix in full (non-sparse) format to allow stacking
+        matrix = self.matrix(*args, **kwargs).toarray()
+
+        # attach input vector on right hand side
+        matrix = np.hstack((matrix, self._input_vector))
 
         # convert complex values to magnitudes (leaving others, like -1, alone)
         for row in range(matrix.shape[0]):
@@ -817,11 +832,11 @@ class Circuit(object):
                 if np.iscomplex(matrix[row, column]):
                     matrix[row, column] = np.abs(matrix[row, column])
 
-        # remove imaginary parts (which are all zero) and convert to numpy array
-        array = matrix.real.toarray()
+        # remove imaginary parts (which are all zero)
+        array = matrix.real
 
         # tabulate data
-        table = tabulate(array, self.column_headers,
+        table = tabulate(array, self.column_headers + ["input"],
                          tablefmt=CONF["format"]["table"])
 
         # output
