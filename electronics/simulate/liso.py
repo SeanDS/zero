@@ -15,8 +15,8 @@ import re
 import numpy as np
 from tempfile import NamedTemporaryFile
 
-from ..data import (VoltageTransferFunction, CurrentTransferFunction,
-                    NoiseSpectrum, Series, ComplexSeries)
+from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
+                    CurrentVoltageTF, NoiseSpectrum, Series, ComplexSeries)
 from ..format import SIFormatter
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
@@ -76,17 +76,33 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         if not self.plottable:
             LOGGER.warning("nothing to show")
 
+        # get solution
         solution = self.solution()
-
-        if self.calc_voltage_tfs:
-            solution.plot_voltage_tfs(output_nodes=list(self.output_nodes))
-        if self.calc_current_tfs:
-            solution.plot_current_tfs(output_components=list(self.output_components))
-        if self.calc_noise:
-            solution.plot_noise()
-
+        # draw plots
+        solution.plot(output_nodes=list(self.output_nodes),
+                      output_components=list(self.output_components))
         # display plots
         solution.show()
+
+    @property
+    def calc_tfs(self):
+        return self.calc_node_tfs or self.calc_component_tfs
+
+    @property
+    def calc_node_tfs(self):
+        return len(self.output_nodes) > 0
+
+    @property
+    def calc_component_tfs(self):
+        return len(self.output_components) > 0
+
+    @property
+    def calc_noise(self):
+        return self.circuit.noise_node is not None
+
+    @property
+    def plottable(self):
+        return self.calc_tfs or self.calc_noise
 
     @classmethod
     def tokenise(cls, line):
@@ -100,22 +116,6 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
         # split into parts and remove extra whitespace
         return [line.strip() for line in line.split()]
-
-    @property
-    def calc_voltage_tfs(self):
-        return len(self.output_nodes) > 0
-
-    @property
-    def calc_current_tfs(self):
-        return len(self.output_components) > 0
-
-    @property
-    def calc_noise(self):
-        return self.circuit.noise_node is not None
-
-    @property
-    def plottable(self):
-        return self.calc_voltage_tfs or self.calc_current_tfs or self.calc_noise
 
     def _add_lcr(self, _class, name, value, node1_name, node2_name):
         """Add new L, C or R component
@@ -287,7 +287,7 @@ class InputParser(BaseParser):
     def _parse_directive(self, directive, options):
         """Parse LISO tokens as directive
 
-        :param directive: directive string, e.g. "vinput"
+        :param directive: directive string, e.g. "uinput"
         :type directive: str
         :param options: directive options
         :type options: Sequence[str]
@@ -752,9 +752,16 @@ class OutputParser(BaseParser):
                                    magnitude_scale=magnitude_scale,
                                    phase_scale=phase_scale)
 
-            self.add_function(VoltageTransferFunction(series=series,
-                                                      source=source,
-                                                      sink=sink))
+            # create appropriate transfer function depending on input type
+            if self.circuit.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+                function = VoltageVoltageTF(series=series, source=source,
+                                            sink=sink)
+            elif self.circuit.input_type is Circuit.INPUT_TYPE_CURRENT:
+                function = CurrentVoltageTF(series=series, source=source,
+                                            sink=sink)
+            else:
+                raise ValueError("unrecognised input type")
+            self.add_function(function)
 
             # add output node
             self.add_output_node(sink)
@@ -808,9 +815,17 @@ class OutputParser(BaseParser):
                                    magnitude_scale=magnitude_scale,
                                    phase_scale=phase_scale)
 
-            self.add_function(CurrentTransferFunction(series=series,
-                                                      source=source,
-                                                      sink=sink))
+            # create appropriate transfer function depending on input type
+            if self.circuit.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+                function = VoltageCurrentTF(series=series, source=source,
+                                            sink=sink)
+            elif self.circuit.input_type is Circuit.INPUT_TYPE_CURRENT:
+                function = CurrentCurrentTF(series=series, source=source,
+                                            sink=sink)
+            else:
+                raise ValueError("unrecognised input type")
+            # add transfer function
+            self.add_function(function)
 
             # add output node
             self.add_output_component(sink)

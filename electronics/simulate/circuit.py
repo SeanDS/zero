@@ -8,8 +8,8 @@ import logging
 from tabulate import tabulate
 
 from ..config import ElectronicsConfig, OpAmpLibrary
-from ..data import (Series, CurrentTransferFunction, VoltageTransferFunction,
-                    NoiseSpectrum)
+from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
+                    CurrentVoltageTF, NoiseSpectrum, Series)
 from ..misc import _print_progress
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
                          Node, ComponentNoise, NodeNoise, ImpedanceCoefficient,
@@ -449,9 +449,13 @@ class Circuit(object):
             # input vector
             y = self._results_matrix(1)
 
-            if self.input_type == self.INPUT_TYPE_VOLTAGE:
-                # set input component's voltage
+            if self.input_type is self.INPUT_TYPE_VOLTAGE:
+                # set input node's voltage
                 y[self._input_component_index, 0] = 1
+            elif self.input_type is self.INPUT_TYPE_CURRENT:
+                # set input node's current
+                #y[self._input_node_index, 0] = 1
+                pass
 
         if compute_noise:
             # check if input impedance is specified
@@ -515,10 +519,18 @@ class Circuit(object):
                 # create series
                 series = Series(x=frequencies, y=tf)
 
+                # create appropriate transfer function depending on input type
+                if self.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+                    function = VoltageCurrentTF(source=self.input_node_p,
+                                                sink=component, series=series)
+                elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
+                    function = CurrentCurrentTF(source=self.input_node_p,
+                                                sink=component, series=series)
+                else:
+                    raise ValueError("unrecognised input type")
                 # add transfer function
-                solution.add_tf(CurrentTransferFunction(source=self.input_node_p,
-                                                        sink=component,
-                                                        series=series))
+                solution.add_tf(function)
+
             # output node indices
             for node in output_nodes:
                 # transfer function
@@ -534,11 +546,17 @@ class Circuit(object):
                 # create series
                 series = Series(x=frequencies, y=tf)
 
+                # create appropriate transfer function depending on input type
+                if self.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+                    function = VoltageVoltageTF(source=self.input_node_p,
+                                                sink=node, series=series)
+                elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
+                    function = CurrentVoltageTF(source=self.input_node_p,
+                                                sink=node, series=series)
+                else:
+                    raise ValueError("unrecognised input type")
                 # add transfer function
-                # FIXME: support current TFs too
-                solution.add_tf(VoltageTransferFunction(source=self.input_node_p,
-                                                        sink=node,
-                                                        series=series))
+                solution.add_tf(function)
 
             if len(skips):
                 LOGGER.info("skipped zero transfer functions: %s",
@@ -626,6 +644,10 @@ class Circuit(object):
     @property
     def _input_component_index(self):
         return self._component_matrix_index(Input())
+
+    @property
+    def _input_node_index(self):
+        return self._node_matrix_index(self.input_node_p)
 
     @property
     def dim_size(self):

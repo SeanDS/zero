@@ -164,19 +164,33 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
             return False
         return True
 
-class VoltageTransferFunction(TransferFunction):
-    """Voltage transfer function data series"""
+class VoltageVoltageTF(TransferFunction):
+    """Voltage to voltage transfer function data series"""
 
     @property
     def unit_str(self):
         return "(V/V)"
 
-class CurrentTransferFunction(TransferFunction):
-    """Current transfer function data series"""
+class VoltageCurrentTF(TransferFunction):
+    """Voltage to current transfer function data series"""
 
     @property
     def unit_str(self):
         return "(A/V)"
+
+class CurrentCurrentTF(TransferFunction):
+    """Current to current transfer function data series"""
+
+    @property
+    def unit_str(self):
+        return "(A/A)"
+
+class CurrentVoltageTF(TransferFunction):
+    """Current to voltage transfer function data series"""
+
+    @property
+    def unit_str(self):
+        return "(V/A)"
 
 class NoiseSpectrum(SingleDataSet):
     """Noise data series"""

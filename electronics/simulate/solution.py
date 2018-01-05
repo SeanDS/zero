@@ -7,8 +7,9 @@ from matplotlib.ticker import MultipleLocator
 import abc
 
 from ..config import ElectronicsConfig
-from ..data import (Series, CurrentTransferFunction, VoltageTransferFunction,
-                    TransferFunction, NoiseSpectrum, MultiNoiseSpectrum)
+from ..data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
+                    CurrentCurrentTF, CurrentVoltageTF, NoiseSpectrum,
+                    MultiNoiseSpectrum, Series)
 
 LOGGER = logging.getLogger("solution")
 CONF = ElectronicsConfig()
@@ -69,10 +70,11 @@ class Solution(object):
         """Get output nodes in solution
 
         :return: output nodes
-        :rtype: Sequence[:class:`Node`]
+        :rtype: Set[:class:`Node`]
         """
 
-        return [function.sink for function in self.voltage_transfer_functions()]
+        return set([function.sink for function in self.voltage_voltage_tfs()] \
+                    + [function.sink for function in self.current_voltage_tfs()])
 
     @property
     def output_components(self):
@@ -82,7 +84,8 @@ class Solution(object):
         :rtype: Sequence[:class:`Component`]
         """
 
-        return [function.sink for function in self.current_transfer_functions()]
+        return set([function.sink for function in self.current_current_tfs()] \
+                   + [function.sink for function in self.voltage_current_tfs()])
 
     @property
     def n_frequencies(self):
@@ -105,42 +108,57 @@ class Solution(object):
         return functions
 
     @property
-    def has_voltage_tfs(self):
-        return len(list(self.voltage_transfer_functions())) > 0
-
-    @property
-    def has_current_tfs(self):
-        return len(list(self.current_transfer_functions())) > 0
-
-    @property
     def has_tfs(self):
-        return self.has_voltage_tfs or self.has_current_tfs
+        return len(list(self.tfs())) > 0
+
+    @property
+    def has_voltage_voltage_tfs(self):
+        return len(list(self.voltage_voltage_tfs())) > 0
+
+    @property
+    def has_voltage_current_tfs(self):
+        return len(list(self.voltage_current_tfs())) > 0
+
+    @property
+    def has_current_current_tfs(self):
+        return len(list(self.current_current_tfs())) > 0
+
+    @property
+    def has_current_voltage_tfs(self):
+        return len(list(self.current_voltage_tfs())) > 0
 
     @property
     def has_noise(self):
-        return len(list(self.noise_functions())) > 0
+        return len(list(self.noise())) > 0
 
-    def transfer_functions(self, *args, **kwargs):
+    def tfs(self, *args, **kwargs):
         return self._filter_function(TransferFunction, *args, **kwargs)
 
-    def current_transfer_functions(self, *args, **kwargs):
-        return self._filter_function(CurrentTransferFunction, *args, **kwargs)
+    def voltage_voltage_tfs(self, *args, **kwargs):
+        return self._filter_function(VoltageVoltageTF, *args, **kwargs)
 
-    def voltage_transfer_functions(self, *args, **kwargs):
-        return self._filter_function(VoltageTransferFunction, *args, **kwargs)
+    def voltage_current_tfs(self, *args, **kwargs):
+        return self._filter_function(VoltageCurrentTF, *args, **kwargs)
 
-    def noise_functions(self, *args, **kwargs):
+    def current_current_tfs(self, *args, **kwargs):
+        return self._filter_function(CurrentCurrentTF, *args, **kwargs)
+
+    def current_voltage_tfs(self, *args, **kwargs):
+        return self._filter_function(CurrentVoltageTF, *args, **kwargs)
+
+    def noise(self, *args, **kwargs):
         return self._filter_function(NoiseSpectrum, *args, **kwargs)
 
     def _result_node_index(self, node):
         return (self.circuit.n_components
                 + self.circuit.node_index(node))
 
-    def plot(self):
+    def plot(self, output_components=None, output_nodes=None):
         """Plot all available functions"""
 
         if self.has_tfs:
-            self.plot_tfs()
+            self.plot_tfs(output_components=output_components,
+                          output_nodes=output_nodes)
         if self.has_noise:
             self.plot_noise()
 
@@ -155,18 +173,28 @@ class Solution(object):
         if figure is None:
             figure = self.bode_figure()
 
-        if self.has_voltage_tfs:
-            self.plot_voltage_tfs(figure=figure, output_nodes=output_nodes,
-                                  *args, **kwargs)
-        if self.has_current_tfs:
-            self.plot_current_tfs(figure=figure,
-                                  output_components=output_components,
-                                  *args, **kwargs)
+        if self.has_voltage_voltage_tfs:
+            self.plot_voltage_voltage_tfs(figure=figure,
+                                          output_nodes=output_nodes, *args,
+                                          **kwargs)
+        if self.has_voltage_current_tfs:
+            self.plot_voltage_current_tfs(figure=figure,
+                                          output_components=output_components,
+                                          *args, **kwargs)
+        if self.has_current_current_tfs:
+            self.plot_current_current_tfs(figure=figure,
+                                          output_components=output_components,
+                                          *args, **kwargs)
+        if self.has_current_voltage_tfs:
+            self.plot_current_voltage_tfs(figure=figure,
+                                          output_nodes=output_nodes, *args,
+                                          **kwargs)
 
-    def plot_voltage_tfs(self, figure=None, output_nodes=None, title=None):
-        if not self.has_voltage_tfs:
-            raise Exception("voltage transfer functions were not computed in "
-                            "this solution")
+    def plot_voltage_voltage_tfs(self, figure=None, output_nodes=None,
+                                 title=None):
+        if not self.has_voltage_voltage_tfs:
+            raise Exception("voltage-voltage transfer functions were not "
+                            "computed in this solution")
 
         # work out which sinks to plot
         if output_nodes is not None:
@@ -181,19 +209,20 @@ class Solution(object):
             output_nodes = self.output_nodes
 
         # get transfer functions to specified output nodes
-        tfs = self.transfer_functions(sinks=output_nodes)
+        tfs = self.voltage_voltage_tfs(sinks=output_nodes)
 
         figure = self._plot_bode(self.frequencies, tfs, figure=figure,
                                  title=title)
-        LOGGER.info("voltage tf(s) plotted on %s",
+        LOGGER.info("voltage-voltage tf(s) plotted on %s",
                     figure.canvas.get_window_title())
 
         return figure
 
-    def plot_current_tfs(self, figure=None, output_components=None, title=None):
-        if not len(self.current_transfer_functions()):
-            raise Exception("current transfer functions were not computed in "
-                            "this solution")
+    def plot_voltage_current_tfs(self, figure=None, output_components=None,
+                                 title=None):
+        if not self.has_voltage_current_tfs:
+            raise Exception("voltage-current transfer functions were not "
+                            "computed in this solution")
 
         # work out which sinks to plot
         if output_components is not None:
@@ -208,11 +237,67 @@ class Solution(object):
             output_components = self.output_components
 
         # get transfer functions to specified output components
-        tfs = self.transfer_functions(sinks=output_components)
+        tfs = self.voltage_current_tfs(sinks=output_components)
 
         figure = self._plot_bode(self.frequencies, tfs, figure=figure,
                                  title=title)
-        LOGGER.info("current tf(s) plotted on %s",
+        LOGGER.info("voltage-current tf(s) plotted on %s",
+                    figure.canvas.get_window_title())
+
+        return figure
+
+    def plot_current_current_tfs(self, figure=None, output_components=None,
+                                 title=None):
+        if not self.has_current_current_tfs:
+            raise Exception("current-current transfer functions were not "
+                            "computed in this solution")
+
+        # work out which sinks to plot
+        if output_components is not None:
+            # use output components specified in this call
+            output_components = list(output_components)
+
+            if not set(output_components).issubset(set(self.output_components)):
+                raise ValueError("not all specified output components were "
+                                 "computed in solution")
+        else:
+            # plot all output components
+            output_components = self.output_components
+
+        # get transfer functions to specified output components
+        tfs = self.current_current_tfs(sinks=output_components)
+
+        figure = self._plot_bode(self.frequencies, tfs, figure=figure,
+                                 title=title)
+        LOGGER.info("current-current tf(s) plotted on %s",
+                    figure.canvas.get_window_title())
+
+        return figure
+
+    def plot_current_voltage_tfs(self, figure=None, output_nodes=None,
+                                 title=None):
+        if not self.has_current_voltage_tfs:
+            raise Exception("current-voltage transfer functions were not "
+                            "computed in this solution")
+
+        # work out which sinks to plot
+        if output_nodes is not None:
+            # use output node specified in this call
+            output_nodes = list(output_nodes)
+
+            if not set(output_nodes).issubset(set(self.output_nodes)):
+                raise ValueError("not all specified output nodes were computed "
+                                 "in solution")
+        else:
+            # plot all output nodes
+            output_nodes = self.output_nodes
+
+        # get transfer functions to specified output nodes
+        tfs = self.current_voltage_tfs(sinks=output_nodes)
+
+        figure = self._plot_bode(self.frequencies, tfs, figure=figure,
+                                 title=title)
+        LOGGER.info("current-voltage tf(s) plotted on %s",
                     figure.canvas.get_window_title())
 
         return figure
@@ -285,14 +370,14 @@ class Solution(object):
         return figure
 
     def plot_noise(self, figure=None, total=True, individual=True, title=None):
-        if not len(self.noise_functions()):
+        if not self.has_noise:
             raise Exception("noise was not computed in this solution")
 
         if not total and not individual:
             raise Exception("at least one of total and individual flags must "
                             "be set")
 
-        noise = list(self.noise_functions())
+        noise = list(self.noise())
 
         if total:
             # create combined noise spectrum
@@ -365,16 +450,16 @@ class Solution(object):
             LOGGER.info("%s (%s)", f, f.__class__)
 
         # check functions match
-        other_tfs = other.transfer_functions()
-        other_noise = other.noise_functions()
+        other_tfs = other.tfs()
+        other_noise = other.noise()
 
-        for tf in self.transfer_functions():
+        for tf in self.tfs():
             # with builtin list object, "in" uses __eq__
             if tf in other_tfs:
                 # we have a match
                 other_tfs.remove(tf)
 
-        for noise in self.noise_functions():
+        for noise in self.noise():
             # with builtin list object, "in" uses __eq__
             if noise in other_noise:
                 # we have a match
