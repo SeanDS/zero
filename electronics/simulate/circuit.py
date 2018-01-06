@@ -797,6 +797,7 @@ class Circuit(object):
         # get matrix
         m = self.matrix(*args, **kwargs)
 
+        print("Circuit equations:")
         for row in range(m.shape[0]):
             # flag to suppress leading sign
             first = True
@@ -820,7 +821,7 @@ class Circuit(object):
                     print("(%g%+gi)" % (np.real(element), np.imag(element)),
                           end="", file=stream)
 
-                print(" %s " % header, end="", file=stream)
+                print(header, end="", file=stream)
 
             if row == self._input_component_index:
                 print(" = 1", file=stream)
@@ -838,7 +839,7 @@ class Circuit(object):
         matrix = self.matrix(*args, **kwargs).toarray()
 
         # attach input vector on right hand side
-        matrix = np.hstack((matrix, self._input_vector))
+        matrix = np.concatenate((matrix, self._input_vector), axis=1)
 
         # convert complex values to magnitudes (leaving others, like -1, alone)
         for row in range(matrix.shape[0]):
@@ -849,11 +850,16 @@ class Circuit(object):
         # remove imaginary parts (which are all zero)
         array = matrix.real
 
+        # prepend element names as first column
+        element_names = np.expand_dims(np.array(self.element_names), axis=1)
+        array = np.concatenate((element_names, array), axis=1)
+
         # tabulate data
-        table = tabulate(array, self.column_headers + ["input"],
+        table = tabulate(array, [""] + self.column_headers + ["RHS"],
                          tablefmt=CONF["format"]["table"])
 
         # output
+        print("Circuit matrix:")
         print(table, file=stream)
 
     @property
@@ -876,6 +882,10 @@ class Circuit(object):
 
         yield from self.components
         yield from self.non_gnd_nodes
+
+    @property
+    def element_names(self):
+        return [element.name for element in self.elements]
 
     def format_element(self, element):
         """Format matrix element for pretty printer
