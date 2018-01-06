@@ -10,6 +10,7 @@ from ..config import ElectronicsConfig
 from ..data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
                     CurrentCurrentTF, CurrentVoltageTF, NoiseSpectrum,
                     MultiNoiseSpectrum, Series)
+from .components import Component, Node
 
 LOGGER = logging.getLogger("solution")
 CONF = ElectronicsConfig()
@@ -200,6 +201,10 @@ class Solution(object):
         if output_nodes is not None:
             # use output node specified in this call
             output_nodes = list(output_nodes)
+            for index, node in enumerate(output_nodes):
+                if not isinstance(node, Node):
+                    # parse node name
+                    output_nodes[index] = self.circuit.get_node(node)
 
             if not set(output_nodes).issubset(set(self.output_nodes)):
                 raise ValueError("not all specified output nodes were computed "
@@ -228,6 +233,10 @@ class Solution(object):
         if output_components is not None:
             # use output components specified in this call
             output_components = list(output_components)
+            for index, component in enumerate(output_components):
+                if not isinstance(component, Component):
+                    # parse component name
+                    output_components[index] = self.circuit.get_component(component)
 
             if not set(output_components).issubset(set(self.output_components)):
                 raise ValueError("not all specified output components were "
@@ -256,6 +265,10 @@ class Solution(object):
         if output_components is not None:
             # use output components specified in this call
             output_components = list(output_components)
+            for index, component in enumerate(output_components):
+                if not isinstance(component, Component):
+                    # parse component name
+                    output_components[index] = self.circuit.get_component(component)
 
             if not set(output_components).issubset(set(self.output_components)):
                 raise ValueError("not all specified output components were "
@@ -284,6 +297,10 @@ class Solution(object):
         if output_nodes is not None:
             # use output node specified in this call
             output_nodes = list(output_nodes)
+            for index, node in enumerate(output_nodes):
+                if not isinstance(node, Node):
+                    # parse node name
+                    output_nodes[index] = self.circuit.get_node(node)
 
             if not set(output_nodes).issubset(set(self.output_nodes)):
                 raise ValueError("not all specified output nodes were computed "

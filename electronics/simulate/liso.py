@@ -70,14 +70,14 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         """Get solution"""
         return NotImplemented
 
-    def show(self):
+    def show(self, *args, **kwargs):
         """Show LISO results"""
 
         if not self.plottable:
             LOGGER.warning("nothing to show")
 
         # get solution
-        solution = self.solution()
+        solution = self.solution(*args, **kwargs)
         # draw plots
         solution.plot(output_nodes=list(self.output_nodes),
                       output_components=list(self.output_components))
@@ -212,9 +212,9 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
 class InputParser(BaseParser):
     COMPONENTS = ["r", "c", "l", "op"]
-    DIRECTIVES = {"input_nodes": ["uinput", "iinput"],
-                  "output_nodes": ["uoutput", "ioutput"],
-                  "noise_node": ["noise"],
+    DIRECTIVES = {"input": ["uinput", "iinput"],
+                  "output": ["uoutput", "ioutput"],
+                  "noise": ["noise"],
                   "frequencies": ["freq"]}
 
     def __init__(self, *args, **kwargs):
@@ -294,74 +294,82 @@ class InputParser(BaseParser):
         :raises ValueError: if directive is unknown
         """
 
-        if directive in self.DIRECTIVES["input_nodes"]:
-            self._parse_input_nodes(directive, options)
-        elif directive in self.DIRECTIVES["output_nodes"]:
-            self._parse_output_nodes(options[0])
-        elif directive in self.DIRECTIVES["noise_node"]:
-            self._parse_noise_node(options[0])
+        if directive in self.DIRECTIVES["input"]:
+            self._parse_input(directive, options)
+        elif directive in self.DIRECTIVES["output"]:
+            self._parse_output(directive, options)
+        elif directive in self.DIRECTIVES["noise"]:
+            self._parse_noise(options[0])
         elif directive in self.DIRECTIVES["frequencies"]:
             self._parse_frequencies(options)
         else:
             raise ValueError("Unknown directive: %s" % directive)
 
-    def _parse_input_nodes(self, input_type, node_options):
-        """Parse LISO token as input node directive
+    def _parse_input(self, input_type, options):
+        """Parse LISO token as input directive
 
         :param input_type: input type
         :type input_type: str
-        :param node_options: input node options
-        :type node_options: Sequence[str]
+        :param options: input options
+        :type options: Sequence[str]
         """
 
         # we always have at least a positive node
-        self.circuit.input_node_p = Node(node_options[0])
+        self.circuit.input_node_p = Node(options[0])
 
         if input_type == "uinput":
             self.circuit.input_type = Circuit.INPUT_TYPE_VOLTAGE
-            if len(node_options) > 3:
+            if len(options) > 3:
                 # floating input
-                self.circuit.input_node_m = Node(node_options[1])
-                self.circuit.input_impedance = float(node_options[2])
+                self.circuit.input_node_m = Node(options[1])
+                self.circuit.input_impedance = float(options[2])
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
                             "impedance %f", self.circuit.input_node_p,
                             self.circuit.input_node_m,
                             self.circuit.input_impedance)
             else:
-                self.circuit.input_impedance = float(node_options[1])
+                self.circuit.input_impedance = float(options[1])
 
                 LOGGER.info("adding voltage input node %s with impedance %s",
                             self.circuit.input_node_p,
                             SIFormatter.format(self.circuit.input_impedance, "Ω"))
         elif input_type == "iinput":
             self.circuit.input_type = Circuit.INPUT_TYPE_CURRENT
-            self.circuit.input_impedance = float(node_options[1])
+            self.circuit.input_impedance = float(options[1])
             LOGGER.info("adding current input node %s with impedance %s",
                         self.circuit.input_node_p,
                         SIFormatter.format(self.circuit.input_impedance, "Ω"))
         else:
             raise ValueError("invalid input type")
 
-    def _parse_output_nodes(self, output_str):
-        """Parse LISO token as output node directive
+    def _parse_output(self, output_type, options):
+        """Parse LISO token as output directive
 
-        :param output_str: output node name, and (unused) plot scaling \
-                           separated by colons
-        :type output_str: str
+        :param output_type: output type
+        :type output_type: str
+        :param options: input options
+        :type options: Sequence[str]
         """
 
         # split options by colon
-        options = output_str.split(":")
+        options = options[0].split(":")
 
-        # only use first option, which is the node name
-        node = Node(options[0])
+        if output_type == "uoutput":
+            # only use first option, which is the node name
+            node = Node(options[0])
+            self.add_output_node(node)
+            LOGGER.info("adding output node %s", node)
+            # FIXME: parse list of output nodes
+        elif output_type == "ioutput":
+            # only use first option, which is the component name
+            component = options[0]
+            self.add_output_component(component)
+            LOGGER.info("adding output component %s", component)
+        else:
+            raise ValueError("invalid output type")
 
-        LOGGER.info("adding output node %s", node)
-        self.add_output_node(node)
-        # FIXME: parse list of output nodes
-
-    def _parse_noise_node(self, node_str):
+    def _parse_noise(self, node_str):
         """Parse LISO token as noise node directive
 
         :param node_str: noise node name, and (unused) plot scaling \

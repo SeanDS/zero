@@ -283,8 +283,8 @@ class Input(Component, metaclass=Singleton):
 
     def equation(self):
         # register source and sink
-        self.node_p.add_source(self) # current flows out of here...
-        self.node_n.add_sink(self) # ...and into here
+        self.node_p.add_source(self) # current flows out of here
+        # no sink, as this is the input node
 
         # nodal potential equation coefficients
         # impedance * current + voltage = 0

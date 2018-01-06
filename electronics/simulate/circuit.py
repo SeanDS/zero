@@ -205,8 +205,10 @@ class Circuit(object):
         :raises ValueError: if component not found
         """
 
+        component_name = component_name.lower()
+
         for component in self.components:
-            if component.name == component_name:
+            if component.name.lower() == component_name:
                 return component
 
         raise ValueError("component not found")
@@ -221,8 +223,10 @@ class Circuit(object):
         :raises ValueError: if node not found
         """
 
+        node_name = node_name.lower()
+
         for node in self.nodes:
-            if node.name == node_name:
+            if node.name.lower() == node_name:
                 return node
 
         raise ValueError("node not found")
@@ -284,6 +288,16 @@ class Circuit(object):
                 else:
                     self._matrix[row, column] = coefficient.value
 
+        # handle current inputs
+        if self.input_type is Circuit.INPUT_TYPE_CURRENT:
+            row = self._component_matrix_index(self.get_component("input"))
+            column = self._node_matrix_index(self.input_node_p)
+            # null the input node's voltage coefficient
+            self._matrix[row, column] = 0
+
+            # set input current
+            self._matrix[row, row] = 1
+
     def matrix(self, frequency):
         """Calculate and return circuit matrix for a given frequency
 
@@ -319,8 +333,9 @@ class Circuit(object):
 
     def solve(self, frequencies, input_type=None, input_node_p=None,
               input_node_n=None, input_impedance=None, output_components=[],
-              output_nodes=[], noise_node=None, print_progress=True,
-              progress_stream=sys.stdout):
+              output_nodes=[], noise_node=None, print_equations=False,
+              print_matrix=False, print_progress=True,
+              stream=sys.stdout):
         """Solve matrix for a given input and/or output
 
         Settings provided to this method override settings specified in the
@@ -356,10 +371,14 @@ class Circuit(object):
         :type output_nodes: List[:class:`~Node` or str] or str
         :param noise_node: (optional) node to project noise to
         :type noise_node: :class:`~Node` or str
+        :param print_equations: whether to print circuit equations
+        :type print_equations: bool
+        :param print_matrix: whether to print circuit matrix
+        :type print_matrix: bool
         :param print_progress: whether to print solve progress to stream
         :type print_progress: bool
-        :param progress_stream: stream to print progress to
-        :type progress_stream: :class:`io.IOBase`
+        :param stream: stream to print to
+        :type stream: :class:`io.IOBase`
         :return: solution
         :rtype: :class:`~Solution`
         :raises Exception: if neither an input nor noise node is specified
@@ -375,9 +394,9 @@ class Circuit(object):
         noise = None
 
         if input_type:
-            if input_type == "voltage" or input_type == self.INPUT_TYPE_VOLTAGE:
+            if input_type in ["voltage", self.INPUT_TYPE_VOLTAGE]:
                 self.input_type = self.INPUT_TYPE_VOLTAGE
-            elif input_type == "current" or input_type == self.INPUT_TYPE_CURRENT:
+            elif input_type in ["current", self.INPUT_TYPE_CURRENT]:
                 self.input_type = self.INPUT_TYPE_CURRENT
             else:
                 raise ValueError("invalid input type")
@@ -408,14 +427,16 @@ class Circuit(object):
         if output_components == "all":
             output_components = list(self.components)
         else:
-            for index, component in enumerate(list(output_components)):
+            output_components = list(output_components)
+            for index, component in enumerate(output_components):
                 if not isinstance(component, Component):
                     # parse component name
                     output_components[index] = self.get_component(component)
         if output_nodes == "all":
             output_nodes = list(self.non_gnd_nodes)
         else:
-            for index, node in enumerate(list(output_nodes)):
+            output_nodes = list(output_nodes)
+            for index, node in enumerate(output_nodes):
                 if not isinstance(node, Node):
                     # parse node name
                     output_nodes[index] = self.get_node(node)
@@ -468,7 +489,7 @@ class Circuit(object):
 
             # create frequency generator with progress bar
             freq_gen = _print_progress(frequencies, n_freqs, update=update,
-                                       stream=progress_stream)
+                                       stream=stream)
         else:
             # just use provided frequency sequence
             freq_gen = frequencies
@@ -515,7 +536,7 @@ class Circuit(object):
                     function = VoltageCurrentTF(source=self.input_node_p,
                                                 sink=component, series=series)
                 elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
-                    function = CurrentCurrentTF(source=self.input_node_p,
+                    function = CurrentCurrentTF(source=input_component,
                                                 sink=component, series=series)
                 else:
                     raise ValueError("unrecognised input type")
@@ -542,7 +563,7 @@ class Circuit(object):
                     function = VoltageVoltageTF(source=self.input_node_p,
                                                 sink=node, series=series)
                 elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
-                    function = CurrentVoltageTF(source=self.input_node_p,
+                    function = CurrentVoltageTF(source=input_component,
                                                 sink=node, series=series)
                 else:
                     raise ValueError("unrecognised input type")
@@ -550,7 +571,7 @@ class Circuit(object):
                 solution.add_tf(function)
 
             if len(skips):
-                LOGGER.info("skipped zero transfer functions: %s",
+                LOGGER.info("skipped null output nodes: %s",
                             ", ".join([str(tf) for tf in skips]))
 
         if compute_noise:
@@ -592,8 +613,13 @@ class Circuit(object):
                                                  series=series))
 
             if len(skips):
-                LOGGER.info("skipped zero noise sources: %s",
+                LOGGER.info("skipped null noise sources: %s",
                             ", ".join([str(noise) for noise in skips]))
+
+        if print_equations:
+            self._print_equations(frequency=frequencies[0], stream=stream)
+        if print_matrix:
+            self._print_matrix(frequency=frequencies[0], stream=stream)
 
         return solution
 
@@ -625,7 +651,7 @@ class Circuit(object):
 
         # set input impedance
         # NOTE: this issues a SparseEfficiencyWarning
-        index = self._component_matrix_index(Input())
+        index = self._component_matrix_index(self.get_component("input"))
         matrix[index, index] = self.input_impedance
 
         # solve, giving transfer function from each component/node to the
@@ -634,7 +660,7 @@ class Circuit(object):
 
     @property
     def _input_component_index(self):
-        return self._component_matrix_index(Input())
+        return self._component_matrix_index(self.get_component("input"))
 
     @property
     def _input_node_index(self):
@@ -709,14 +735,8 @@ class Circuit(object):
     def _input_vector(self):
         y = self._results_matrix(1)
 
-        if self.input_type is self.INPUT_TYPE_VOLTAGE:
-            # set input node's voltage
-            y[self._input_component_index, 0] = 1
-        elif self.input_type is self.INPUT_TYPE_CURRENT:
-            # set input node's current
-            y[self._input_node_index, 0] = 1
-        else:
-            raise ValueError("unexpected input type")
+        # set input excitation (works for both voltage and current inputs)
+        y[self._input_component_index, 0] = 1
 
         return y
 
@@ -767,7 +787,7 @@ class Circuit(object):
         for equation in self.equations:
             yield from equation.coefficients
 
-    def print_equations(self, stream=sys.stdout, *args, **kwargs):
+    def _print_equations(self, stream=sys.stdout, *args, **kwargs):
         """Pretty print circuit equations
 
         :param stream: stream to print to
@@ -802,18 +822,12 @@ class Circuit(object):
 
                 print(" %s " % header, end="", file=stream)
 
-            if self.input_type is Circuit.INPUT_TYPE_VOLTAGE:
-                if row == self._input_component_index:
-                    print(" = 1", file=stream)
-                else:
-                    print(" = 0", file=stream)
-            elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
-                if row == self._input_node_index:
-                    print(" = 1", file=stream)
-                else:
-                    print(" = 0", file=stream)
+            if row == self._input_component_index:
+                print(" = 1", file=stream)
+            else:
+                print(" = 0", file=stream)
 
-    def print_matrix(self, stream=sys.stdout, *args, **kwargs):
+    def _print_matrix(self, stream=sys.stdout, *args, **kwargs):
         """Pretty print circuit matrix
 
         :param stream: stream to print to
