@@ -797,7 +797,7 @@ class Circuit(object):
         # get matrix
         m = self.matrix(*args, **kwargs)
 
-        print("Circuit equations:")
+        print("Circuit equations:", file=stream)
         for row in range(m.shape[0]):
             # flag to suppress leading sign
             first = True
@@ -859,7 +859,7 @@ class Circuit(object):
                          tablefmt=CONF["format"]["table"])
 
         # output
-        print("Circuit matrix:")
+        print("Circuit matrix:", file=stream)
         print(table, file=stream)
 
     @property
