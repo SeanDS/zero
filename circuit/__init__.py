@@ -2,7 +2,7 @@ import logging
 import locale
 from matplotlib import rcParams
 
-from electronics.config import ElectronicsConfig
+from circuit.config import CircuitConfig
 
 # suppress warnings when the user code does not include a handler
 logging.getLogger().addHandler(logging.NullHandler())
@@ -11,11 +11,11 @@ logging.getLogger().addHandler(logging.NullHandler())
 locale.setlocale(locale.LC_ALL, "")
 
 __version__ = "0.2.2"
-DESCRIPTION = "Electronics calculator and simulator utility"
-PROGRAM = "electronics"
+DESCRIPTION = "Circuit simulator"
+PROGRAM = "circuit"
 
 # get config
-CONF = ElectronicsConfig()
+CONF = CircuitConfig()
 
 # update Matplotlib options with overrides from config
 rcParams.update(CONF["matplotlib"])

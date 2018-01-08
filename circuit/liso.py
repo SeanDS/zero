@@ -15,9 +15,9 @@ import re
 import numpy as np
 from tempfile import NamedTemporaryFile
 
-from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
-                    CurrentVoltageTF, NoiseSpectrum, Series, ComplexSeries)
-from ..format import SIFormatter
+from .data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
+                   CurrentVoltageTF, NoiseSpectrum, Series, ComplexSeries)
+from .format import SIFormatter
 from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
                          Node, CurrentNoise, VoltageNoise, JohnsonNoise)

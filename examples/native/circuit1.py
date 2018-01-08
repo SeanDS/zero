@@ -9,9 +9,9 @@ Sean Leavey
 """
 
 import numpy as np
-from electronics import logging_on
+from circuit import logging_on
 logging_on()
-from electronics.simulate.circuit import Circuit
+from circuit.circuit import Circuit
 
 # frequency vector
 frequencies = np.logspace(0, 6, 1000)

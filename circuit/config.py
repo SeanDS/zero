@@ -69,7 +69,7 @@ class BaseConfig(RawConfigParser, metaclass=abc.ABCMeta):
         :rtype: str
         """
 
-        config_dir = appdirs.user_config_dir("electronics")
+        config_dir = appdirs.user_config_dir("circuit.py")
         config_file = os.path.join(config_dir, cls.CONFIG_FILENAME)
 
         return config_file
@@ -93,10 +93,10 @@ class BaseConfig(RawConfigParser, metaclass=abc.ABCMeta):
         # touch file
         open(config_file, 'w').close()
 
-class ElectronicsConfig(BaseConfig):
-    """Electronics config parser"""
+class CircuitConfig(BaseConfig):
+    """Circuit config parser"""
 
-    CONFIG_FILENAME = "electronics.conf"
+    CONFIG_FILENAME = "circuit.conf"
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
 
 class OpAmpLibrary(BaseConfig):

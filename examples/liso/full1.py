@@ -1,9 +1,9 @@
 """Runs local LISO binary on a circuit file."""
 
 import os
-from electronics import logging_on
+from circuit import logging_on
 logging_on()
-from electronics.simulate.liso import Runner
+from circuit.liso import Runner
 
 # run
 output = Runner("liso1.fil").run()

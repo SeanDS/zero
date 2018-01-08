@@ -1,9 +1,8 @@
 """Parses LISO output file as a solution and plots results."""
 
-import os.path
-from electronics import logging_on
+from circuit import logging_on
 logging_on()
-from electronics.simulate.liso import OutputParser, Runner
+from circuit.liso import OutputParser
 
 # parse
 parser = OutputParser("liso1.out")

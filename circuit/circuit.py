@@ -7,10 +7,10 @@ from scipy.sparse.linalg import spsolve
 import logging
 from tabulate import tabulate
 
-from ..config import ElectronicsConfig, OpAmpLibrary
-from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
-                    CurrentVoltageTF, NoiseSpectrum, Series)
-from ..misc import _print_progress
+from .config import CircuitConfig, OpAmpLibrary
+from .data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
+                   CurrentVoltageTF, NoiseSpectrum, Series)
+from .misc import _print_progress
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
                          Input, Node, ComponentNoise, NodeNoise,
                          ImpedanceCoefficient, CurrentCoefficient,
@@ -18,7 +18,7 @@ from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
 from .solution import Solution
 
 LOGGER = logging.getLogger("circuit")
-CONF = ElectronicsConfig()
+CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
 
 def sparse(*args, **kwargs):

@@ -3,9 +3,9 @@ import glob
 import numpy as np
 import unittest
 
-from electronics import logging_on
+from circuit import logging_on
 logging_on()
-from electronics.simulate.liso import Runner
+from circuit.liso import Runner
 
 class TestLisoVsNative(unittest.TestCase):
     REL_FIL_DIR = "."

@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import abc
 
-from ..config import ElectronicsConfig
-from ..data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
-                    CurrentCurrentTF, CurrentVoltageTF, NoiseSpectrum,
-                    MultiNoiseSpectrum, Series)
+from .config import CircuitConfig
+from .data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
+                   CurrentCurrentTF, CurrentVoltageTF, NoiseSpectrum,
+                   MultiNoiseSpectrum, Series)
 from .components import Component, Node
 
 LOGGER = logging.getLogger("solution")
-CONF = ElectronicsConfig()
+CONF = CircuitConfig()
 
 class Solution(object):
     """Represents a solution to the simulated circuit"""

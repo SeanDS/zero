@@ -5,9 +5,9 @@ commands (e.g. uoutput). Instead, the solver provides a `Solution`
 object which can be called to plot a transfer function from the input
 to any other node."""
 
-from electronics import logging_on
+from circuit import logging_on
 logging_on()
-from electronics.simulate.liso import InputParser
+from circuit.liso import InputParser
 
 # create parser
 parser = InputParser("liso1.fil")

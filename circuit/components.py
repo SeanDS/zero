@@ -4,11 +4,11 @@ import abc
 import logging
 import numpy as np
 
-from ..misc import Singleton, NamedInstance, _print_progress
-from ..format import SIFormatter
-from ..config import ElectronicsConfig
+from .misc import Singleton, NamedInstance, _print_progress
+from .format import SIFormatter
+from .config import CircuitConfig
 
-CONF = ElectronicsConfig()
+CONF = CircuitConfig()
 
 class Component(object, metaclass=abc.ABCMeta):
     """Class representing a circuit component"""

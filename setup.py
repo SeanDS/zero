@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-import electronics
+import circuit
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
@@ -18,24 +18,22 @@ requirements = [
 ]
 
 setup(
-    name="electronics.py",
-    version=electronics.__version__,
-    description=electronics.DESCRIPTION,
+    name="circuit.py",
+    version=circuit.__version__,
+    description=circuit.DESCRIPTION,
     long_description=readme,
     author="Sean Leavey",
     author_email="electronics@attackllama.com",
-    url="https://github.com/SeanDS/electronics.py",
+    url="https://git.ligo.org/sean-leavey/circuit",
     packages=[
-        "electronics",
-        "electronics.calculate",
-        "electronics.simulate"
+        "circuit"
     ],
     package_data={
-        "electronics": ["electronics.conf.dist", "library.conf.dist"]
+        "circuit": ["circuit.conf.dist", "library.conf.dist"]
     },
     entry_points={
         'console_scripts': [
-            '%s = electronics.__main__:main' % electronics.PROGRAM
+            '%s = circuit.__main__:main' % circuit.PROGRAM
         ]
     },
     install_requires=requirements,

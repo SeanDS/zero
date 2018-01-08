@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Electronics calculator"""
+"""Circuit simulator utility"""
 
 import io
 import sys
@@ -10,12 +10,12 @@ import argparse
 import textwrap
 import collections
 
-from electronics import __version__, DESCRIPTION, PROGRAM
+from circuit import __version__, DESCRIPTION, PROGRAM
 from .calculate.regulators import Regulator
 from .calculate.components import Set
 from .format import SIFormatter
 
-PROG = "electronics"
+PROG = "circuit"
 SYNOPSIS = "{} <command> [<args>...]".format(PROGRAM)
 
 # NOTE: double spaces are interpreted by text2man to be paragraph
