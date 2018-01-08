@@ -27,6 +27,17 @@ structure, support for current transfer functions, direct comparison to LISO
 results and more advanced plotting, but the basic solving functionality is
 almost the same.
 
+## Basic usage
+There is a very basic CLI provided by the program. Open up a terminal and type:
+```bash
+circuit help
+```
+for a list of available commands. Currently, only the `liso` command is
+available, which parses a LISO input file and runs it with the library's native
+solver. Run`circuit help liso` for a list of optional arguments.
+
+For examples of how to build scripts with Python, see the `examples` directory.
+
 ## Future ideas
   - Allow arbitrary op-amp noise spectra (interpolate to the frequency vector
     actually used)
