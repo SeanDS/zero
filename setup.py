@@ -23,7 +23,7 @@ setup(
     description=circuit.DESCRIPTION,
     long_description=readme,
     author="Sean Leavey",
-    author_email="electronics@attackllama.com",
+    author_email="sean.leavey@ligo.org",
     url="https://git.ligo.org/sean-leavey/circuit",
     packages=[
         "circuit"

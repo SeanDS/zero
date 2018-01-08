@@ -44,7 +44,7 @@ almost the same.
 
 ## Credits
 Sean Leavey  
-<electronics@attackllama.com>  
+<sean.leavey@ligo.org>  
 https://github.com/SeanDS
 
 Invaluable insight into LISO's workings provided by Gerhard Heinzel.
