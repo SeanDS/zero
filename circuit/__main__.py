@@ -85,9 +85,14 @@ class Liso(Cmd, metaclass=abc.ABCMeta):
         if args.verbose:
             logging_on()
 
-        parser = InputParser(args.input_file)
-        parser.show(print_equations=args.print_equations,
-                    print_matrix=args.print_matrix, print_progress=args.verbose)
+        try:
+            parser = InputParser(args.input_file)
+            parser.show(print_equations=args.print_equations,
+                        print_matrix=args.print_matrix,
+                        print_progress=args.verbose)
+        except Exception as e:
+            # print error message
+            print(e, file=sys.stderr)
 
 class Help(Cmd):
     """Print manpage or command help (also '-h' after command)."""

@@ -109,6 +109,13 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         else:
             raise Exception("no outputs requested")
 
+    def validate(self):
+        if (self.frequencies is None or (self.input_node_n is None and
+                                         self.input_node_p is None)
+            or (len(self.output_nodes) == 0 and len(self.output_components) == 0
+                and self.noise_node is None)):
+            raise Exception("this doesn't appear to be a valid LISO file")
+
     @property
     def calc_tfs(self):
         return self.calc_node_tfs or self.calc_component_tfs
@@ -320,6 +327,9 @@ class InputParser(BaseParser):
             for tokens in [self.tokenise(line) for line in lines
                            if not line.startswith("#")]:
                 self._parse_tokens(tokens)
+
+        # check we found anything
+        self.validate()
 
     def _parse_tokens(self, tokens):
         """Parse LISO input file tokens as commands
@@ -634,6 +644,9 @@ class OutputParser(BaseParser):
         self._parse_components(lines)
         self._parse_input_nodes(lines)
         self._parse_columns(lines)
+
+        # check we found anything
+        self.validate()
 
     def _parse_components(self, lines):
         text = "".join(lines)
