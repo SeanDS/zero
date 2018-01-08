@@ -36,7 +36,8 @@ COMMANDS
 
 AUTHOR
     Sean Leavey <sean.leavey@ligo.org>
-""".format(prog=PROGRAM, version=__version__, desc=DESCRIPTION, synopsis=SYNOPSIS).strip()
+""".format(prog=PROGRAM, version=__version__, desc=DESCRIPTION,
+           synopsis=SYNOPSIS).strip()
 
 class Cmd(object):
     """Base class for commands"""
