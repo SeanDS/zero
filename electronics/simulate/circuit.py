@@ -11,9 +11,10 @@ from ..config import ElectronicsConfig, OpAmpLibrary
 from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
                     CurrentVoltageTF, NoiseSpectrum, Series)
 from ..misc import _print_progress
-from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
-                         Node, ComponentNoise, NodeNoise, ImpedanceCoefficient,
-                         CurrentCoefficient, VoltageCoefficient)
+from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
+                         Input, Node, ComponentNoise, NodeNoise,
+                         ImpedanceCoefficient, CurrentCoefficient,
+                         VoltageCoefficient)
 from .solution import Solution
 
 LOGGER = logging.getLogger("circuit")
@@ -49,10 +50,6 @@ def solve(A, b):
 class Circuit(object):
     """Represents an electronic circuit containing linear components"""
 
-    # circuit input signal types
-    INPUT_TYPE_CURRENT = 1
-    INPUT_TYPE_VOLTAGE = 2
-
     def __init__(self):
         """Instantiate a new circuit
 
@@ -61,36 +58,10 @@ class Circuit(object):
         """
 
         # solver parameters
-        self._input_node_p = None
-        self._input_node_n = None
         self._noise_node = None
-        self.input_impedance = None
-        self.input_type = None
         self.components = []
         self.nodes = []
         self._matrix = None
-
-    @property
-    def input_node_p(self):
-        return self._input_node_p
-
-    @input_node_p.setter
-    def input_node_p(self, node):
-        if not isinstance(node, Node):
-            node = Node(node)
-
-        self._input_node_p = node
-
-    @property
-    def input_node_m(self):
-        return self._input_node_m
-
-    @input_node_m.setter
-    def input_node_m(self, node):
-        if not isinstance(node, Node):
-            node = Node(node)
-
-        self._input_node_m = node
 
     @property
     def noise_node(self):
@@ -158,17 +129,20 @@ class Circuit(object):
         # reset matrix
         self._matrix = None
 
+    def add_input(self, *args, **kwargs):
+        self.add_component(Input(*args, **kwargs))
+
     def add_resistor(self, *args, **kwargs):
-        return self.add_component(Resistor(*args, **kwargs))
+        self.add_component(Resistor(*args, **kwargs))
 
     def add_capacitor(self, *args, **kwargs):
-        return self.add_component(Capacitor(*args, **kwargs))
+        self.add_component(Capacitor(*args, **kwargs))
 
     def add_inductor(self, *args, **kwargs):
-        return self.add_component(Inductor(*args, **kwargs))
+        self.add_component(Inductor(*args, **kwargs))
 
     def add_opamp(self, *args, **kwargs):
-        return self.add_component(OpAmp(*args, **kwargs))
+        self.add_component(OpAmp(*args, **kwargs))
 
     def add_library_opamp(self, model, *args, **kwargs):
         data = LIBRARY.get_data(model)
@@ -190,7 +164,7 @@ class Circuit(object):
         if node not in self.nodes:
             # this is the first time this circuit has seen this node
             # reset its sources and sinks
-            node.reset()
+            node.defaults()
 
             # add
             self.nodes.append(node)
@@ -288,17 +262,7 @@ class Circuit(object):
                 else:
                     self._matrix[row, column] = coefficient.value
 
-        # handle current inputs
-        if self.input_type is Circuit.INPUT_TYPE_CURRENT:
-            row = self._component_matrix_index(self.get_component("input"))
-            column = self._node_matrix_index(self.input_node_p)
-            # null the input node's voltage coefficient
-            self._matrix[row, column] = 0
-
-            # set input current
-            self._matrix[row, row] = 1
-
-    def matrix(self, frequency):
+    def _tf_matrix(self, frequency):
         """Calculate and return circuit matrix for a given frequency
 
         Matrix is returned in compressed sparse row (CSR) format for easy
@@ -328,100 +292,39 @@ class Circuit(object):
             # call method with current frequency and store in new matrix
             matrix[row, column] = self._matrix_callables[coordinates](frequency)
 
-        # convert to CSR for efficient solving
-        return matrix.tocsr()
+        return matrix
 
-    def solve(self, frequencies, input_type=None, input_node_p=None,
-              input_node_n=None, input_impedance=None, output_components=[],
-              output_nodes=[], noise_node=None, print_equations=False,
-              print_matrix=False, print_progress=True,
-              stream=sys.stdout):
-        """Solve matrix for a given input and/or output
+    def _noise_matrix(self, *args, **kwargs):
+        return self._tf_matrix(*args, **kwargs).T
 
-        Settings provided to this method override settings specified in the
-        class. Only the frequency vector is strictly required.
-
-        If output nodes are specified, transfer functions are calculated from
-        the input to these nodes. If the noise node is specified, the noise from
-        all nodes in the circuit projected to the noise node is calculated.
-
-        The input source impedance is only used in noise calculations and can
-        therefore be ignored when only transfer functions are required.
-        Furthermore, for noise calculations, the distinction between voltage
-        and current inputs is ignored.
+    def calculate_tfs(self, frequencies, output_components=[], output_nodes=[],
+                  stream=sys.stdout, print_equations=False, print_matrix=False,
+                  *args, **kwargs):
+        """Calculate circuit transfer functions from input component/node to \
+           output components/nodes
 
         :param frequencies: sequence of frequencies to solve circuit for
         :type frequencies: Sequence[Numpy scalar or float]
-        :param input_type: input type, either voltage or current
-        :type input_type: int or str
-        :param input_node_p: (optional) positive input node to calculate \
-                             transfer functions from
-        :type input_node_p: :class:`~Node` or str
-        :param input_node_n: (optional) negative input node to calculate \
-                             transfer functions from; if None then "gnd" is \
-                             assumed
-        :type input_node_n: :class:`~Node` or str
-        :param input_impedance: (optional) input impedance to assume
-        :type input_impedance: float
         :param output_components: output components to calculate transfer \
                                   functions to; specify "all" to compute all
         :type output_components: List[:class:`~Component` or str] or str
         :param output_nodes: output nodes to calculate transfer functions to; \
                              specify "all" to compute all
         :type output_nodes: List[:class:`~Node` or str] or str
-        :param noise_node: (optional) node to project noise to
-        :type noise_node: :class:`~Node` or str
+        :param stream: stream to print to
+        :type stream: :class:`io.IOBase`
         :param print_equations: whether to print circuit equations
         :type print_equations: bool
         :param print_matrix: whether to print circuit matrix
         :type print_matrix: bool
         :param print_progress: whether to print solve progress to stream
         :type print_progress: bool
-        :param stream: stream to print to
-        :type stream: :class:`io.IOBase`
         :return: solution
         :rtype: :class:`~Solution`
-        :raises Exception: if neither an input nor noise node is specified
         """
 
-        # number of frequencies to calculate
-        n_freqs = len(frequencies)
-
-        # default values
-        compute_tfs = False
-        compute_noise = False
-        tfs = None
-        noise = None
-
-        if input_type:
-            if input_type in ["voltage", self.INPUT_TYPE_VOLTAGE]:
-                self.input_type = self.INPUT_TYPE_VOLTAGE
-            elif input_type in ["current", self.INPUT_TYPE_CURRENT]:
-                self.input_type = self.INPUT_TYPE_CURRENT
-            else:
-                raise ValueError("invalid input type")
-
-        # handle input nodes
-        if input_node_n and not input_node_p:
-            raise ValueError("input_node_p must be specified alongside "
-                             "input_node_n")
-        if input_node_p:
-            self.input_node_p = input_node_p
-        if input_node_n:
-            self.input_node_n = input_node_n
-        else:
-            # use ground
-            self.input_node_n = Node("gnd")
-
-        # check if input impedance is specified (NOTE: cannot just evaluate
-        # boolean literal here, as 0 is a valid input impedance)
-        if input_impedance is not None:
-            self.input_impedance = float(input_impedance)
-
-        # create input component
-        input_component = Input(node_n=self.input_node_n,
-                                node_p=self.input_node_p)
-        self.add_component(input_component)
+        if not self.has_input:
+            raise Exception("circuit must contain an input")
 
         # handle outputs
         if output_components == "all":
@@ -441,42 +344,181 @@ class Circuit(object):
                     # parse node name
                     output_nodes[index] = self.get_node(node)
 
-        # work out which noise node to use, if any
-        if noise_node:
+        if not len(output_components) and not len(output_nodes):
+            raise ValueError("no outputs specified")
+
+        # calculate transfer functions
+        tfs = self._invert(frequencies, self._tf_matrix, self._input_vector,
+                           stream=stream, *args, **kwargs)
+
+        # create solution
+        solution = Solution(self, frequencies)
+
+        # skipped tfs
+        skips = []
+
+        # output component indices
+        for component in output_components:
+            # transfer function
+            tf = tfs[self._component_matrix_index(component), :]
+
+            if np.all(tf) == 0:
+                # skip zero tf
+                skips.append(component)
+
+                # skip this iteration
+                continue
+
+            # create series
+            series = Series(x=frequencies, y=tf)
+            # create appropriate transfer function depending on input type
+            if self.has_voltage_input:
+                function = VoltageCurrentTF(source=self.input_component.node_p,
+                                            sink=component, series=series)
+            elif self.has_current_input:
+                function = CurrentCurrentTF(source=self.input_component,
+                                            sink=component, series=series)
+            else:
+                raise ValueError("unsupported input type")
+            # add transfer function
+            solution.add_tf(function)
+
+        # output node indices
+        for node in output_nodes:
+            # transfer function
+            tf = tfs[self._node_matrix_index(node), :]
+
+            if np.all(tf) == 0:
+                # skip zero tf
+                skips.append(node)
+
+                # skip this iteration
+                continue
+
+            # create series
+            series = Series(x=frequencies, y=tf)
+
+            # create appropriate transfer function depending on input type
+            if self.has_voltage_input:
+                function = VoltageVoltageTF(source=self.input_component.node_p,
+                                            sink=node, series=series)
+            elif self.has_current_input:
+                function = CurrentVoltageTF(source=self.input_component,
+                                            sink=node, series=series)
+            else:
+                raise ValueError("unrecognised input type")
+            # add transfer function
+            solution.add_tf(function)
+
+        if len(skips):
+            LOGGER.info("skipped null output nodes: %s",
+                        ", ".join([str(tf) for tf in skips]))
+
+        if print_equations:
+            self._print_equations(matrix=self._tf_matrix(frequency=1),
+                                  rhs=self._input_vector, stream=stream)
+        if print_matrix:
+            self._print_matrix(matrix=self._tf_matrix(frequency=1),
+                               rhs=self._input_vector, stream=stream)
+
+        return solution
+
+    def calculate_noise(self, frequencies, noise_node, stream=sys.stdout,
+                       print_equations=False, print_matrix=False, *args,
+                       **kwargs):
+        """Calculate noise from circuit components/nodes at a particular node
+
+        :param frequencies: sequence of frequencies to solve circuit for
+        :type frequencies: Sequence[Numpy scalar or float]
+        :param noise_node: node to project noise to
+        :type noise_node: :class:`~Node` or str
+        :param stream: stream to print to
+        :type stream: :class:`io.IOBase`
+        :param print_equations: whether to print circuit equations
+        :type print_equations: bool
+        :param print_matrix: whether to print circuit matrix
+        :type print_matrix: bool
+        :param print_progress: whether to print solve progress to stream
+        :type print_progress: bool
+        :return: solution
+        :rtype: :class:`~Solution`
+        """
+
+        if not self.has_input:
+            raise Exception("circuit must contain an input")
+
+        if noise_node is not None:
             # use noise node specified in this call
             self.noise_node = noise_node
 
-        # work out what to solve
-        if len(output_components) or len(output_nodes):
-            compute_tfs = True
-        if self.noise_node:
-            compute_noise = True
+        # calculate noise
+        noise_matrix = self._invert(frequencies, self._noise_matrix,
+                                    self._noise_vector, stream=stream, *args,
+                                    **kwargs)
 
-        # check that we're solving something
-        if not compute_tfs and not compute_noise:
-            raise Exception("no output requested (specify a combination of an "
-                            "input node, an input component or a noise node)")
+        # create solution
+        solution = Solution(self, frequencies)
 
-        if compute_tfs:
-            # check input type is specified
-            if self.input_type is None:
-                raise ValueError("input type must be specified for transfer "
-                                 "function computation")
+        # skipped noise sources
+        skips = []
 
-            # signal results matrix
-            tfs = self._results_matrix(n_freqs)
+        for noise in self.noise_sources:
+            # noise spectral density
+            spectral_density = noise.spectral_density(frequencies=frequencies)
 
-            # input vector
-            y = self._input_vector
+            if np.all(spectral_density) == 0:
+                # skip zero noise source
+                skips.append(noise)
 
-        if compute_noise:
-            # check if input impedance is specified
-            if self.input_impedance is None:
-                raise ValueError("input inpedance must be specified for noise "
-                                 "computation")
+                # skip this iteration
+                continue
 
-            # noise transfer matrix
-            noise_matrix = self._results_matrix(n_freqs)
+            if isinstance(noise, ComponentNoise):
+                # matrix component index
+                index = self._component_matrix_index(noise.component)
+            elif isinstance(noise, NodeNoise):
+                # matrix node index
+                index = self._node_matrix_index(noise.node)
+            else:
+                raise ValueError("unrecognised noise")
+
+            # response for this element
+            response = noise_matrix[index, :]
+
+            # multiply response from element to noise node by noise entering
+            # at that element, for all frequencies
+            projected_noise = np.abs(response * spectral_density)
+
+            # create series
+            series = Series(x=frequencies, y=projected_noise)
+
+            solution.add_noise(NoiseSpectrum(source=noise,
+                                             sink=self.noise_node,
+                                             series=series))
+
+        if len(skips):
+            LOGGER.info("skipped null noise sources: %s",
+                        ", ".join([str(noise) for noise in skips]))
+
+        if print_equations:
+            self._print_equations(matrix=self._noise_matrix(frequency=1),
+                                  rhs=self._noise_vector, stream=stream)
+        if print_matrix:
+            self._print_matrix(matrix=self._noise_matrix(frequency=1),
+                               rhs=self._noise_vector, stream=stream)
+
+        return solution
+
+    def _invert(self, frequencies, A_function, b, print_progress=True,
+                stream=sys.stdout):
+        if not callable(A_function):
+            raise ValueError("A_function must be a callable")
+
+        # number of frequencies to calculate
+        n_freqs = len(frequencies)
+
+        # results matrix
+        results = self._results_matrix(n_freqs)
 
         if print_progress:
             # update progress every 1% of the way there
@@ -496,175 +538,55 @@ class Circuit(object):
 
         # frequency loop
         for index, frequency in enumerate(freq_gen):
-            # get matrix for this frequency
-            matrix = self.matrix(frequency)
+            # get matrix for this frequency, converting to CSR format for
+            # efficient solving
+            matrix = A_function(frequency).tocsr()
 
-            if compute_tfs:
-                # solve transfer functions
-                tfs[:, index] = solve(matrix, y)
+            # call solver function
+            results[:, index] = solve(matrix, b)
 
-            if compute_noise:
-                # response from all components and nodes to noise node
-                noise_matrix[:, index] = self._response_to_node(self.noise_node,
-                                                                matrix,
-                                                                frequency)
+        return results
 
-        # create solution
-        solution = Solution(self, frequencies)
+    @property
+    def input_component(self):
+        return self.get_component("input")
 
-        if compute_tfs:
-            # skipped tfs
-            skips = []
+    @property
+    def input_impedance(self):
+        return self.input_component.impedance
 
-            # output component indices
-            for component in output_components:
-                # transfer function
-                tf = tfs[self._component_matrix_index(component), :]
+    @property
+    def has_noise_input(self):
+        return self.input_component.input_type is Input.TYPE_NOISE
 
-                if np.all(tf) == 0:
-                    # skip zero tf
-                    skips.append(component)
+    @property
+    def has_voltage_input(self):
+        return self.input_component.input_type is Input.TYPE_VOLTAGE
 
-                    # skip this iteration
-                    continue
+    @property
+    def has_current_input(self):
+        return self.input_component.input_type is Input.TYPE_CURRENT
 
-                # create series
-                series = Series(x=frequencies, y=tf)
+    @property
+    def has_input(self):
+        try:
+            self.input_component
+        except ValueError:
+            return False
 
-                # create appropriate transfer function depending on input type
-                if self.input_type is Circuit.INPUT_TYPE_VOLTAGE:
-                    function = VoltageCurrentTF(source=self.input_node_p,
-                                                sink=component, series=series)
-                elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
-                    function = CurrentCurrentTF(source=input_component,
-                                                sink=component, series=series)
-                else:
-                    raise ValueError("unrecognised input type")
-                # add transfer function
-                solution.add_tf(function)
-
-            # output node indices
-            for node in output_nodes:
-                # transfer function
-                tf = tfs[self._node_matrix_index(node), :]
-
-                if np.all(tf) == 0:
-                    # skip zero tf
-                    skips.append(node)
-
-                    # skip this iteration
-                    continue
-
-                # create series
-                series = Series(x=frequencies, y=tf)
-
-                # create appropriate transfer function depending on input type
-                if self.input_type is Circuit.INPUT_TYPE_VOLTAGE:
-                    function = VoltageVoltageTF(source=self.input_node_p,
-                                                sink=node, series=series)
-                elif self.input_type is Circuit.INPUT_TYPE_CURRENT:
-                    function = CurrentVoltageTF(source=input_component,
-                                                sink=node, series=series)
-                else:
-                    raise ValueError("unrecognised input type")
-                # add transfer function
-                solution.add_tf(function)
-
-            if len(skips):
-                LOGGER.info("skipped null output nodes: %s",
-                            ", ".join([str(tf) for tf in skips]))
-
-        if compute_noise:
-            # skipped noise sources
-            skips = []
-
-            for noise in self.noise_sources:
-                # noise spectral density
-                spectral_density = noise.spectral_density(frequencies=frequencies)
-
-                if np.all(spectral_density) == 0:
-                    # skip zero noise source
-                    skips.append(noise)
-
-                    # skip this iteration
-                    continue
-
-                if isinstance(noise, ComponentNoise):
-                    # matrix component index
-                    index = self._component_matrix_index(noise.component)
-                elif isinstance(noise, NodeNoise):
-                    # matrix node index
-                    index = self._node_matrix_index(noise.node)
-                else:
-                    raise ValueError("unrecognised noise")
-
-                # response for this element
-                response = noise_matrix[index, :]
-
-                # multiply response from element to noise node by noise entering
-                # at that element, for all frequencies
-                projected_noise = np.abs(response * spectral_density)
-
-                # create series
-                series = Series(x=frequencies, y=projected_noise)
-
-                solution.add_noise(NoiseSpectrum(source=noise,
-                                                 sink=self.noise_node,
-                                                 series=series))
-
-            if len(skips):
-                LOGGER.info("skipped null noise sources: %s",
-                            ", ".join([str(noise) for noise in skips]))
-
-        if print_equations:
-            self._print_equations(frequency=frequencies[0], stream=stream)
-        if print_matrix:
-            self._print_matrix(frequency=frequencies[0], stream=stream)
-
-        return solution
-
-    def _response_to_node(self, node, matrix, frequency):
-        """Compute response from each circuit component/node to the specified \
-           node
-
-        This is useful for e.g. projecting noise due to components in the
-        circuit to a particular node. Such a noise transfer matrix could be
-        computed by calling e.g. `np.abs(y_hat * k)` where `y_hat` is the output
-        of this method and `k` is a noise vector.
-
-        The circuit matrix must be provided, as this is manipulated in order to
-        compute the response at a particular node.
-
-        :param node: node to compute responses to
-        :type node: :class:`~Node`
-        :param matrix: circuit matrix
-        :type matrix: :class:`scipy.sparse.spmatrix` or :class:`np.ndarray`
-        :param frequency: frequency at which to compute response
-        :type frequency: float or Numpy scalar
-        :return: transfer matrix from components/nodes to the specified node
-        :rtype: :class:`np.ndarray`
-        """
-
-        # create column vector
-        e_n = self._results_matrix(1)
-        e_n[self._node_matrix_index(node), 0] = 1
-
-        # set input impedance
-        # NOTE: this issues a SparseEfficiencyWarning
-        index = self._component_matrix_index(self.get_component("input"))
-        matrix[index, index] = self.input_impedance
-
-        # solve, giving transfer function from each component/node to the
-        # output (size = nx0)
-        return solve(matrix.T, e_n)
+        return True
 
     @property
     def _input_component_index(self):
-        return self._component_matrix_index(self.get_component("input"))
+        return self._component_matrix_index(self.input_component)
 
     @property
     def _input_node_index(self):
-        return self._node_matrix_index(self.input_node_p)
+        return self._node_matrix_index(self.input_component.node2)
+
+    @property
+    def _noise_node_index(self):
+        return self._node_matrix_index(self.noise_node)
 
     @property
     def dim_size(self):
@@ -733,12 +655,23 @@ class Circuit(object):
 
     @property
     def _input_vector(self):
+        # create column vector
         y = self._results_matrix(1)
 
-        # set input excitation (works for both voltage and current inputs)
+        # set input to input component
         y[self._input_component_index, 0] = 1
 
         return y
+
+    @property
+    def _noise_vector(self):
+        # create column vector
+        e_n = self._results_matrix(1)
+
+        # set input to noise node
+        e_n[self._noise_node_index, 0] = 1
+
+        return e_n
 
     @property
     def component_equations(self):
@@ -787,23 +720,20 @@ class Circuit(object):
         for equation in self.equations:
             yield from equation.coefficients
 
-    def _print_equations(self, stream=sys.stdout, *args, **kwargs):
+    def _print_equations(self, matrix, rhs, stream=sys.stdout):
         """Pretty print circuit equations
 
         :param stream: stream to print to
         :type stream: :class:`io.IOBase`
         """
 
-        # get matrix
-        m = self.matrix(*args, **kwargs)
-
         print("Circuit equations:", file=stream)
-        for row in range(m.shape[0]):
+        for row, rhs_value in zip(range(matrix.shape[0]), rhs):
             # flag to suppress leading sign
             first = True
 
-            for column, header in zip(range(m.shape[1]), self.column_headers):
-                element = m[row, column]
+            for column, header in zip(range(matrix.shape[1]), self.column_headers):
+                element = matrix[row, column]
 
                 if element == 0:
                     # don't print
@@ -822,13 +752,9 @@ class Circuit(object):
                           end="", file=stream)
 
                 print(header, end="", file=stream)
+            print(" = %s" % rhs_value, file=stream)
 
-            if row == self._input_component_index:
-                print(" = 1", file=stream)
-            else:
-                print(" = 0", file=stream)
-
-    def _print_matrix(self, stream=sys.stdout, *args, **kwargs):
+    def _print_matrix(self, matrix, rhs, stream=sys.stdout, *args, **kwargs):
         """Pretty print circuit matrix
 
         :param stream: stream to print to
@@ -836,10 +762,10 @@ class Circuit(object):
         """
 
         # get matrix in full (non-sparse) format to allow stacking
-        matrix = self.matrix(*args, **kwargs).toarray()
+        matrix = matrix.toarray()
 
         # attach input vector on right hand side
-        matrix = np.concatenate((matrix, self._input_vector), axis=1)
+        matrix = np.concatenate((matrix, rhs), axis=1)
 
         # convert complex values to magnitudes (leaving others, like -1, alone)
         for row in range(matrix.shape[0]):

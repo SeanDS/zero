@@ -257,13 +257,51 @@ class OpAmp(Component):
         # ignore node; noise is same at both inputs
         return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
 
-class Input(Component, metaclass=Singleton):
-    """Represents the circuit input"""
+class Input(Component):
+    """Represents the circuit's voltage input"""
 
-    def __init__(self, node_n, node_p, *args, **kwargs):
+    TYPE_NOISE = 1
+    TYPE_VOLTAGE = 2
+    TYPE_CURRENT = 3
+
+    def __init__(self, input_type, node=None, node_p=None, node_n=None,
+                 impedance=None, *args, **kwargs):
+        # handle nodes
+        if node is not None:
+            if node_p is not None or node_n is not None:
+                raise ValueError("node cannot be specified alongside node_p or "
+                                 "node_n")
+            nodes = [Node("gnd"), node]
+        else:
+            if node_p is None or node_n is None:
+                raise ValueError("node_p and node_n must both be specified")
+            nodes = [node_n, node_p]
+
         # call parent constructor
-        super(Input, self).__init__(name="input", nodes=[node_n, node_p], *args,
+        super(Input, self).__init__(name="input", nodes=nodes, *args,
                                     **kwargs)
+
+        # default value
+        self.defaults()
+
+        if input_type in ["noise", self.TYPE_NOISE]:
+            self.input_type = self.TYPE_NOISE
+            if impedance is None:
+                raise ValueError("impedance must be specified for noise input")
+            self.impedance = float(impedance)
+        else:
+            if impedance is not None:
+                raise ValueError("impedance cannot be specified for non-noise "
+                                 "input")
+
+            if input_type in ["voltage", self.TYPE_VOLTAGE]:
+                self.input_type = self.TYPE_VOLTAGE
+            elif input_type in ["current", self.TYPE_CURRENT]:
+                self.input_type = self.TYPE_CURRENT
+                # assume 1 ohm impedance for transfer functions
+                self.impedance = 1
+            else:
+                raise ValueError("unrecognised input type")
 
     @property
     def node_n(self):
@@ -282,28 +320,48 @@ class Input(Component, metaclass=Singleton):
         self.nodes[1] = node
 
     def equation(self):
-        # register source and sink
-        self.node_p.add_source(self) # current flows out of here
-        # no sink, as this is the input node
+        # register component as sink for negative node and source for positive
+        # node
+        if self.node_n:
+            self.node_n.add_sink(self) # current flows into here...
+        if self.node_p:
+            self.node_p.add_source(self) # and out of here
 
         # nodal potential equation coefficients
         # impedance * current + voltage = 0
         coefficients = []
 
-        # add negative node coefficient
-        if self.node_n is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node_n,
-                                                   value=-1))
+        if self.input_type in [self.TYPE_NOISE, self.TYPE_CURRENT]:
+            # set impedance
+            coefficients.append(ImpedanceCoefficient(component=self,
+                                                     value=self.impedance))
 
-        # add positive node coefficient
-        if self.node_p is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node_p,
-                                                   value=1))
+        if self.input_type in [self.TYPE_NOISE, self.TYPE_VOLTAGE]:
+            # add input node coefficient
+            if self.node_n is not Node("gnd"):
+                # voltage
+                coefficients.append(VoltageCoefficient(node=self.node_n,
+                                                       value=-1))
+
+            # add output node coefficient
+            if self.node_p is not Node("gnd"):
+                # voltage
+                coefficients.append(VoltageCoefficient(node=self.node_p,
+                                                       value=1))
 
         # create and return equation
         return ComponentEquation(self, coefficients=coefficients)
+
+    def defaults(self):
+        """Restore default settings
+
+        This is useful for when a node is re-used in a different circuit by
+        the same Python kernel. The singleton pattern results in the same
+        object as before being returned by the constructor, with references to
+        old circuits. Removing these references avoids bad references.
+        """
+
+        self.impedance = None
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
@@ -394,9 +452,8 @@ class Node(object, metaclass=NamedInstance):
 
         self.name = str(name)
 
-        # current sources and sinks
-        self.sources = set()
-        self.sinks = set()
+        # default settings
+        self.defaults()
 
     def add_source(self, component):
         self.sources.add(component)
@@ -424,8 +481,8 @@ class Node(object, metaclass=NamedInstance):
         # create and return equation
         return NodeEquation(self, coefficients=coefficients)
 
-    def reset(self):
-        """Remove all references to external objects
+    def defaults(self):
+        """Restore default settings
 
         This is useful for when a node is re-used in a different circuit by
         the same Python kernel. The named instance pattern results in the same
@@ -433,8 +490,8 @@ class Node(object, metaclass=NamedInstance):
         old circuits. Removing these references avoids bad references.
         """
 
-        self.sources.clear()
-        self.sinks.clear()
+        self.sources = set()
+        self.sinks = set()
 
     def __str__(self):
         return self.name

@@ -12,22 +12,19 @@ class TestLisoVsNative(unittest.TestCase):
 
     def test_scripts(self):
         for script in self.fil_scripts:
+            print()
+            print("Testing", script)
             output = self._liso_output(script)
 
             # compare output
             self.compare(output)
 
     def compare(self, liso_output):
-        # frequencies
-        frequencies = liso_output.frequencies
-
         # get LISO solution
         liso_solution = liso_output.solution()
 
         # run native
-        native_solution = liso_output.circuit.solve(frequencies,
-            output_nodes=list(liso_output.output_nodes),
-            output_components=list(liso_output.output_components))
+        native_solution = liso_output.run_native()
 
         # check if they match
         self.assertEqual(liso_solution, native_solution)

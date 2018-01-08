@@ -11,4 +11,4 @@ from electronics.simulate.liso import InputParser
 
 # create parser
 parser = InputParser("liso3.fil")
-parser.show()
+parser.show(print_equations=True, print_matrix=True)

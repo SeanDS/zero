@@ -19,14 +19,18 @@ from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
                     CurrentVoltageTF, NoiseSpectrum, Series, ComplexSeries)
 from ..format import SIFormatter
 from .circuit import Circuit
-from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Node,
-                         CurrentNoise, VoltageNoise, JohnsonNoise)
+from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
+                         Node, CurrentNoise, VoltageNoise, JohnsonNoise)
 from .solution import Solution
 
 LOGGER = logging.getLogger("liso")
 
 class BaseParser(object, metaclass=abc.ABCMeta):
     COMMENT_REGEX = re.compile("^#.*?$")
+
+    # output types
+    TYPE_TF = 1
+    TYPE_NOISE = 2
 
     def __init__(self, filepath):
         """Instantiate a LISO parser
@@ -40,8 +44,14 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
         # default circuit values
         self.frequencies = None
+        self.input_type = None
+        self.input_node_n = None
+        self.input_node_p = None
+        self.input_impedance = None
+        self.output_type = None
         self.output_nodes = set()
         self.output_components = set()
+        self.noise_node = None
         self.circuit = Circuit()
 
         self._load_file()
@@ -51,9 +61,6 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
     def add_output_component(self, component):
         self.output_components.add(component)
-
-    def set_noise_node(self, node):
-        self.circuit.noise_node = node
 
     def _load_file(self):
         """Load and parse from file"""
@@ -84,6 +91,24 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         # display plots
         solution.show()
 
+    def run_native(self, *args, **kwargs):
+        # add input component, if not yet present
+        self._add_circuit_input()
+
+        if self.output_type is self.TYPE_NOISE:
+            return self.circuit.calculate_noise(
+                frequencies=self.frequencies,
+                noise_node=self.noise_node,
+                *args, **kwargs)
+        elif self.output_type is self.TYPE_TF:
+            return self.circuit.calculate_tfs(
+                frequencies=self.frequencies,
+                output_components=self.output_components,
+                output_nodes=self.output_nodes,
+                *args, **kwargs)
+        else:
+            raise Exception("no outputs requested")
+
     @property
     def calc_tfs(self):
         return self.calc_node_tfs or self.calc_component_tfs
@@ -98,7 +123,7 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
     @property
     def calc_noise(self):
-        return self.circuit.noise_node is not None
+        return self.noise_node is not None
 
     @property
     def plottable(self):
@@ -210,6 +235,58 @@ class BaseParser(object, metaclass=abc.ABCMeta):
                                        node2=node2, node3=node3, *args,
                                        **kwargs)
 
+    def _add_circuit_input(self):
+        # create input component
+        try:
+            self.circuit.get_component("input")
+        except ValueError:
+            # add input
+            input_type = self.input_type
+            node = None
+            node_p = None
+            node_n = None
+            impedance = None
+
+            if self.input_node_n is None:
+                # fixed input
+                node = self.input_node_p
+            else:
+                # floating input
+                node_p = self.input_node_p
+                node_n = self.input_node_n
+
+            # input type depends on whether we calculate noise or transfer
+            # functions
+            if self.noise_node is not None:
+                # we're calculating noise
+                input_type = Input.TYPE_NOISE
+
+                # set input impedance
+                impedance = self.input_impedance
+
+            LOGGER.info("adding input [type %s, %s +%s -%s, R=%s]" % (input_type,
+                        node, node_p, node_n, impedance))
+
+            self.circuit.add_input(input_type=input_type, node=node,
+                                   node_p=node_p, node_n=node_n,
+                                   impedance=impedance)
+
+    def set_output_type(self, output_type):
+        LOGGER.debug("setting output type from %s to %s" % (self.output_type, output_type))
+        if self.output_type is not None:
+            if self.output_type != output_type:
+                # output type changed
+                raise Exception("output file contains both transfer functions "
+                                "and noise, which is not supported")
+
+            # output type isn't being changed; no need to do anything else
+            return
+
+        if output_type not in [self.TYPE_TF, self.TYPE_NOISE]:
+            raise ValueError("unknown output type")
+
+        self.output_type = output_type
+
 class InputParser(BaseParser):
     COMPONENTS = ["r", "c", "l", "op"]
     DIRECTIVES = {"input": ["uinput", "iinput"],
@@ -315,33 +392,34 @@ class InputParser(BaseParser):
         """
 
         # we always have at least a positive node
-        self.circuit.input_node_p = Node(options[0])
+        self.input_node_p = Node(options[0])
 
         if input_type == "uinput":
-            self.circuit.input_type = Circuit.INPUT_TYPE_VOLTAGE
+            self.input_type = Input.TYPE_VOLTAGE
             if len(options) > 3:
                 # floating input
-                self.circuit.input_node_m = Node(options[1])
-                self.circuit.input_impedance = float(options[2])
+                self.input_node_n = Node(options[1])
+                self.input_impedance = float(options[2])
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
-                            "impedance %f", self.circuit.input_node_p,
-                            self.circuit.input_node_m,
-                            self.circuit.input_impedance)
+                            "impedance %f", self.input_node_p,
+                            self.input_node_m, self.input_impedance)
             else:
-                self.circuit.input_impedance = float(options[1])
+                self.input_impedance = float(options[1])
 
                 LOGGER.info("adding voltage input node %s with impedance %s",
-                            self.circuit.input_node_p,
-                            SIFormatter.format(self.circuit.input_impedance, "Ω"))
+                            self.input_node_p,
+                            SIFormatter.format(self.input_impedance, "Ω"))
         elif input_type == "iinput":
-            self.circuit.input_type = Circuit.INPUT_TYPE_CURRENT
-            self.circuit.input_impedance = float(options[1])
+            self.input_type = Input.TYPE_CURRENT
+            self.input_node_n = None
+            self.input_impedance = float(options[1])
+
             LOGGER.info("adding current input node %s with impedance %s",
-                        self.circuit.input_node_p,
-                        SIFormatter.format(self.circuit.input_impedance, "Ω"))
+                        self.input_node_p,
+                        SIFormatter.format(self.input_impedance, "Ω"))
         else:
-            raise ValueError("invalid input type")
+            raise ValueError("unrecognised input type")
 
     def _parse_output(self, output_type, options):
         """Parse LISO token as output directive
@@ -351,6 +429,9 @@ class InputParser(BaseParser):
         :param options: input options
         :type options: Sequence[str]
         """
+
+        # transfer function output
+        self.set_output_type(self.TYPE_TF)
 
         # split options by colon
         options = options[0].split(":")
@@ -377,6 +458,9 @@ class InputParser(BaseParser):
         :type node_str: str
         """
 
+        # noise output
+        self.set_output_type(self.TYPE_NOISE)
+
         # split options by colon
         options = node_str.split(":")
 
@@ -384,7 +468,7 @@ class InputParser(BaseParser):
         node = Node(options[0])
 
         LOGGER.info("setting noise node %s", node)
-        self.set_noise_node(node)
+        self.noise_node = node
 
         if len(options) > 1:
             LOGGER.warning("ignoring plot options in noise command")
@@ -421,17 +505,29 @@ class InputParser(BaseParser):
     def solution(self, *args, **kwargs):
         """Get circuit solution
 
-        Optional arguments are passed to :meth:`~Circuit.solve`.
+        Optional arguments are passed to :meth:`~Circuit.calculate_tfs` or
+        :meth:`~Circuit.calculate_noise`.
 
         :return: solution
         :rtype: :class:`~Solution`
         """
 
+        self._add_circuit_input()
+
         # solve
-        return self.circuit.solve(frequencies=self.frequencies,
-                                  output_components=self.output_components,
-                                  output_nodes=self.output_nodes,
-                                  *args, **kwargs)
+        if self.output_type is self.TYPE_TF:
+            return self.circuit.calculate_tfs(
+                frequencies=self.frequencies,
+                output_components=self.output_components,
+                output_nodes=self.output_nodes,
+                *args, **kwargs)
+        elif self.output_type is self.TYPE_NOISE:
+            return self.circuit.calculate_noise(
+                frequencies=self.frequencies,
+                noise_node=self.noise_node,
+                *args, **kwargs)
+        else:
+            raise ValueError("unrecognised output type")
 
 class OutputParser(BaseParser):
     """LISO output parser"""
@@ -516,6 +612,8 @@ class OutputParser(BaseParser):
         :return: solution
         :rtype: :class:`~Solution`
         """
+
+        self._add_circuit_input()
 
         # create solution
         solution = Solution(self.circuit, self.frequencies)
@@ -652,39 +750,36 @@ class OutputParser(BaseParser):
             match_floating_voltage = re.match(self.FLOATING_VOLTAGE_INPUT_NODES_REGEX, line)
 
             if match_fixed_current:
-                # fixed voltage input
-                self.circuit.input_type = Circuit.INPUT_TYPE_CURRENT
-                self.circuit.input_node_p = Node(match_fixed_current.group(1))
-                self.circuit.input_impedance = float(match_fixed_current.group(2))
+                # fixed current input
+                self.input_type = Input.TYPE_CURRENT
+                self.input_node_p = Node(match_fixed_current.group(1))
+                self.input_impedance = float(match_fixed_current.group(2))
 
                 LOGGER.info("adding fixed current input node %s with source "
-                            "impedance %s", self.circuit.input_node_p,
-                            SIFormatter.format(self.circuit.input_impedance,
-                                               "Ω"))
+                            "impedance %s", self.input_node_p,
+                            SIFormatter.format(self.input_impedance, "Ω"))
                 return
             elif match_fixed_voltage:
                 # fixed voltage input
-                self.circuit.input_type = Circuit.INPUT_TYPE_VOLTAGE
-                self.circuit.input_node_p = Node(match_fixed_voltage.group(1))
-                self.circuit.input_impedance = float(match_fixed_voltage.group(2))
+                self.input_type = Input.TYPE_VOLTAGE
+                self.input_node_p = Node(match_fixed_voltage.group(1))
+                self.input_impedance = float(match_fixed_voltage.group(2))
 
                 LOGGER.info("adding fixed voltage input node %s with source "
-                            "impedance %s", self.circuit.input_node_p,
-                            SIFormatter.format(self.circuit.input_impedance,
-                                               "Ω"))
+                            "impedance %s", self.input_node_p,
+                            SIFormatter.format(self.input_impedance, "Ω"))
                 return
             elif match_floating_voltage:
                 # floating input
-                self.circuit.input_type = Circuit.INPUT_TYPE_VOLTAGE
-                self.circuit.input_node_p = Node(match_floating_voltage.group(1))
-                self.circuit.input_node_m = Node(match_floating_voltage.group(2))
-                self.circuit.input_impedance = float(match_floating_voltage.group(3))
+                self.input_type = Input.TYPE_VOLTAGE
+                self.input_node_p = Node(match_floating_voltage.group(1))
+                self.input_node_m = Node(match_floating_voltage.group(2))
+                self.input_impedance = float(match_floating_voltage.group(3))
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
-                            "source impedance %s", self.circuit.input_node_p,
-                            self.circuit.input_node_m,
-                            SIFormatter.format(self.circuit.input_impedance,
-                                               "Ω"))
+                            "source impedance %s", self.input_node_p,
+                            self.input_node_m,
+                            SIFormatter.format(self.input_impedance, "Ω"))
                 return
 
     def _parse_columns(self, lines):
@@ -726,8 +821,13 @@ class OutputParser(BaseParser):
 
         count = int(count)
 
+        assert count > 0
+
+        # set TF output type
+        self.set_output_type(self.TYPE_TF)
+
         # transfer function source is the input
-        source = self.circuit.input_node_p
+        source = self.input_node_p
 
         found = 0
 
@@ -761,10 +861,10 @@ class OutputParser(BaseParser):
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on input type
-            if self.circuit.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+            if self.input_type is Input.TYPE_VOLTAGE:
                 function = VoltageVoltageTF(series=series, source=source,
                                             sink=sink)
-            elif self.circuit.input_type is Circuit.INPUT_TYPE_CURRENT:
+            elif self.input_type is Input.TYPE_CURRENT:
                 function = CurrentVoltageTF(series=series, source=source,
                                             sink=sink)
             else:
@@ -791,8 +891,13 @@ class OutputParser(BaseParser):
 
         count = int(count)
 
+        assert count > 0
+
+        # set TF output type
+        self.set_output_type(self.TYPE_TF)
+
         # transfer function source is the input
-        source = self.circuit.input_node_p
+        source = self.input_node_p
 
         found = 0
 
@@ -824,10 +929,10 @@ class OutputParser(BaseParser):
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on input type
-            if self.circuit.input_type is Circuit.INPUT_TYPE_VOLTAGE:
+            if self.input_type is Input.TYPE_VOLTAGE:
                 function = VoltageCurrentTF(series=series, source=source,
                                             sink=sink)
-            elif self.circuit.input_type is Circuit.INPUT_TYPE_CURRENT:
+            elif self.input_type is Input.TYPE_CURRENT:
                 function = CurrentCurrentTF(series=series, source=source,
                                             sink=sink)
             else:
@@ -857,11 +962,16 @@ class OutputParser(BaseParser):
 
         count = int(count)
 
+        assert count > 0
+
+        # set noise output type
+        self.set_output_type(self.TYPE_NOISE)
+
         # find noise component information
         matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
 
         # noise sink is the noise node
-        self.set_noise_node(Node(node_name))
+        self.noise_node = Node(node_name)
 
         # split into list
         source_strs = matches.group(1).split()
@@ -878,7 +988,7 @@ class OutputParser(BaseParser):
             series = Series(x=self.frequencies, y=spectrum)
 
             self.add_function(NoiseSpectrum(source=source,
-                                            sink=self.circuit.noise_node,
+                                            sink=self.noise_node,
                                             series=series))
 
             found += 1
@@ -957,6 +1067,7 @@ class Runner(object):
         if result.returncode != 0:
             raise Exception("error during LISO run")
 
+        LOGGER.debug("parsing LISO output")
         return OutputParser(output_path)
 
     def _run_liso_process(self, script_path, output_path, plot):
@@ -973,7 +1084,7 @@ class Runner(object):
             flags.append("-n")
 
         liso_path = self.liso_path
-        LOGGER.debug("using LISO binary at %s", liso_path)
+        LOGGER.debug("running LISO binary at %s", liso_path)
 
         # run LISO
         return subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,

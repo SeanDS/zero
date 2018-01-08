@@ -1,7 +1,7 @@
 """Native circuit construction and simulation
 
 This simulates a simple non-inverting whitening filter's transfer functions for
-a voltage input.
+a current input.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
@@ -20,7 +20,7 @@ frequencies = np.logspace(0, 6, 1000)
 circuit = Circuit()
 
 # add components
-circuit.add_input(input_type="voltage", node="n1")
+circuit.add_input(input_type="current", node="n1")
 circuit.add_capacitor(name="c1", value=10e-6, node1="gnd", node2="n1")
 circuit.add_resistor(name="r1", value=430, node1="n1", node2="nm")
 circuit.add_resistor(name="r2", value=43e3, node1="nm", node2="nout")

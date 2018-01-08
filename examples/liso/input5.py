@@ -10,5 +10,5 @@ logging_on()
 from electronics.simulate.liso import InputParser
 
 # create parser
-parser = InputParser("liso1.fil")
+parser = InputParser("liso5.fil")
 parser.show(print_equations=True, print_matrix=True)
