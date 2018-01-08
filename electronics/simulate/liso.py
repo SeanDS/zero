@@ -396,14 +396,14 @@ class InputParser(BaseParser):
 
         if input_type == "uinput":
             self.input_type = Input.TYPE_VOLTAGE
-            if len(options) > 3:
+            if len(options) > 2:
                 # floating input
                 self.input_node_n = Node(options[1])
                 self.input_impedance = float(options[2])
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
                             "impedance %f", self.input_node_p,
-                            self.input_node_m, self.input_impedance)
+                            self.input_node_n, self.input_impedance)
             else:
                 self.input_impedance = float(options[1])
 
