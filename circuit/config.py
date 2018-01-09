@@ -149,7 +149,12 @@ class OpAmpLibrary(BaseConfig):
         :rtype: dict
         """
 
-        return self.data[self.format_name(name)]
+        name = self.format_name(name)
+
+        try:
+            return self.data[name]
+        except KeyError:
+            raise Exception("op-amp model %s not found in library" % name)
 
     def has_data(self, name):
         """Check if op-amp data exists in library
