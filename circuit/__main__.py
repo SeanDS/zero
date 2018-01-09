@@ -11,14 +11,10 @@ import textwrap
 import collections
 
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
-from .liso import InputParser
+from .liso import InputParser, OutputParser, InvalidLisoFileException
 
 PROG = "circuit"
 SYNOPSIS = "{} <command> [<args>...]".format(PROGRAM)
-
-# NOTE: double spaces are interpreted by text2man to be paragraph
-# breaks.  NO DOUBLE SPACES.  Also two spaces at the end of a line
-# indicate an element in a tag list.
 MANPAGE = """
 NAME
   {prog} {version}
@@ -39,7 +35,9 @@ AUTHOR
 """.format(prog=PROGRAM, version=__version__, desc=DESCRIPTION,
            synopsis=SYNOPSIS).strip()
 
-class Cmd(object):
+LOGGER = logging.getLogger()
+
+class Cmd(object, metaclass=abc.ABCMeta):
     """Base class for commands"""
 
     cmd = ""
@@ -52,6 +50,9 @@ class Cmd(object):
             description=self.__doc__.strip()
         )
 
+        self.parser.add_argument("-v", "--verbose", action="store_true",
+                                 help="enable verbose output")
+
     def parse_args(self, args):
         """Parse arguments and return :class:`argparse.Namespace` object
 
@@ -61,12 +62,63 @@ class Cmd(object):
         return self.parser.parse_args(args)
 
     def __call__(self, args):
+        """Execute command within a try/except block, obeying verbosity"""
+        if args.verbose:
+            logging_on()
+
+        try:
+            self.call(args)
+        except Exception as e:
+            print(e, file=sys.stderr)
+
+    @abc.abstractmethod
+    def call(self, args):
         """Take Namespace object as input and execute command"""
+        return NotImplemented
 
-        pass
+class Sim(Cmd):
+    """Parse either a LISO input file or output file, simulate its circuit,
+    then plot the results. The existing data in LISO output files is ignored.
 
-class Liso(Cmd, metaclass=abc.ABCMeta):
-    """LISO operations"""
+    To directly plot the results of a LISO output file, see \"liso\"."""
+
+    cmd = "sim"
+
+    def __init__(self):
+        super(Sim, self).__init__()
+
+        self.parser.add_argument("file", help="path to LISO input or output file")
+        self.parser.add_argument("--print-equations", action="store_true",
+                                 help="print circuit equations")
+        self.parser.add_argument("--print-matrix", action="store_true",
+                                 help="print circuit matrix")
+
+    def call(self, args):
+        # try parsing first as an input file, then an output file
+        try:
+            parser = InputParser(args.file)
+            LOGGER.debug("parsed as LISO input file")
+
+            parser.show(print_equations=args.print_equations,
+                        print_matrix=args.print_matrix,
+                        print_progress=args.verbose)
+        except InvalidLisoFileException as e:
+            LOGGER.debug("attempt to parse file as LISO input failed, trying "
+                         "to parse as output instead")
+            # try as output file
+            parser = OutputParser(args.file)
+            LOGGER.debug("parsed as LISO output file")
+            solution = parser.run_native(print_equations=args.print_equations,
+                                         print_matrix=args.print_matrix,
+                                         print_progress=args.verbose)
+            solution.plot()
+
+class Liso(Cmd):
+    """Plot a LISO output file.
+
+    To model a LISO output file using this utility's built-in simulator, see
+    \"sim\".
+    """
 
     cmd = "liso"
 
@@ -78,10 +130,8 @@ class Liso(Cmd, metaclass=abc.ABCMeta):
                                  help="print circuit equations")
         self.parser.add_argument("--print-matrix", action="store_true",
                                  help="print circuit matrix")
-        self.parser.add_argument("-v", "--verbose", action="store_true",
-                                 help="enable verbose output")
 
-    def __call__(self, args):
+    def call(self, args):
         if args.verbose:
             logging_on()
 
@@ -95,7 +145,7 @@ class Liso(Cmd, metaclass=abc.ABCMeta):
             print(e, file=sys.stderr)
 
 class Help(Cmd):
-    """Print manpage or command help (also '-h' after command)."""
+    """Print manpage or command help (also "-h" after command)."""
 
     cmd = "help"
 
@@ -104,13 +154,14 @@ class Help(Cmd):
         self.parser.add_argument("cmd", nargs="?",
                                  help="command")
 
-    def __call__(self, args):
+    def call(self, args):
         if args.cmd:
             get_func(args.cmd).parser.print_help()
         else:
             print(MANPAGE.format(cmds=format_commands(man=True)))
 
 CMDS = collections.OrderedDict([
+    ("sim", Sim),
     ("liso", Liso),
     ("help", Help),
     ])
@@ -119,8 +170,6 @@ ALIAS = {
     "--help": "help",
     "-h": "help",
     }
-
-##################################################
 
 def format_commands(man=False):
     """Generate documentation for available commands"""

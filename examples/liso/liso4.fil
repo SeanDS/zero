@@ -1,4 +1,3 @@
-# circuit from x.fil / Figure 1 in LISO manual
 r r1 100 nin nsum
 r r3 1.075k no nsum
 r r4 42.2 nsum nm

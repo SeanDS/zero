@@ -3,6 +3,9 @@ Linear electronic circuit simulator utility. This package provides tools to
 simulate transfer functions and noise in linear electronic circuits, SI unit
 parsing and formatting and more.
 
+This tool is inspired by, and partially based on, LISO and Elektrotickle. It
+also (somewhat) understands LISO input and output files.
+
 ## Installation
 Installation is best handled using `pip`. As the library is Python 3 only, on
 some systems you must install this using `pip3` instead:
@@ -40,6 +43,34 @@ solver. Run `circuit help liso` for a list of optional arguments.
 
 For examples of how to build scripts with Python, see the `examples` directory.
 
+## Current limitations
+
+### Solver
+  - No pre-scaling is performed on matrices and as such they can contain values
+    that differ by tens of orders of magnitude, potentially leading to numerical
+    rounding issues in extreme cases.
+
+### LISO parsing
+  - Some LISO commands not yet supported:
+    - all root mode commands
+    - no fit commands
+    - m
+    - factor
+    - maxinput
+    - zin
+    - opdiff
+    - opstab
+    - noisy
+    - gnuterm
+    - inputnoise
+  - `noise` command's plot options are ignored (all noise sources are plotted
+    including incoherent sum)
+  - Most of LISO's op-amp library is not currently available
+  - Coordinates in LISO files (e.g. im, deg+, etc.) are ignored in favour of
+    dB and degrees in all cases
+  - Output parser assumes all outputs are in dB and degrees (noise columns are
+    handled appropriately, however)
+
 ## Future ideas
   - Allow arbitrary op-amp noise spectra (interpolate to the frequency vector
     actually used)
@@ -54,6 +85,7 @@ For examples of how to build scripts with Python, see the `examples` directory.
   - Multiple voltage/current inputs?
   - Grouped components, like whitening filters, that are represented as a single
     component in the input definition
+  - Parallelised solving (need to be careful about thread safety)
 
 ## Credits
 Sean Leavey  

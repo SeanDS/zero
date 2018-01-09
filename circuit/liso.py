@@ -144,16 +144,18 @@ class BaseParser(object, metaclass=abc.ABCMeta):
     def validate(self):
         if self.frequencies is None:
             # no frequencies found
-            raise Exception("no plot frequencies found")
+            raise InvalidLisoFileException("no plot frequencies found (is this "
+                                           "a valid LISO file?)")
         elif (self.input_node_n is None and self.input_node_p is None):
             # no input nodes found
-            raise Exception("no input nodes found")
+            raise InvalidLisoFileException("no input nodes found (is this a "
+                                           "valid LISO file?)")
         elif ((len(self.output_nodes) == 0 and not self.output_all_nodes)
               and (len(self.output_components) == 0 and not self.output_all_components)
               and self.noise_node is None):
             # no output requested
-            raise Exception("no output requested (specify output nodes, output "
-                            " components, or both, or a noise node)")
+            raise InvalidLisoFileException("no output requested (is this a "
+                                           "valid LISO file?)")
 
     @property
     def calc_tfs(self):
@@ -330,7 +332,6 @@ class BaseParser(object, metaclass=abc.ABCMeta):
                                    impedance=impedance)
 
     def set_output_type(self, output_type):
-        LOGGER.debug("setting output type from %s to %s" % (self.output_type, output_type))
         if self.output_type is not None:
             if self.output_type != output_type:
                 # output type changed
@@ -410,6 +411,8 @@ class InputParser(BaseParser):
         :param options: tokens after command token
         :type options: Sequence[str]
         """
+
+        command = command.lower()
 
         if command == "r":
             self._add_resistor(*options)
@@ -586,31 +589,7 @@ class InputParser(BaseParser):
                     SIFormatter.format(stop, "Hz"), scaling_str)
 
     def solution(self, *args, **kwargs):
-        """Get circuit solution
-
-        Optional arguments are passed to :meth:`~Circuit.calculate_tfs` or
-        :meth:`~Circuit.calculate_noise`.
-
-        :return: solution
-        :rtype: :class:`~Solution`
-        """
-
-        self._add_circuit_input()
-
-        # solve
-        if self.output_type is self.TYPE_TF:
-            return self.circuit.calculate_tfs(
-                frequencies=self.frequencies,
-                output_components=self.output_components,
-                output_nodes=self.output_nodes,
-                *args, **kwargs)
-        elif self.output_type is self.TYPE_NOISE:
-            return self.circuit.calculate_noise(
-                frequencies=self.frequencies,
-                noise_node=self.noise_node,
-                *args, **kwargs)
-        else:
-            raise ValueError("unrecognised output type")
+        return self.run_native(*args, **kwargs)
 
 class OutputParser(BaseParser):
     """LISO output parser"""
@@ -1211,3 +1190,6 @@ class Runner(object):
                 return path
 
         raise FileNotFoundError("no appropriate LISO binary found")
+
+class InvalidLisoFileException(Exception):
+    pass
