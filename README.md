@@ -9,6 +9,8 @@ some systems you must install this using `pip3` instead:
 ```bash
 pip3 install git+https://git.ligo.org/sean-leavey/circuit.git
 ```
+This installs the library and adds a console script `circuit` which provides
+access to the package's command line utility.
 
 ## Program and library
 The simulator tries to replicate LISO's operation: a small signal ac analysis.
@@ -34,7 +36,7 @@ circuit help
 ```
 for a list of available commands. Currently, only the `liso` command is
 available, which parses a LISO input file and runs it with the library's native
-solver. Run`circuit help liso` for a list of optional arguments.
+solver. Run `circuit help liso` for a list of optional arguments.
 
 For examples of how to build scripts with Python, see the `examples` directory.
 
