@@ -10,4 +10,5 @@ op op1 op27 gnd nm no
 freq log 10k 10M 100
 
 uinput nin 50
-ioutput all
+ioutput allop
+uoutput allop

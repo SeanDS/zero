@@ -205,6 +205,26 @@ class Circuit(object):
 
         raise ValueError("node not found")
 
+    @property
+    def resistors(self):
+        return [component for component in self.components
+                if isinstance(component, Resistor)]
+
+    @property
+    def capacitors(self):
+        return [component for component in self.components
+                if isinstance(component, Capacitor)]
+
+    @property
+    def inductors(self):
+        return [component for component in self.components
+                if isinstance(component, Inductor)]
+
+    @property
+    def opamps(self):
+        return [component for component in self.components
+                if isinstance(component, OpAmp)]
+
     def _construct_matrix(self):
         """Construct matrix representing the circuit
 

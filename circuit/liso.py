@@ -49,18 +49,22 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         self.input_node_p = None
         self.input_impedance = None
         self.output_type = None
-        self.output_nodes = set()
-        self.output_components = set()
+        self._output_nodes = set()
+        self._output_components = set()
+        self.output_all_nodes = False
+        self.output_all_opamp_nodes = False
+        self.output_all_components = False
+        self.output_all_opamp_components = False
         self.noise_node = None
         self.circuit = Circuit()
 
         self._load_file()
 
     def add_output_node(self, node):
-        self.output_nodes.add(node)
+        self._output_nodes.add(node)
 
     def add_output_component(self, component):
-        self.output_components.add(component)
+        self._output_components.add(component)
 
     def _load_file(self):
         """Load and parse from file"""
@@ -86,8 +90,8 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         # get solution
         solution = self.solution(*args, **kwargs)
         # draw plots
-        solution.plot(output_nodes=list(self.output_nodes),
-                      output_components=list(self.output_components))
+        solution.plot(output_nodes=self.output_nodes,
+                      output_components=self.output_components)
         # display plots
         solution.show()
 
@@ -109,12 +113,47 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         else:
             raise Exception("no outputs requested")
 
+    @property
+    def output_nodes(self):
+        if self.output_all_nodes:
+            return set(self.circuit.non_gnd_nodes)
+
+        # requested output nodes
+        output_nodes = self._output_nodes
+
+        # add op-amps if necessary
+        if self.output_all_opamp_nodes:
+            output_nodes |= self.opamp_output_node_names
+
+        return output_nodes
+
+    @property
+    def output_components(self):
+        if self.output_all_components:
+            return set(self.circuit.components)
+
+        # requested output components
+        output_components = self._output_components
+
+        # add op-amps if necessary
+        if self.output_all_opamp_components:
+            output_components |= self.opamp_names
+
+        return output_components
+
     def validate(self):
-        if (self.frequencies is None or (self.input_node_n is None and
-                                         self.input_node_p is None)
-            or (len(self.output_nodes) == 0 and len(self.output_components) == 0
-                and self.noise_node is None)):
-            raise Exception("this doesn't appear to be a valid LISO file")
+        if self.frequencies is None:
+            # no frequencies found
+            raise Exception("no plot frequencies found")
+        elif (self.input_node_n is None and self.input_node_p is None):
+            # no input nodes found
+            raise Exception("no input nodes found")
+        elif ((len(self.output_nodes) == 0 and not self.output_all_nodes)
+              and (len(self.output_components) == 0 and not self.output_all_components)
+              and self.noise_node is None):
+            # no output requested
+            raise Exception("no output requested (specify output nodes, output "
+                            " components, or both, or a noise node)")
 
     @property
     def calc_tfs(self):
@@ -135,6 +174,18 @@ class BaseParser(object, metaclass=abc.ABCMeta):
     @property
     def plottable(self):
         return self.calc_tfs or self.calc_noise
+
+    @property
+    def opamp_output_node_names(self):
+        """Get set of node names associated with outputs of opamps in the \
+           circuit"""
+        return set([node.name for node in [opamp.node3 for
+                                           opamp in self.circuit.opamps]])
+
+    @property
+    def opamp_names(self):
+        """Get set of op-amp component names in the circuit"""
+        return set([component.name for component in self.circuit.opamps])
 
     @classmethod
     def tokenise(cls, line):
@@ -443,22 +494,44 @@ class InputParser(BaseParser):
         # transfer function output
         self.set_output_type(self.TYPE_TF)
 
-        # split options by colon
-        options = options[0].split(":")
+        for option in options:
+            # split option by colon, ignore scaling
+            output = option.split(":")[0]
 
-        if output_type == "uoutput":
-            # only use first option, which is the node name
-            node = Node(options[0])
-            self.add_output_node(node)
-            LOGGER.info("adding output node %s", node)
-            # FIXME: parse list of output nodes
-        elif output_type == "ioutput":
-            # only use first option, which is the component name
-            component = options[0]
-            self.add_output_component(component)
-            LOGGER.info("adding output component %s", component)
-        else:
-            raise ValueError("invalid output type")
+            if output_type == "uoutput":
+                # option is node
+                if output == "all":
+                    # all outputs requested
+                    self.output_all_nodes = True
+                    LOGGER.info("all output node voltages requested")
+                elif output == "allop":
+                    # all op-amp outputs requested
+                    self.output_all_opamp_nodes = True
+                    LOGGER.info("all op-amp output node voltages requested")
+                elif self.output_all_nodes:
+                    LOGGER.warning("output node %s already requested with "
+                                   "\"all\"" % output)
+                else:
+                    self.add_output_node(output)
+                    LOGGER.info("adding output node %s", output)
+            elif output_type == "ioutput":
+                # option is component
+                if output == "all":
+                    # all outputs requested
+                    self.output_all_components = True
+                    LOGGER.info("all output component currents requested")
+                elif output == "allop":
+                    # all op-amp outputs requested
+                    self.output_all_opamp_components = True
+                    LOGGER.info("all op-amp output component currents requested")
+                elif self.output_all_components:
+                    LOGGER.warning("output component %s already requested with "
+                                   "\"all\"" % output)
+                else:
+                    self.add_output_component(output)
+                    LOGGER.info("adding output component %s", output)
+            else:
+                raise ValueError("invalid output type")
 
     def _parse_noise(self, node_str):
         """Parse LISO token as noise node directive
