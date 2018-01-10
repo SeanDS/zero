@@ -67,8 +67,8 @@ directory.
   - `noise` command's plot options are ignored (all noise sources are plotted
     including incoherent sum)
   - Most of LISO's op-amp library is not currently available
-  - Coordinates in LISO files (e.g. im, deg+, etc.) are ignored in favour of
-    dB and degrees in all cases
+  - Coordinates in LISO files (e.g. `im`, `deg+`, etc.) are ignored in favour of
+    `db` and `deg` in all cases
   - Output parser assumes all outputs are in dB and degrees (noise columns are
     handled appropriately, however)
   - LISO's op-amp library format is not supported (see `Op-amp library` below)
@@ -79,7 +79,7 @@ primarily for logistical reasons: Python contains a convenient `ConfigParser`
 library which can read and write config files similar to Windows `INI` files,
 but in a slightly different format to LISO's op-amp library format. The main
 difference is that in `ConfigParser` files, repeated terms are not allowed in
-the same entry, so LISO's ues of multiple "pole" or "zero" entries under an
+the same entry, so LISO's use of multiple "pole" or "zero" entries under an
 op-amp are not supported. Instead, the library represents poles and zeros as
 single line expressions of comma separated values:
 ```
@@ -103,15 +103,18 @@ A LISO op-amp library parser will be added at a later date.
     actually used)
   - Some sort of system for sharing op-amp, regulator, resistor, etc. library
     data across the web
-  - An standardised export file format (XML?)
+  - A standardised export file format (XML?)
   - Other types of noise, e.g. resistor excess noise
   - SciPy/Matlab system object export?
   - Visualise circuit node network with graphviz
   - Op-amp noise optimisation: here's my circuit, this is the frequency band I
     care about, now what's the best op-amp to use?
   - Multiple voltage/current inputs?
-  - Grouped components, like whitening filters, that are represented as a single
-    component in the input definition
+  - Grouped components that are represented as a single component in the input
+    definition:
+      - filters, e.g. whitening filters
+      - real passive components: capacitors with ESR, resistors with stray
+        inductance, etc.
   - Parallelised solving (need to be careful about thread safety)
 
 ## Credits
