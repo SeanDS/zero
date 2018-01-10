@@ -125,24 +125,14 @@ class Liso(Cmd):
     def __init__(self):
         super(Liso, self).__init__()
 
-        self.parser.add_argument("input_file", help="LISO input file")
-        self.parser.add_argument("--print-equations", action="store_true",
-                                 help="print circuit equations")
-        self.parser.add_argument("--print-matrix", action="store_true",
-                                 help="print circuit matrix")
+        self.parser.add_argument("output_file", help="LISO output file")
 
     def call(self, args):
         if args.verbose:
             logging_on()
 
-        try:
-            parser = InputParser(args.input_file)
-            parser.show(print_equations=args.print_equations,
-                        print_matrix=args.print_matrix,
-                        print_progress=args.verbose)
-        except Exception as e:
-            # print error message
-            print(e, file=sys.stderr)
+        parser = OutputParser(args.output_file)
+        parser.show()
 
 class Help(Cmd):
     """Print manpage or command help (also "-h" after command)."""
