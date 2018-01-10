@@ -619,6 +619,7 @@ class OutputParser(BaseParser):
                              "imax=([\w\d\s\.]+) " # imax
                              "sr=([\w\d\s\.]+)\/us " # sr
                              "delay=([\w\d\s\.]+)" # delay
+                             "[\w\d\s\*]*" # ignored extra stuff, like "s***DEFAULT"
                              "^\#\s*(.*)$", # poles / zeros
                              re.MULTILINE)
 
