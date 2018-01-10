@@ -120,3 +120,27 @@ vmax = 12
 imax = 0.0166666666666667
 sr = 13e6
 delay = 25n # from (hand-drawn) curve in data sheet
+
+[buf634]
+a0 = 0.9       # 100 ohm load
+gbw = 160M     # wide bandwidth mode, otherwise 20 MHz
+vn = 4e-9      # at 10 kHz
+vc = 100       # unknown!
+in = 1e-9      # unknown!
+ic = 50        # unknown!
+vmax = 12
+imax = 0.25
+sr = 2000e6
+
+[ad743]
+a0 = 4e6
+gbw = 20M
+poles = 70M
+delay = 12.3n
+vn = 2.9e-9
+vc = 30     # from AD743 Rev E datasheet
+in = 7e-15
+ic = 100    # from AD743 Rev E datasheet
+sr = 12.5e6
+vmax = 12
+imax = 0.02

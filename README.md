@@ -3,8 +3,9 @@ Linear electronic circuit simulator utility. This package provides tools to
 simulate transfer functions and noise in linear electronic circuits, SI unit
 parsing and formatting and more.
 
-This tool is inspired by, and partially based on, LISO and Elektrotickle. It
-also (somewhat) understands LISO input and output files.
+This tool is inspired by, and partially based on, [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso)
+and [Elektrotickle](https://github.com/tobin/Elektrotickle/). It also (somewhat)
+understands LISO input and output files.
 
 ## Installation
 Installation is best handled using `pip`. As the library is Python 3 only, on
@@ -37,11 +38,11 @@ There is a very basic CLI provided by the program. Open up a terminal and type:
 ```bash
 circuit help
 ```
-for a list of available commands. Currently, only the `liso` command is
-available, which parses a LISO input file and runs it with the library's native
-solver. Run `circuit help liso` for a list of optional arguments.
+for a list of available commands. Run `circuit help command` for more detailed
+help for a particlar `command`.
 
-For examples of how to build scripts with Python, see the `examples` directory.
+For examples of how to build simulation scripts with Python, see the `examples`
+directory.
 
 ## Current limitations
 
@@ -70,6 +71,32 @@ For examples of how to build scripts with Python, see the `examples` directory.
     dB and degrees in all cases
   - Output parser assumes all outputs are in dB and degrees (noise columns are
     handled appropriately, however)
+  - LISO's op-amp library format is not supported (see `Op-amp library` below)
+
+### Op-amp library
+The op-amp library is implemented in a different format to that of LISO,
+primarily for logistical reasons: Python contains a convenient `ConfigParser`
+library which can read and write config files similar to Windows `INI` files,
+but in a slightly different format to LISO's op-amp library format. The main
+difference is that in `ConfigParser` files, repeated terms are not allowed in
+the same entry, so LISO's ues of multiple "pole" or "zero" entries under an
+op-amp are not supported. Instead, the library represents poles and zeros as
+single line expressions of comma separated values:
+```
+[op177]
+...
+poles = 7.53M 1.78, 1.66M # fitted from measurement
+...
+```
+Furthermore, the library improves on that of LISO's by allowing an
+"alias" setting where you can specify other op-amps with the same properties:
+```
+[tl074]
+aliases = tl084
+...
+```
+
+A LISO op-amp library parser will be added at a later date.
 
 ## Future ideas
   - Allow arbitrary op-amp noise spectra (interpolate to the frequency vector
@@ -90,6 +117,5 @@ For examples of how to build scripts with Python, see the `examples` directory.
 ## Credits
 Sean Leavey  
 <sean.leavey@ligo.org>  
-https://github.com/SeanDS
 
 Invaluable insight into LISO's workings provided by Gerhard Heinzel.
