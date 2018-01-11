@@ -1,3 +1,5 @@
+# non-inverting whitening filter
+
 c c1 10e-6 gnd n1
 r r1 430 n1 nm
 r r2 43e3 nm nout
