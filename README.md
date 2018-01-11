@@ -41,8 +41,13 @@ circuit help
 for a list of available commands. Run `circuit help command` for more detailed
 help for a particlar `command`.
 
-For examples of how to build simulation scripts with Python, see the `examples`
+`circuit.py` can also be included as a library within other Python code. For
+examples of how to build simulation scripts with Python, see the `examples`
 directory.
+
+## Tests
+The script in `/tests/liso/liso.py` can be run to automatically test the
+solver against LISO with a set of LISO input files.
 
 ## Current limitations
 
