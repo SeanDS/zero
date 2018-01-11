@@ -66,8 +66,6 @@ directory.
     - inputnoise
   - `noise` command's plot options are ignored (all noise sources are plotted
     including incoherent sum)
-  - Most of LISO's op-amp library is not currently available, but will be added
-    later.
   - Coordinates in LISO files (e.g. `im`, `deg+`, etc.) are ignored in favour of
     `db` and `deg` in all cases
   - Output parser assumes all outputs are in dB and degrees (noise columns are
