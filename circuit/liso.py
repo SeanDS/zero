@@ -603,7 +603,7 @@ class OutputParser(BaseParser):
                                  re.MULTILINE)
 
     # op-amp parameters
-    OPAMP_REGEX = re.compile("^#\s*\d+ " # count
+    OPAMP_REGEX = re.compile("^#\s+\d+ " # count
                              "([\w\d]+) " # name
                              "([\w\d]+) " # model
                              "'\+'=([\w\d]+) " # +in
@@ -611,16 +611,16 @@ class OutputParser(BaseParser):
                              "'out'=([\w\d]+) " # out
                              "a0=([\w\d\s\.]+) " # gain
                              "gbw=([\w\d\s\.]+)^" # gbw
-                             "\#\s*un=([\w\d\s\.]+)\/sqrt\(Hz\) " # un
+                             "\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\) " # un
                              "uc=([\w\d\s\.]+) " # uc
                              "in=([\w\d\s\.]+)\/sqrt\(Hz\) " # in
                              "ic=([\w\d\s\.]+)^" # ic
-                             "\#\s*umax=([\w\d\s\.]+) " # umax
+                             "\#\s+umax=([\w\d\s\.]+) " # umax
                              "imax=([\w\d\s\.]+) " # imax
                              "sr=([\w\d\s\.]+)\/us " # sr
                              "delay=([\w\d\s\.]+)" # delay
                              "[\w\d\s\*]*" # ignored extra stuff, like "s***DEFAULT"
-                             "^\#\s*(.*)$", # poles / zeros
+                             "(^\#\s+(.*)$)*", # poles/zeros (optional line)
                              re.MULTILINE)
 
     # op-amp roots
@@ -676,8 +676,6 @@ class OutputParser(BaseParser):
         :rtype: :class:`~Solution`
         """
 
-        self._add_circuit_input()
-
         # create solution
         solution = Solution(self.circuit, self.frequencies)
 
@@ -696,6 +694,12 @@ class OutputParser(BaseParser):
         # parse circuit and column definitions
         self._parse_components(lines)
         self._parse_input_nodes(lines)
+
+        # add input component before we parse columns, as current transfer
+        # functions need the input component as a source
+        self._add_circuit_input()
+
+        # parse data columns
         self._parse_columns(lines)
 
         # check we found anything
@@ -754,7 +758,7 @@ class OutputParser(BaseParser):
 
         for (name, model, node1_name, node2_name, node3_name, a0, gbw,
              v_noise, v_corner, i_noise, i_corner, v_max, i_max, slew_rate,
-             delay, roots) in matches:
+             delay, _, roots) in matches:
             # parse roots
             zeros, poles = self._parse_opamp_roots(roots)
 
@@ -892,9 +896,6 @@ class OutputParser(BaseParser):
         # set TF output type
         self.set_output_type(self.TYPE_TF)
 
-        # transfer function source is the input
-        source = self.input_node_p
-
         found = 0
 
         # find transfer functions
@@ -928,10 +929,12 @@ class OutputParser(BaseParser):
 
             # create appropriate transfer function depending on input type
             if self.input_type is Input.TYPE_VOLTAGE:
-                function = VoltageVoltageTF(series=series, source=source,
+                function = VoltageVoltageTF(series=series,
+                                            source=self.input_node_p,
                                             sink=sink)
             elif self.input_type is Input.TYPE_CURRENT:
-                function = CurrentVoltageTF(series=series, source=source,
+                function = CurrentVoltageTF(series=series,
+                                            source=self.circuit.get_component("input"),
                                             sink=sink)
             else:
                 raise ValueError("unrecognised input type")
@@ -961,9 +964,6 @@ class OutputParser(BaseParser):
 
         # set TF output type
         self.set_output_type(self.TYPE_TF)
-
-        # transfer function source is the input
-        source = self.input_node_p
 
         found = 0
 
@@ -996,10 +996,12 @@ class OutputParser(BaseParser):
 
             # create appropriate transfer function depending on input type
             if self.input_type is Input.TYPE_VOLTAGE:
-                function = VoltageCurrentTF(series=series, source=source,
+                function = VoltageCurrentTF(series=series,
+                                            source=self.input_node_p,
                                             sink=sink)
             elif self.input_type is Input.TYPE_CURRENT:
-                function = CurrentCurrentTF(series=series, source=source,
+                function = CurrentCurrentTF(series=series,
+                                            source=self.circuit.get_component("input"),
                                             sink=sink)
             else:
                 raise ValueError("unrecognised input type")

@@ -94,8 +94,14 @@ Furthermore, the library improves on that of LISO's by allowing an
 aliases = tl084
 ...
 ```
+Finally, the English convention of using "v" to represent voltage instead of "u"
+has been used, so `un` and `uc` are instead `vn` and `vc`.
 
-A LISO op-amp library parser will be added at a later date.
+A LISO op-amp library parser may be added at a later date.
+
+### Tests
+  - Comparisons of complex value series don't handle phase wrapping, and so
+    occasionally flag two matched series as different.
 
 ## Future ideas
   - Allow arbitrary op-amp noise spectra (interpolate to the frequency vector
