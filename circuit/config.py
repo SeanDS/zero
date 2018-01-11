@@ -122,9 +122,14 @@ class OpAmpLibrary(BaseConfig):
     def populate_library(self):
         """Load and parse op-amp data from config file"""
 
+        count = 0
+
         # each section is a new op-amp
         for opamp in self.sections():
             self._parse_lib_data(opamp)
+            count += 1
+
+        LOGGER.debug("added %i op-amps", count)
 
         self.loaded = True
 
@@ -255,8 +260,6 @@ class OpAmpLibrary(BaseConfig):
         if name in self.opamp_names:
             raise ValueError("Duplicate op-amp type: %s" % name)
 
-        LOGGER.debug("adding op-amp data for %s", name)
-
         # set data
         self.data[name] = data
 
@@ -340,6 +343,8 @@ class OpAmpLibrary(BaseConfig):
         elif len(parts) == 2:
             # calculate complex frequency using q-factor
             qfactor, _ = SIFormatter.parse(parts[1])
+            # cast to complex to avoid issues with arccos
+            qfactor = complex(qfactor)
             theta = np.arccos(1 / (2 * qfactor))
 
             # add negative/positive pair of poles/zeros
