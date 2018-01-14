@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# electronics.py documentation build configuration file, created by
+# circuit.py documentation build configuration file, created by
 # sphinx-quickstart on Mon Nov 13 10:13:06 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -21,7 +21,7 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import electronics
+import circuit
 import sphinx_bootstrap_theme
 
 # -- General configuration ------------------------------------------------
@@ -35,10 +35,13 @@ import sphinx_bootstrap_theme
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.viewcode'
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -58,8 +61,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'electronics.py'
-copyright = '2017, Sean Leavey'
+project = 'circuit.py'
+copyright = '2018, Sean Leavey'
 author = 'Sean Leavey'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -67,7 +70,7 @@ author = 'Sean Leavey'
 # built documents.
 #
 # The short X.Y version.
-version = electronics.__version__
+version = circuit.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -244,7 +247,7 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'electronicspydoc'
+htmlhelp_basename = 'circuitpydoc'
 
 # -- Options for Bootstrap theme ------------------------------------------
 
@@ -256,6 +259,15 @@ html_theme_options = {
     # Options are nothing (default) or the name of a valid theme
     # such as "cosmo" or "sandstone".
     'bootswatch_theme': "sandstone"
+}
+
+# -- Options for Intersphinx ----------------------------------------------
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+    'matplotlib': ('http://matplotlib.org/', None)
 }
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -282,7 +294,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'electronicspy.tex', 'electronics.py Documentation',
+    (master_doc, 'circuitpy.tex', 'circuit.py Documentation',
      'Sean Leavey', 'manual'),
 ]
 
@@ -324,7 +336,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'electronicspy', 'electronics.py Documentation',
+    (master_doc, 'circuitpy', 'circuit.py Documentation',
      [author], 1)
 ]
 
@@ -339,8 +351,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'electronicspy', 'electronics.py Documentation',
-     author, 'electronicspy', 'One line description of project.',
+    (master_doc, 'circuitpy', 'circuit.py Documentation',
+     author, 'circuitpy', circuit.DESCRIPTION,
      'Miscellaneous'),
 ]
 

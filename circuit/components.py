@@ -11,16 +11,23 @@ from .config import CircuitConfig
 CONF = CircuitConfig()
 
 class Component(object, metaclass=abc.ABCMeta):
-    """Class representing a circuit component"""
+    """Represents a circuit component.
+
+    Parameters
+    ----------
+    name : str
+        component name
+    nodes : Sequence[:class:`~Node` or str]
+        component nodes
+
+    Attributes
+    ----------
+    noise : set
+        component noise sources
+    """
 
     def __init__(self, name=None, nodes=None):
-        """Instantiate a new component
-
-        :param name: component name
-        :type name: str
-        :param nodes: associated component nodes or node names
-        :type nodes: Sequence[:class:`~Node`] or Sequence[str]
-        """
+        """Instantiate a new component."""
 
         if name is not None:
             name = str(name)
@@ -37,6 +44,14 @@ class Component(object, metaclass=abc.ABCMeta):
 
     @property
     def nodes(self):
+        """Component nodes.
+
+        Returns
+        -------
+        List[:class:`~Node`]
+            list of component nodes
+        """
+
         return self._nodes
 
     @nodes.setter
@@ -53,10 +68,25 @@ class Component(object, metaclass=abc.ABCMeta):
         return NotImplemented
 
     def add_noise(self, noise):
+        """Add a noise source to the component.
+
+        Parameters
+        ----------
+        noise : :class:`~Noise`
+            noise to add
+        """
+
         self.noise.add(noise)
 
     def label(self):
-        """Label for this passive component"""
+        """Label for this passive component.
+
+        Returns
+        -------
+        str
+            Component label
+        """
+
         return self.name
 
     def __repr__(self):
@@ -66,7 +96,22 @@ class Component(object, metaclass=abc.ABCMeta):
         return self.label()
 
 class PassiveComponent(Component, metaclass=abc.ABCMeta):
-    """Represents a passive component"""
+    """Represents a passive component.
+
+    A passive component is one that consumes or temporarily stores energy, but
+    does not produce or amplify it. Examples include
+    :class:`resistors <Resistor>`, :class:`capacitors <Capacitor>` and
+    :class:`inductors <Inductor>`.
+
+    Parameters
+    ----------
+    value : any
+        Component value.
+    node1 : :class:`~Node`
+        First component node.
+    node2 : :class:`~Node`
+        Second component node.
+    """
 
     UNIT = "?"
 
@@ -106,6 +151,24 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         self.nodes[1] = node
 
     def equation(self):
+        """Get component equation.
+
+        The component equation represents the component in the
+        :class:`circuit <.circuit.Circuit>` matrix. It maps input or noise
+        sources to voltages across :class:`nodes <Node>` and currents through
+        :class:`components <Component>` in terms of their
+        :class:`impedance <ImpedanceCoefficient>` and
+        :class:`voltage <VoltageCoefficient>` coefficients.
+
+        This method also registers current sources and sinks with the
+        component's :class:`nodes <Node>`.
+
+        Returns
+        -------
+        :class:`~ComponentEquation`
+            Component equation containing :class:`coefficients <BaseCoefficient>`.
+        """
+
         # register component as sink for node 1 and source for node 2
         if self.node1:
             self.node1.add_sink(self) # current flows into here...
@@ -140,18 +203,57 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         return NotImplemented
 
 class OpAmp(Component):
-    """Represents an (almost) ideal op-amp"""
+    """Represents an (almost) ideal op-amp.
+
+    An op-amp produces :class:`voltage noise <VoltageNoise>` across its input
+    and output :class:`nodes <Node>`, and :class:`current noise <CurrentNoise>`
+    is present at its input :class:`nodes <Node>`.
+
+    The default parameter values are those used in LISO, which are
+    themselves based on the OP27 PMI (information provided by Gerhard
+    Heinzel).
+
+    Parameters
+    ----------
+    model : str
+        Model name.
+    node1 : :class:`Node`
+        Non-inverting input node.
+    node2 : :class:`Node`
+        Inverting input node.
+    node3 : :class:`Node`
+        Output node.
+    a0 : float
+        Open loop gain.
+    gbw : float
+        Gain-bandwidth product.
+    delay : float
+        Delay.
+    zeros : :class:`np.ndarray`
+        Zeros.
+    poles : :class:`np.ndarray`
+        Poles.
+    v_noise : float
+        Flat voltage noise.
+    i_noise : float
+        Float current noise.
+    v_corner : float
+        Voltage noise corner frequency.
+    i_corner : float
+        Current noise corner frequency.
+    v_max : float
+        Maximum input voltage.
+    i_max : float
+        Maximum output current.
+    slew_rate : float
+        Slew rate.
+    """
 
     def __init__(self, model, node1, node2, node3, a0=1.5e6, gbw=8e6,
                  delay=0, zeros=np.array([]), poles=np.array([]),
                  v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
                  v_max=12, i_max=0.06, slew_rate=1e6, *args, **kwargs):
-        """"Instantiate new op-amp
-
-        The default parameter values are those used in LISO, which are
-        themselves based on the OP28 PMI (information provided by Gerhard
-        Heinzel).
-        """
+        """"Instantiate new op-amp."""
 
         # call parent constructor
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
@@ -218,6 +320,8 @@ class OpAmp(Component):
         self.nodes[2] = node
 
     def equation(self):
+        """Get op-amp equation."""
+
         # register component as source for node 3
         # nodes 1 and 2 don't source or sink current (ideally)
         self.node3.add_source(self) # current flows out of here
@@ -248,6 +352,19 @@ class OpAmp(Component):
         return ComponentEquation(self, coefficients=coefficients)
 
     def gain(self, frequency):
+        """Get op-amp voltage gain at the specified frequency.
+
+        Parameters
+        ----------
+        frequency : float
+            Frequency to compute gain at.
+
+        Returns
+        -------
+        float
+            Op-amp gain at specified frequency.
+        """
+
         return (self.params["a0"]
                 / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
                 * np.exp(-1j * 2 * np.pi * self.params["delay"] * frequency)
@@ -383,17 +500,11 @@ class Resistor(PassiveComponent):
 
     @property
     def resistance(self):
-        """Get resistance in ohms"""
-
+        """Resistance in ohms."""
         return self.value
 
     @resistance.setter
     def resistance(self, resistance):
-        """Set resistance
-
-        :param resistance: resistance, in ohms
-        """
-
         self.value = float(resistance)
 
     def impedance(self, *args):
@@ -406,17 +517,11 @@ class Capacitor(PassiveComponent):
 
     @property
     def capacitance(self):
-        """Get capacitance in farads"""
-
+        """Capacitance in farads."""
         return self.value
 
     @capacitance.setter
     def capacitance(self, capacitance):
-        """Set capacitance
-
-        :param capacitance: capacitance, in farads
-        """
-
         self.value = float(capacitance)
 
     def impedance(self, frequency):
@@ -429,17 +534,11 @@ class Inductor(PassiveComponent):
 
     @property
     def inductance(self):
-        """Get inductance in henries"""
-
+        """Inductance in henries."""
         return self.value
 
     @inductance.setter
     def inductance(self, inductance):
-        """Set inductance
-
-        :param inductance: inductance, in henries
-        """
-
         self.value = float(inductance)
 
     def impedance(self, frequency):
@@ -449,13 +548,24 @@ class Node(object, metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
 
     Nodes are considered equal if they have the same case-independent name.
+
+    Parameters
+    ----------
+    name : str
+        Node name.
+
+    Attributes
+    ----------
+    sources : set
+        :class:`Components <Component>` that source current connected to this
+        node.
+    sinks : set
+        :class:`Components <Component>` that sink current connected to this
+        node.
     """
 
     def __init__(self, name):
-        """Instantiate a new node
-
-        :param name: node name
-        """
+        """Instantiate a new node."""
 
         self.name = str(name)
 
@@ -489,7 +599,7 @@ class Node(object, metaclass=NamedInstance):
         return NodeEquation(self, coefficients=coefficients)
 
     def defaults(self):
-        """Restore default settings
+        """Restore default settings.
 
         This is useful for when a node is re-used in a different circuit by
         the same Python kernel. The named instance pattern results in the same
@@ -507,7 +617,14 @@ class Node(object, metaclass=NamedInstance):
         return str(self)
 
 class Noise(object, metaclass=abc.ABCMeta):
-    """Noise spectral density"""
+    """Noise spectral density.
+
+    Parameters
+    ----------
+    function : callable
+        Callable that returns the noise associated with a specified frequency
+        vector.
+    """
 
     def __init__(self, function=None):
         self.function = function
@@ -521,7 +638,13 @@ class Noise(object, metaclass=abc.ABCMeta):
         return NotImplemented
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
-    """Component noise spectral density"""
+    """Component noise spectral density.
+
+    Parameters
+    ----------
+    component : :class:`Component`
+        Component associated with the noise.
+    """
 
     def __init__(self, component, *args, **kwargs):
         super(ComponentNoise, self).__init__(*args, **kwargs)
@@ -535,7 +658,15 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
         return "%s[%s]" % (self.label(), self.component.name)
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
-    """Node noise spectral density"""
+    """Node noise spectral density.
+
+    Parameters
+    ----------
+    node : :class:`Node`
+        Node associated with the noise.
+    component : :class:`Component`
+        Component associated with the noise.
+    """
 
     def __init__(self, node, component, *args, **kwargs):
         super(NodeNoise, self).__init__(*args, **kwargs)
@@ -575,11 +706,16 @@ class CurrentNoise(NodeNoise):
         return "INoise"
 
 class BaseEquation(object, metaclass=abc.ABCMeta):
-    def __init__(self, coefficients):
-        """Instantiate a new equation
+    """Represents an equation.
 
-        :param coefficients: coefficients that make up the equation
-        """
+    Parameters
+    ----------
+    coefficients : Sequence[:class:`BaseCoefficient`]
+        Coefficients that make up the equation.
+    """
+
+    def __init__(self, coefficients):
+        """Instantiate a new equation."""
 
         self.coefficients = []
 
@@ -587,19 +723,27 @@ class BaseEquation(object, metaclass=abc.ABCMeta):
             self.add_coefficient(coefficient)
 
     def add_coefficient(self, coefficient):
-        """Add coefficient to equation
+        """Add coefficient to equation.
 
-        :param coefficient: coefficient to add
+        Parameters
+        ----------
+        coefficient : :class:`BaseCoefficient`
+            Coefficient to add.
         """
 
         self.coefficients.append(coefficient)
 
 class ComponentEquation(BaseEquation):
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new component equation
+    """Represents a component equation.
 
-        :param component: component this equation represents
-        """
+    Parameters
+    ----------
+    component : :class:`Component`
+        Component associated with the equation.
+    """
+
+    def __init__(self, component, *args, **kwargs):
+        """Instantiate a new component equation."""
 
         # call parent constructor
         super(ComponentEquation, self).__init__(*args, **kwargs)
@@ -607,11 +751,16 @@ class ComponentEquation(BaseEquation):
         self.component = component
 
 class NodeEquation(BaseEquation):
-    def __init__(self, node, *args, **kwargs):
-        """Instantiate a new node equation
+    """Represents a node equation.
 
-        :param node: node this equation represents
-        """
+    Parameters
+    ----------
+    node : :class:`Node`
+        Node associated with the equation.
+    """
+
+    def __init__(self, node, *args, **kwargs):
+        """Instantiate a new node equation."""
 
         # call parent constructor
         super(NodeEquation, self).__init__(*args, **kwargs)
@@ -619,18 +768,23 @@ class NodeEquation(BaseEquation):
         self.node = node
 
 class BaseCoefficient(object, metaclass=abc.ABCMeta):
+    """Represents a coefficient.
+
+    Parameters
+    ----------
+    value : float, callable
+        Coefficient value, either a number or a callable which returns a number
+    coefficient_type : {0, 1, 2}
+        Coefficient type. Impedance is 0, current is 1, voltage is 2.
+    """
+
     # coefficient types
     TYPE_IMPEDANCE = 0
     TYPE_CURRENT = 1
     TYPE_VOLTAGE = 2
 
     def __init__(self, value, coefficient_type):
-        """Instantiate a new coefficient
-
-        :param value: coefficient value, which may be either a number or a \
-                      callable which returns a number
-        :param coefficient_type: coefficient type number
-        """
+        """Instantiate a new coefficient."""
 
         self.value = value
         self.coefficient_type = coefficient_type
@@ -650,11 +804,16 @@ class BaseCoefficient(object, metaclass=abc.ABCMeta):
         self._coefficient_type = coefficient_type
 
 class ImpedanceCoefficient(BaseCoefficient):
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new impedance coefficient
+    """Represents an impedance coefficient.
 
-        :param component: component this impedance corresponds to
-        """
+    Parameters
+    ----------
+    component : :class:`Component`
+        Component this impedance coefficient represents.
+    """
+
+    def __init__(self, component, *args, **kwargs):
+        """Instantiate a new impedance coefficient."""
 
         self.component = component
 
@@ -663,11 +822,16 @@ class ImpedanceCoefficient(BaseCoefficient):
             coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
 
 class CurrentCoefficient(BaseCoefficient):
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new current coefficient
+    """Represents an current coefficient.
 
-        :param component: component this current corresponds to
-        """
+    Parameters
+    ----------
+    component : :class:`Component`
+        Component this current coefficient represents.
+    """
+
+    def __init__(self, component, *args, **kwargs):
+        """Instantiate a new current coefficient."""
 
         self.component = component
 
@@ -676,11 +840,16 @@ class CurrentCoefficient(BaseCoefficient):
             coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
 
 class VoltageCoefficient(BaseCoefficient):
-    def __init__(self, node, *args, **kwargs):
-        """Instantiate a new voltage coefficient
+    """Represents a voltage coefficient.
 
-        :param node: node this voltage corresponds to
-        """
+    Parameters
+    ----------
+    node : :class:`Node`
+        Node this voltage coefficient represents.
+    """
+
+    def __init__(self, node, *args, **kwargs):
+        """Instantiate a new voltage coefficient."""
 
         self.node = node
 

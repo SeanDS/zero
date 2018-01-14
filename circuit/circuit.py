@@ -23,10 +23,12 @@ CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
 
 def sparse(*args, **kwargs):
-    """Create new complex-valued sparse matrix
+    """Create new complex-valued sparse matrix.
 
-    :return: sparse matrix
-    :rtype: :class:`~lil_matrix`
+    Returns
+    -------
+    :class:`~lil_matrix`
+        sparse matrix
     """
 
     # complex64 gives real and imaginary parts each represented as 32-bit floats
@@ -35,28 +37,42 @@ def sparse(*args, **kwargs):
     return lil_matrix(dtype="complex64", *args, **kwargs)
 
 def solve(A, b):
-    """Solve linear system
+    """Solve linear system.
 
-    :param A: square matrix
-    :type A: :class:`~np.ndarray` or :class:`~scipy.sparse.spmatrix`
-    :param b: matrix or vector representing right hand side of matrix equation
-    :type b: :class:`~np.ndarray` or :class:`~scipy.sparse.spmatrix`
-    :return: solution
-    :rtype: :class:`~np.ndarray` or :class:`~scipy.sparse.spmatrix`
+    Parameters
+    ----------
+    A : :class:`~np.ndarray`, :class:`~scipy.sparse.spmatrix`
+        square matrix
+    B : :class:`~np.ndarray`, :class:`~scipy.sparse.spmatrix`
+        matrix or vector representing right hand side of matrix equation
+
+    Returns
+    -------
+    solution : :class:`~np.ndarray`, :class:`~scipy.sparse.spmatrix`
+        x in the equation Ax = b
     """
 
     # permute specification chosen to minimise error with LISO
     return spsolve(A, b, permc_spec="MMD_AT_PLUS_A")
 
 class Circuit(object):
-    """Represents an electronic circuit containing linear components"""
+    """Represents an electronic circuit containing linear components.
+
+    A circuit can contain components like :class:`resistors <.Resistor>`,
+    :class:`capacitors <.Capacitor>`, :class:`inductors <.Inductor>` and
+    :class:`op-amps <.OpAmp>`. These are added to the circuit via
+    the :meth:`~Circuit.add_component` method.
+
+    Attributes
+    ----------
+    components : sequence of :class:`components <.Component>`
+        The circuit's components.
+    nodes : sequence of :class:`nodes <.Node>`
+        The circuit's nodes.
+    """
 
     def __init__(self):
-        """Instantiate a new circuit
-
-        A circuit can contain linear components like resistors, capacitors,
-        inductors and op-amps.
-        """
+        """Instantiate a new circuit"""
 
         # empty lists of components and nodes
         self.components = []
@@ -68,10 +84,12 @@ class Circuit(object):
 
     @property
     def noise_node(self):
-        """Get circuit's noise node
+        """Circuit's noise node
 
-        :return: noise node
-        :rtype: :class:`~Node`
+        Returns
+        -------
+        :class:`~.Node`
+            The circuit's noise node
         """
 
         return self._noise_node
@@ -80,8 +98,10 @@ class Circuit(object):
     def noise_node(self, node):
         """Set circuit's noise node
 
-        :param node: noise node
-        :type node: :class:`~Node` or str
+        Parameters
+        ----------
+        node : :class:`~.Node`
+            The circuit's new noise node
         """
 
         if not isinstance(node, Node):
@@ -91,34 +111,91 @@ class Circuit(object):
 
     @property
     def non_gnd_nodes(self):
-        """Get circuit's nodes, excluding ground
+        """Circuit's nodes, excluding ground
 
-        :return: non-ground nodes
-        :rtype: Generator[:class:`~Node`]
+        Yields
+        ------
+        :class:`~.Node`
+            Circuit nodes, excluding ground.
         """
 
         return [node for node in self.nodes if node is not Node("gnd")]
 
     @property
     def elements(self):
-        """Circuit elements
+        """Circuit's elements.
 
-        Returns a sequence of elements - either components or nodes - in the
-        order in which they appear in the circuit
+        Returns a sequence of elements - either
+        :class:`components <.Component>` or :class:`nodes <.Node>` (excluding
+        ground) - in the order in which they appear in the circuit.
 
-        :return: elements
-        :rtype: Generator[:class:`~Component` or :class:`~Node`]
+        Yields
+        ------
+        :class:`~.Component`
+            Circuit components.
+        :class:`~.Node`
+            Circuit nodes, excluding ground.
         """
 
         yield from self.components
         yield from self.non_gnd_nodes
 
     @property
+    def element_headers(self):
+        """Headers corresponding to circuit's matrix elements.
+
+        Yields
+        ------
+        str
+            column header
+        """
+
+        return [self.format_element(element) for element in self.elements]
+
+    @property
+    def element_names(self):
+        """Names of elements within the circuit.
+
+        Yields
+        ------
+        str
+            element name
+        """
+
+        return [element.name for element in self.elements]
+
+    def format_element(self, element):
+        """Formats matrix element.
+
+        Determines if the specified `element` refers to a component current or a
+        voltage node and prints information accordingly.
+
+        Parameters
+        ----------
+        element : :class:`~.Component`, :class:`~.Node`
+            element to format
+
+        Raises
+        ------
+        ValueError
+            if element type is not recognised
+        """
+
+        if isinstance(element, Component):
+            return "i[%s]" % element.name
+        elif isinstance(element, Node):
+            return "V[%s]" % element.name
+
+        raise ValueError("unrecognised element")
+
+    @property
     def n_components(self):
         """Get number of components in circuit
 
-        :return: number of components
-        :rtype: int
+        Returns
+        -------
+        `int`
+            number of components
         """
 
         return len(self.components)
@@ -127,19 +204,26 @@ class Circuit(object):
     def n_nodes(self):
         """Get number of nodes in circuit
 
-        :return: number of nodes
-        :rtype: int
+        Returns
+        -------
+        `int`
+            number of nodes
         """
 
         return len(self.nodes)
 
     def add_component(self, component):
-        """Add component, and its nodes, to circuit
+        """Add component, and its nodes, to the circuit.
 
-        :param component: component to add
-        :type component: :class:`~Component`
-        :raises ValueError: if component is None, or already present in the \
-                            circuit
+        Parameters
+        ----------
+        component : :class:`~.Component`
+            component to add
+
+        Raises
+        ------
+        ValueError
+            if component is None, or already present in the circuit
         """
 
         if component is None:
@@ -158,38 +242,44 @@ class Circuit(object):
         self._reset_matrix()
 
     def add_input(self, *args, **kwargs):
-        """Add input to circuit"""
+        """Add input to circuit."""
         self.add_component(Input(*args, **kwargs))
 
     def add_resistor(self, *args, **kwargs):
-        """Add resistor to circuit"""
+        """Add resistor to circuit."""
         self.add_component(Resistor(*args, **kwargs))
 
     def add_capacitor(self, *args, **kwargs):
-        """Add capacitor to circuit"""
+        """Add capacitor to circuit."""
         self.add_component(Capacitor(*args, **kwargs))
 
     def add_inductor(self, *args, **kwargs):
-        """Add inductor to circuit"""
+        """Add inductor to circuit."""
         self.add_component(Inductor(*args, **kwargs))
 
     def add_opamp(self, *args, **kwargs):
-        """Add op-amp to circuit"""
+        """Add op-amp to circuit."""
         self.add_component(OpAmp(*args, **kwargs))
 
     def add_library_opamp(self, model, *args, **kwargs):
-        """Add library op-amp to circuit"""
+        """Add library op-amp to circuit."""
         data = LIBRARY.get_data(model)
 
         self.add_opamp(model=OpAmpLibrary.format_name(model), *args, **kwargs,
                        **data)
 
     def _add_node(self, node):
-        """Add node to circuit
+        """Add node to circuit.
 
-        :param node: node to add
-        :type node: :class:`~Node`
-        :raises ValueError: if the node is None
+        Parameters
+        ----------
+        node : :class:`~.Node`
+            node to add
+
+        Raises
+        ------
+        ValueError
+            if the node is None
         """
 
         if node is None:
@@ -204,13 +294,21 @@ class Circuit(object):
             self.nodes.append(node)
 
     def get_component(self, component_name):
-        """Get circuit component by name
+        """Get circuit component by name.
 
-        :param component_name: name of component to fetch
-        :type component_name: str
-        :return: component
-        :rtype: :class:`~Component`
-        :raises ValueError: if component not found
+        Parameters
+        ----------
+        component_name : str
+            name of component to fetch
+
+        Returns
+        -------
+        :class:`~.Component`
+
+        Raises
+        ------
+        ValueError
+            if component not found
         """
 
         component_name = component_name.lower()
@@ -222,13 +320,21 @@ class Circuit(object):
         raise ValueError("component not found")
 
     def get_node(self, node_name):
-        """Get circuit node by name
+        """Get circuit node by name.
 
-        :param node_name: name of node to fetch
-        :type node_name: str
-        :return: node
-        :rtype: :class:`~Node`
-        :raises ValueError: if node not found
+        Parameters
+        ----------
+        node_name : str
+            name of node to fetch
+
+        Returns
+        -------
+        :class:`~.Node`
+
+        Raises
+        ------
+        ValueError
+            if node not found
         """
 
         node_name = node_name.lower()
@@ -240,31 +346,63 @@ class Circuit(object):
         raise ValueError("node not found")
 
     def _reset_matrix(self):
-        """Reset circuit matrix"""
+        """Reset circuit matrix."""
         self._matrix = None
 
     @property
     def resistors(self):
+        """Circuit resistors.
+
+        Yields
+        ------
+        :class:`~Resistor`
+            circuit resistors
+        """
+
         return [component for component in self.components
                 if isinstance(component, Resistor)]
 
     @property
     def capacitors(self):
+        """Circuit capacitors.
+
+        Yields
+        ------
+        :class:`~Capacitor`
+            circuit capacitors
+        """
+
         return [component for component in self.components
                 if isinstance(component, Capacitor)]
 
     @property
     def inductors(self):
+        """Circuit inductors.
+
+        Yields
+        ------
+        :class:`~Inductor`
+            circuit inductors
+        """
+
         return [component for component in self.components
                 if isinstance(component, Inductor)]
 
     @property
     def opamps(self):
+        """Circuit op-amps.
+
+        Yields
+        ------
+        :class:`~OpAmp`
+            circuit op-amps
+        """
+
         return [component for component in self.components
                 if isinstance(component, OpAmp)]
 
     def _construct_matrix(self):
-        """Construct matrix representing the circuit
+        """Construct matrix representing the circuit.
 
         This constructs a sparse matrix containing the voltage and current
         equations for each component and node.
@@ -273,6 +411,11 @@ class Circuit(object):
         as long as the circuit is not changed. Frequency dependent impedances
         are stored as callables so that their values can be quickly calculated
         for a particular frequency during solving.
+
+        Raises
+        ------
+        ValueError
+            if an invalid coefficient type is encountered
         """
 
         LOGGER.debug("constructing matrix")
@@ -323,12 +466,17 @@ class Circuit(object):
 
     def _get_tf_matrix(self, frequency):
         """Calculate and return matrix used to solve for circuit transfer \
-        functions for a given frequency
+        functions for a given frequency.
 
-        :param frequency: frequency at which to calculate circuit impedances
-        :type frequency: float or Numpy scalar
-        :return: circuit matrix
-        :rtype: :class:`scipy.sparse.spmatrix`
+        Parameters
+        ----------
+        frequency float or Numpy scalar
+            frequency at which to calculate circuit impedances
+
+        Returns
+        -------
+        :class:`scipy.sparse.spmatrix`
+            circuit matrix
         """
 
         # generate base matrix if necessary
@@ -351,12 +499,17 @@ class Circuit(object):
 
     def _get_noise_matrix(self, *args, **kwargs):
         """Calculate and return matrix used to solve for circuit noise at a \
-        given frequency
+        given frequency.
 
-        :param frequency: frequency at which to calculate circuit impedances
-        :type frequency: float or Numpy scalar
-        :return: circuit matrix
-        :rtype: :class:`scipy.sparse.spmatrix`
+        Parameters
+        ----------
+        frequency : float, Numpy scalar
+            frequency at which to calculate circuit impedances
+
+        Returns
+        -------
+        :class:`scipy.sparse.spmatrix`
+            circuit matrix
         """
 
         # simply return the transpose of the transfer function matrix
@@ -365,29 +518,42 @@ class Circuit(object):
     def calculate_tfs(self, frequencies, output_components=[], output_nodes=[],
                   stream=sys.stdout, print_equations=False, print_matrix=False,
                   *args, **kwargs):
-        """Calculate circuit transfer functions from input component/node to \
-           output components/nodes
+        """Calculate circuit transfer functions from input \
+        :class:`component <.Component>` / :class:`node <.Node>` to output \
+        :class:`components <.Component>` / :class:`nodes <.Node>`.
 
-        :param frequencies: sequence of frequencies to solve circuit for
-        :type frequencies: Sequence[Numpy scalar or float]
-        :param output_components: output components to calculate transfer \
-                                  functions to; specify "all" to compute all
-        :type output_components: List[:class:`~Component` or str] or str
-        :param output_nodes: output nodes to calculate transfer functions to; \
-                             specify "all" to compute all
-        :type output_nodes: List[:class:`~Node` or str] or str
-        :param stream: stream to print to
-        :type stream: :class:`io.IOBase`
-        :param print_equations: whether to print circuit equations
-        :type print_equations: bool
-        :param print_matrix: whether to print circuit matrix
-        :type print_matrix: bool
-        :param print_progress: whether to print solve progress to stream
-        :type print_progress: bool
-        :return: solution
-        :rtype: :class:`~Solution`
-        :raises ValueError: if neither output components nor nodes are specified
-        :raises ValueError: if input type is unrecognised
+        Parameters
+        ----------
+        frequencies : Sequence[float, Numpy scalar]
+            sequence of frequencies to solve circuit for
+        output_components : Sequence[:class:`~.Component`, str], str
+            output components to calculate transfer functions to; specify "all"
+            to compute all
+        output_nodes : Sequence[:class:`~.Node`, str], str
+            output nodes to calculate transfer functions to; specify "all" to
+            compute all
+        stream : :class:`io.IOBase`
+            stream to print to
+        print_equations : bool
+            whether to print circuit equations
+        print_matrix : bool
+            whether to print circuit matrix
+        print_progress : bool
+            whether to print solve progress to stream
+
+        Returns
+        -------
+        :class:`~Solution`
+            solution
+
+        Raises
+        ------
+        Exception
+            if no input is present within the circuit
+        ValueError
+            if neither output components nor nodes are specified
+        ValueError
+            if input type is unrecognised
         """
 
         if not self.has_input:
@@ -482,23 +648,35 @@ class Circuit(object):
     def calculate_noise(self, frequencies, noise_node, stream=sys.stdout,
                        print_equations=False, print_matrix=False, *args,
                        **kwargs):
-        """Calculate noise from circuit components/nodes at a particular node
+        """Calculate noise from circuit :class:`component <.Component>` / \
+        :class:`node <.Node>` at a particular :class:`node <.Node>`.
 
-        :param frequencies: sequence of frequencies to solve circuit for
-        :type frequencies: Sequence[Numpy scalar or float]
-        :param noise_node: node to project noise to
-        :type noise_node: :class:`~Node` or str
-        :param stream: stream to print to
-        :type stream: :class:`io.IOBase`
-        :param print_equations: whether to print circuit equations
-        :type print_equations: bool
-        :param print_matrix: whether to print circuit matrix
-        :type print_matrix: bool
-        :param print_progress: whether to print solve progress to stream
-        :type print_progress: bool
-        :return: solution
-        :rtype: :class:`~Solution`
-        :raises ValueError: if unrecognised noise source is present in circuit
+        Parameters
+        ----------
+        frequencies : Sequence[Numpy scalar, float]
+            sequence of frequencies to solve circuit for
+        noise_node : :class:`~.Node`, str
+            node to project noise to
+        stream : :class:`io.IOBase`
+            stream to print to
+        print_equations : bool
+            whether to print circuit equations
+        print_matrix : bool
+            whether to print circuit matrix
+        print_progress : bool
+            whether to print solve progress to stream
+
+        Returns
+        -------
+        :class:`~Solution`
+            solution
+
+        Raises
+        ------
+        Exception
+            if no input is present within the circuit
+        ValueError
+            if unrecognised noise source is present in circuit
         """
 
         if not self.has_input:
@@ -572,8 +750,10 @@ class Circuit(object):
     def dim_size(self):
         """Circuit matrix dimension size
 
-        :return: number of rows/columns in circuit matrix
-        :rtype: int
+        Returns
+        -------
+        int
+            number of rows/columns in circuit matrix
         """
 
         # dimension size is the number of components added to circuit, including
@@ -588,16 +768,48 @@ class Circuit(object):
         any additional dimensions, can be specified with subsequent ``depth``
         parameters.
 
-        :param depth: size of index 1...x
-        :type depth: int
-        :return: empty results matrix
-        :rtype: :class:`~np.ndarray`
+        Parameters
+        ----------
+        depth : int
+            size of index 1...x
+
+        Returns
+        -------
+        :class:`~np.ndarray`
+            empty results matrix
         """
 
         return np.zeros((self.dim_size, *depth), dtype="complex64")
 
-    def _invert(self, frequencies, A_function, b, print_progress=True,
-                stream=sys.stdout):
+    def _invert(self, frequencies, A_function, b, stream=sys.stdout,
+                print_progress=True):
+        """Solve matrix equation Ax = b.
+
+        Parameters
+        ----------
+        frequencies : Sequence[Numpy scalar, float]
+            sequence of frequencies to solve circuit for
+        A_function : callable
+            callable which returns the matrix at a particular frequency; \
+            must take as its only parameter a frequency
+        b : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
+            right hand side of matrix equation
+        stream : :class:`io.IOBase`
+            stream to print to
+        print_progress : bool
+            whether to print solve progress to stream
+
+        Returns
+        -------
+        :class:`~np.ndarray`
+            inverse of A
+
+        Raises
+        ------
+        ValueError
+            if A_function is not callable
+        """
+
         if not callable(A_function):
             raise ValueError("A_function must be a callable")
 
@@ -635,17 +847,22 @@ class Circuit(object):
         return results
 
     def _parse_component_list(self, components):
-        """Parse the specified component list
+        """Parse the specified component list.
 
-        The component list can be a sequence containing :class:`~Component`
+        The component list can be a sequence containing :class:`~.Component`
         objects or strings containing names of components in the circuit, or it
         can be equal to the string "all", in which case all circuit components
         will be returned.
 
-        :param components: sequence of components or component names, or "all"
-        :type components: Sequence[:class:`~Component` or str] or str
-        :return: sequence of parsed components
-        :rtype: Generator[:class:`~Component`]
+        Parameters
+        ----------
+        components : Sequence[:class:`~.Component`, str], str
+            sequence of components or component names, or "all"
+
+        Yields
+        ------
+        :class:`~.Component`
+            parsed component
         """
 
         if components == "all":
@@ -666,10 +883,16 @@ class Circuit(object):
         strings containing names of nodes in the circuit, or it can be equal to
         the string "all", in which case all circuit nodes will be returned.
 
-        :param nodes: sequence of nodes or node names, or "all"
-        :type nodes: Sequence[:class:`~Node` or str] or str
-        :return: sequence of parsed nodes
-        :rtype: Generator[:class:`~Node`]
+
+        Parameters
+        ----------
+        nodes : Sequence[:class:`~.Node`, str], str
+            sequence of nodes or node names, or "all"
+
+        Yields
+        ------
+        :class:`~.Node`
+            parsed node
         """
 
         if nodes == "all":
@@ -685,39 +908,45 @@ class Circuit(object):
 
     @property
     def input_component(self):
-        """Get circuit's input component"""
+        """Circuit's input component."""
         return self.get_component("input")
 
     @property
     def input_impedance(self):
-        """Get circuit's input impedance"""
+        """Circuit's input impedance."""
         return self.input_component.impedance
 
     @property
     def noise_sources(self):
-        """Noise sources in the circuit"""
+        """Noise sources in the circuit.
+
+        Yields
+        ------
+        :class:`~.components.ComponentNoise`
+            noise source
+        """
 
         for component in self.components:
             yield from component.noise
 
     @property
     def has_noise_input(self):
-        """Check if circuit has a noise input"""
+        """Check if circuit has a noise input."""
         return self.input_component.input_type is Input.TYPE_NOISE
 
     @property
     def has_voltage_input(self):
-        """Check if circuit has a voltage input"""
+        """Check if circuit has a voltage input."""
         return self.input_component.input_type is Input.TYPE_VOLTAGE
 
     @property
     def has_current_input(self):
-        """Check if circuit has a current input"""
+        """Check if circuit has a current input."""
         return self.input_component.input_type is Input.TYPE_CURRENT
 
     @property
     def has_input(self):
-        """Check if circuit has an input"""
+        """Check if circuit has an input."""
         try:
             self.input_component
         except ValueError:
@@ -726,52 +955,64 @@ class Circuit(object):
         return True
 
     def _component_matrix_index(self, component):
-        """Circuit matrix index corresponding to a component
+        """Circuit matrix index corresponding to a component.
 
-        :param component: component to get index for
-        :type component: :class:`~Component`
-        :return: component index
-        :rtype: int
+        Parameters
+        ----------
+        component : :class:`~.Component`
+            component to get index for
+
+        Returns
+        -------
+        int
+            component index
         """
 
         return self.components.index(component)
 
     def _node_matrix_index(self, node):
-        """Circuit matrix index corresponding to a node
+        """Circuit matrix index corresponding to a node.
 
-        :param node: node to get index for
-        :type node: :class:`~Node`
-        :return: node index
-        :rtype: int
+        Parameters
+        ----------
+        node : :class:`~.components.Node`
+            node to get index for
+
+        Returns
+        -------
+        int
+            node index
         """
 
         return self.n_components + self.node_index(node)
 
     @property
     def _input_component_index(self):
-        """Get input component's matrix index"""
+        """Input component's matrix index."""
         return self._component_matrix_index(self.input_component)
 
     @property
     def _input_node_index(self):
-        """Get input node's matrix index"""
+        """Input node's matrix index."""
         return self._node_matrix_index(self.input_component.node2)
 
     @property
     def _noise_node_index(self):
-        """Get noise node's matrix index"""
+        """Noise node's matrix index."""
         return self._node_matrix_index(self.noise_node)
 
     @property
     def _input_vector(self):
-        """Get circuit input vector
+        """Circuit input vector.
 
         This creates a vector of size nx1, where n is the number of elements in
         the circuit, and sets the input component's coefficient to 1 before
         returning it.
 
-        :return: circuit's input vector
-        :rtype: :class:`~np.ndarray`
+        Returns
+        -------
+        :class:`~np.ndarray`
+            circuit's input vector
         """
 
         # create column vector
@@ -790,8 +1031,10 @@ class Circuit(object):
         the circuit, and sets the noise node's coefficient to 1 before
         returning it.
 
-        :return: circuit's noise output vector
-        :rtype: :class:`~np.ndarray`
+        Returns
+        -------
+        :class:`~np.ndarray`
+            circuit's noise output vector
         """
 
         # create column vector
@@ -804,35 +1047,48 @@ class Circuit(object):
 
     @property
     def component_equations(self):
-        """Get linear equations representing components in circuit
+        """Linear equations representing circuit components.
 
-        :return: sequence of component equations
-        :rtype: Generator[ComponentEquation]
+        Yields
+        ------
+        :class:`ComponentEquation`
+            component equation
         """
 
         return [component.equation() for component in self.components]
 
     @property
     def node_equations(self):
-        """Get linear equations representing nodes in circuit
+        """Linear equations representing circuit nodes.
 
-        :return: sequence of node equations
-        :rtype: Generator[NodeEquation]
+        Yields
+        ------
+        :class:`NodeEquation`
+            sequence of node equations
         """
 
         return [node.equation() for node in self.non_gnd_nodes]
 
     def node_index(self, node):
-        """Get node serial number
+        """Get node serial number.
 
         This does not include the ground node, so the first non-ground node
         has serial number 0.
 
-        :param node: node
-        :type node: :class:`~Node`
-        :return: node serial number
-        :rtype: int
-        :raises ValueError: if ground node is specified
+        Parameters
+        ----------
+        node : :class:`~.Node`
+            node
+
+        Returns
+        -------
+        int
+            node serial number
+
+        Raises
+        ------
+        ValueError
+            if ground node is specified
         """
 
         if node == Node("gnd"):
@@ -841,16 +1097,17 @@ class Circuit(object):
         return list(self.non_gnd_nodes).index(node)
 
     def _print_equations(self, matrix, rhs, stream=sys.stdout):
-        """Pretty print circuit equations
+        """Pretty print circuit equations.
 
-        :param matrix: left hand side of matrix equation, representing the \
-                       circuit matrix
-        :type matrix: :class:`~np.ndarray` or :class:`scipy.sparse.spmatrix`
-        :param rhs: right hand side of matrix equation, representing the \
-                       input or output vector
-        :type rhs: :class:`~np.ndarray` or :class:`scipy.sparse.spmatrix`
-        :param stream: stream to print to
-        :type stream: :class:`io.IOBase`
+        Parameters
+        ----------
+        matrix : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
+            left hand side of matrix equation, representing the circuit matrix
+        rhs : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
+            right hand side of matrix equation, representing the input or output
+            vector
+        stream : :class:`io.IOBase`
+            stream to print to
         """
 
         print("Circuit equations:", file=stream)
@@ -881,16 +1138,17 @@ class Circuit(object):
             print(" = %s" % rhs_value, file=stream)
 
     def _print_matrix(self, matrix, rhs, stream=sys.stdout, *args, **kwargs):
-        """Pretty print circuit matrix
+        """Pretty print circuit matrix.
 
-        :param matrix: left hand side of matrix equation, representing the \
-                       circuit matrix
-        :type matrix: :class:`~np.ndarray` or :class:`scipy.sparse.spmatrix`
-        :param rhs: right hand side of matrix equation, representing the \
-                       input or output vector
-        :type rhs: :class:`~np.ndarray` or :class:`scipy.sparse.spmatrix`
-        :param stream: stream to print to
-        :type stream: :class:`io.IOBase`
+        Parameters
+        ----------
+        matrix : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
+            left hand side of matrix equation, representing the circuit matrix
+        rhs : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
+            right hand side of matrix equation, representing the input or output
+            vector
+        stream : :class:`io.IOBase`
+            stream to print to
         """
 
         # get matrix in full (non-sparse) format to allow stacking
@@ -922,41 +1180,3 @@ class Circuit(object):
         # output
         print("Circuit matrix:", file=stream)
         print(table, file=stream)
-
-    @property
-    def element_headers(self):
-        """Headers corresponding to circuit's matrix elements
-
-        :return: column headers
-        :rtype: Generator[str]
-        """
-
-        return [self.format_element(element) for element in self.elements]
-
-    @property
-    def element_names(self):
-        """Element names
-
-        :return: element names
-        :rtype: Generator[str]
-        """
-
-        return [element.name for element in self.elements]
-
-    def format_element(self, element):
-        """Format matrix element for pretty printer
-
-        Determines if the specified ``element`` refers to a component current
-        or a voltage node and prints information accordingly.
-
-        :param element: element to format
-        :type element: :class:`~Component` or :class:`~Node`
-        :raises ValueError: if element type is not recognised
-        """
-
-        if isinstance(element, Component):
-            return "i[%s]" % element.name
-        elif isinstance(element, Node):
-            return "V[%s]" % element.name
-
-        raise ValueError("unrecognised element")

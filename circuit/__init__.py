@@ -11,6 +11,7 @@ logging.getLogger().addHandler(logging.NullHandler())
 locale.setlocale(locale.LC_ALL, "")
 
 __version__ = "0.2.7"
+# description must be one line
 DESCRIPTION = "Linear circuit simulator based on Gerhard Heinzel's LISO"
 PROGRAM = "circuit"
 

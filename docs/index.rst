@@ -1,4 +1,4 @@
-electronics.py's documentation
+circuit.py's documentation
 ==============================
 
 Contents
@@ -7,7 +7,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   electronics
+   circuit/index
 
 Indices and tables
 ==================
