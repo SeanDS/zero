@@ -123,7 +123,7 @@ def _print_progress(sequence, total, update=100000, stream=sys.stdout):
                                             progressbar.Percentage(),
                                             progressbar.Bar(),
                                             progressbar.ETA()],
-                                   maxval=100, fd=stream).start()
+                                   max_value=100, fd=stream).start()
 
     count = 0
 
