@@ -1229,15 +1229,15 @@ class Circuit(object):
             raise NotImplementedError("Node graph representation requires the "
                                       "graphviz package")
 
-        G = graphviz.Digraph(engine=CONF["graphviz"]["fdp"])
+        G = graphviz.Digraph(engine=CONF["graphviz"]["engine"])
         G.attr("node", style=CONF["graphviz"]["node_style"],
                fontname=CONF["graphviz"]["node_font_name"],
-               fontsize=int(CONF["graphviz"]["node_font_size"]))
+               fontsize=CONF["graphviz"]["node_font_size"])
         G.attr("edge", arrowhead=CONF["graphviz"]["edge_arrowhead"])
         G.attr("graph", splines=CONF["graphviz"]["graph_splines"],
                label="Made with graphviz and circuit.py",
                fontname=CONF["graphviz"]["graph_font_name"],
-               fontsize=int(CONF["graphviz"]["graph_font_size"]))
+               fontsize=CONF["graphviz"]["graph_font_size"])
         node_map = {}
 
         def add_connection(C, conn, N):
