@@ -862,7 +862,7 @@ class Circuit(object):
                                       ' graphviz package')
 
         G = graphviz.Digraph(engine='fdp')
-        G.attr('node', style='filled', fontname='Helvetica')
+        G.attr('node', style='filled', fontname='Helvetica', fontsize='10')
         G.attr('edge', arrowhead='dot')
         G.attr('graph', splines='compound',
                label='Made with graphviz and circuit.py',
@@ -892,14 +892,14 @@ class Circuit(object):
                 </TABLE>>""".format(C.name, C.model)
                 connections = [':plus', ':minus', ':e']
             elif isinstance(C, Inductor):
-                attr = {'fillcolor': 'MediumSlateBlue', 'shape': 'box'}
+                attr = {'fillcolor': 'MediumSlateBlue', 'shape': 'diamond'}
             elif isinstance(C, Capacitor):
-                attr = {'fillcolor': 'YellowGreen', 'shape': 'box'}
+                attr = {'fillcolor': 'YellowGreen', 'shape': 'diamond'}
             elif isinstance(C, Resistor):
-                attr = {'fillcolor': 'Orchid', 'shape': 'box'}
+                attr = {'fillcolor': 'Orchid', 'shape': 'diamond'}
             elif isinstance(C, Input):
                 attr = {'fillcolor': 'Orange',
-                        'shape': ['ellipse','diamond','pentagon'][C.input_type-1]}
+                        'shape': ['ellipse','box','pentagon'][C.input_type-1]}
             else:
                 print('Unrecognised element {0}: {1}'.format(C.name, C.__class__))
             
