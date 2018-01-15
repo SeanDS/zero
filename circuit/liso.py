@@ -199,8 +199,8 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         :rtype: List[str]
         """
 
-        # split into parts and remove extra whitespace
-        return [line.strip() for line in line.split()]
+        # strip off comments, then split into parts and remove extra whitespace
+        return [line.strip() for line in line.split('#')[0].split()]
 
     def _add_lcr(self, _class, name, value, node1_name, node2_name):
         """Add new L, C or R component
