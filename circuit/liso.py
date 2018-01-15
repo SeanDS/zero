@@ -199,8 +199,8 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         :rtype: List[str]
         """
 
-        # split into parts and remove extra whitespace
-        return [line.strip() for line in line.split()]
+        # strip off comments, then split into parts and remove extra whitespace
+        return [line.strip() for line in line.split('#')[0].split()]
 
     def _add_lcr(self, _class, name, value, node1_name, node2_name):
         """Add new L, C or R component
@@ -468,20 +468,27 @@ class InputParser(BaseParser):
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
                             "impedance %f", self.input_node_p,
                             self.input_node_n, self.input_impedance)
-            else:
+            elif len(options) == 2:
                 self.input_impedance = float(options[1])
-
                 LOGGER.info("adding voltage input node %s with impedance %s",
                             self.input_node_p,
                             SIFormatter.format(self.input_impedance, "Ω"))
+            else:
+                self.input_impedance = 50.0
+                LOGGER.info("adding voltage input node %s with default impedance of 50Ω",
+                            self.input_node_p)
         elif input_type == "iinput":
             self.input_type = Input.TYPE_CURRENT
             self.input_node_n = None
-            self.input_impedance = float(options[1])
-
-            LOGGER.info("adding current input node %s with impedance %s",
-                        self.input_node_p,
-                        SIFormatter.format(self.input_impedance, "Ω"))
+            if len(options) == 2:
+                self.input_impedance = float(options[1])
+                LOGGER.info("adding current input node %s with impedance %s",
+                            self.input_node_p,
+                            SIFormatter.format(self.input_impedance, "Ω"))
+            else:
+                self.input_impedance = 50.0
+                LOGGER.info("adding current input node %s with default impedance of 50Ω",
+                            self.input_node_p)
         else:
             raise ValueError("unrecognised input type")
 
