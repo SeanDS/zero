@@ -7,15 +7,6 @@ This tool is inspired by, and partially based on, [LISO](https://wiki.projekt.un
 and [Elektrotickle](https://github.com/tobin/Elektrotickle/). It also (somewhat)
 understands LISO input and output files.
 
-## Installation
-Installation is best handled using `pip`. As the library is Python 3 only, on
-some systems you must install this using `pip3` instead:
-```bash
-pip3 install git+https://git.ligo.org/sean-leavey/circuit.git
-```
-This installs the library and adds a console script `circuit` which provides
-access to the package's command line utility.
-
 ## Program and library
 The simulator tries to replicate LISO's operation: a small signal ac analysis.
 The electrical components in a circuit are defined using their nodal
@@ -33,6 +24,15 @@ structure, support for current transfer functions, direct comparison to LISO
 results and more advanced plotting, but the basic solving functionality is
 almost the same.
 
+## Installation
+Installation is best handled using `pip`. As the library is Python 3 only, on
+some systems you must install this using `pip3` instead:
+```bash
+pip3 install git+https://git.ligo.org/sean-leavey/circuit.git
+```
+This installs the library and adds a console script `circuit` which provides
+access to the package's command line utility.
+
 ## Basic usage
 There is a very basic CLI provided by the program. Open up a terminal and type:
 ```bash
@@ -47,7 +47,12 @@ directory.
 
 ## Tests
 The script in `/tests/liso/liso.py` can be run to automatically test the
-solver against LISO with a set of LISO input files.
+solver against LISO with a set of LISO input files. Currently, most scripts
+produce results that agree with LISO outputs to 1 part in 100,000 (both relative
+and absolute), but in some cases it's as low as 1 part in 100. Scaling the
+sparse matrix before solving (see below) will probably improve this statistic,
+but differences in the solver library will undoubtedly always yield different
+results on some level.
 
 ## Current limitations
 
@@ -57,25 +62,32 @@ solver against LISO with a set of LISO input files.
     rounding issues in extreme cases.
 
 ### LISO parsing
-  - Some LISO commands not yet supported:
-    - all root mode commands
-    - no fit commands
-    - m
-    - factor
-    - maxinput
-    - zin
-    - opdiff
-    - opstab
-    - noisy
-    - gnuterm
-    - inputnoise
-  - `noise` command's plot options are ignored (all noise sources are plotted
-    including incoherent sum)
-  - Coordinates in LISO files (e.g. `im`, `deg+`, etc.) are ignored in favour of
-    `db` and `deg` in all cases
+  - Coordinates for output signals (e.g. `im`, `deg+`, etc.) are ignored in
+    favour of `db` and `deg` in all cases
   - Output parser assumes all outputs are in dB and degrees (noise columns are
     handled appropriately, however)
-  - LISO's op-amp library format is not supported (see `Op-amp library` below)
+  - LISO's op-amp library format is not supported, but the full library bundled
+    with LISO is implemented in a different format (see `Op-amp library` below)
+  - Some LISO commands not yet supported. Here are some that might be supported
+    in the future, in rough order of priority (first highest):
+    - `factor` (input multiplicative factor)
+    - `m` (mutual inductance)
+    - `noisy` (switch on/off noise from specific components)
+    - `inputnoise` (circuit noise referred to input node)
+    - `zin` (input impedance)
+    - `opdiff` (plot op-amp input differential voltage)
+    - `margin` (compute op-amp phase margin; replaces `opstab` in LISO v1.78)
+    - `sens` (print table of component sensitivities)
+  - And here are some commands which will probably not be implemented:
+    - commands associated with root mode and fitting (tools such as `vectfit`
+      may be suitable replacements)
+    - other `max` or `min` based commands, e.g. `maxinput` (need fitting?)
+    - `eagle` (produce EAGLE file)    
+    - `gnuterm`
+    - component `C0805` (0805 capacitor with parasitic properties; not
+      implemented in favour of grouped components feature idea below)
+  - `noise` command's plot options are ignored (all noise sources are plotted
+    including incoherent sum)
 
 ### Op-amp library
 The op-amp library is implemented in a different format to that of LISO,
@@ -106,13 +118,18 @@ A LISO op-amp library parser may be added at a later date.
 
 ### Tests
   - Comparisons of complex value series don't handle phase wrapping, and so
-    occasionally flag two matched series as different.
+    occasionally flag two matched series as different. Might be better to
+    compare complex numbers instead.
 
 ## Future ideas
+  - Return plot objects to allow user to modify them
   - Allow arbitrary op-amp noise spectra (interpolate to the frequency vector
     actually used)
+  - Split op-amp families into their own library files
   - Some sort of system for sharing op-amp, regulator, resistor, etc. library
     data across the web
+  - Breakout data classes into separate project (TFs, noise and data handling
+    are probably useful for other purposes)
   - A standardised export file format (XML?)
   - Other types of noise, e.g. resistor excess noise
   - SciPy/Matlab system object export?

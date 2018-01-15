@@ -142,10 +142,17 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 class OpAmp(Component):
     """Represents an (almost) ideal op-amp"""
 
-    def __init__(self, model, node1, node2, node3, a0=1e12, gbw=1e15,
-                 delay=1e-9, zeros=np.array([]), poles=np.array([]),
-                 v_noise=0, i_noise=0, v_corner=1, i_corner=1, v_max=12,
-                 i_max=0.02, slew_rate=1e12, *args, **kwargs):
+    def __init__(self, model, node1, node2, node3, a0=1.5e6, gbw=8e6,
+                 delay=0, zeros=np.array([]), poles=np.array([]),
+                 v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
+                 v_max=12, i_max=0.06, slew_rate=1e6, *args, **kwargs):
+        """"Instantiate new op-amp
+
+        The default parameter values are those used in LISO, which are
+        themselves based on the OP28 PMI (information provided by Gerhard
+        Heinzel).
+        """
+
         # call parent constructor
         super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
