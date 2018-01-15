@@ -7,6 +7,12 @@ from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import spsolve
 import logging
 from tabulate import tabulate
+HAS_GRAPHVIZ = False
+try:
+    import graphviz
+    HAS_GRAPHVIZ = True
+except ImportError:
+    pass
 
 from .config import CircuitConfig, OpAmpLibrary
 from .data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
@@ -1180,3 +1186,99 @@ class Circuit(object):
         # output
         print("Circuit matrix:", file=stream)
         print(table, file=stream)
+
+    @property
+    def elements(self):
+        """Matrix elements
+
+        Returns a sequence of elements - either components or nodes - in the
+        order in which they appear in the matrix
+
+        :return: elements
+        :rtype: Generator[:class:`~Component` or :class:`~Node`]
+        """
+
+        yield from self.components
+        yield from self.non_gnd_nodes
+
+    @property
+    def element_names(self):
+        return [element.name for element in self.elements]
+
+    def format_element(self, element):
+        """Format matrix element for pretty printer
+
+        Determines if the specified ``element`` refers to a component current
+        or a voltage node and prints information accordingly.
+
+        :param element: element to format
+        :type element: :class:`~Component` or :class:`~Node`
+        """
+
+        if isinstance(element, Component):
+            return "i[%s]" % element.name
+        elif isinstance(element, Node):
+            return "V[%s]" % element.name
+
+        raise ValueError("invalid element")
+
+    def node_graph(self):
+        if not HAS_GRAPHVIZ:
+            raise NotImplementedError("Node graph representation requires the "
+                                      "graphviz package")
+
+        G = graphviz.Digraph(engine=CONF["graphviz"]["fdp"])
+        G.attr("node", style=CONF["graphviz"]["node_style"],
+               fontname=CONF["graphviz"]["node_font_name"],
+               fontsize=int(CONF["graphviz"]["node_font_size"]))
+        G.attr("edge", arrowhead=CONF["graphviz"]["edge_arrowhead"])
+        G.attr("graph", splines=CONF["graphviz"]["graph_splines"],
+               label="Made with graphviz and circuit.py",
+               fontname=CONF["graphviz"]["graph_font_name"],
+               fontsize=int(CONF["graphviz"]["graph_font_size"]))
+        node_map = {}
+
+        def add_connection(C, conn, N):
+            if N == 'gnd':
+                G.node(C+'_'+N, shape='point', style='invis')
+                G.edge(C+'_'+N, C+conn, dir='both', arrowtail='tee',
+                       len='0.0', weight='10')
+            else:
+                if not N in node_map:
+                    G.node(N, shape='point', xlabel=N,
+                           width='0.1', fillcolor='Red')
+                node_map[N] = N
+                G.edge(node_map[N], C+conn)
+
+        for C in self.components:
+            connections = ['', '']
+            if isinstance(C, OpAmp):
+                attr = {'shape': 'plain', 'margin': '0', 'orientation': '270'}
+                attr['label'] = """<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
+                    <TR><TD PORT="plus">+</TD><TD ROWSPAN="3">{0}<BR/>{1}</TD></TR>
+                    <TR><TD> </TD></TR>
+                    <TR><TD PORT="minus">-</TD></TR>
+                </TABLE>>""".format(C.name, C.model)
+                connections = [':plus', ':minus', ':e']
+            elif isinstance(C, Inductor):
+                attr = {'fillcolor': 'MediumSlateBlue', 'shape': 'diamond'}
+            elif isinstance(C, Capacitor):
+                attr = {'fillcolor': 'YellowGreen', 'shape': 'diamond'}
+            elif isinstance(C, Resistor):
+                attr = {'fillcolor': 'Orchid', 'shape': 'diamond'}
+            elif isinstance(C, Input):
+                attr = {'fillcolor': 'Orange',
+                        'shape': ['ellipse','box','pentagon'][C.input_type-1]}
+            else:
+                print('Unrecognised element {0}: {1}'.format(C.name, C.__class__))
+
+            G.node(C.name, **attr)
+            for N, connection in zip(C.nodes, connections):
+                add_connection(C.name, connection, N.name)
+
+        return G
+
+    # graphviz rendering in jupyter notebooks
+    if HAS_GRAPHVIZ:
+        def _repr_svg_(self):
+            return self.node_graph()._repr_svg_()

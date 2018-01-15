@@ -19,3 +19,13 @@ phase_abs_tol = 1e-3
 phase_rel_tol = 1e-3
 noise_abs_tol = 1e-5
 noise_rel_tol = 1e-5
+
+[graphviz]
+engine = fdp
+graph_splines = compound
+graph_font_name = Helvetica
+graph_font_size = 8
+node_style = filled
+node_font_name = Helvetica
+node_font_size = 10
+edge_arrowhead = dot
