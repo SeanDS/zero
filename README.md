@@ -25,13 +25,25 @@ results and more advanced plotting, but the basic solving functionality is
 almost the same.
 
 ## Installation
-Installation is best handled using `pip`. As the library is Python 3 only, on
-some systems you must install this using `pip3` instead:
+This library requires that Python 3 is installed. It has been tested on version
+3.5, but it might worth on 3.4. If you don't have Python 3 installed, have a
+look at [this](https://www.python.org/downloads/).
+
+This library contains a `setup.py` file which tells Python how it should be
+installed. Installation can be automated using `pip`, or, on some systems,
+`pip3`. Open up a terminal (Linux, Mac, etc.) or command prompt (Windows) and
+type:
 ```bash
 pip3 install git+https://git.ligo.org/sean-leavey/circuit.git
 ```
 This installs the library and adds a console script `circuit` which provides
 access to the package's command line utility.
+
+If you want to update the library to a later version after having previously
+installed it, run:
+```bash
+pip3 install git+https://git.ligo.org/sean-leavey/circuit.git --upgrade
+```
 
 ## Basic usage
 There is a very basic CLI provided by the program. Open up a terminal and type:
@@ -120,6 +132,10 @@ A LISO op-amp library parser may be added at a later date.
   - Comparisons of complex value series don't handle phase wrapping, and so
     occasionally flag two matched series as different. Might be better to
     compare complex numbers instead.
+
+## Contributing
+Bug reports and feature requests are always welcome, as are contributions to the
+code. Please use the project's [issue tracker](https://git.ligo.org/sean-leavey/circuit/issues).
 
 ## Future ideas
   - Return plot objects to allow user to modify them

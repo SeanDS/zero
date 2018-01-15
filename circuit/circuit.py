@@ -1255,6 +1255,7 @@ class Circuit(object):
         for C in self.components:
             connections = ['', '']
             if isinstance(C, OpAmp):
+                # TODO: move these to components
                 attr = {'shape': 'plain', 'margin': '0', 'orientation': '270'}
                 attr['label'] = """<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
                     <TR><TD PORT="plus">+</TD><TD ROWSPAN="3">{0}<BR/>{1}</TD></TR>
