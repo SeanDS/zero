@@ -149,3 +149,6 @@ Sean Leavey
 <sean.leavey@ligo.org>  
 
 Invaluable insight into LISO's workings provided by Gerhard Heinzel.
+
+The author is grateful for additional contributions by:
+  - Sebastian Steinlechner
