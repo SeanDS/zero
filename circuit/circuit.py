@@ -323,7 +323,7 @@ class Circuit(object):
             if component.name.lower() == component_name:
                 return component
 
-        raise ValueError("component not found")
+        raise ValueError("component %s not found" % component_name)
 
     def get_node(self, node_name):
         """Get circuit node by name.
@@ -349,7 +349,7 @@ class Circuit(object):
             if node.name.lower() == node_name:
                 return node
 
-        raise ValueError("node not found")
+        raise ValueError("node %s not found" % node_name)
 
     def _reset_matrix(self):
         """Reset circuit matrix."""
@@ -872,7 +872,8 @@ class Circuit(object):
         """
 
         if components == "all":
-            return self.components
+            yield from self.components
+            return
 
         # assume sequence was provided
         for component in components:
@@ -902,7 +903,8 @@ class Circuit(object):
         """
 
         if nodes == "all":
-            return self.non_gnd_nodes
+            yield from self.non_gnd_nodes
+            return
 
         # assume sequence was provided
         for node in nodes:
