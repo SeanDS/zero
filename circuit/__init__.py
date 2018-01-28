@@ -1,8 +1,5 @@
 import logging
 import locale
-from matplotlib import rcParams
-
-from circuit.config import CircuitConfig
 
 # suppress warnings when the user code does not include a handler
 logging.getLogger().addHandler(logging.NullHandler())
@@ -15,11 +12,18 @@ __version__ = "0.2.8"
 DESCRIPTION = "Linear circuit simulator based on Gerhard Heinzel's LISO"
 PROGRAM = "circuit"
 
-# get config
-CONF = CircuitConfig()
+try:
+    from matplotlib import rcParams
+    from circuit.config import CircuitConfig
 
-# update Matplotlib options with overrides from config
-rcParams.update(CONF["matplotlib"])
+    # get config
+    CONF = CircuitConfig()
+
+    # update Matplotlib options with overrides from config
+    rcParams.update(CONF["matplotlib"])
+except ImportError:
+    # matplotlib and/or numpy not installed
+    pass
 
 def logging_on(level=logging.DEBUG,
                format_str="%(name)-8s - %(levelname)-8s - %(message)s"):
