@@ -6,7 +6,9 @@ import numpy as np
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import spsolve
 import logging
+import statistics
 from tabulate import tabulate
+
 HAS_GRAPHVIZ = False
 try:
     import graphviz
@@ -40,7 +42,7 @@ def sparse(*args, **kwargs):
     # complex64 gives real and imaginary parts each represented as 32-bit floats
     # with 8 bits exponent and 23 bits mantissa, giving between 6 and 7 digits
     # of precision; good enough for most purposes
-    return lil_matrix(dtype="complex64", *args, **kwargs)
+    return lil_matrix(dtype="complex128", *args, **kwargs)
 
 def solve(A, b):
     """Solve linear system.
@@ -75,6 +77,9 @@ class Circuit(object):
         The circuit's components.
     nodes : sequence of :class:`nodes <.Node>`
         The circuit's nodes.
+    prescale : bool
+        whether to prescale matrix elements into natural units for numerical
+        precision purposes
     """
 
     def __init__(self):
@@ -83,10 +88,10 @@ class Circuit(object):
         # empty lists of components and nodes
         self.components = []
         self.nodes = []
+        self.prescale = True
 
         # defaults
         self._noise_node = None
-        self._matrix = None
 
     @property
     def noise_node(self):
@@ -244,9 +249,6 @@ class Circuit(object):
         for node in component.nodes:
             self._add_node(node)
 
-        # delete any computed matrix, as it is now invalid
-        self._reset_matrix()
-
     def add_input(self, *args, **kwargs):
         """Add input to circuit."""
         self.add_component(Input(*args, **kwargs))
@@ -351,10 +353,6 @@ class Circuit(object):
 
         raise ValueError("node %s not found" % node_name)
 
-    def _reset_matrix(self):
-        """Reset circuit matrix."""
-        self._matrix = None
-
     @property
     def resistors(self):
         """Circuit resistors.
@@ -407,16 +405,22 @@ class Circuit(object):
         return [component for component in self.components
                 if isinstance(component, OpAmp)]
 
-    def _construct_matrix(self):
-        """Construct matrix representing the circuit.
+    def _get_tf_matrix(self, frequency):
+        """Calculate and return matrix used to solve for circuit transfer \
+        functions for a given frequency.
 
         This constructs a sparse matrix containing the voltage and current
         equations for each component and node.
 
-        The matrix is stored internally in the object so that it can be reused
-        as long as the circuit is not changed. Frequency dependent impedances
-        are stored as callables so that their values can be quickly calculated
-        for a particular frequency during solving.
+        Parameters
+        ----------
+        frequency : float or Numpy scalar
+            frequency at which to calculate circuit impedances
+
+        Returns
+        -------
+        :class:`scipy.sparse.spmatrix`
+            circuit matrix
 
         Raises
         ------
@@ -424,13 +428,13 @@ class Circuit(object):
             if an invalid coefficient type is encountered
         """
 
-        LOGGER.debug("constructing matrix")
-
         # create new sparse matrix
-        self._matrix = sparse((self.dim_size, self.dim_size))
+        matrix = sparse((self.dim_size, self.dim_size))
 
-        # dict of methods that accept a frequency parameter
-        self._matrix_callables = dict()
+        if self.prescale:
+            scale = 1 / self.mean_resistance
+        else:
+            scale = 1
 
         # Kirchoff's voltage law / op-amp voltage gain equations
         for equation in self.component_equations:
@@ -439,22 +443,21 @@ class Circuit(object):
                 row = self._component_matrix_index(equation.component)
                 column = self._component_matrix_index(equation.component)
 
+                if callable(coefficient.value):
+                    value = coefficient.value(frequency)
+                else:
+                    value = coefficient.value
+
                 if isinstance(coefficient, ImpedanceCoefficient):
-                    # don't change indices
-                    pass
+                    # don't change indices, but scale impedance
+                    value *= scale
                 elif isinstance(coefficient, VoltageCoefficient):
                     # includes extra I[in] column (at index == self.n_components)
                     column = self._node_matrix_index(coefficient.node)
                 else:
                     raise ValueError("invalid coefficient type")
 
-                # fetch (potentially frequency-dependent) impedance
-                if callable(coefficient.value):
-                    # copy function
-                    self._matrix_callables[(row, column)] = coefficient.value
-                else:
-                    # copy value
-                    self._matrix[row, column] = coefficient.value
+                matrix[row, column] = value
 
         # Kirchoff's current law
         for equation in self.node_equations:
@@ -466,40 +469,11 @@ class Circuit(object):
                 column = self._component_matrix_index(coefficient.component)
 
                 if callable(coefficient.value):
-                    self._matrix_callables[(row, column)] = coefficient.value
+                    value = coefficient.value(frequency)
                 else:
-                    self._matrix[row, column] = coefficient.value
+                    value = coefficient.value
 
-    def _get_tf_matrix(self, frequency):
-        """Calculate and return matrix used to solve for circuit transfer \
-        functions for a given frequency.
-
-        Parameters
-        ----------
-        frequency float or Numpy scalar
-            frequency at which to calculate circuit impedances
-
-        Returns
-        -------
-        :class:`scipy.sparse.spmatrix`
-            circuit matrix
-        """
-
-        # generate base matrix if necessary
-        if self._matrix is None:
-            # build matrix without frequency dependent values
-            self._construct_matrix()
-
-        # get matrix copy
-        matrix = self._matrix.copy()
-
-        # substitute frequency into matrix elements
-        for coordinates in self._matrix_callables:
-            # extract row and column from tuple
-            row, column = coordinates
-
-            # call method with current frequency and store in new matrix
-            matrix[row, column] = self._matrix_callables[coordinates](frequency)
+                matrix[row, column] = value
 
         return matrix
 
@@ -825,6 +799,17 @@ class Circuit(object):
         # results matrix
         results = self._results_matrix(n_freqs)
 
+        # scale vector, for converting units, if necessary
+        scale = self._results_matrix(1).T
+        scale[0, :] = 1
+
+        if self.prescale:
+            # convert currents from natural units back to amperes
+            prescaler = 1 / self.mean_resistance
+
+            for component in self.components:
+                scale[0, self._component_matrix_index(component)] = prescaler
+
         if print_progress:
             # update progress every 1% of the way there
             update = n_freqs // 100
@@ -848,7 +833,7 @@ class Circuit(object):
             matrix = A_function(frequency).tocsr()
 
             # call solver function
-            results[:, index] = solve(matrix, b)
+            results[:, index] = solve(matrix, b) * scale
 
         return results
 
@@ -961,6 +946,17 @@ class Circuit(object):
             return False
 
         return True
+
+    @property
+    def resistors(self):
+        return [component for component in self.components
+                if isinstance(component, Resistor)]
+
+    @property
+    def mean_resistance(self):
+        """Average circuit resistance"""
+
+        return statistics.mean([resistor.resistance for resistor in self.resistors])
 
     def _component_matrix_index(self, component):
         """Circuit matrix index corresponding to a component.

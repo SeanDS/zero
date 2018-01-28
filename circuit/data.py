@@ -13,15 +13,10 @@ CONF = CircuitConfig()
 def frequencies_match(vector_a, vector_b):
     return np.all(vector_a == vector_b)
 
-def magnitudes_match(vector_a, vector_b):
+def tfs_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
-                       rtol=float(CONF["data"]["magnitude_rel_tol"]),
-                       atol=float(CONF["data"]["magnitude_abs_tol"]))
-
-def phases_match(vector_a, vector_b):
-    return np.allclose(vector_a, vector_b,
-                       rtol=float(CONF["data"]["phase_rel_tol"]),
-                       atol=float(CONF["data"]["phase_abs_tol"]))
+                       rtol=float(CONF["data"]["tf_rel_tol"]),
+                       atol=float(CONF["data"]["tf_abs_tol"]))
 
 def spectra_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
@@ -37,6 +32,9 @@ class Series(object):
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+    def __mul__(self, factor):
+        return Series(self.x, self.y * factor)
 
 class ComplexSeries(Series):
     """Complex data series"""
@@ -154,13 +152,9 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
             LOGGER.error("%s frequencies don't match: %s != %s", self,
                          self.frequencies, other.frequencies)
             return False
-        elif not magnitudes_match(self.magnitude, other.magnitude):
-            LOGGER.error("%s magnitudes don't match: %s != %s", self,
+        elif not tfs_match(self.magnitude, other.magnitude):
+            LOGGER.error("%s tf magnitudes don't match: %s != %s", self,
                          self.magnitude, other.magnitude)
-            return False
-        elif not phases_match(self.phase, other.phase):
-            LOGGER.error("%s phases don't match: %s != %s", self,
-                         self.phase, other.phase)
             return False
         return True
 

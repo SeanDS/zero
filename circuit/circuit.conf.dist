@@ -13,10 +13,8 @@ size_y = 6
 legend.fontsize = 9
 
 [data]
-magnitude_abs_tol = 1e-3
-magnitude_rel_tol = 1e-3
-phase_abs_tol = 1e-3
-phase_rel_tol = 1e-3
+tf_abs_tol = 1e-4
+tf_rel_tol = 1e-4
 noise_abs_tol = 1e-5
 noise_rel_tol = 1e-5
 
