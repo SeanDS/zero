@@ -60,11 +60,9 @@ directory.
 ## Tests
 The script in `/tests/liso/liso.py` can be run to automatically test the
 solver against LISO with a set of LISO input files. Currently, most scripts
-produce results that agree with LISO outputs to 1 part in 100,000 (both relative
-and absolute), but in some cases it's as low as 1 part in 100. Scaling the
-sparse matrix before solving (see below) will probably improve this statistic,
-but differences in the solver library will undoubtedly always yield different
-results on some level.
+produce results that agree with LISO outputs to 1 part in 10,000 (both
+relative and absolute). Floating voltage circuits do not match as closely; this
+is under investigation.
 
 ## Current limitations
 
