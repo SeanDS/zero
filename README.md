@@ -69,9 +69,9 @@ results on some level.
 ## Current limitations
 
 ### Solver
-  - No pre-scaling is performed on matrices and as such they can contain values
-    that differ by tens of orders of magnitude, potentially leading to numerical
-    rounding issues in extreme cases.
+  - Circuits with floating voltage inputs do not match LISO results as closely
+    as fixed voltage inputs (within a few percent for floating, within 0.01%
+    for fixed). The reason for this is as yet unclear.
 
 ### LISO parsing
   - Coordinates for output signals (e.g. `im`, `deg+`, etc.) are ignored in
