@@ -14,6 +14,7 @@ requirements = [
     "progressbar2 >= 3.34.3",
     "appdirs >= 1.4.3",
     "tabulate >= 0.8.2",
+    "sphinx >= 1.6.0",
     "sphinx-bootstrap-theme >= 0.6.0"
 ]
 
