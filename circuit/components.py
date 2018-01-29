@@ -105,12 +105,17 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    value : any
+    value : `any`
         Component value.
     node1 : :class:`~Node`
         First component node.
     node2 : :class:`~Node`
         Second component node.
+
+    Attributes
+    ----------
+    value : float
+        Component value.
     """
 
     UNIT = "?"

@@ -205,7 +205,7 @@ class Circuit(object):
 
         Returns
         -------
-        `int`
+        int
             number of components
         """
 
@@ -217,7 +217,7 @@ class Circuit(object):
 
         Returns
         -------
-        `int`
+        int
             number of nodes
         """
 
@@ -496,8 +496,8 @@ class Circuit(object):
         return self._get_tf_matrix(*args, **kwargs).T
 
     def calculate_tfs(self, frequencies, output_components=[], output_nodes=[],
-                  stream=sys.stdout, print_equations=False, print_matrix=False,
-                  *args, **kwargs):
+                      stream=sys.stdout, print_equations=False,
+                      print_matrix=False, *args, **kwargs):
         """Calculate circuit transfer functions from input \
         :class:`component <.Component>` / :class:`node <.Node>` to output \
         :class:`components <.Component>` / :class:`nodes <.Node>`.
@@ -626,8 +626,8 @@ class Circuit(object):
         return solution
 
     def calculate_noise(self, frequencies, noise_node, stream=sys.stdout,
-                       print_equations=False, print_matrix=False, *args,
-                       **kwargs):
+                        print_equations=False, print_matrix=False, *args,
+                        **kwargs):
         """Calculate noise from circuit :class:`component <.Component>` / \
         :class:`node <.Node>` at a particular :class:`node <.Node>`.
 
@@ -949,6 +949,8 @@ class Circuit(object):
 
     @property
     def resistors(self):
+        """Circuit resistors."""
+
         return [component for component in self.components
                 if isinstance(component, Resistor)]
 
@@ -1187,7 +1189,7 @@ class Circuit(object):
 
     @property
     def elements(self):
-        """Matrix elements
+        """Matrix elements.
 
         Returns a sequence of elements - either components or nodes - in the
         order in which they appear in the matrix
@@ -1201,10 +1203,11 @@ class Circuit(object):
 
     @property
     def element_names(self):
+        """Names of elements (components and nodes) within the circuit."""
         return [element.name for element in self.elements]
 
     def format_element(self, element):
-        """Format matrix element for pretty printer
+        """Format matrix element for pretty printer.
 
         Determines if the specified ``element`` refers to a component current
         or a voltage node and prints information accordingly.
@@ -1220,7 +1223,9 @@ class Circuit(object):
 
         raise ValueError("invalid element")
 
-    def node_graph(self):
+    def _node_graph(self):
+        """Create Graphviz node graph."""
+
         if not HAS_GRAPHVIZ:
             raise NotImplementedError("Node graph representation requires the "
                                       "graphviz package")
@@ -1277,7 +1282,7 @@ class Circuit(object):
 
         return G
 
-    # graphviz rendering in jupyter notebooks
     if HAS_GRAPHVIZ:
         def _repr_svg_(self):
-            return self.node_graph()._repr_svg_()
+            """Graphviz rendering for Jupyter notebooks."""
+            return self._node_graph()._repr_svg_()

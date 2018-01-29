@@ -20,6 +20,34 @@ sinks current, and produces voltage drops between its :class:`nodes <Node>`.
 an impedance to their input. Active components such as :class:`op-amps <OpAmp>`
 can source current.
 
+-----------------------
+Component noise sources
+-----------------------
+
+Some components directly produce
+:class:`noise at a node they are connected to <NodeNoise>`. Others
+create :class:`noise affecting current flow <ComponentNoise>`. The
+type and amount of noise depends on the component; for example,
+:class:`capacitors <Capacitor>` do not produce noise, whereas
+:class:`resistors <Resistor>` do (:class:`Johnson noise <JohnsonNoise>`).
+
+---------------------------
+Setting a component's value
+---------------------------
+
+A :class:`passive component <PassiveComponent>`'s value may be altered by setting
+its :attr:`~PassiveComponent.value`. The type may be :class:`int` or
+:class:`float` to directly specify the value, or alternatively a string can be
+provided with an SI formatted value such as:
+
+* 1.1k
+* 2.2nF
+* 1e-9 Hz
+* 6.4 kHz
+
+The provided string will be parsed into an appropriate :class:`float`. The unit,
+if provided, will be ignored.
+
 ===============
 Class reference
 ===============
