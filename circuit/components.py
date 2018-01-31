@@ -15,14 +15,14 @@ class Component(object, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    name : str
+    name : :class:`str`
         component name
-    nodes : Sequence[:class:`~Node` or str]
+    nodes : sequence of :class:`~Node` or :class:`str`
         component nodes
 
     Attributes
     ----------
-    noise : set
+    noise : :class:`set`
         component noise sources
     """
 
@@ -48,7 +48,7 @@ class Component(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        List[:class:`~Node`]
+        list of :class:`~Node`
             list of component nodes
         """
 
@@ -83,7 +83,7 @@ class Component(object, metaclass=abc.ABCMeta):
 
         Returns
         -------
-        str
+        :class:`str`
             Component label
         """
 
@@ -105,7 +105,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    value : `any`
+    value : any
         Component value.
     node1 : :class:`~Node`
         First component node.
@@ -114,7 +114,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     Attributes
     ----------
-    value : float
+    value : :class:`float`
         Component value.
     """
 
@@ -220,7 +220,7 @@ class OpAmp(Component):
 
     Parameters
     ----------
-    model : str
+    model : :class:`str`
         Model name.
     node1 : :class:`Node`
         Non-inverting input node.
@@ -228,29 +228,29 @@ class OpAmp(Component):
         Inverting input node.
     node3 : :class:`Node`
         Output node.
-    a0 : float
+    a0 : :class:`float`
         Open loop gain.
-    gbw : float
+    gbw : :class:`float`
         Gain-bandwidth product.
-    delay : float
+    delay : :class:`float`
         Delay.
     zeros : :class:`np.ndarray`
         Zeros.
     poles : :class:`np.ndarray`
         Poles.
-    v_noise : float
+    v_noise : :class:`float`
         Flat voltage noise.
-    i_noise : float
+    i_noise : :class:`float`
         Float current noise.
-    v_corner : float
+    v_corner : :class:`float`
         Voltage noise corner frequency.
-    i_corner : float
+    i_corner : :class:`float`
         Current noise corner frequency.
-    v_max : float
+    v_max : :class:`float`
         Maximum input voltage.
-    i_max : float
+    i_max : :class:`float`
         Maximum output current.
-    slew_rate : float
+    slew_rate : :class:`float`
         Slew rate.
     """
 
@@ -361,12 +361,12 @@ class OpAmp(Component):
 
         Parameters
         ----------
-        frequency : float
+        frequency : :class:`float`
             Frequency to compute gain at.
 
         Returns
         -------
-        float
+        :class:`float`
             Op-amp gain at specified frequency.
         """
 
@@ -556,15 +556,15 @@ class Node(object, metaclass=NamedInstance):
 
     Parameters
     ----------
-    name : str
+    name : :class:`str`
         Node name.
 
     Attributes
     ----------
-    sources : set
+    sources : :class:`set`
         :class:`Components <Component>` that source current connected to this
         node.
-    sinks : set
+    sinks : :class:`set`
         :class:`Components <Component>` that sink current connected to this
         node.
     """
@@ -715,7 +715,7 @@ class BaseEquation(object, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    coefficients : Sequence[:class:`BaseCoefficient`]
+    coefficients : sequence of :class:`BaseCoefficient`
         Coefficients that make up the equation.
     """
 
@@ -777,8 +777,8 @@ class BaseCoefficient(object, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    value : float, callable
-        Coefficient value, either a number or a callable which returns a number
+    value : :class:`float`
+        Coefficient value.
     coefficient_type : {0, 1, 2}
         Coefficient type. Impedance is 0, current is 1, voltage is 2.
     """

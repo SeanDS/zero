@@ -20,6 +20,12 @@ sinks current, and produces voltage drops between its :class:`nodes <Node>`.
 an impedance to their input. Active components such as :class:`op-amps <OpAmp>`
 can source current.
 
+Instantiated components may be added to :class:`circuits <~.circuit.Circuit>`
+using :meth:`~.circuit.Circuit.add_component`; however, the methods
+:class:`~.circuit.Circuit.add_resistor`, :class:`~.circuit.Circuit.add_capacitor`,
+:class:`~.circuit.Circuit.add_inductor` and :class:`~.circuit.Circuit.add_opamp`
+allow components to be created and added to a circuit at the same time.
+
 -----------------------
 Component noise sources
 -----------------------
@@ -35,18 +41,18 @@ type and amount of noise depends on the component; for example,
 Setting a component's value
 ---------------------------
 
-A :class:`passive component <PassiveComponent>`'s value may be altered by setting
-its :attr:`~PassiveComponent.value`. The type may be :class:`int` or
-:class:`float` to directly specify the value, or alternatively a string can be
-provided with an SI formatted value such as:
+A :class:`passive component <PassiveComponent>`'s :attr:`~PassiveComponent.value`
+may be altered. The type may be :class:`int` or :class:`float` to directly
+specify the numerical value, or alternatively an SI formatted string may be
+provided, e.g.:
 
 * 1.1k
 * 2.2nF
 * 1e-9 Hz
 * 6.4 kHz
 
-The provided string will be parsed into an appropriate :class:`float`. The unit,
-if provided, will be ignored.
+The provided string will be parsed by :class:`~.format.SIFormatter` into an
+appropriate :class:`float`. The unit, if provided, will be ignored.
 
 ===============
 Class reference
@@ -78,6 +84,10 @@ This reference contains the following `class` entries:
    ImpedanceCoefficient
    CurrentCoefficient
    VoltageCoefficient
+
+-------
+Details
+-------
 
 .. autoclass:: Component
     :members:

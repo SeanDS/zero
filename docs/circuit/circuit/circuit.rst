@@ -31,8 +31,8 @@ single run. If both transfer functions *and* noise are required, then these
 must be obtained in separate runs.
 
 Transfer functions between the circuit input and an output (or outputs) can be
-computed with :meth:`.calculate_tfs` method. Noise from components and nodes in
-the circuit at a particular node can be calculated with :meth:`.calculate_noise`.
+computed with :meth:`.calculate_tfs`. Noise from components and nodes in the
+circuit at a particular node can be calculated with :meth:`.calculate_noise`.
 
 ==============
 Implementation
@@ -60,6 +60,10 @@ This reference contains the following `class` entries:
    :nosignatures:
 
    Circuit
+
+-------
+Details
+-------
 
 .. autoclass:: Circuit
     :members:

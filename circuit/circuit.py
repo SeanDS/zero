@@ -73,11 +73,11 @@ class Circuit(object):
 
     Attributes
     ----------
-    components : sequence of :class:`components <.Component>`
+    components : sequence of :class:`components <.components.Component>`
         The circuit's components.
-    nodes : sequence of :class:`nodes <.Node>`
+    nodes : sequence of :class:`nodes <.components.Node>`
         The circuit's nodes.
-    prescale : bool
+    prescale : :class:`bool`
         whether to prescale matrix elements into natural units for numerical
         precision purposes
     """
@@ -99,7 +99,7 @@ class Circuit(object):
 
         Returns
         -------
-        :class:`~.Node`
+        :class:`~.components.Node`
             The circuit's noise node
         """
 
@@ -111,7 +111,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        node : :class:`~.Node`
+        node : :class:`~.components.Node`
             The circuit's new noise node
         """
 
@@ -126,30 +126,11 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~.Node`
+        :class:`~.components.Node`
             Circuit nodes, excluding ground.
         """
 
         return [node for node in self.nodes if node is not Node("gnd")]
-
-    @property
-    def elements(self):
-        """Circuit's elements.
-
-        Returns a sequence of elements - either
-        :class:`components <.Component>` or :class:`nodes <.Node>` (excluding
-        ground) - in the order in which they appear in the circuit.
-
-        Yields
-        ------
-        :class:`~.Component`
-            Circuit components.
-        :class:`~.Node`
-            Circuit nodes, excluding ground.
-        """
-
-        yield from self.components
-        yield from self.non_gnd_nodes
 
     @property
     def element_headers(self):
@@ -157,7 +138,7 @@ class Circuit(object):
 
         Yields
         ------
-        str
+        :class:`str`
             column header
         """
 
@@ -169,7 +150,7 @@ class Circuit(object):
 
         Yields
         ------
-        str
+        :class:`str`
             element name
         """
 
@@ -183,7 +164,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        element : :class:`~.Component`, :class:`~.Node`
+        element : :class:`~.components.Component`, :class:`~.components.Node`
             element to format
 
         Raises
@@ -205,7 +186,7 @@ class Circuit(object):
 
         Returns
         -------
-        int
+        :class:`int`
             number of components
         """
 
@@ -217,7 +198,7 @@ class Circuit(object):
 
         Returns
         -------
-        int
+        :class:`int`
             number of nodes
         """
 
@@ -228,7 +209,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        component : :class:`~.Component`
+        component : :class:`~.components.Component`
             component to add
 
         Raises
@@ -281,7 +262,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        node : :class:`~.Node`
+        node : :class:`~.components.Node`
             node to add
 
         Raises
@@ -306,12 +287,13 @@ class Circuit(object):
 
         Parameters
         ----------
-        component_name : str
+        component_name : :class:`str`
             name of component to fetch
 
         Returns
         -------
-        :class:`~.Component`
+        :class:`~.components.Component`
+            component
 
         Raises
         ------
@@ -332,12 +314,13 @@ class Circuit(object):
 
         Parameters
         ----------
-        node_name : str
+        node_name : :class:`str`
             name of node to fetch
 
         Returns
         -------
-        :class:`~.Node`
+        :class:`~.components.Node`
+            node
 
         Raises
         ------
@@ -359,7 +342,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~Resistor`
+        :class:`~.components.Resistor`
             circuit resistors
         """
 
@@ -372,7 +355,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~Capacitor`
+        :class:`~.components.Capacitor`
             circuit capacitors
         """
 
@@ -385,7 +368,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~Inductor`
+        :class:`~.components.Inductor`
             circuit inductors
         """
 
@@ -398,7 +381,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~OpAmp`
+        :class:`~.components.OpAmp`
             circuit op-amps
         """
 
@@ -414,7 +397,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        frequency : float or Numpy scalar
+        frequency : Numpy scalar, :class:`float`
             frequency at which to calculate circuit impedances
 
         Returns
@@ -483,7 +466,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        frequency : float, Numpy scalar
+        frequency : Numpy scalar, :class:`float`
             frequency at which to calculate circuit impedances
 
         Returns
@@ -504,26 +487,26 @@ class Circuit(object):
 
         Parameters
         ----------
-        frequencies : Sequence[float, Numpy scalar]
+        frequencies : sequence of Numpy scalars or :class:`float`
             sequence of frequencies to solve circuit for
-        output_components : Sequence[:class:`~.Component`, str], str
+        output_components : sequence of :class:`~.Component` or :class:`str`, :class:`str`
             output components to calculate transfer functions to; specify "all"
             to compute all
-        output_nodes : Sequence[:class:`~.Node`, str], str
+        output_nodes : sequence of :class:`~.components.Node` or :class:`str`, :class:`str`
             output nodes to calculate transfer functions to; specify "all" to
             compute all
         stream : :class:`io.IOBase`
             stream to print to
-        print_equations : bool
+        print_equations : :class:`bool`
             whether to print circuit equations
-        print_matrix : bool
+        print_matrix : :class:`bool`
             whether to print circuit matrix
-        print_progress : bool
+        print_progress : :class:`bool`
             whether to print solve progress to stream
 
         Returns
         -------
-        :class:`~Solution`
+        :class:`~.solution.Solution`
             solution
 
         Raises
@@ -633,22 +616,22 @@ class Circuit(object):
 
         Parameters
         ----------
-        frequencies : Sequence[Numpy scalar, float]
+        frequencies : sequence of Numpy scalars or :class:`float`
             sequence of frequencies to solve circuit for
-        noise_node : :class:`~.Node`, str
+        noise_node : :class:`~.components.Node`, :class:`str`
             node to project noise to
         stream : :class:`io.IOBase`
             stream to print to
-        print_equations : bool
+        print_equations : :class:`bool`
             whether to print circuit equations
-        print_matrix : bool
+        print_matrix : :class:`bool`
             whether to print circuit matrix
-        print_progress : bool
+        print_progress : :class:`bool`
             whether to print solve progress to stream
 
         Returns
         -------
-        :class:`~Solution`
+        :class:`~.solution.Solution`
             solution
 
         Raises
@@ -732,7 +715,7 @@ class Circuit(object):
 
         Returns
         -------
-        int
+        :class:`int`
             number of rows/columns in circuit matrix
         """
 
@@ -750,7 +733,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        depth : int
+        depth : :class:`int`
             size of index 1...x
 
         Returns
@@ -767,7 +750,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        frequencies : Sequence[Numpy scalar, float]
+        frequencies : sequence of Numpy scalars or :class:`float`
             sequence of frequencies to solve circuit for
         A_function : callable
             callable which returns the matrix at a particular frequency; \
@@ -847,12 +830,12 @@ class Circuit(object):
 
         Parameters
         ----------
-        components : Sequence[:class:`~.Component`, str], str
+        components : sequence of :class:`~.components.Component` or :class:`str`, :class:`str`
             sequence of components or component names, or "all"
 
         Yields
         ------
-        :class:`~.Component`
+        :class:`~.components.Component`
             parsed component
         """
 
@@ -878,12 +861,12 @@ class Circuit(object):
 
         Parameters
         ----------
-        nodes : Sequence[:class:`~.Node`, str], str
+        nodes : sequence of :class:`~.components.Node` or :class:`str`, :class:`str`
             sequence of nodes or node names, or "all"
 
         Yields
         ------
-        :class:`~.Node`
+        :class:`~.components.Node`
             parsed node
         """
 
@@ -948,13 +931,6 @@ class Circuit(object):
         return True
 
     @property
-    def resistors(self):
-        """Circuit resistors."""
-
-        return [component for component in self.components
-                if isinstance(component, Resistor)]
-
-    @property
     def mean_resistance(self):
         """Average circuit resistance"""
 
@@ -970,7 +946,7 @@ class Circuit(object):
 
         Returns
         -------
-        int
+        :class:`int`
             component index
         """
 
@@ -986,7 +962,7 @@ class Circuit(object):
 
         Returns
         -------
-        int
+        :class:`int`
             node index
         """
 
@@ -1057,7 +1033,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`ComponentEquation`
+        :class:`~.components.ComponentEquation`
             component equation
         """
 
@@ -1069,7 +1045,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`NodeEquation`
+        :class:`~.components.NodeEquation`
             sequence of node equations
         """
 
@@ -1088,7 +1064,7 @@ class Circuit(object):
 
         Returns
         -------
-        int
+        :class:`int`
             node serial number
 
         Raises
@@ -1194,8 +1170,10 @@ class Circuit(object):
         Returns a sequence of elements - either components or nodes - in the
         order in which they appear in the matrix
 
-        :return: elements
-        :rtype: Generator[:class:`~Component` or :class:`~Node`]
+        Yields
+        ------
+        :class:`~.components.Component`, :class:`~.components.Node`
+            matrix elements
         """
 
         yield from self.components
@@ -1203,7 +1181,14 @@ class Circuit(object):
 
     @property
     def element_names(self):
-        """Names of elements (components and nodes) within the circuit."""
+        """Names of elements (components and nodes) within the circuit.
+
+        Yields
+        ------
+        :class:`str`
+            matrix element names
+        """
+
         return [element.name for element in self.elements]
 
     def format_element(self, element):
@@ -1212,8 +1197,20 @@ class Circuit(object):
         Determines if the specified ``element`` refers to a component current
         or a voltage node and prints information accordingly.
 
-        :param element: element to format
-        :type element: :class:`~Component` or :class:`~Node`
+        Parameters
+        ----------
+        element : :class:`~Component`, :class:`~Node`
+            element to format
+
+        Returns
+        -------
+        :class:`str`
+            formatted element
+
+        Raises
+        ------
+        ValueError
+            if element is invalid
         """
 
         if isinstance(element, Component):
