@@ -1,0 +1,14 @@
+# circuit with floating voltage input
+
+r r1 100 nin1 nm
+r r2 100 nin2 np
+r r3 100 np gnd
+r r4 100 nm no
+c c1 4.7n nm no
+c c2 4.7n np gnd
+op op1 op27 np nm no
+
+freq log 1 1M 1000
+
+uinput nin1 nin2 50
+uoutput no

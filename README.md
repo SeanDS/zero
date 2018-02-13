@@ -51,7 +51,7 @@ There is a very basic CLI provided by the program. Open up a terminal and type:
 circuit help
 ```
 for a list of available commands. Run `circuit help command` for more detailed
-help for a particlar `command`.
+help for a particular `command`.
 
 `circuit.py` can also be included as a library within other Python code. For
 examples of how to build simulation scripts with Python, see the `examples`
@@ -61,15 +61,11 @@ directory.
 The script in `/tests/liso/liso.py` can be run to automatically test the
 solver against LISO with a set of LISO input files. Currently, most scripts
 produce results that agree with LISO outputs to 1 part in 10,000 (both
-relative and absolute). Floating voltage circuits do not match as closely; this
-is under investigation.
+relative and absolute). Certain circuits with very small numbers (for example,
+transfer functions around -100 dB or more) do not always agree within this
+bound, possibly due to numerical precision of the solver routine.
 
 ## Current limitations
-
-### Solver
-  - Circuits with floating voltage inputs do not match LISO results as closely
-    as fixed voltage inputs (within a few percent for floating, within 0.01%
-    for fixed). The reason for this is as yet unclear.
 
 ### LISO parsing
   - Coordinates for output signals (e.g. `im`, `deg+`, etc.) are ignored in
@@ -157,6 +153,8 @@ code. Please use the project's [issue tracker](https://git.ligo.org/sean-leavey/
       - real passive components: capacitors with ESR, resistors with stray
         inductance, etc.
   - Parallelised solving (need to be careful about thread safety)
+  - Warn user if numerical precision might prevent LISO agreement (e.g. for
+    magnitudes <100 dB)
 
 ## Credits
 Sean Leavey  
