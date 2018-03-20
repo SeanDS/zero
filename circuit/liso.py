@@ -804,7 +804,7 @@ class OutputParser(BaseParser):
             else:
                 # calculate complex frequency using q-factor
                 q_factor, _ = SIFormatter.parse(q_factor)
-                theta = np.arccos(1 / (2 * qfactor))
+                theta = np.arccos(1 / (2 * q_factor))
 
                 # add negative/positive pair of poles/zeros
                 roots.append(frequency * np.exp(-1j * theta))
