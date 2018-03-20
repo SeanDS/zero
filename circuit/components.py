@@ -823,8 +823,8 @@ class ImpedanceCoefficient(BaseCoefficient):
         self.component = component
 
         # call parent constructor
-        return super(ImpedanceCoefficient, self).__init__(
-            coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
+        super(ImpedanceCoefficient, self).__init__(
+              coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
 
 class CurrentCoefficient(BaseCoefficient):
     """Represents an current coefficient.
@@ -841,8 +841,8 @@ class CurrentCoefficient(BaseCoefficient):
         self.component = component
 
         # call parent constructor
-        return super(CurrentCoefficient, self).__init__(
-            coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
+        super(CurrentCoefficient, self).__init__(
+              coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
 
 class VoltageCoefficient(BaseCoefficient):
     """Represents a voltage coefficient.
@@ -859,5 +859,5 @@ class VoltageCoefficient(BaseCoefficient):
         self.node = node
 
         # call parent constructor
-        return super(VoltageCoefficient, self).__init__(
-            coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
+        super(VoltageCoefficient, self).__init__(
+              coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
