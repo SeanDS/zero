@@ -314,7 +314,13 @@ class OpAmpLibrary(BaseConfig):
         # split into groups delimited by commas
         freq_tokens = [freq.strip() for freq in entry.split(",")]
 
-        return np.array([self._parse_freq_str(token) for token in freq_tokens])
+        # generate complex frequencies from the list and combine them into one list
+        frequencies = []
+        
+        for token in freq_tokens:
+            frequencies.extend(self._parse_freq_str(token))
+
+        return np.array(frequencies)
 
     def _parse_freq_str(self, token):
         """Parse token as complex frequency/frequencies
