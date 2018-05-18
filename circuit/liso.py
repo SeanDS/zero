@@ -32,6 +32,20 @@ class BaseParser(object, metaclass=abc.ABCMeta):
     TYPE_TF = 1
     TYPE_NOISE = 2
 
+    # dict mapping LISO op-amp parameter overrides to `circuit.components.OpAmp` arguments
+    OP_AMP_OVERRIDE_MAP = {
+        "a0": "a0",
+        "gbw": "gbw",
+        "delay": "delay",
+        "un": "vn",
+        "uc": "vc",
+        "in": "in",
+        "ic": "ic",
+        "umax": "vmax",
+        "imax": "imax",
+        "sr": "slew_rate"
+    }
+
     def __init__(self, filepath):
         """Instantiate a LISO parser
 
@@ -276,7 +290,7 @@ class BaseParser(object, metaclass=abc.ABCMeta):
                                          **kwargs))
 
     def _add_library_opamp(self, name, model, node1_name, node2_name,
-                           node3_name, *args, **kwargs):
+                           node3_name, *args):
         """Add op-amp
 
         :return: new op-amp
@@ -288,12 +302,20 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         node2 = Node(node2_name)
         node3 = Node(node3_name)
 
-        LOGGER.info("adding op-amp [%s = %s, in+ %s, in- %s, out %s]",
-                    name, model, node1, node2, node3)
+        # parse extra arguments, e.g. "sr=38e6", into dict params
+        extra_args = self.parse_op_amp_overrides(args)
+        
+        # create log message for overridden parameters
+        if extra_args:
+            log_extra = ", ".join(["%s=%s" % (k, v) for k, v in extra_args.items()])
+        else:
+            log_extra = "[none]"
+
+        LOGGER.info("adding op-amp [%s = %s, in+ %s, in- %s, out %s, extra %s]",
+                    name, model, node1, node2, node3, log_extra)
 
         self.circuit.add_library_opamp(name=name, model=model, node1=node1,
-                                       node2=node2, node3=node3, *args,
-                                       **kwargs)
+                                       node2=node2, node3=node3, **extra_args)
 
     def _add_circuit_input(self):
         # create input component
@@ -345,6 +367,30 @@ class BaseParser(object, metaclass=abc.ABCMeta):
             raise ValueError("unknown output type")
 
         self.output_type = output_type
+    
+    @classmethod
+    def parse_op_amp_overrides(cls, args):
+        """Parses op-amp override strings from input file
+        
+        In LISO, op-amp parameters can be overridden by specifying a library parameter
+        after the standard op-amp definition, e.g. "op u1 ad829 gnd n1 n2 sr=38e6"
+        """
+
+        extra_args = {}
+
+        for arg in args:
+            try:
+                key, value = arg.split("=")
+            except ValueError:
+                raise ValueError("op-amp parameter override %s invalid; must be in the "
+                                 "form 'param=value'" % arg)
+            
+            if key not in cls.OP_AMP_OVERRIDE_MAP.keys():
+                raise ValueError("unknown op-amp override parameter '%s'" % key)
+            
+            extra_args[cls.OP_AMP_OVERRIDE_MAP[key]] = value
+        
+        return extra_args
 
 class InputParser(BaseParser):
     COMPONENTS = ["r", "c", "l", "op"]
@@ -1139,9 +1185,6 @@ class Runner(object):
 
         result = self._run_liso_process(script_path, output_path, plot)
 
-        if result.returncode != 0:
-            raise Exception("error during LISO run")
-
         LOGGER.debug("parsing LISO output")
         return OutputParser(output_path)
 
@@ -1162,8 +1205,13 @@ class Runner(object):
         LOGGER.debug("running LISO binary at %s", liso_path)
 
         # run LISO
-        return subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
+        result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.PIPE)
+        
+        if result.returncode != 0:
+            raise Exception("error during LISO run: %s" % result.stderr)
+        
+        return result
 
     @property
     def liso_path(self):

@@ -251,11 +251,18 @@ class Circuit(object):
         self.add_component(OpAmp(*args, **kwargs))
 
     def add_library_opamp(self, model, *args, **kwargs):
-        """Add library op-amp to circuit."""
+        """Add library op-amp to circuit
+        
+        Keyword arguments can be used to override individual library parameters.
+        """
+
+        # get library data
         data = LIBRARY.get_data(model)
 
-        self.add_opamp(model=OpAmpLibrary.format_name(model), *args, **kwargs,
-                       **data)
+        # override library data with keyword arguments
+        data = {**data, **kwargs}
+
+        self.add_opamp(model=OpAmpLibrary.format_name(model), *args, **data)
 
     def _add_node(self, node):
         """Add node to circuit.
