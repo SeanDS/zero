@@ -153,8 +153,13 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
                          self.frequencies, other.frequencies)
             return False
         elif not tfs_match(self.magnitude, other.magnitude):
-            LOGGER.error("%s tf magnitudes don't match: %s != %s", self,
-                         self.magnitude, other.magnitude)
+            # calculate worst relative difference between tfs
+            worst_diff = 100 * np.abs(self.magnitude - other.magnitude) / np.abs(other.magnitude)
+            worst_i = np.argmax(worst_diff)
+
+            LOGGER.error("%s tf magnitudes don't match (worst difference %f%% at %d (%f, %f))",
+                         self, worst_diff[worst_i], worst_i, self.magnitude[worst_i],
+                         other.magnitude[worst_i])
             return False
         return True
 
