@@ -509,13 +509,13 @@ class InputParser(BaseParser):
             if len(options) > 2:
                 # floating input
                 self.input_node_n = Node(options[1])
-                self.input_impedance = float(options[2])
+                self.input_impedance, _ = SIFormatter.parse(options[2])
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
                             "impedance %f", self.input_node_p,
                             self.input_node_n, self.input_impedance)
             elif len(options) == 2:
-                self.input_impedance = float(options[1])
+                self.input_impedance, _ = SIFormatter.parse(options[1])
                 LOGGER.info("adding voltage input node %s with impedance %s",
                             self.input_node_p,
                             SIFormatter.format(self.input_impedance, "Ω"))
@@ -527,7 +527,7 @@ class InputParser(BaseParser):
             self.input_type = Input.TYPE_CURRENT
             self.input_node_n = None
             if len(options) == 2:
-                self.input_impedance = float(options[1])
+                self.input_impedance, _ = SIFormatter.parse(options[1])
                 LOGGER.info("adding current input node %s with impedance %s",
                             self.input_node_p,
                             SIFormatter.format(self.input_impedance, "Ω"))
@@ -706,13 +706,13 @@ class OutputParser(BaseParser):
 
     # input nodes
     FIXED_VOLTAGE_INPUT_NODE_REGEX = re.compile("\#Voltage input at node "
-                                                "([\w\d]+), impedance (\d+) Ohm")
+                                                "(.+), impedance (.+)Ohm")
     FIXED_CURRENT_INPUT_NODE_REGEX = re.compile("\#Current input into node "
-                                                "([\w\d]+), impedance (\d+) Ohm")
+                                                "(.+), impedance (.+)Ohm")
     FLOATING_VOLTAGE_INPUT_NODES_REGEX = re.compile("\#Floating voltage input "
-                                                    "between nodes ([\w\d]+) "
-                                                    "and ([\w\d]+), impedance "
-                                                    "(\d+) Ohm")
+                                                    "between nodes (.+) "
+                                                    "and (.+), impedance "
+                                                    "(.+) Ohm")
 
     def __init__(self, *args, **kwargs):
         # defaults
@@ -894,7 +894,7 @@ class OutputParser(BaseParser):
                 # fixed current input
                 self.input_type = Input.TYPE_CURRENT
                 self.input_node_p = Node(match_fixed_current.group(1))
-                self.input_impedance = float(match_fixed_current.group(2))
+                self.input_impedance, _ = SIFormatter.parse(match_fixed_current.group(2))
 
                 LOGGER.info("adding fixed current input node %s with source "
                             "impedance %s", self.input_node_p,
@@ -904,7 +904,7 @@ class OutputParser(BaseParser):
                 # fixed voltage input
                 self.input_type = Input.TYPE_VOLTAGE
                 self.input_node_p = Node(match_fixed_voltage.group(1))
-                self.input_impedance = float(match_fixed_voltage.group(2))
+                self.input_impedance, _ = SIFormatter.parse(match_fixed_voltage.group(2))
 
                 LOGGER.info("adding fixed voltage input node %s with source "
                             "impedance %s", self.input_node_p,
@@ -915,7 +915,7 @@ class OutputParser(BaseParser):
                 self.input_type = Input.TYPE_VOLTAGE
                 self.input_node_p = Node(match_floating_voltage.group(1))
                 self.input_node_m = Node(match_floating_voltage.group(2))
-                self.input_impedance = float(match_floating_voltage.group(3))
+                self.input_impedance, _ = SIFormatter.parse(match_floating_voltage.group(3))
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
                             "source impedance %s", self.input_node_p,
