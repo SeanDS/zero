@@ -655,24 +655,30 @@ class OutputParser(BaseParser):
                                  "([\s\S]+?)(?=\n#\S+)",
                                  re.MULTILINE)
 
+    # text to ignore in op-amp list
+    OPAMP_IGNORE_STRINGS = [
+        "*OVR*", # overridden parameter flag
+        "s***DEFAULT", # default parameter used
+        "***DEFAULT"
+    ]
+
     # op-amp parameters
-    OPAMP_REGEX = re.compile("^#\s+\d+ " # count
-                             "([\w\d]+) " # name
-                             "([\w\d]+) " # model
-                             "'\+'=([\w\d]+) " # +in
-                             "'\-'=([\w\d]+) " # -in
-                             "'out'=([\w\d]+) " # out
-                             "a0=([\w\d\s\.]+) " # gain
+    OPAMP_REGEX = re.compile("^#\s+\d+\s+" # count
+                             "([\w\d]+)\s+" # name
+                             "([\w\d]+)\s+" # model
+                             "'\+'=([\w\d]+)\s+" # +in
+                             "'\-'=([\w\d]+)\s+" # -in
+                             "'out'=([\w\d]+)\s+" # out
+                             "a0=([\w\d\s\.]+)\s+" # gain
                              "gbw=([\w\d\s\.]+)^" # gbw
-                             "\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\) " # un
-                             "uc=([\w\d\s\.]+) " # uc
-                             "in=([\w\d\s\.]+)\/sqrt\(Hz\) " # in
+                             "\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # un
+                             "uc=([\w\d\s\.]+)\s+" # uc
+                             "in=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # in
                              "ic=([\w\d\s\.]+)^" # ic
-                             "\#\s+umax=([\w\d\s\.]+) " # umax
-                             "imax=([\w\d\s\.]+) " # imax
-                             "sr=([\w\d\s\.]+)\/us " # sr
+                             "\#\s+umax=([\w\d\s\.]+)\s+" # umax
+                             "imax=([\w\d\s\.]+)\s+" # imax
+                             "sr=([\w\d\s\.]+)\/us\s+" # sr
                              "delay=([\w\d\s\.]+)" # delay
-                             "[\w\d\s\*]*" # ignored extra stuff, like "s***DEFAULT"
                              "(^\#\s+(.*)$)*", # poles/zeros (optional line)
                              re.MULTILINE)
 
@@ -803,6 +809,11 @@ class OutputParser(BaseParser):
             raise Exception("expected %d component(s), parsed %d" % (count, found))
 
     def _parse_opamp(self, count, description, content):
+        # remove ignored strings
+        content = self._remove_ignored_opamp_strings(content)
+
+        print(description, content)
+
         # extract op-amp data
         matches = re.findall(self.OPAMP_REGEX, content)
 
@@ -830,6 +841,13 @@ class OutputParser(BaseParser):
 
         if count != found:
             raise Exception("expected %d op-amp(s), parsed %d" % (count, found))
+
+    @classmethod
+    def _remove_ignored_opamp_strings(cls, line):
+        for ignore in cls.OPAMP_IGNORE_STRINGS:
+            line = line.replace(ignore, "")
+        
+        return line
 
     def _parse_opamp_roots(self, roots):
         # empty roots
