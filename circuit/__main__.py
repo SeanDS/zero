@@ -69,7 +69,8 @@ class Cmd(object, metaclass=abc.ABCMeta):
         try:
             self.call(args)
         except Exception as e:
-            print(e, file=sys.stderr)
+            print("Error: %s" % e, file=sys.stderr)
+            raise e
 
     @abc.abstractmethod
     def call(self, args):
@@ -102,7 +103,7 @@ class Sim(Cmd):
             parser.show(print_equations=args.print_equations,
                         print_matrix=args.print_matrix,
                         print_progress=args.verbose)
-        except InvalidLisoFileException as e:
+        except InvalidLisoFileException:
             LOGGER.debug("attempt to parse file as LISO input failed, trying "
                          "to parse as output instead")
             # try as output file
@@ -154,12 +155,12 @@ CMDS = collections.OrderedDict([
     ("sim", Sim),
     ("liso", Liso),
     ("help", Help),
-    ])
+])
 
 ALIAS = {
     "--help": "help",
     "-h": "help",
-    }
+}
 
 def format_commands(man=False):
     """Generate documentation for available commands"""
@@ -172,7 +173,7 @@ def format_commands(man=False):
         width=70,
         initial_indent=prefix,
         subsequent_indent=prefix,
-        )
+    )
 
     with io.StringIO() as stream:
         for name, func in CMDS.items():
@@ -220,8 +221,17 @@ def get_func(cmd):
         # exit with error code
         sys.exit(1)
 
+def print_header():
+    """Program header"""
+
+    print("%s %s" % (PROG, __version__))
+
 def main():
     """Main program"""
+
+    # print title and version
+    print_header()
+    print()
 
     if len(sys.argv) < 2:
         # no command specified; print error message
