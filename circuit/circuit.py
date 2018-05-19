@@ -133,54 +133,6 @@ class Circuit(object):
         return [node for node in self.nodes if node is not Node("gnd")]
 
     @property
-    def element_headers(self):
-        """Headers corresponding to circuit's matrix elements.
-
-        Yields
-        ------
-        :class:`str`
-            column header
-        """
-
-        return [self.format_element(element) for element in self.elements]
-
-    @property
-    def element_names(self):
-        """Names of elements within the circuit.
-
-        Yields
-        ------
-        :class:`str`
-            element name
-        """
-
-        return [element.name for element in self.elements]
-
-    def format_element(self, element):
-        """Formats matrix element.
-
-        Determines if the specified `element` refers to a component current or a
-        voltage node and prints information accordingly.
-
-        Parameters
-        ----------
-        element : :class:`~.components.Component`, :class:`~.components.Node`
-            element to format
-
-        Raises
-        ------
-        ValueError
-            if element type is not recognised
-        """
-
-        if isinstance(element, Component):
-            return "i[%s]" % element.name
-        elif isinstance(element, Node):
-            return "V[%s]" % element.name
-
-        raise ValueError("unrecognised element")
-
-    @property
     def n_components(self):
         """Get number of components in circuit
 
@@ -1226,6 +1178,18 @@ class Circuit(object):
             return "V[%s]" % element.name
 
         raise ValueError("invalid element")
+
+    @property
+    def element_headers(self):
+        """Headers corresponding to circuit's matrix elements.
+
+        Yields
+        ------
+        :class:`str`
+            column header
+        """
+
+        return [self.format_element(element) for element in self.elements]
 
     def _node_graph(self):
         """Create Graphviz node graph."""
