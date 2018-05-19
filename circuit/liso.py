@@ -213,6 +213,8 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         :rtype: List[str]
         """
 
+        line = line.lower()
+
         # strip off comments, then split into parts and remove extra whitespace
         return [line.strip() for line in line.split('#')[0].split()]
 

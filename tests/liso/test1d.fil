@@ -1,0 +1,15 @@
+# example circuit from LISO manual
+# testing uppercase definitions
+
+R R1 100 NIN NSUM
+R R3 1.075k NO NSUM
+R R4 42.2 NSUM NM
+R R6 65 NIN GND
+C C2 4.7n NSUM GND
+C C5 122p NO NM
+OP OP1 OP27 GND NM NO
+
+FREQ LOG 1 100k 100
+
+IINPUT NIN 50
+IOUTPUT OP1 c5 c2
