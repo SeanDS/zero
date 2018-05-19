@@ -357,7 +357,7 @@ class Solution(object):
 
         # overall figure title
         if title:
-            fig.suptitle(title)
+            figure.suptitle(title)
 
         # legend
         if legend:
@@ -424,7 +424,7 @@ class Solution(object):
 
         # overall figure title
         if title:
-            fig.suptitle(title)
+            figure.suptitle(title)
 
         # legend
         if legend:
