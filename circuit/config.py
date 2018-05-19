@@ -13,7 +13,22 @@ from .format import SIFormatter
 
 LOGGER = logging.getLogger("config")
 
-class BaseConfig(RawConfigParser, metaclass=abc.ABCMeta):
+class SingletonAbstractMeta(abc.ABCMeta):
+    """Abstract singleton class"""
+
+    # dict of active instances
+    _SINGLETON_REGISTRY = {}
+
+    def __call__(cls, *args, **kwargs):
+        """Return instance of `cls` if alrady exists, otherwise create"""
+
+        if cls not in cls._SINGLETON_REGISTRY:
+            # create new instance
+            cls._SINGLETON_REGISTRY[cls] = super(SingletonAbstractMeta, cls).__call__(*args, **kwargs)
+        
+        return cls._SINGLETON_REGISTRY[cls]
+
+class BaseConfig(RawConfigParser, metaclass=SingletonAbstractMeta):
     """Abstract configuration class"""
 
     CONFIG_FILENAME = None
@@ -129,7 +144,7 @@ class OpAmpLibrary(BaseConfig):
             self._parse_lib_data(opamp)
             count += 1
 
-        LOGGER.debug("added %i op-amps", count)
+        LOGGER.debug("found %i op-amps", count)
 
         self.loaded = True
 
