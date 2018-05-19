@@ -23,6 +23,20 @@ def spectra_match(vector_a, vector_b):
                        rtol=float(CONF["data"]["noise_rel_tol"]),
                        atol=float(CONF["data"]["noise_abs_tol"]))
 
+def argmax_difference(vector_a, vector_b):
+    """Finds the maximum relative difference in percent between `vector_a` and `vector_b`
+    
+    Returns index of maximum relative difference as well as its value.
+    """
+
+    # relative difference in percent between `vector_a` and `vector_b`
+    difference = 100 * np.abs(vector_a - vector_b) / np.abs(vector_a)
+
+    # index of maximum difference
+    i = np.argmax(difference)
+
+    return i, difference[i]
+
 class Series(object):
     """Data series"""
 
@@ -154,11 +168,10 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
             return False
         elif not tfs_match(self.magnitude, other.magnitude):
             # calculate worst relative difference between tfs
-            worst_diff = 100 * np.abs(self.magnitude - other.magnitude) / np.abs(other.magnitude)
-            worst_i = np.argmax(worst_diff)
+            worst_i, worst_diff = argmax_difference(self.magnitude, other.magnitude)
 
             LOGGER.error("%s tf magnitudes don't match (worst difference %f%% at %d (%f, %f))",
-                         self, worst_diff[worst_i], worst_i, self.magnitude[worst_i],
+                         self, worst_diff, worst_i, self.magnitude[worst_i],
                          other.magnitude[worst_i])
             return False
         return True
