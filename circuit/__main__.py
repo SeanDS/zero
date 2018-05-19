@@ -14,7 +14,11 @@ from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
 from .liso import InputParser, OutputParser, InvalidLisoFileException
 
 PROG = "circuit"
+AUTHOR = "Sean Leavey <electronics@attackllama.com>"
 SYNOPSIS = "{} <command> [<args>...]".format(PROGRAM)
+HEADER = """{prog} {version}
+{author}
+""".format(prog=PROGRAM, version=__version__, author=AUTHOR)
 MANPAGE = """
 NAME
   {prog} {version}
@@ -65,6 +69,9 @@ class Cmd(object, metaclass=abc.ABCMeta):
         """Execute command within a try/except block, obeying verbosity"""
         if args.verbose:
             logging_on()
+
+            # print title and version
+            print(HEADER)
 
         try:
             self.call(args)
@@ -221,25 +228,21 @@ def get_func(cmd):
         # exit with error code
         sys.exit(1)
 
-def print_header():
-    """Program header"""
-
-    print("%s %s" % (PROG, __version__))
-
 def main():
     """Main program"""
 
-    # print title and version
-    print_header()
-    print()
-
     if len(sys.argv) < 2:
-        # no command specified; print error message
+        # no command specified
+
+        # print title and version
+        print(HEADER)
+
+        # print usage
         print("Command not specified.", file=sys.stderr)
         print("usage: " + SYNOPSIS, file=sys.stderr)
         print(file=sys.stderr)
 
-        # print commands
+        # print available commands
         print(format_commands(), file=sys.stderr)
 
         # exit with error code
