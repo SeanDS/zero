@@ -651,7 +651,7 @@ class OutputParser(BaseParser):
     # match text after e.g. "#2 capacitors:" and before the first line with
     # a non-whitespace character after the "#"
     COMPONENT_REGEX = re.compile("^#(\d+) "
-                                 "(op-amps?|capacitors?|resistors?|nodes?):"
+                                 "(op-amps?|capacitors?|resistors?|coils?|nodes?):"
                                  "([\s\S]+?)(?=\n#\S+)",
                                  re.MULTILINE)
 
@@ -769,7 +769,7 @@ class OutputParser(BaseParser):
 
         # find components
         for (count, description, content) in re.findall(self.COMPONENT_REGEX, text):
-            if description.startswith(("resistor", "capacitor", "inductor")):
+            if description.startswith(("resistor", "capacitor", "coil")):
                 self._parse_lcr(count, description, content)
             elif description.startswith("op-amp"):
                 self._parse_opamp(count, description, content)
@@ -798,7 +798,7 @@ class OutputParser(BaseParser):
                 self._add_resistor(name, value, node1_name, node2_name)
             elif description.startswith("capacitor"):
                 self._add_capacitor(name, value, node1_name, node2_name)
-            elif description.startswith("inductor"):
+            elif description.startswith("coil"):
                 self._add_inductor(name, value, node1_name, node2_name)
             else:
                 raise Exception("unrecognised component: %s" % description)
