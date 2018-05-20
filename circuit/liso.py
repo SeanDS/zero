@@ -214,8 +214,6 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         :rtype: List[str]
         """
 
-        line = line.lower()
-
         # strip off comments, then split into parts and remove extra whitespace
         return [line.strip() for line in line.split('#')[0].split()]
 
@@ -442,7 +440,7 @@ class InputParser(BaseParser):
         if len(tokens) < 1:
             return
 
-        command = tokens[0]
+        command = tokens[0].lower()
 
         if command in self.COMPONENTS:
             # this is a component
