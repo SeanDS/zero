@@ -1,6 +1,9 @@
 """Rich display system"""
 
 from importlib import import_module
+import numpy as np
+import numbers
+from tabulate import tabulate
 
 from .config import CircuitConfig
 from .components import Resistor, Capacitor, Inductor, OpAmp, Input
@@ -79,3 +82,84 @@ class NodeGraph(object):
     def _repr_svg_(self):
         """Graphviz rendering for Jupyter notebooks."""
         return self.node_graph()._repr_svg_()
+
+class MatrixDisplay(object):
+    def __init__(self, lhs, middle, rhs, headers):
+        """Instantiate matrix display"""
+
+        lhs = np.array(lhs)
+        middle = np.array(middle)
+        rhs = np.array(rhs)
+        headers = list(headers)
+
+        if middle.ndim != 2:
+            raise ValueError("Middle must have exactly 2 dimensions")
+
+        if lhs.shape[1] + middle.shape[1] + rhs.shape[1] != len(headers):
+            raise ValueError("Shape of first dimension of lhs, middle and rhs must "
+                             "add up to length of headers")
+
+        self.lhs = lhs
+        self.middle = middle
+        self.rhs = rhs
+        self.headers = headers
+
+    @property
+    def matrix(self):
+        """Get full matrix as a generator, consisting of left, middle and right sides"""
+        # unfortunately can't use `np.concatenate` here, as it changes the full matrix
+        # type to whatever is first, which is usually a string
+
+        for l, m, r in zip(self.lhs, self.middle, self.rhs):
+            yield self.format_row(l, m, r)
+
+    def format_cell(self, cell):
+        if np.iscomplex(cell):
+            # convert complex value to magnitude
+            cell = np.abs(cell)
+        
+            # remove imaginary part, which is now zero
+            cell = cell.real
+
+        if isinstance(cell, numbers.Number):
+            cell = cell.real
+
+            if cell == 0:
+                return "---"
+            elif abs(cell) == 1:
+                # don't format zero or one
+                return "%i" % cell
+            elif abs(cell) < 1e-12:
+                # just show power for tiny stuff
+                return "e%d" % round(np.log10(cell))
+            
+            return "%.2e" % cell
+        
+        return str(cell)
+    
+    def format_row(self, left, middle, right):
+        yield from [self.format_cell(cell) for cell in left]
+        yield from [self.format_cell(cell) for cell in middle]
+        yield from [self.format_cell(cell) for cell in right]
+
+    def __repr__(self):
+        """Text representation of table"""
+
+        # tabulate data
+        return tabulate(self.matrix, self.headers, tablefmt=CONF["format"]["table"])
+    
+    def _repr_html_(self):
+        """HTML table representation"""
+
+        table = "<table>"
+        table += "<thead>"
+        table += "<tr>"
+        table += "".join(["<th>%s</th>" % header_cell for header_cell in self.headers])
+        table += "</tr>"
+        table += "</thead>"
+        table += "<tbody>"
+        table += "".join(["<tr>%s</tr>" % "".join(["<td>%s</td>" % self.format_cell(cell) for cell in row]) for row in self.matrix])
+        table += "</tbody>"
+        table += "</table>"
+
+        return table

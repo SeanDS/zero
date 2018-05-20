@@ -3,7 +3,6 @@ import sys
 import logging
 import numpy as np
 from collections import defaultdict
-from tabulate import tabulate
 
 from .base import BaseAnalysis
 from ..config import CircuitConfig
@@ -12,6 +11,7 @@ from ..components import Component, Input, Node, ComponentNoise, NodeNoise
 from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
                     CurrentVoltageTF, NoiseSpectrum, Series)
 from ..solution import Solution
+from ..display import MatrixDisplay
 
 # FIXME: move this into base analysis, make `progress_generator` function
 from ..misc import _print_progress
@@ -234,8 +234,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         return e_n
 
     def calculate_tfs(self, frequencies, output_components=[], output_nodes=[],
-                      stream=sys.stdout, print_equations=False,
-                      print_matrix=False, *args, **kwargs):
+                      stream=sys.stdout, print_equations=False, print_matrix=False,
+                      *args, **kwargs):
         """Calculate circuit transfer functions from input \
         :class:`component <.Component>` / :class:`node <.Node>` to output \
         :class:`components <.Component>` / :class:`nodes <.Node>`.
@@ -358,14 +358,13 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             self.print_equations(matrix=self.calculate_tf_matrix(frequency=1),
                                  rhs=self.input_vector, stream=stream)
         if print_matrix:
-            self.print_matrix(matrix=self.calculate_tf_matrix(frequency=1),
-                              rhs=self.input_vector, stream=stream)
+            print(self.circuit_matrix(matrix=self.calculate_tf_matrix(frequency=1),
+                                      rhs=self.input_vector), file=stream)
 
         return solution
 
     def calculate_noise(self, frequencies, noise_node, stream=sys.stdout,
-                        print_equations=False, print_matrix=False, *args,
-                        **kwargs):
+                        print_equations=False, print_matrix=False, *args, **kwargs):
         """Calculate noise from circuit :class:`component <.Component>` / \
         :class:`node <.Node>` at a particular :class:`node <.Node>`.
 
@@ -459,8 +458,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             self.print_equations(matrix=self.calculate_noise_matrix(frequency=1),
                                  rhs=self.noise_vector, stream=stream)
         if print_matrix:
-            self.print_matrix(matrix=self.calculate_noise_matrix(frequency=1),
-                              rhs=self.noise_vector, stream=stream)
+            print(self.circuit_matrix(matrix=self.calculate_noise_matrix(frequency=1),
+                                      rhs=self.noise_vector), file=stream)
 
         return solution
 
@@ -895,8 +894,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
                 print(header, end="", file=stream)
             print(" = %s" % rhs_value, file=stream)
 
-    def print_matrix(self, matrix, rhs, stream=sys.stdout, *args, **kwargs):
-        """Pretty print circuit matrix.
+    def circuit_matrix(self, matrix, rhs):
+        """Get circuit matrix
 
         Parameters
         ----------
@@ -905,39 +904,18 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         rhs : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
             right hand side of matrix equation, representing the input or output
             vector
-        stream : :class:`io.IOBase`
-            stream to print to
         """
 
         # get matrix in full (non-sparse) format to allow stacking
         matrix = matrix.toarray()
 
-        # attach right hand side to left hand side
-        matrix = np.concatenate((matrix, rhs), axis=1)
-
-        # convert complex values to magnitudes (leaving others, like -1, alone)
-        for row in range(matrix.shape[0]):
-            for column in range(matrix.shape[1]):
-                if np.iscomplex(matrix[row, column]):
-                    matrix[row, column] = np.abs(matrix[row, column])
-
-        # remove imaginary parts (which are all now zero)
-        array = matrix.real
-
-        # create vector of element names, with two dimensions
-        element_names = np.expand_dims(np.array(self.element_names), axis=1)
-        # prepend element names as first column
-        array = np.concatenate((element_names, array), axis=1)
-
         # column headers, with extra columns for component names and RHS
         headers = [""] + self.element_headers + ["RHS"]
 
-        # tabulate data
-        table = tabulate(array, headers, tablefmt=CONF["format"]["table"])
+        # create column vector of element names to go on left
+        lhs = np.expand_dims(self.element_names, axis=1)
 
-        # output
-        print("Circuit matrix:", file=stream)
-        print(table, file=stream)
+        return MatrixDisplay(lhs, matrix, rhs, headers)
 
 class BaseEquation(object, metaclass=abc.ABCMeta):
     """Represents an equation.
