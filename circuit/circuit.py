@@ -5,16 +5,10 @@ import sys
 import numpy as np
 import logging
 
-HAS_GRAPHVIZ = False
-try:
-    import graphviz
-    HAS_GRAPHVIZ = True
-except ImportError:
-    pass
-
 from .config import CircuitConfig, OpAmpLibrary
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
                          Input, Node)
+from .display import NodeGraph
 
 LOGGER = logging.getLogger("circuit")
 CONF = CircuitConfig()
@@ -310,78 +304,3 @@ class Circuit(object):
             return False
 
         return True
-
-
-
-
-
-
-
-
-
-
-
-
-    def _node_graph(self):
-        """Create Graphviz node graph."""
-
-        if not HAS_GRAPHVIZ:
-            raise NotImplementedError("Node graph representation requires the "
-                                      "graphviz package")
-
-        G = graphviz.Digraph(engine=CONF["graphviz"]["engine"])
-        G.attr("node", style=CONF["graphviz"]["node_style"],
-               fontname=CONF["graphviz"]["node_font_name"],
-               fontsize=CONF["graphviz"]["node_font_size"])
-        G.attr("edge", arrowhead=CONF["graphviz"]["edge_arrowhead"])
-        G.attr("graph", splines=CONF["graphviz"]["graph_splines"],
-               label="Made with graphviz and circuit.py",
-               fontname=CONF["graphviz"]["graph_font_name"],
-               fontsize=CONF["graphviz"]["graph_font_size"])
-        node_map = {}
-
-        def add_connection(C, conn, N):
-            if N == 'gnd':
-                G.node(C+'_'+N, shape='point', style='invis')
-                G.edge(C+'_'+N, C+conn, dir='both', arrowtail='tee',
-                       len='0.0', weight='10')
-            else:
-                if not N in node_map:
-                    G.node(N, shape='point', xlabel=N,
-                           width='0.1', fillcolor='Red')
-                node_map[N] = N
-                G.edge(node_map[N], C+conn)
-
-        for C in self.components:
-            connections = ['', '']
-            if isinstance(C, OpAmp):
-                # TODO: move these to components
-                attr = {'shape': 'plain', 'margin': '0', 'orientation': '270'}
-                attr['label'] = """<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
-                    <TR><TD PORT="plus">+</TD><TD ROWSPAN="3">{0}<BR/>{1}</TD></TR>
-                    <TR><TD> </TD></TR>
-                    <TR><TD PORT="minus">-</TD></TR>
-                </TABLE>>""".format(C.name, C.model)
-                connections = [':plus', ':minus', ':e']
-            elif isinstance(C, Inductor):
-                attr = {'fillcolor': 'MediumSlateBlue', 'shape': 'diamond'}
-            elif isinstance(C, Capacitor):
-                attr = {'fillcolor': 'YellowGreen', 'shape': 'diamond'}
-            elif isinstance(C, Resistor):
-                attr = {'fillcolor': 'Orchid', 'shape': 'diamond'}
-            elif isinstance(C, Input):
-                attr = {'fillcolor': 'Orange',
-                        'shape': ['ellipse','box','pentagon'][C.input_type-1]}
-            else:
-                print('Unrecognised element {0}: {1}'.format(C.name, C.__class__))
-
-            G.node(C.name, **attr)
-            for N, connection in zip(C.nodes, connections):
-                add_connection(C.name, connection, N.name)
-
-        return G
-
-    if HAS_GRAPHVIZ:
-        def _repr_svg_(self):
-            """Graphviz rendering for Jupyter notebooks."""
-            return self._node_graph()._repr_svg_()
