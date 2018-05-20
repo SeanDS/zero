@@ -814,8 +814,6 @@ class OutputParser(BaseParser):
         # remove ignored strings
         content = self._remove_ignored_opamp_strings(content)
 
-        print(description, content)
-
         # extract op-amp data
         matches = re.findall(self.OPAMP_REGEX, content)
 
