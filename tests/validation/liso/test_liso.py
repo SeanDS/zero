@@ -9,7 +9,7 @@ from circuit.liso import Runner
 LOGGER = logging.getLogger("test")
 
 # directory containing tests relative to this script
-REL_FIL_DIR = "."
+REL_FIL_DIR = "scripts"
 
 class LisoTester(unittest.TestCase):
     def __init__(self, method_name, fil_path=None):
