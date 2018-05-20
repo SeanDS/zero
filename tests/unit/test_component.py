@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from circuit.components import Component as ComponentBase
+from circuit.components import Component as ComponentBase, Node
 
 class Component(ComponentBase):
     """Child class of abstract ComponentBase"""
@@ -14,11 +14,6 @@ class ComponentTestCase(TestCase):
     def setUp(self):
         pass
 
-    def test_name(self):
-        name = "component_name"
-        component = Component(name=name)
-        self.assertEqual(name, component.name)
-
     def test_name_empty(self):
         # empty string
         name = ""
@@ -27,6 +22,11 @@ class ComponentTestCase(TestCase):
 
         # null
         name = None
+        component = Component(name=name)
+        self.assertEqual(name, component.name)
+
+    def test_name_normal(self):
+        name = "component_name"
         component = Component(name=name)
         self.assertEqual(name, component.name)
 
@@ -41,3 +41,9 @@ class ComponentTestCase(TestCase):
         component = Component(nodes=nodes)
         # default to empty list
         self.assertEqual([], component.nodes)
+    
+    def test_nodes_normal(self):
+        nodes = [Node("n1"), Node("n2")]
+
+        component = Component(nodes=nodes)
+        self.assertEqual(nodes, component.nodes)
