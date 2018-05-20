@@ -12,6 +12,9 @@ size_y = 6
 [matplotlib]
 legend.fontsize = 9
 
+[algebra]
+solver = scipy-default
+
 [data]
 tf_abs_tol = 1e-4
 tf_rel_tol = 1e-4

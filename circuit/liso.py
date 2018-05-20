@@ -22,6 +22,7 @@ from .circuit import Circuit
 from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
                          Node, CurrentNoise, VoltageNoise, JohnsonNoise)
 from .solution import Solution
+from .analysis.ac import SmallSignalAcAnalysis
 
 LOGGER = logging.getLogger("liso")
 
@@ -114,12 +115,12 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         self._add_circuit_input()
 
         if self.output_type is self.TYPE_NOISE:
-            return self.circuit.calculate_noise(
+            return SmallSignalAcAnalysis(circuit=self.circuit).calculate_noise(
                 frequencies=self.frequencies,
                 noise_node=self.noise_node,
                 *args, **kwargs)
         elif self.output_type is self.TYPE_TF:
-            return self.circuit.calculate_tfs(
+            return SmallSignalAcAnalysis(circuit=self.circuit).calculate_tfs(
                 frequencies=self.frequencies,
                 output_components=self.output_components,
                 output_nodes=self.output_nodes,
@@ -343,7 +344,7 @@ class BaseParser(object, metaclass=abc.ABCMeta):
             # functions
             if self.noise_node is not None:
                 # we're calculating noise
-                input_type = Input.TYPE_NOISE
+                input_type = "noise"
 
                 # set input impedance
                 impedance = self.input_impedance
@@ -422,11 +423,10 @@ class InputParser(BaseParser):
         :type lines: Sequence[str]
         """
 
-        # open file
-        with open(self.filepath, "r") as obj:
-            for tokens in [self.tokenise(line) for line in lines
-                           if not line.startswith("#")]:
-                self._parse_tokens(tokens)
+        # parse tokens
+        for tokens in [self.tokenise(line) for line in lines
+                        if not line.startswith("#")]:
+            self._parse_tokens(tokens)
 
         # check we found anything
         self.validate()
@@ -507,7 +507,7 @@ class InputParser(BaseParser):
         self.input_node_p = Node(options[0])
 
         if input_type == "uinput":
-            self.input_type = Input.TYPE_VOLTAGE
+            self.input_type = "voltage"
             if len(options) > 2:
                 # floating input
                 self.input_node_n = Node(options[1])
@@ -526,7 +526,7 @@ class InputParser(BaseParser):
                 LOGGER.info("adding voltage input node %s with default impedance of 50Ω",
                             self.input_node_p)
         elif input_type == "iinput":
-            self.input_type = Input.TYPE_CURRENT
+            self.input_type = "current"
             self.input_node_n = None
             if len(options) == 2:
                 self.input_impedance, _ = SIFormatter.parse(options[1])
@@ -892,7 +892,7 @@ class OutputParser(BaseParser):
 
             if match_fixed_current:
                 # fixed current input
-                self.input_type = Input.TYPE_CURRENT
+                self.input_type = "current"
                 self.input_node_p = Node(match_fixed_current.group(1))
                 self.input_impedance, _ = SIFormatter.parse(match_fixed_current.group(2))
 
@@ -902,7 +902,7 @@ class OutputParser(BaseParser):
                 return
             elif match_fixed_voltage:
                 # fixed voltage input
-                self.input_type = Input.TYPE_VOLTAGE
+                self.input_type = "voltage"
                 self.input_node_p = Node(match_fixed_voltage.group(1))
                 self.input_impedance, _ = SIFormatter.parse(match_fixed_voltage.group(2))
 
@@ -912,7 +912,7 @@ class OutputParser(BaseParser):
                 return
             elif match_floating_voltage:
                 # floating input
-                self.input_type = Input.TYPE_VOLTAGE
+                self.input_type = "voltage"
                 self.input_node_p = Node(match_floating_voltage.group(1))
                 self.input_node_m = Node(match_floating_voltage.group(2))
                 self.input_impedance, _ = SIFormatter.parse(match_floating_voltage.group(3))
@@ -999,11 +999,11 @@ class OutputParser(BaseParser):
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on input type
-            if self.input_type is Input.TYPE_VOLTAGE:
+            if self.input_type is "voltage":
                 function = VoltageVoltageTF(series=series,
                                             source=self.input_node_p,
                                             sink=sink)
-            elif self.input_type is Input.TYPE_CURRENT:
+            elif self.input_type is "current":
                 function = CurrentVoltageTF(series=series,
                                             source=self.circuit.get_component("input"),
                                             sink=sink)
@@ -1066,11 +1066,11 @@ class OutputParser(BaseParser):
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on input type
-            if self.input_type is Input.TYPE_VOLTAGE:
+            if self.input_type is "voltage":
                 function = VoltageCurrentTF(series=series,
                                             source=self.input_node_p,
                                             sink=sink)
-            elif self.input_type is Input.TYPE_CURRENT:
+            elif self.input_type is "current":
                 function = CurrentCurrentTF(series=series,
                                             source=self.circuit.get_component("input"),
                                             sink=sink)

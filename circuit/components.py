@@ -63,10 +63,6 @@ class Component(object, metaclass=abc.ABCMeta):
 
             self._nodes.append(node)
 
-    @abc.abstractmethod
-    def equation(self):
-        raise NotImplementedError
-
     def add_noise(self, noise):
         """Add a noise source to the component.
 
@@ -121,8 +117,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     UNIT = "?"
 
     def __init__(self, value=None, node1=None, node2=None, *args, **kwargs):
-        super(PassiveComponent, self).__init__(nodes=[node1, node2], *args,
-                                               **kwargs)
+        super(PassiveComponent, self).__init__(nodes=[node1, node2], *args, **kwargs)
 
         self.value = value
 
@@ -143,7 +138,6 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @node1.setter
     def node1(self, node):
-        # FIXME: remove old node's sources/sinks
         self.nodes[0] = node
 
     @property
@@ -152,56 +146,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @node2.setter
     def node2(self, node):
-        # FIXME: remove old node's sources/sinks
         self.nodes[1] = node
-
-    def equation(self):
-        """Get component equation.
-
-        The component equation represents the component in the
-        :class:`circuit <.circuit.Circuit>` matrix. It maps input or noise
-        sources to voltages across :class:`nodes <Node>` and currents through
-        :class:`components <Component>` in terms of their
-        :class:`impedance <ImpedanceCoefficient>` and
-        :class:`voltage <VoltageCoefficient>` coefficients.
-
-        This method also registers current sources and sinks with the
-        component's :class:`nodes <Node>`.
-
-        Returns
-        -------
-        :class:`~ComponentEquation`
-            Component equation containing :class:`coefficients <BaseCoefficient>`.
-        """
-
-        # register component as sink for node 1 and source for node 2
-        if self.node1:
-            self.node1.add_sink(self) # current flows into here...
-        if self.node2:
-            self.node2.add_source(self) # and out of here
-
-        # nodal potential equation coefficients
-        # impedance * current + voltage = 0
-        coefficients = []
-
-        # add impedance
-        coefficients.append(ImpedanceCoefficient(component=self,
-                                                 value=self.impedance))
-
-        # add input node coefficient
-        if self.node1 is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node1,
-                                                   value=-1))
-
-        # add output node coefficient
-        if self.node2 is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node2,
-                                                   value=1))
-
-        # create and return equation
-        return ComponentEquation(self, coefficients=coefficients)
 
     @abc.abstractmethod
     def impedance(self, frequency):
@@ -324,38 +269,6 @@ class OpAmp(Component):
     def node3(self, node):
         self.nodes[2] = node
 
-    def equation(self):
-        """Get op-amp equation."""
-
-        # register component as source for node 3
-        # nodes 1 and 2 don't source or sink current (ideally)
-        self.node3.add_source(self) # current flows out of here
-
-        # nodal potential equation coefficients
-        # V[n3] = H(s) (V[n1] - V[n2])
-        coefficients = []
-
-        # add non-inverting input node coefficient
-        if self.node1 is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node1,
-                                                   value=-1))
-
-        # add inverting input node coefficient
-        if self.node2 is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node2,
-                                                   value=1))
-
-        # add output node coefficient
-        if self.node3 is not Node("gnd"):
-            # voltage
-            coefficients.append(VoltageCoefficient(node=self.node3,
-                                                   value=self.inverse_gain))
-
-        # create and return equation
-        return ComponentEquation(self, coefficients=coefficients)
-
     def gain(self, frequency):
         """Get op-amp voltage gain at the specified frequency.
 
@@ -389,10 +302,6 @@ class OpAmp(Component):
 class Input(Component):
     """Represents the circuit's voltage input"""
 
-    TYPE_NOISE = 1
-    TYPE_VOLTAGE = 2
-    TYPE_CURRENT = 3
-
     def __init__(self, input_type, node=None, node_p=None, node_n=None,
                  impedance=None, *args, **kwargs):
         # handle nodes
@@ -400,97 +309,71 @@ class Input(Component):
             if node_p is not None or node_n is not None:
                 raise ValueError("node cannot be specified alongside node_p or "
                                  "node_n")
+
             nodes = [Node("gnd"), node]
         else:
             if node_p is None or node_n is None:
                 raise ValueError("node_p and node_n must both be specified")
+
             nodes = [node_n, node_p]
 
         # call parent constructor
-        super(Input, self).__init__(name="input", nodes=nodes, *args,
-                                    **kwargs)
+        super(Input, self).__init__(name="input", nodes=nodes, *args, **kwargs)
 
-        # default value
-        self.defaults()
+        input_type = input_type.lower()
 
-        if input_type in ["noise", self.TYPE_NOISE]:
-            self.input_type = self.TYPE_NOISE
+        if input_type == "noise":
+            self.input_type = "noise"
+
             if impedance is None:
                 raise ValueError("impedance must be specified for noise input")
+            
             self.impedance = float(impedance)
         else:
             if impedance is not None:
                 raise ValueError("impedance cannot be specified for non-noise "
                                  "input")
 
-            if input_type in ["voltage", self.TYPE_VOLTAGE]:
-                self.input_type = self.TYPE_VOLTAGE
-            elif input_type in ["current", self.TYPE_CURRENT]:
-                self.input_type = self.TYPE_CURRENT
+            if input_type == "voltage":
+                self.input_type = "voltage"
+            elif input_type == "current":
+                self.input_type = "current"
                 # assume 1 ohm impedance for transfer functions
                 self.impedance = 1
             else:
                 raise ValueError("unrecognised input type")
 
     @property
-    def node_n(self):
+    def node1(self):
         return self.nodes[0]
 
-    @node_n.setter
-    def node_n(self, node):
+    @node1.setter
+    def node1(self, node):
         self.nodes[0] = node
 
     @property
-    def node_p(self):
+    def node2(self):
         return self.nodes[1]
+
+    @node2.setter
+    def node2(self, node):
+        self.nodes[1] = node
+
+    @property
+    def node_n(self):
+        return self.node1
+
+    @node_n.setter
+    def node_n(self, node):
+        self.node1 = node
+
+    @property
+    def node_p(self):
+        return self.node2
 
     @node_p.setter
     def node_p(self, node):
-        self.nodes[1] = node
-
-    def equation(self):
-        # register component as sink for negative node and source for positive
-        # node
-        if self.node_n:
-            self.node_n.add_sink(self) # current flows into here...
-        if self.node_p:
-            self.node_p.add_source(self) # and out of here
-
-        # nodal potential equation coefficients
-        # impedance * current + voltage = 0
-        coefficients = []
-
-        if self.input_type in [self.TYPE_NOISE, self.TYPE_CURRENT]:
-            # set impedance
-            coefficients.append(ImpedanceCoefficient(component=self,
-                                                     value=self.impedance))
-
-        if self.input_type in [self.TYPE_NOISE, self.TYPE_VOLTAGE]:
-            # add input node coefficient
-            if self.node_n is not Node("gnd"):
-                # voltage
-                coefficients.append(VoltageCoefficient(node=self.node_n,
-                                                       value=-1))
-
-            # add output node coefficient
-            if self.node_p is not Node("gnd"):
-                # voltage
-                coefficients.append(VoltageCoefficient(node=self.node_p,
-                                                       value=1))
-
-        # create and return equation
-        return ComponentEquation(self, coefficients=coefficients)
-
-    def defaults(self):
-        """Restore default settings
-
-        This is useful for when a node is re-used in a different circuit by
-        the same Python kernel. The singleton pattern results in the same
-        object as before being returned by the constructor, with references to
-        old circuits. Removing these references avoids bad references.
-        """
-
-        self.impedance = None
+        self.node2 = node
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
@@ -573,47 +456,6 @@ class Node(object, metaclass=NamedInstance):
         """Instantiate a new node."""
 
         self.name = str(name)
-
-        # default settings
-        self.defaults()
-
-    def add_source(self, component):
-        self.sources.add(component)
-
-    def add_sink(self, component):
-        self.sinks.add(component)
-
-    def equation(self):
-        # nodal current equation coefficients
-        # current out - current in = 0
-        coefficients = []
-
-        for source in self.sources:
-            # add source coefficient
-            if source is not Node("gnd"):
-                coefficients.append(CurrentCoefficient(component=source,
-                                                       value=1))
-
-        for sink in self.sinks:
-            # add sink coefficient
-            if sink is not Node("gnd"):
-                coefficients.append(CurrentCoefficient(component=sink,
-                                                       value=-1))
-
-        # create and return equation
-        return NodeEquation(self, coefficients=coefficients)
-
-    def defaults(self):
-        """Restore default settings.
-
-        This is useful for when a node is re-used in a different circuit by
-        the same Python kernel. The named instance pattern results in the same
-        object as before being returned by the constructor, with references to
-        old circuits. Removing these references avoids bad references.
-        """
-
-        self.sources = set()
-        self.sinks = set()
 
     def __str__(self):
         return self.name
@@ -709,155 +551,3 @@ class JohnsonNoise(VoltageNoise):
 class CurrentNoise(NodeNoise):
     def label(self):
         return "INoise"
-
-class BaseEquation(object, metaclass=abc.ABCMeta):
-    """Represents an equation.
-
-    Parameters
-    ----------
-    coefficients : sequence of :class:`BaseCoefficient`
-        Coefficients that make up the equation.
-    """
-
-    def __init__(self, coefficients):
-        """Instantiate a new equation."""
-
-        self.coefficients = []
-
-        for coefficient in coefficients:
-            self.add_coefficient(coefficient)
-
-    def add_coefficient(self, coefficient):
-        """Add coefficient to equation.
-
-        Parameters
-        ----------
-        coefficient : :class:`BaseCoefficient`
-            Coefficient to add.
-        """
-
-        self.coefficients.append(coefficient)
-
-class ComponentEquation(BaseEquation):
-    """Represents a component equation.
-
-    Parameters
-    ----------
-    component : :class:`Component`
-        Component associated with the equation.
-    """
-
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new component equation."""
-
-        # call parent constructor
-        super(ComponentEquation, self).__init__(*args, **kwargs)
-
-        self.component = component
-
-class NodeEquation(BaseEquation):
-    """Represents a node equation.
-
-    Parameters
-    ----------
-    node : :class:`Node`
-        Node associated with the equation.
-    """
-
-    def __init__(self, node, *args, **kwargs):
-        """Instantiate a new node equation."""
-
-        # call parent constructor
-        super(NodeEquation, self).__init__(*args, **kwargs)
-
-        self.node = node
-
-class BaseCoefficient(object, metaclass=abc.ABCMeta):
-    """Represents a coefficient.
-
-    Parameters
-    ----------
-    value : :class:`float`
-        Coefficient value.
-    coefficient_type : {0, 1, 2}
-        Coefficient type. Impedance is 0, current is 1, voltage is 2.
-    """
-
-    # coefficient types
-    TYPE_IMPEDANCE = 0
-    TYPE_CURRENT = 1
-    TYPE_VOLTAGE = 2
-
-    def __init__(self, value, coefficient_type):
-        """Instantiate a new coefficient."""
-
-        self.value = value
-        self.coefficient_type = coefficient_type
-
-    @property
-    def coefficient_type(self):
-        return self._coefficient_type
-
-    @coefficient_type.setter
-    def coefficient_type(self, coefficient_type):
-        # validate coefficient
-        if coefficient_type not in [self.TYPE_IMPEDANCE,
-                                    self.TYPE_CURRENT,
-                                    self.TYPE_VOLTAGE]:
-            raise ValueError("Unrecognised coefficient type")
-
-        self._coefficient_type = coefficient_type
-
-class ImpedanceCoefficient(BaseCoefficient):
-    """Represents an impedance coefficient.
-
-    Parameters
-    ----------
-    component : :class:`Component`
-        Component this impedance coefficient represents.
-    """
-
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new impedance coefficient."""
-
-        self.component = component
-
-        # call parent constructor
-        super(ImpedanceCoefficient, self).__init__(
-              coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
-
-class CurrentCoefficient(BaseCoefficient):
-    """Represents an current coefficient.
-
-    Parameters
-    ----------
-    component : :class:`Component`
-        Component this current coefficient represents.
-    """
-
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new current coefficient."""
-
-        self.component = component
-
-        # call parent constructor
-        super(CurrentCoefficient, self).__init__(
-              coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
-
-class VoltageCoefficient(BaseCoefficient):
-    """Represents a voltage coefficient.
-
-    Parameters
-    ----------
-    node : :class:`Node`
-        Node this voltage coefficient represents.
-    """
-
-    def __init__(self, node, *args, **kwargs):
-        """Instantiate a new voltage coefficient."""
-
-        self.node = node
-
-        # call parent constructor
-        super(VoltageCoefficient, self).__init__(
-              coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)

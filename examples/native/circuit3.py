@@ -11,6 +11,7 @@ import numpy as np
 from circuit import logging_on
 logging_on()
 from circuit.circuit import Circuit
+from circuit.analysis.ac import SmallSignalAcAnalysis
 
 # frequency vector
 frequencies = np.logspace(0, 6, 1000)
@@ -28,8 +29,9 @@ circuit.add_library_opamp(name="o1", model="LT1124", node1="gnd", node2="nm",
                           node3="nout")
 
 # solve circuit
-solution = circuit.calculate_noise(frequencies, noise_node="nout",
-                                   print_equations=True, print_matrix=True)
+analysis = SmallSignalAcAnalysis(circuit=circuit)
+solution = analysis.calculate_noise(frequencies, noise_node="nout",
+                                    print_equations=True, print_matrix=True)
 
 # plot
 solution.plot()
