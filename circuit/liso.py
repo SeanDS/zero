@@ -88,12 +88,12 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def parse_lines(self, lines):
-        return NotImplemented
+        raise NotImplementedError
 
     @abc.abstractmethod
     def solution(self):
         """Get solution"""
-        return NotImplemented
+        raise NotImplementedError
 
     def show(self, *args, **kwargs):
         """Show LISO results"""

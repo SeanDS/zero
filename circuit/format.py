@@ -19,7 +19,7 @@ class BaseFormatter(metaclass=abc.ABCMeta):
         :rtype: str
         """
 
-        return NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def exponent(value):

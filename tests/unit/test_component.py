@@ -8,7 +8,7 @@ class Component(ComponentBase):
     """Child class of abstract ComponentBase"""
     
     def equation(self):
-        return NotImplemented
+        raise NotImplementedError
 
 class ComponentTestCase(TestCase):
     def setUp(self):

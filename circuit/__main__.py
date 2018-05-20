@@ -82,7 +82,7 @@ class Cmd(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def call(self, args):
         """Take Namespace object as input and execute command"""
-        return NotImplemented
+        raise NotImplementedError
 
 class Sim(Cmd):
     """Parse either a LISO input file or output file, simulate its circuit,

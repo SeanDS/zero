@@ -79,7 +79,7 @@ class DataSet(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def draw(self, *axes):
-        return NotImplemented
+        raise NotImplementedError
 
     @abc.abstractmethod
     def label(self, tex=False):

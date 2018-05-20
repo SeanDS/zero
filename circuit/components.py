@@ -65,7 +65,7 @@ class Component(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def equation(self):
-        return NotImplemented
+        raise NotImplementedError
 
     def add_noise(self, noise):
         """Add a noise source to the component.
