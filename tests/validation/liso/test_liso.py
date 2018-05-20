@@ -4,8 +4,6 @@ import numpy as np
 import unittest
 import logging
 
-from circuit import logging_on
-logging_on()
 from circuit.liso import Runner
 
 LOGGER = logging.getLogger("test")
