@@ -61,13 +61,13 @@ class SIFormatter(BaseFormatter):
     # regular expression to find values with unit prefixes and units in text;
     # this technically allows strings with both exponents and unit prefices,
     # like ".1e-6.MHz", but these should fail later validation
-    VALUE_REGEX = re.compile("^([+-]?\d*\.?\d*)" # base
-                             "([eE]([+-]?\d*\.?\d*))?\s*" # numeric exponent
-                             "([yzafpnuµmkMGTEZY])?" # unit prefix exponent
-                             "(m|kg|s|A|K|mol|cd|rad|" # SI unit
-                             "sr|Hz|N|Pa|J|W|C|V|F|Ω|"
-                             "S|Wb|T|H|°C|lm|lx|Bq|Gy"
-                             "|Sv|kat)?")
+    VALUE_REGEX = re.compile(r"^([+-]?\d*\.?\d*)" # base
+                             r"([eE]([+-]?\d*\.?\d*))?\s*" # numeric exponent
+                             r"([yzafpnuµmkMGTEZY])?" # unit prefix exponent
+                             r"(m|kg|s|A|K|mol|cd|rad|" # SI unit
+                             r"sr|Hz|N|Pa|J|W|C|V|F|Ω|"
+                             r"S|Wb|T|H|°C|lm|lx|Bq|Gy"
+                             r"|Sv|kat)?")
 
     @classmethod
     def format(cls, value, unit=""):

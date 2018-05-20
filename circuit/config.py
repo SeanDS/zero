@@ -119,7 +119,7 @@ class OpAmpLibrary(BaseConfig):
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
 
     # compiled regular expressions for parsing op-amp data
-    COMMENT_REGEX = re.compile("\s*\#.*$")
+    COMMENT_REGEX = re.compile(r"\s*\#.*$")
 
     def __init__(self, *args, **kwargs):
         """Instantiate a new op-amp library"""

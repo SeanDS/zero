@@ -26,7 +26,7 @@ from .solution import Solution
 LOGGER = logging.getLogger("liso")
 
 class BaseParser(object, metaclass=abc.ABCMeta):
-    COMMENT_REGEX = re.compile("^#.*?$")
+    COMMENT_REGEX = re.compile(r"^#.*?$")
 
     # output types
     TYPE_TF = 1
@@ -652,9 +652,9 @@ class OutputParser(BaseParser):
     # circuit definitions
     # match text after e.g. "#2 capacitors:" and before the first line with
     # a non-whitespace character after the "#"
-    COMPONENT_REGEX = re.compile("^#(\d+) "
-                                 "(op-amps?|capacitors?|resistors?|coils?|nodes?):"
-                                 "([\s\S]+?)(?=\n#\S+)",
+    COMPONENT_REGEX = re.compile(r"^#(\d+) "
+                                 r"(op-amps?|capacitors?|resistors?|coils?|nodes?):"
+                                 r"([\s\S]+?)(?=\n#\S+)",
                                  re.MULTILINE)
 
     # text to ignore in op-amp list
@@ -665,56 +665,56 @@ class OutputParser(BaseParser):
     ]
 
     # op-amp parameters
-    OPAMP_REGEX = re.compile("^#\s+\d+\s+" # count
-                             "([\w\d]+)\s+" # name
-                             "([\w\d]+)\s+" # model
-                             "'\+'=([\w\d]+)\s+" # +in
-                             "'\-'=([\w\d]+)\s+" # -in
-                             "'out'=([\w\d]+)\s+" # out
-                             "a0=([\w\d\s\.]+)\s+" # gain
-                             "gbw=([\w\d\s\.]+)^" # gbw
-                             "\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # un
-                             "uc=([\w\d\s\.]+)\s+" # uc
-                             "in=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # in
-                             "ic=([\w\d\s\.]+)^" # ic
-                             "\#\s+umax=([\w\d\s\.]+)\s+" # umax
-                             "imax=([\w\d\s\.]+)\s+" # imax
-                             "sr=([\w\d\s\.]+)\/us\s+" # sr
-                             "delay=([\w\d\s\.]+)" # delay
-                             "(^\#\s+(.*)$)*", # poles/zeros (optional line)
+    OPAMP_REGEX = re.compile(r"^#\s+\d+\s+" # count
+                             r"([\w\d]+)\s+" # name
+                             r"([\w\d]+)\s+" # model
+                             r"'\+'=([\w\d]+)\s+" # +in
+                             r"'\-'=([\w\d]+)\s+" # -in
+                             r"'out'=([\w\d]+)\s+" # out
+                             r"a0=([\w\d\s\.]+)\s+" # gain
+                             r"gbw=([\w\d\s\.]+)^" # gbw
+                             r"\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # un
+                             r"uc=([\w\d\s\.]+)\s+" # uc
+                             r"in=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # in
+                             r"ic=([\w\d\s\.]+)^" # ic
+                             r"\#\s+umax=([\w\d\s\.]+)\s+" # umax
+                             r"imax=([\w\d\s\.]+)\s+" # imax
+                             r"sr=([\w\d\s\.]+)\/us\s+" # sr
+                             r"delay=([\w\d\s\.]+)" # delay
+                             r"(^\#\s+(.*)$)*", # poles/zeros (optional line)
                              re.MULTILINE)
 
     # op-amp roots
-    OPAMP_ROOT_REGEX = re.compile("(pole|zero) at ([\w\d\s\.]+) "
-                                  "\((real|Q=([\w\d\s\.]+))\)")
+    OPAMP_ROOT_REGEX = re.compile(r"(pole|zero) at ([\w\d\s\.]+) "
+                                  r"\((real|Q=([\w\d\s\.]+))\)")
 
     # data column definitions
-    TF_VOLTAGE_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) voltage outputs:$")
-    TF_CURRENT_OUTPUT_REGEX = re.compile("^\#OUTPUT (\d+) current outputs:$")
-    NOISE_OUTPUT_REGEX = re.compile("^\#Noise is computed at node ([\w\d]+) "
-                                    "for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
+    TF_VOLTAGE_OUTPUT_REGEX = re.compile(r"^\#OUTPUT (\d+) voltage outputs:$")
+    TF_CURRENT_OUTPUT_REGEX = re.compile(r"^\#OUTPUT (\d+) current outputs:$")
+    NOISE_OUTPUT_REGEX = re.compile(r"^\#Noise is computed at node ([\w\d]+) "
+                                    r"for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
     # "0 node: nin dB Degrees"
-    TF_VOLTAGE_SINK_REGEX = re.compile("^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
+    TF_VOLTAGE_SINK_REGEX = re.compile(r"^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
     # "#  0 C:c2 dB Degrees"
-    TF_CURRENT_SINK_REGEX = re.compile("^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
+    TF_CURRENT_SINK_REGEX = re.compile(r"^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
     # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
     #    #  r1 r3 r4 r6 op1(U) op1(I-) """
-    NOISE_VOLTAGE_SOURCE_REGEX = re.compile("^\#Noise is computed at node "
-                                            "[\w\d]+ for .* :\n"
-                                            "\#\s*([\w\d\s\(\)\-\+]*)\s*$",
+    NOISE_VOLTAGE_SOURCE_REGEX = re.compile(r"^\#Noise is computed at node "
+                                            r"[\w\d]+ for .* :\n"
+                                            r"\#\s*([\w\d\s\(\)\-\+]*)\s*$",
                                             re.MULTILINE)
     # "o1(I+)"
-    NOISE_COMPONENT_REGEX = re.compile("^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
+    NOISE_COMPONENT_REGEX = re.compile(r"^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
     # input nodes
-    FIXED_VOLTAGE_INPUT_NODE_REGEX = re.compile("\#Voltage input at node "
-                                                "(.+), impedance (.+)Ohm")
-    FIXED_CURRENT_INPUT_NODE_REGEX = re.compile("\#Current input into node "
-                                                "(.+), impedance (.+)Ohm")
-    FLOATING_VOLTAGE_INPUT_NODES_REGEX = re.compile("\#Floating voltage input "
-                                                    "between nodes (.+) "
-                                                    "and (.+), impedance "
-                                                    "(.+) Ohm")
+    FIXED_VOLTAGE_INPUT_NODE_REGEX = re.compile(r"\#Voltage input at node "
+                                                r"(.+), impedance (.+)Ohm")
+    FIXED_CURRENT_INPUT_NODE_REGEX = re.compile(r"\#Current input into node "
+                                                r"(.+), impedance (.+)Ohm")
+    FLOATING_VOLTAGE_INPUT_NODES_REGEX = re.compile(r"\#Floating voltage input "
+                                                    r"between nodes (.+) "
+                                                    r"and (.+), impedance "
+                                                    r"(.+) Ohm")
 
     def __init__(self, *args, **kwargs):
         # defaults
