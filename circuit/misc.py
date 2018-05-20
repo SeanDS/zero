@@ -46,63 +46,6 @@ class NamedInstance(abc.ABCMeta):
 
         return cls._names[name]
 
-def _n_comb_k(total, choose, repetition=False):
-    """Number of combinations of n things taken k at a time
-
-    :param total: total number of things
-    :type total: int
-    :param choose: number of elements to choose
-    :type choose: int
-    :param repetition: whether to allow the same values to be repeated in \
-                       sequences multiple (up to `choose`) times
-    :type repetition: bool
-    :return: number of combinations
-    :rtype: int
-    """
-
-    if repetition:
-        return _n_comb_k(total + choose - 1, choose)
-
-    return _binom(total, choose)
-
-def _n_perm_k(total, choose):
-    """Number of permutations of n things taken k at a time
-
-    :param total: total number of things
-    :type total: int
-    :param choose: number of elements to choose
-    :type choose: int
-    :return: number of permutations
-    :rtype: int
-    """
-
-    return math.factorial(choose) * _n_comb_k(total, total - choose)
-
-def _binom(total, choose):
-    """Calculate binomial coefficient
-
-    From https://stackoverflow.com/a/3025547
-
-    :param total: total number of things
-    :type total: int
-    :param choose: number of elements to choose
-    :type choose: int
-    :return: binomial coefficient
-    :rtype: int
-    """
-
-    if 0 <= choose <= total:
-        ntok = 1
-        ktok = 1
-
-        for iteration in range(1, min(choose, total - choose) + 1):
-            ntok *= total
-            ktok *= iteration
-            total -= 1
-        return ntok // ktok
-    else:
-        return 0
-
 def _print_progress(sequence, total, update=100000, stream=sys.stdout):
     """Print progress of generator with known length
 
