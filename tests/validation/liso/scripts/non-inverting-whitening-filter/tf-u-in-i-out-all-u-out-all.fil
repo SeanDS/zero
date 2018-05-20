@@ -6,7 +6,7 @@ r r2 43e3 nm nout
 c c2 47e-12 nm nout
 op o1 LT1124 nin nm nout
 
-freq log 1 1M 1001
+freq log 1 100k 100
 
 uinput nin 0
 ioutput all

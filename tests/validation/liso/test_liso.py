@@ -59,7 +59,8 @@ class LisoTester(unittest.TestCase):
         return text
 
 def fil_scripts():
-    return glob.glob(os.path.join(fil_dir(), "*.fil"))
+    # find *.fil scripts in all subdirectories
+    return glob.glob(os.path.join(fil_dir(), "**/*.fil"), recursive=True)
 
 def fil_dir():
     this_script_dir = os.path.dirname(os.path.realpath(__file__))

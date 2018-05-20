@@ -14,7 +14,7 @@ r rq 22.9111k nm2 no
 r load 1k no gnd
 r rin 50 nii ni
 
-freq log 100m 50 400
+freq log 100m 50 100
 
-uinput nii 0
+iinput nii 0
 uoutput no

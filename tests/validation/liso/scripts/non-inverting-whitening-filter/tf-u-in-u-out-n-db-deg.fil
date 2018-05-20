@@ -6,7 +6,7 @@ r r2 43k nm nout
 c c2 47p nm nout
 op o1 LT1124 nin nm nout
 
-freq log 1 100k 1001
+freq log 1 100k 100
 
 uinput nin 0
 uoutput nout:db:deg
