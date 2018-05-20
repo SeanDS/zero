@@ -5,7 +5,7 @@ import abc
 import logging
 import re
 import numpy as np
-from configparser import RawConfigParser
+from configparser import ConfigParser
 import pkg_resources
 import appdirs
 
@@ -28,7 +28,7 @@ class SingletonAbstractMeta(abc.ABCMeta):
         
         return cls._SINGLETON_REGISTRY[cls]
 
-class BaseConfig(RawConfigParser, metaclass=SingletonAbstractMeta):
+class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
     """Abstract configuration class"""
 
     CONFIG_FILENAME = None
