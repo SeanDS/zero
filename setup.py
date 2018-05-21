@@ -8,19 +8,19 @@ with open("README.md") as readme_file:
     readme = readme_file.read()
 
 REQUIREMENTS = [
-    "numpy >= 1.14.0",
-    "scipy >= 1.0.0",
-    "matplotlib >= 2.1.1",
-    "progressbar2 >= 3.34.3",
-    "appdirs >= 1.4.3",
-    "tabulate >= 0.8.2"
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "progressbar2",
+    "appdirs",
+    "tabulate"
 ]
 
 # extra dependencies
 EXTRAS = {
     "dev": [
-        "sphinx >= 1.6.0",
-        "sphinx-bootstrap-theme >= 0.6.0"
+        "sphinx",
+        "sphinx-bootstrap-theme"
     ]
 }
 
