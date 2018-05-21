@@ -11,7 +11,7 @@ from ..components import Component, Input, Node, ComponentNoise, NodeNoise
 from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
                     CurrentVoltageTF, NoiseSpectrum, Series)
 from ..solution import Solution
-from ..display import MatrixDisplay
+from ..display import MatrixDisplay, EquationDisplay
 
 # FIXME: move this into base analysis, make `progress_generator` function
 from ..misc import _print_progress
@@ -355,8 +355,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
                         ", ".join([str(tf) for tf in skips]))
 
         if print_equations:
-            self.print_equations(matrix=self.calculate_tf_matrix(frequency=1),
-                                 rhs=self.input_vector, stream=stream)
+            print(self.circuit_equations(matrix=self.calculate_tf_matrix(frequency=1),
+                                         rhs=self.input_vector), file=stream)
         if print_matrix:
             print(self.circuit_matrix(matrix=self.calculate_tf_matrix(frequency=1),
                                       rhs=self.input_vector), file=stream)
@@ -455,8 +455,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
                         ", ".join([str(noise) for noise in skips]))
 
         if print_equations:
-            self.print_equations(matrix=self.calculate_noise_matrix(frequency=1),
-                                 rhs=self.noise_vector, stream=stream)
+            print(self.circuit_equations(matrix=self.calculate_noise_matrix(frequency=1),
+                                         rhs=self.noise_vector), file=stream)
         if print_matrix:
             print(self.circuit_matrix(matrix=self.calculate_noise_matrix(frequency=1),
                                       rhs=self.noise_vector), file=stream)
@@ -852,8 +852,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
 
         return [self.format_element(element) for element in self.elements]
 
-    def print_equations(self, matrix, rhs, stream=sys.stdout):
-        """Pretty print circuit equations.
+    def circuit_equations(self, matrix, rhs):
+        """Get circuit equations
 
         Parameters
         ----------
@@ -862,37 +862,12 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         rhs : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
             right hand side of matrix equation, representing the input or output
             vector
-        stream : :class:`io.IOBase`
-            stream to print to
         """
 
-        print("Circuit equations:", file=stream)
+        # convert matrix to full (non-sparse) format
+        matrix = matrix.toarray()
 
-        for row, rhs_value in zip(range(matrix.shape[0]), rhs):
-            # flag to suppress leading sign
-            first = True
-
-            for column, header in zip(range(matrix.shape[1]), self.element_headers):
-                element = matrix[row, column]
-
-                if element == 0:
-                    # don't print
-                    continue
-
-                if np.sign(element) == -1:
-                    print(" - ", end="", file=stream)
-                elif not first:
-                    print(" + ", end="", file=stream)
-
-                # flag that we're beyond first column
-                first = False
-
-                if np.abs(element) != 1:
-                    print("(%g%+gi)" % (np.real(element), np.imag(element)),
-                          end="", file=stream)
-
-                print(header, end="", file=stream)
-            print(" = %s" % rhs_value, file=stream)
+        return EquationDisplay(matrix, rhs, self.elements)
 
     def circuit_matrix(self, matrix, rhs):
         """Get circuit matrix
@@ -906,7 +881,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             vector
         """
 
-        # get matrix in full (non-sparse) format to allow stacking
+        # convert matrix to full (non-sparse) format
         matrix = matrix.toarray()
 
         # column headers, with extra columns for component names and RHS

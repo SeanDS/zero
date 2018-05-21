@@ -1,12 +1,14 @@
 """Rich display system"""
 
+import abc
 from importlib import import_module
 import numpy as np
+import collections
 import numbers
 from tabulate import tabulate
 
 from .config import CircuitConfig
-from .components import Resistor, Capacitor, Inductor, OpAmp, Input
+from .components import Resistor, Capacitor, Inductor, OpAmp, Input, Component, Node
 
 CONF = CircuitConfig()
 
@@ -83,71 +85,166 @@ class NodeGraph(object):
         """Graphviz rendering for Jupyter notebooks."""
         return self.node_graph()._repr_svg_()
 
-class MatrixDisplay(object):
-    def __init__(self, lhs, middle, rhs, headers):
-        """Instantiate matrix display"""
+class TableFormatter(object, metaclass=abc.ABCMeta):
+    """Table formatter mixin
+    
+    Children inheriting this class must implement the `row_cell_groups` method.
+    """
 
+    def sanitise_cell(self, cell):
+        if isinstance(cell, (str, np.string_)):
+            # leave strings alone
+            return str(cell)
+        
+        if isinstance(cell, np.ndarray):
+            if len(cell) == 1:
+                # this is a single-valued array
+                cell = cell[0]
+            else:
+                raise ValueError("got a multi-valued array when expecting a single number")
+
+        if hasattr(cell, 'real'):
+            if np.abs(cell) == 1:
+                # get rid of imaginary part, retaining sign
+                cell = np.sign(cell.real) * np.abs(cell).real
+            else:
+                # get rid of imaginary part
+                cell = np.abs(cell).real
+        
+        # convert to float
+        return float(cell)
+
+    @abc.abstractproperty
+    def row_cell_groups(self):
+        raise NotImplementedError
+
+    @property
+    def row_cells(self):
+        """Returns an iterable of cells for each row in the table"""
+        return [self.combine_cells(*cell_groups) for cell_groups in self.row_cell_groups]
+
+    def combine_cells(self, *cells):
+        """Combines the specified collections of cells into a single iterable"""
+
+        for collection in cells:
+            if not isinstance(collection, collections.Iterable):
+                # convert to list
+                collection = [collection]
+            
+            yield from collection
+
+    @property
+    def table(self):
+        """Get unformatted table"""
+        return self.row_cells
+
+    @property
+    def formatted_table(self):
+        """Get formatted table"""
+        return [self.format_row(row_cells) for row_cells in self.row_cells]
+
+    def format_row(self, cells):
+        yield from [self.format_cell(self.sanitise_cell(cell)) for cell in cells]
+
+    def format_cell(self, cell):
+        """Default cell formatter"""
+        return cell
+
+    def get_base_power(self, number):
+        """Number's base and power"""
+
+        if number == 0:
+            raise ValueError("cannot calculate power of 0")
+
+        # number's nearest power of ten
+        power = round(np.log10(number))
+
+        # divide down by power
+        base = number / 10 ** power
+
+        return base, power
+
+class MatrixDisplay(TableFormatter):
+    def __init__(self, lhs, middle, rhs, headers):
+        """Instantiate matrix display with extra left and right sides"""
         lhs = np.array(lhs)
         middle = np.array(middle)
         rhs = np.array(rhs)
         headers = list(headers)
 
-        if middle.ndim != 2:
-            raise ValueError("Middle must have exactly 2 dimensions")
-
         if lhs.shape[1] + middle.shape[1] + rhs.shape[1] != len(headers):
-            raise ValueError("Shape of first dimension of lhs, middle and rhs must "
-                             "add up to length of headers")
+            raise ValueError("lhs + middle + rhs second dimensions must match number of headers")
 
         self.lhs = lhs
         self.middle = middle
         self.rhs = rhs
         self.headers = headers
 
-    @property
-    def matrix(self):
-        """Get full matrix as a generator, consisting of left, middle and right sides"""
-        # unfortunately can't use `np.concatenate` here, as it changes the full matrix
-        # type to whatever is first, which is usually a string
+        super(MatrixDisplay, self).__init__()
 
-        for l, m, r in zip(self.lhs, self.middle, self.rhs):
-            yield self.format_row(l, m, r)
+    @property
+    def row_cell_groups(self):
+        return zip(self.lhs, self.middle, self.rhs)
 
     def format_cell(self, cell):
-        if np.iscomplex(cell):
-            # convert complex value to magnitude
-            cell = np.abs(cell)
+        """Override parent"""
+
+        if cell == 0:
+            return "---"
         
-            # remove imaginary part, which is now zero
-            cell = cell.real
+        return cell
 
-        if isinstance(cell, numbers.Number):
-            cell = cell.real
-
-            if cell == 0:
-                return "---"
-            elif abs(cell) == 1:
+    def format_cell_text(self, cell):
+        if not isinstance(cell, str):
+            if np.abs(cell) == 1:
                 # don't format zero or one
-                return "%i" % cell
-            elif abs(cell) < 1e-12:
-                # just show power for tiny stuff
-                return "e%d" % round(np.log10(cell))
-            
-            return "%.2e" % cell
+                cell = str(int(cell))
+            else:
+                base, power = self.get_base_power(cell)
+
+                exponent = "e%i" % power
+
+                if power < -12:
+                    # just show power for tiny stuff
+                    cell = exponent
+                else:
+                    cell = "%.2f" % base
+
+                    if power != 0:
+                        # print non-zero power
+                        cell += exponent
         
-        return str(cell)
-    
-    def format_row(self, left, middle, right):
-        yield from [self.format_cell(cell) for cell in left]
-        yield from [self.format_cell(cell) for cell in middle]
-        yield from [self.format_cell(cell) for cell in right]
+        return cell
+
+    def format_cell_html(self, cell):
+        if not isinstance(cell, str):
+            if np.abs(cell) == 1:
+                # don't format zero or one
+                cell = str(int(cell))
+            else:
+                base, power = self.get_base_power(cell)
+
+                if power < -12:
+                    # just show power for tiny stuff
+                    cell = "10<sup>%i</sup>" % round(np.log10(power))
+                else:
+                    cell = "%.2f" % base
+
+                    if power != 0:
+                        # print non-zero power
+                        cell += "×10<sup>%i</sup>" % power
+        
+        return "<td>%s</td>" % cell
 
     def __repr__(self):
-        """Text representation of table"""
+        """Text representation of the table"""
+        
+        # format table
+        table = [[self.format_cell_text(cell) for cell in row] for row in self.formatted_table]
 
         # tabulate data
-        return tabulate(self.matrix, self.headers, tablefmt=CONF["format"]["table"])
-    
+        return tabulate(table, self.headers, tablefmt=CONF["format"]["table"])
+
     def _repr_html_(self):
         """HTML table representation"""
 
@@ -158,8 +255,123 @@ class MatrixDisplay(object):
         table += "</tr>"
         table += "</thead>"
         table += "<tbody>"
-        table += "".join(["<tr>%s</tr>" % "".join(["<td>%s</td>" % self.format_cell(cell) for cell in row]) for row in self.matrix])
+        table += "".join(["<tr>%s</tr>" % "".join([self.format_cell_html(cell) for cell in row]) for row in self.formatted_table])
         table += "</tbody>"
         table += "</table>"
 
         return table
+
+class EquationDisplay(TableFormatter):
+    def __init__(self, lhs, rhs, elements):
+        lhs = np.array(lhs)
+        rhs = np.array(rhs)
+        elements = list(elements)
+
+        if lhs.shape[1] != len(elements):
+            raise ValueError("lhs second dimensions must match number of elements")
+
+        self.lhs = lhs
+        self.rhs = rhs
+        self.elements = elements
+
+        super(EquationDisplay, self).__init__()
+
+    @property
+    def row_cell_groups(self):
+        return zip(self.lhs, self.rhs)
+    
+    def format_coefficient(self, coefficient):
+        """Format equation coefficient"""
+
+        if coefficient == 0 or abs(coefficient) == 1:
+            # don't write zeros or ones
+            return ""
+
+        return self.format_exponent(coefficient)
+
+    def format_rhs(self, rhs):
+        """Format right hand side number"""
+
+        rhs = self.format_cell(self.sanitise_cell(rhs))
+
+        if rhs == 0:
+            return "0"
+        elif abs(rhs) == 1:
+            # maybe write with sign
+            return "%d" % rhs
+
+        return self.format_exponent(rhs)
+
+    def format_exponent(self, number):
+        """Format number in LaTeX"""
+
+        base, power = self.get_base_power(number)
+
+        if power == 0:
+            power_str = ""
+        else:
+            power_str = r"10^{%d}" % power
+
+        if power < -12:
+            # don't print base
+            base_str = ""
+        else:
+            base_str = r"%.2f" % base
+
+            if power_str:
+                # add multiplication symbol
+                base_str += r"\times"
+
+        return base_str + power_str
+
+    def __repr__(self):
+        """Text representation of equations"""
+        return ""
+
+    def _repr_latex_(self):
+        """LaTeX representation of equations"""
+
+        expression = r"\begin{align}"
+
+        for lhs_coefficients, rhs_value in zip(self.formatted_table, self.rhs):
+            # flag to suppress leading sign
+            first = True
+
+            # loop over equation coefficients
+            for coefficient, element in zip(lhs_coefficients, self.elements):
+                if coefficient == 0:
+                    # don't print
+                    continue
+
+                if np.sign(coefficient) == -1:
+                    # add negative sign
+                    expression += r"-"
+                elif not first:
+                    # add positive sign
+                    expression += r"+"
+                
+                # flag that we're beyond the first column
+                first = False
+
+                # format element
+                if isinstance(element, Component):
+                    # current through component
+                    element_format = r"I_{\text{%s}}"
+                elif isinstance(element, Node):
+                    element_format = r"V_{\text{%s}}"
+                else:
+                    raise ValueError("unexpected element type")
+
+                # write coefficient and element
+                expression += self.format_coefficient(coefficient) + element_format % element
+
+            # add right hand side, with alignment character
+            expression += r"&="
+            expression += self.format_rhs(rhs_value)
+
+            # add newline
+            expression += r"\\"
+
+        expression += r"\end{align}"
+        
+        return expression
