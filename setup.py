@@ -7,16 +7,22 @@ import circuit
 with open("README.md") as readme_file:
     readme = readme_file.read()
 
-requirements = [
+REQUIREMENTS = [
     "numpy >= 1.14.0",
     "scipy >= 1.0.0",
     "matplotlib >= 2.1.1",
     "progressbar2 >= 3.34.3",
     "appdirs >= 1.4.3",
-    "tabulate >= 0.8.2",
-    "sphinx >= 1.6.0",
-    "sphinx-bootstrap-theme >= 0.6.0"
+    "tabulate >= 0.8.2"
 ]
+
+# extra dependencies
+EXTRAS = {
+    "dev": [
+        "sphinx >= 1.6.0",
+        "sphinx-bootstrap-theme >= 0.6.0"
+    ]
+}
 
 setup(
     name="circuit.py",
@@ -37,7 +43,8 @@ setup(
             '%s = circuit.__main__:main' % circuit.PROGRAM
         ]
     },
-    install_requires=requirements,
+    install_requires=REQUIREMENTS,
+    extras_require=EXTRAS,
     license="GPLv3",
     zip_safe=False,
     classifiers=[
