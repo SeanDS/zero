@@ -280,14 +280,23 @@ class EquationDisplay(TableFormatter):
     def row_cell_groups(self):
         return zip(self.lhs, self.rhs)
     
-    def format_coefficient(self, coefficient):
+    def format_coefficient_text(self, coefficient):
         """Format equation coefficient"""
 
         if coefficient == 0 or abs(coefficient) == 1:
             # don't write zeros or ones
             return ""
 
-        return self.format_exponent(coefficient)
+        return str(self.format_exponent_text(coefficient))
+
+    def format_coefficient_latex(self, coefficient):
+        """Format equation coefficient"""
+
+        if coefficient == 0 or abs(coefficient) == 1:
+            # don't write zeros or ones
+            return ""
+
+        return str(self.format_exponent_latex(coefficient))
 
     def format_rhs(self, rhs):
         """Format right hand side number"""
@@ -295,15 +304,44 @@ class EquationDisplay(TableFormatter):
         rhs = self.format_cell(self.sanitise_cell(rhs))
 
         if rhs == 0:
+            # we want to show the right hand side for equations
             return "0"
         elif abs(rhs) == 1:
             # maybe write with sign
-            return "%d" % rhs
+            return "%i" % rhs
 
-        return self.format_exponent(rhs)
+        return rhs
 
-    def format_exponent(self, number):
+    def format_exponent_text(self, number):
+        """Format number in text"""
+
+        if isinstance(number, str):
+            return number
+
+        base, power = self.get_base_power(number)
+
+        if power == 0:
+            power_str = ""
+        else:
+            power_str = "10 ^ %d" % power
+
+        if power < -12:
+            # don't print base
+            base_str = ""
+        else:
+            base_str = "%.2f" % base
+
+            if power_str:
+                # add multiplication symbol
+                base_str += " × "
+
+        return base_str + power_str
+
+    def format_exponent_latex(self, number):
         """Format number in LaTeX"""
+
+        if isinstance(number, str):
+            return number
 
         base, power = self.get_base_power(number)
 
@@ -324,9 +362,77 @@ class EquationDisplay(TableFormatter):
 
         return base_str + power_str
 
+    def align_to(self, search, sequence):
+        """Line up elements in `sequence` to `search` character or string"""
+
+        # find longest line up to equals
+        max_pos = max([item.find(search) for item in sequence])
+
+        # prepend whitespace to each item
+        for item in sequence:
+            # number of spaces to add
+            n_spaces = max_pos - item.find(search)
+
+            yield " " * n_spaces + item
+
     def __repr__(self):
         """Text representation of equations"""
-        return ""
+
+        lines = []
+
+        for lhs_coefficients, rhs_value in zip(self.formatted_table, self.rhs):
+            # flag to suppress leading sign
+            first = True
+
+            clauses = []
+
+            # loop over equation coefficients
+            for coefficient, element in zip(lhs_coefficients, self.elements):
+                clause = ""
+
+                if coefficient == 0:
+                    # don't print
+                    continue
+
+                if np.sign(coefficient) == -1:
+                    # add negative sign
+                    clause += "- "
+                elif not first:
+                    # add positive sign
+                    clause += "+ "
+                
+                # flag that we're beyond the first column
+                first = False
+
+                # format element
+                if isinstance(element, Component):
+                    # current through component
+                    element_format = "I[%s]"
+                elif isinstance(element, Node):
+                    element_format = "V[%s]"
+                else:
+                    raise ValueError("unexpected element type")
+
+                # format coefficient
+                formatted_coefficient = self.format_coefficient_text(coefficient)
+
+                if formatted_coefficient:
+                    formatted_coefficient += " × "
+
+                # write coefficient and element
+                clause += "%s%s" % (formatted_coefficient,  element_format % element)
+                
+                clauses.append(clause)
+
+            # add right hand side, with alignment character
+            clauses.append("= %s" % self.format_exponent_text(self.format_rhs(rhs_value)))
+
+            # make line from clauses
+            lines.append(" ".join(clauses))
+        
+        lines = self.align_to("=", lines)
+
+        return "\n".join(lines)
 
     def _repr_latex_(self):
         """LaTeX representation of equations"""
@@ -356,18 +462,18 @@ class EquationDisplay(TableFormatter):
                 # format element
                 if isinstance(element, Component):
                     # current through component
-                    element_format = r"I_{\text{%s}}"
+                    element_format = r"I_{%s}"
                 elif isinstance(element, Node):
-                    element_format = r"V_{\text{%s}}"
+                    element_format = r"V_{%s}"
                 else:
                     raise ValueError("unexpected element type")
 
                 # write coefficient and element
-                expression += self.format_coefficient(coefficient) + element_format % element
+                expression += self.format_coefficient_latex(coefficient) + element_format % element
 
             # add right hand side, with alignment character
             expression += r"&="
-            expression += self.format_rhs(rhs_value)
+            expression += self.format_exponent_latex(self.format_rhs(rhs_value))
 
             # add newline
             expression += r"\\"
