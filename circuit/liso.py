@@ -142,6 +142,14 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
         return output_nodes
 
+    @output_nodes.setter
+    def output_nodes(self, nodes):
+        self._output_nodes = set(nodes)
+
+        # unset all outputs flags
+        self.output_all_nodes = False
+        self.output_all_opamp_nodes = False
+
     @property
     def output_components(self):
         if self.output_all_components:
@@ -155,6 +163,14 @@ class BaseParser(object, metaclass=abc.ABCMeta):
             output_components |= self.opamp_names
 
         return output_components
+
+    @output_components.setter
+    def output_components(self, components):
+        self._output_components = set(components)
+
+        # unset all outputs flags
+        self.output_all_components = False
+        self.output_all_opamp_components = False
 
     def validate(self):
         if self.frequencies is None:
