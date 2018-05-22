@@ -396,6 +396,8 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         extra_args = {}
 
         for arg in args:
+            arg = arg.lower()
+
             try:
                 key, value = arg.split("=")
             except ValueError:
@@ -497,6 +499,8 @@ class InputParser(BaseParser):
         :raises ValueError: if directive is unknown
         """
 
+        directive = directive.lower()
+
         if directive in self.DIRECTIVES["input"]:
             self._parse_input(directive, options)
         elif directive in self.DIRECTIVES["output"]:
@@ -517,11 +521,14 @@ class InputParser(BaseParser):
         :type options: Sequence[str]
         """
 
+        input_type = input_type.lower()
+
         # we always have at least a positive node
         self.input_node_p = Node(options[0])
 
         if input_type == "uinput":
             self.input_type = "voltage"
+
             if len(options) > 2:
                 # floating input
                 self.input_node_n = Node(options[1])
@@ -529,7 +536,8 @@ class InputParser(BaseParser):
 
                 LOGGER.info("adding floating voltage input nodes +%s, -%s with "
                             "impedance %f", self.input_node_p,
-                            self.input_node_n, self.input_impedance)
+                            self.input_node_n,
+                            SIFormatter.format(self.input_impedance, "Ω"))
             elif len(options) == 2:
                 self.input_impedance, _ = SIFormatter.parse(options[1])
                 LOGGER.info("adding voltage input node %s with impedance %s",
@@ -542,6 +550,7 @@ class InputParser(BaseParser):
         elif input_type == "iinput":
             self.input_type = "current"
             self.input_node_n = None
+
             if len(options) == 2:
                 self.input_impedance, _ = SIFormatter.parse(options[1])
                 LOGGER.info("adding current input node %s with impedance %s",
@@ -563,12 +572,14 @@ class InputParser(BaseParser):
         :type options: Sequence[str]
         """
 
+        output_type = output_type.lower()
+
         # transfer function output
         self.set_output_type(self.TYPE_TF)
 
         for option in options:
             # split option by colon, ignore scaling
-            output = option.split(":")[0]
+            output = option.split(":")[0].lower()
 
             if output_type == "uoutput":
                 # option is node
@@ -638,15 +649,16 @@ class InputParser(BaseParser):
         if len(options) != 4:
             raise ValueError("syntax: freq lin|log start stop steps")
 
+        scale = options[0].lower()
         start, _ = SIFormatter.parse(options[1])
         stop, _ = SIFormatter.parse(options[2])
         # steps + 1
         count = int(options[3]) + 1
 
-        if options[0] == "lin":
+        if scale == "lin":
             scaling_str = "linear"
             self.frequencies = np.linspace(start, stop, count)
-        elif options[0] == "log":
+        elif scale == "log":
             scaling_str = "logarithmic"
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
@@ -941,8 +953,8 @@ class OutputParser(BaseParser):
         # reset column count
         # A global count is required for situations where both voltage and
         # current outputs are requested. In this case, the current output
-        # column indices are count from 0 even though they appear after the
-        # voltage output columns.
+        # column indices are counted from 0 even though they appear after
+        # the voltage output columns.
         self._found_column_count = 0
 
         for line in lines:
@@ -1008,21 +1020,20 @@ class OutputParser(BaseParser):
 
             # create data series
             series = ComplexSeries(x=self.frequencies, magnitude=magnitude_data,
-                                   phase=phase_data,
-                                   magnitude_scale=magnitude_scale,
+                                   phase=phase_data, magnitude_scale=magnitude_scale,
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on input type
-            if self.input_type is "voltage":
-                function = VoltageVoltageTF(series=series,
-                                            source=self.input_node_p,
+            if self.input_type == "voltage":
+                function = VoltageVoltageTF(series=series, source=self.input_node_p,
                                             sink=sink)
-            elif self.input_type is "current":
+            elif self.input_type == "current":
                 function = CurrentVoltageTF(series=series,
                                             source=self.circuit.get_component("input"),
                                             sink=sink)
             else:
                 raise ValueError("unrecognised input type")
+
             self.add_function(function)
 
             # add output node
@@ -1080,11 +1091,11 @@ class OutputParser(BaseParser):
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on input type
-            if self.input_type is "voltage":
+            if self.input_type == "voltage":
                 function = VoltageCurrentTF(series=series,
                                             source=self.input_node_p,
                                             sink=sink)
-            elif self.input_type is "current":
+            elif self.input_type == "current":
                 function = CurrentCurrentTF(series=series,
                                             source=self.circuit.get_component("input"),
                                             sink=sink)
@@ -1215,9 +1226,8 @@ class Runner(object):
         :rtype: :class:`~OutputParser`
         """
 
-        result = self._run_liso_process(script_path, output_path, plot)
+        self._run_liso_process(script_path, output_path, plot)
 
-        LOGGER.debug("parsing LISO output")
         return OutputParser(output_path)
 
     def _run_liso_process(self, script_path, output_path, plot):
