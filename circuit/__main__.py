@@ -73,11 +73,8 @@ class Cmd(object, metaclass=abc.ABCMeta):
             # print title and version
             print(HEADER)
 
-        try:
-            self.call(args)
-        except Exception as e:
-            print("Error: %s" % e, file=sys.stderr)
-            raise e
+        # run command
+        self.call(args)
 
     @abc.abstractmethod
     def call(self, args):
