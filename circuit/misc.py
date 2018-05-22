@@ -54,12 +54,21 @@ def _print_progress(sequence, total, update=100000, stream=sys.stdout):
     :param total: number of items generator will produce
     :type total: int
     :param update: number of items to yield before next updating display
-    :type update: int
+    :type update: float or int
     :param stream: output stream
     :type stream: :class:`io.IOBase`
     :return: input sequence
     :rtype: Generator[Any]
     """
+
+    total = int(total)
+    update = float(update)
+
+    if total <= 0:
+        raise ValueError("total must be > 0")
+
+    if update <= 0:
+        raise ValueError("update must be > 0")
 
     # set up progress bar
     pbar = progressbar.ProgressBar(widgets=['Calculating: ',
