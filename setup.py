@@ -13,7 +13,8 @@ REQUIREMENTS = [
     "matplotlib",
     "progressbar2",
     "appdirs",
-    "tabulate"
+    "tabulate",
+    "ply"
 ]
 
 # extra dependencies
