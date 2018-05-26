@@ -19,26 +19,38 @@ class LisoOutputParser(LisoParser):
     """
 
     # additional states
+    # avoid using underscores here to stop PLY sharing rules across states
     states = (
         ('resistors', 'inclusive'),
         ('capacitors', 'inclusive'),
         ('inductors', 'inclusive'),
         ('opamps', 'inclusive'),
         ('nodes', 'inclusive'),
+        ('noiseinputcomponents', 'inclusive'),
+        ('voltageoutputnodes', 'inclusive'),
+        ('currentoutputcomponents', 'inclusive'),
+        ('noiseoutputnodes', 'inclusive'),
+        ('gnuplotoptions', 'inclusive'), # used to prevent mis-parsing of gnuplot options
     )
 
     # data lexer tokens
     tokens = [
         'DATUM',
         'NEWLINE',
+        # circuit elements
         'RESISTOR',
         'CAPACITOR',
         'INDUCTOR',
-        'OPAMP_CHUNK_1',
+        'OPAMP_CHUNK_1', # op-amps are split across up to 4 lines
         'OPAMP_CHUNK_2',
         'OPAMP_CHUNK_3',
         'OPAMP_CHUNK_4',
-        'NODE'
+        'NODE',
+        # inputs/outputs
+        'NOISE_INPUT_COMPONENTS',
+        'VOLTAGE_OUTPUT_NODE',
+        'CURRENT_OUTPUT_COMPONENT',
+        'NOISE_OUTPUT_NODES'
     ]
 
     # data point
@@ -59,6 +71,9 @@ class LisoOutputParser(LisoParser):
         self.ninductors = None
         self.nopamps = None
         self.nnodes = None
+        self.nvoutputs = None
+        self.nioutputs = None
+        self.nnoiseoutputs = None
 
         super(LisoOutputParser, self).__init__(*args, **kwargs)
 
@@ -74,29 +89,77 @@ class LisoOutputParser(LisoParser):
         self._data = None
 
     def t_ANY_resistors(self, t):
+        # match start of resistor section
         r'\#(?P<n>\d+)\sresistors?:'
         self.nresistors = t.lexer.lexmatch.group('n')
         t.lexer.begin('resistors')
 
     def t_ANY_capacitors(self, t):
+        # match start of capacitor section
         r'\#(?P<n>\d+)\scapacitors?:'
         self.ncapacitors = t.lexer.lexmatch.group('n')
         t.lexer.begin('capacitors')
 
     def t_ANY_inductors(self, t):
+        # match start of inductor section
         r'\#(?P<n>\d+)\sinductors?:'
         self.ninductors = t.lexer.lexmatch.group('n')
         t.lexer.begin('inductors')
 
     def t_ANY_opamps(self, t):
+        # match start of op-amp section
         r'\#(?P<n>\d+)\sop-amps?:'
         self.nopamps = t.lexer.lexmatch.group('n')
         t.lexer.begin('opamps')
 
     def t_ANY_nodes(self, t):
+        # match start of node section
         r'\#(?P<n>\d+)\snodes?:'
         self.nnodes = t.lexer.lexmatch.group('n')
         t.lexer.begin('nodes')
+
+    def t_ANY_noiseinputs(self, t):
+        # match start of noise node section
+        r'\#Noise\sis\scomputed\sat\snode\s(?P<node>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
+        self.nnoise = t.lexer.lexmatch.group('nnoise')
+        self.nnoisy = t.lexer.lexmatch.group('nnoisy')
+        self.noise_node = t.lexer.lexmatch.group('node')
+        t.lexer.begin('noiseinputcomponents')
+
+    def t_ANY_voltageinput(self, t):
+        r'\#Voltage\sinput\sat\snode\s(?P<node>.+),\simpedance\s(?P<impedance>.+)'
+        self.input_type = "voltage"
+        self.input_node_p = t.lexer.lexmatch.group('node')
+        self.input_impedance = t.lexer.lexmatch.group('impedance')
+
+    def t_ANY_currentinput(self, t):
+        r'\#Current\sinput\sinto\snode\s(?P<node>.+),\simpedance\s(?P<impedance>.+)'
+        self.input_type = "current"
+        self.input_node_p = t.lexer.lexmatch.group('node')
+        self.input_impedance = t.lexer.lexmatch.group('impedance')
+
+    def t_ANY_voltageoutputnodes(self, t):
+        # match start of voltage output section
+        r'\#OUTPUT\s(?P<nout>\d+)\svoltage\soutputs?:'
+        self.nvoutputs = t.lexer.lexmatch.group('nout')
+        t.lexer.begin('voltageoutputnodes')
+
+    def t_ANY_currentoutputcomponents(self, t):
+        # match start of current output section
+        r'\#OUTPUT\s(?P<nout>\d+)\scurrent\soutputs?:'
+        self.nioutputs = t.lexer.lexmatch.group('nout')
+        t.lexer.begin('currentoutputcomponents')
+
+    def t_ANY_noiseoutputnodes(self, t):
+        # match start of noise output section
+        r'\#OUTPUT\s(?P<nout>\d+)\snoise\svoltages?\scaused\sby:'
+        self.nnoiseoutputs = t.lexer.lexmatch.group('nout')
+        t.lexer.begin('noiseoutputnodes')
+
+    def t_ANY_gnuplotoptions(self, t):
+        # match start of gnuplot section
+        r'\#\d+\sGNUPLOT.*'
+        t.lexer.begin('gnuplotoptions')
 
     def t_resistors_RESISTOR(self, t):
         r'\#\s+\d+\s+(?P<resistor>.*)'
@@ -145,6 +208,34 @@ class LisoOutputParser(LisoParser):
         t.type = "NODE"
         t.value = t.lexer.lexmatch.group('node')
         return t
+
+    def t_noiseinputcomponents_NOISE_INPUT_COMPONENTS(self, t):
+        r'\#\s+(?P<components>.*)'
+        t.type = "NOISE_INPUT_COMPONENTS"
+        t.value = t.lexer.lexmatch.group('components')
+        return t
+
+    def t_voltageoutputnodes_VOLTAGE_OUTPUT_NODE(self, t):
+        r'\#\s+\d+\snode:\s(?P<node>.*)'
+        t.type = "VOLTAGE_OUTPUT_NODE"
+        t.value = t.lexer.lexmatch.group('node')
+        return t
+
+    def t_currentoutputcomponents_CURRENT_OUTPUT_COMPONENT(self, t):
+        r'\#\s+\d+\s(?P<component>.*)'
+        t.type = "CURRENT_OUTPUT_COMPONENT"
+        t.value = t.lexer.lexmatch.group('component')
+        return t
+
+    def t_noiseoutputnodes_NOISE_OUTPUT_NODES(self, t):
+        r'\#(?P<nodes>.*)'
+        t.type = "NOISE_OUTPUT_NODES"
+        t.value = t.lexer.lexmatch.group('nodes')
+        return t
+
+    def t_gnuplotoptions(self, t):
+        r'\#.*'
+        # ignore
 
     # detect new lines
     def t_newline(self, t):
@@ -206,7 +297,11 @@ class LisoOutputParser(LisoParser):
                          | CAPACITOR NEWLINE
                          | INDUCTOR NEWLINE
                          | opamp
-                         | NODE NEWLINE'''
+                         | NODE NEWLINE
+                         | NOISE_INPUT_COMPONENTS NEWLINE
+                         | VOLTAGE_OUTPUT_NODE NEWLINE
+                         | CURRENT_OUTPUT_COMPONENT NEWLINE
+                         | NOISE_OUTPUT_NODES NEWLINE'''
         
         p[0] = p[1]
         print("BRRP:", p[1])
