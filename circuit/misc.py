@@ -83,15 +83,15 @@ def _print_progress(sequence, total, update=100000, stream=sys.stdout):
         count += 1
 
         if count % update == 0:
-            pbar.update(100 * count // total)
+            if count == total:
+                fraction = 1
+            else:
+                fraction = 100 * count // total
+            
+            pbar.update(fraction)
+            stream.flush()
 
         yield item
-
-    # make sure bar finishes at 100
-    pbar.update(100)
-
-    # newline before next text
-    print(file=stream)
 
 def db(magnitude):
     """Calculate (power) magnitude in decibels
