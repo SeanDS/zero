@@ -12,7 +12,7 @@ import collections
 
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
 from .liso.input import LisoInputParser
-from .liso.output import LisoOutputParser, InvalidLisoFileException
+from .liso.output_old import LisoOutputParser, InvalidLisoFileException
 
 PROG = "circuit"
 AUTHOR = "Sean Leavey <electronics@attackllama.com>"

@@ -6,7 +6,7 @@ import logging
 from tempfile import NamedTemporaryFile
 import subprocess
 
-from .output import LisoOutputParser
+from .output_old import LisoOutputParser
 
 LOGGER = logging.getLogger("liso")
 

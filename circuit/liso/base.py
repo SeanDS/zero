@@ -27,6 +27,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def __init__(self, **kwargs):
         # initial line number
         self.lineno = 1
+        self._previous_newline_position = 0
 
         # create circuit
         self.circuit = Circuit()
@@ -63,6 +64,14 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         if filepath is not None:
             with open(filepath, "r") as obj:
                 text = obj.read()
+
+        #self.lexer.input(text)
+        # Tokenize
+        #while True:
+        #    tok = self.lexer.token()
+        #    if not tok: 
+        #        break      # No more input
+        #    print(tok)
 
         self.parser.parse(text, lexer=self.lexer)
 
