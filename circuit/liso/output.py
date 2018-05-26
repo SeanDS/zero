@@ -1,11 +1,3 @@
-"""LISO file parsing and running
-
-This module provides classes to parse LISO input and output files and to run
-native LISO binaries automatically. The input and output parsers implement
-methods to search and identify components and commands in their respective
-files.
-"""
-
 import sys
 import os.path
 import abc
@@ -15,26 +7,23 @@ import re
 import numpy as np
 from tempfile import NamedTemporaryFile
 
-from .data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
-                   CurrentVoltageTF, NoiseSpectrum, Series, ComplexSeries)
-from .format import SIFormatter
-from .circuit import Circuit
-from .components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
-                         Node, CurrentNoise, VoltageNoise, JohnsonNoise)
-from .solution import Solution
-from .analysis.ac import SmallSignalAcAnalysis
+from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
+                    CurrentVoltageTF, NoiseSpectrum, Series, ComplexSeries)
+from ..format import SIFormatter
+from ..circuit import Circuit
+from ..components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
+                          Node, CurrentNoise, VoltageNoise, JohnsonNoise)
+from ..solution import Solution
+from ..analysis.ac import SmallSignalAcAnalysis
 
 LOGGER = logging.getLogger("liso")
 
-class BaseParser(object, metaclass=abc.ABCMeta):
-    COMMENT_REGEX = re.compile(r"^#.*?$")
+class InvalidLisoFileException(Exception):
+    pass
 
-    # output types
-    TYPE_TF = 1
-    TYPE_NOISE = 2
 
-    # dict mapping LISO op-amp parameter overrides to `circuit.components.OpAmp` arguments
-    OP_AMP_OVERRIDE_MAP = {
+class LisoOutputParser(object):
+    OP_OVERRIDE_MAP = {
         "a0": "a0",
         "gbw": "gbw",
         "delay": "delay",
@@ -46,6 +35,75 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         "imax": "imax",
         "sr": "slew_rate"
     }
+    
+    COMMENT_REGEX = re.compile(r"^#.*?$")
+
+    # circuit definitions
+    # match text after e.g. "#2 capacitors:" and before the first line with
+    # a non-whitespace character after the "#"
+    COMPONENT_REGEX = re.compile(r"^#(\d+) "
+                                 r"(op-amps?|capacitors?|resistors?|coils?|nodes?):"
+                                 r"([\s\S]+?)(?=\n#\S+)",
+                                 re.MULTILINE)
+
+    # text to ignore in op-amp list
+    OPAMP_IGNORE_STRINGS = [
+        "*OVR*", # overridden parameter flag
+        "s***DEFAULT", # default parameter used
+        "***DEFAULT"
+    ]
+
+    # op-amp parameters
+    OPAMP_REGEX = re.compile(r"^#\s+\d+\s+" # count
+                             r"([\w\d]+)\s+" # name
+                             r"([\w\d]+)\s+" # model
+                             r"'\+'=([\w\d]+)\s+" # +in
+                             r"'\-'=([\w\d]+)\s+" # -in
+                             r"'out'=([\w\d]+)\s+" # out
+                             r"a0=([\w\d\s\.]+)\s+" # gain
+                             r"gbw=([\w\d\s\.]+)^" # gbw
+                             r"\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # un
+                             r"uc=([\w\d\s\.]+)\s+" # uc
+                             r"in=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # in
+                             r"ic=([\w\d\s\.]+)^" # ic
+                             r"\#\s+umax=([\w\d\s\.]+)\s+" # umax
+                             r"imax=([\w\d\s\.]+)\s+" # imax
+                             r"sr=([\w\d\s\.]+)\/us\s+" # sr
+                             r"delay=([\w\d\s\.]+)" # delay
+                             r"(^\#\s+(.*)$)*", # poles/zeros (optional line)
+                             re.MULTILINE)
+
+    # op-amp roots
+    OPAMP_ROOT_REGEX = re.compile(r"(pole|zero) at ([\w\d\s\.]+) "
+                                  r"\((real|Q=([\w\d\s\.]+))\)")
+
+    # data column definitions
+    TF_VOLTAGE_OUTPUT_REGEX = re.compile(r"^\#OUTPUT (\d+) voltage outputs:$")
+    TF_CURRENT_OUTPUT_REGEX = re.compile(r"^\#OUTPUT (\d+) current outputs:$")
+    NOISE_OUTPUT_REGEX = re.compile(r"^\#Noise is computed at node ([\w\d]+) "
+                                    r"for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
+    # "0 node: nin dB Degrees"
+    TF_VOLTAGE_SINK_REGEX = re.compile(r"^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
+    # "#  0 C:c2 dB Degrees"
+    TF_CURRENT_SINK_REGEX = re.compile(r"^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
+    # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
+    #    #  r1 r3 r4 r6 op1(U) op1(I-) """
+    NOISE_VOLTAGE_SOURCE_REGEX = re.compile(r"^\#Noise is computed at node "
+                                            r"[\w\d]+ for .* :\n"
+                                            r"\#\s*([\w\d\s\(\)\-\+]*)\s*$",
+                                            re.MULTILINE)
+    # "o1(I+)"
+    NOISE_COMPONENT_REGEX = re.compile(r"^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
+
+    # input nodes
+    FIXED_VOLTAGE_INPUT_NODE_REGEX = re.compile(r"\#Voltage input at node "
+                                                r"(.+), impedance (.+)Ohm")
+    FIXED_CURRENT_INPUT_NODE_REGEX = re.compile(r"\#Current input into node "
+                                                r"(.+), impedance (.+)Ohm")
+    FLOATING_VOLTAGE_INPUT_NODES_REGEX = re.compile(r"\#Floating voltage input "
+                                                    r"between nodes (.+) "
+                                                    r"and (.+), impedance "
+                                                    r"(.+) Ohm")
 
     def __init__(self, filepath):
         """Instantiate a LISO parser
@@ -73,6 +131,11 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         self.noise_node = None
         self.circuit = Circuit()
 
+        # defaults
+        self.data = None
+        self.functions = []
+        self._found_column_count = 0
+
         self._load_file()
 
     def add_output_node(self, node):
@@ -86,15 +149,6 @@ class BaseParser(object, metaclass=abc.ABCMeta):
 
         with open(self.filepath, "r") as obj:
             self.parse_lines(obj.readlines())
-
-    @abc.abstractmethod
-    def parse_lines(self, lines):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def solution(self):
-        """Get solution"""
-        raise NotImplementedError
 
     def show(self, *args, **kwargs):
         """Show LISO results"""
@@ -114,12 +168,12 @@ class BaseParser(object, metaclass=abc.ABCMeta):
         # add input component, if not yet present
         self._add_circuit_input()
 
-        if self.output_type is self.TYPE_NOISE:
+        if self.output_type == "noise":
             return SmallSignalAcAnalysis(circuit=self.circuit).calculate_noise(
                 frequencies=self.frequencies,
                 noise_node=self.noise_node,
                 *args, **kwargs)
-        elif self.output_type is self.TYPE_TF:
+        elif self.output_type == "tf":
             return SmallSignalAcAnalysis(circuit=self.circuit).calculate_tfs(
                 frequencies=self.frequencies,
                 output_components=self.output_components,
@@ -380,7 +434,7 @@ class BaseParser(object, metaclass=abc.ABCMeta):
             # output type isn't being changed; no need to do anything else
             return
 
-        if output_type not in [self.TYPE_TF, self.TYPE_NOISE]:
+        if output_type not in ["tf", "noise"]:
             raise ValueError("unknown output type")
 
         self.output_type = output_type
@@ -404,351 +458,12 @@ class BaseParser(object, metaclass=abc.ABCMeta):
                 raise ValueError("op-amp parameter override %s invalid; must be in the "
                                  "form 'param=value'" % arg)
             
-            if key not in cls.OP_AMP_OVERRIDE_MAP.keys():
+            if key not in cls.OP_OVERRIDE_MAP.keys():
                 raise ValueError("unknown op-amp override parameter '%s'" % key)
             
-            extra_args[cls.OP_AMP_OVERRIDE_MAP[key]] = value
+            extra_args[cls.OP_OVERRIDE_MAP[key]] = value
         
         return extra_args
-
-class InputParser(BaseParser):
-    COMPONENTS = ["r", "c", "l", "op"]
-    DIRECTIVES = {"input": ["uinput", "iinput"],
-                  "output": ["uoutput", "ioutput"],
-                  "noise": ["noise"],
-                  "frequencies": ["freq"]}
-
-    def __init__(self, *args, **kwargs):
-        super(InputParser, self).__init__(*args, **kwargs)
-
-    @property
-    def directives(self):
-        """Get sequence of supported directives
-
-        :return: directives
-        :rtype: Generator[str]
-        """
-
-        for directive_list in self.DIRECTIVES.values():
-            yield from directive_list
-
-    def parse_lines(self, lines):
-        """Parses a list of LISO input file lines
-
-        :param lines: lines to parse
-        :type lines: Sequence[str]
-        """
-
-        # parse tokens
-        for tokens in [self.tokenise(line) for line in lines
-                        if not line.startswith("#")]:
-            self._parse_tokens(tokens)
-
-        # check we found anything
-        self.validate()
-
-    def _parse_tokens(self, tokens):
-        """Parse LISO input file tokens as commands
-
-        :param tokens: tokens that make up a LISO line
-        :type tokens: Sequence[str]
-        """
-
-        # ignore empty lines
-        if len(tokens) < 1:
-            return
-
-        command = tokens[0].lower()
-
-        if command in self.COMPONENTS:
-            # this is a component
-            self._parse_component(command, tokens[1:])
-        elif command in self.directives:
-            # this is a directive
-            self._parse_directive(command, tokens[1:])
-
-    def _parse_component(self, command, options):
-        """Parse LISO tokens as component
-
-        :param command: command string, e.g. "r" or "op"
-        :type command: str
-        :param options: tokens after command token
-        :type options: Sequence[str]
-        """
-
-        command = command.lower()
-
-        if command == "r":
-            self._add_resistor(*options)
-        elif command == "c":
-            self._add_capacitor(*options)
-        elif command == "l":
-            self._add_inductor(*options)
-        elif command == "op":
-            self._add_library_opamp(*options)
-        else:
-            raise ValueError("Unknown component: %s" % command)
-
-    def _parse_directive(self, directive, options):
-        """Parse LISO tokens as directive
-
-        :param directive: directive string, e.g. "uinput"
-        :type directive: str
-        :param options: directive options
-        :type options: Sequence[str]
-        :raises ValueError: if directive is unknown
-        """
-
-        directive = directive.lower()
-
-        if directive in self.DIRECTIVES["input"]:
-            self._parse_input(directive, options)
-        elif directive in self.DIRECTIVES["output"]:
-            self._parse_output(directive, options)
-        elif directive in self.DIRECTIVES["noise"]:
-            self._parse_noise(options[0])
-        elif directive in self.DIRECTIVES["frequencies"]:
-            self._parse_frequencies(options)
-        else:
-            raise ValueError("Unknown directive: %s" % directive)
-
-    def _parse_input(self, input_type, options):
-        """Parse LISO token as input directive
-
-        :param input_type: input type
-        :type input_type: str
-        :param options: input options
-        :type options: Sequence[str]
-        """
-
-        input_type = input_type.lower()
-
-        # we always have at least a positive node
-        self.input_node_p = Node(options[0])
-
-        if input_type == "uinput":
-            self.input_type = "voltage"
-
-            if len(options) > 2:
-                # floating input
-                self.input_node_n = Node(options[1])
-                self.input_impedance, _ = SIFormatter.parse(options[2])
-
-                LOGGER.info("adding floating voltage input nodes +%s, -%s with "
-                            "impedance %f", self.input_node_p,
-                            self.input_node_n,
-                            SIFormatter.format(self.input_impedance, "Ω"))
-            elif len(options) == 2:
-                self.input_impedance, _ = SIFormatter.parse(options[1])
-                LOGGER.info("adding voltage input node %s with impedance %s",
-                            self.input_node_p,
-                            SIFormatter.format(self.input_impedance, "Ω"))
-            else:
-                self.input_impedance = 50.0
-                LOGGER.info("adding voltage input node %s with default impedance of 50Ω",
-                            self.input_node_p)
-        elif input_type == "iinput":
-            self.input_type = "current"
-            self.input_node_n = None
-
-            if len(options) == 2:
-                self.input_impedance, _ = SIFormatter.parse(options[1])
-                LOGGER.info("adding current input node %s with impedance %s",
-                            self.input_node_p,
-                            SIFormatter.format(self.input_impedance, "Ω"))
-            else:
-                self.input_impedance = 50.0
-                LOGGER.info("adding current input node %s with default impedance of 50Ω",
-                            self.input_node_p)
-        else:
-            raise ValueError("unrecognised input type")
-
-    def _parse_output(self, output_type, options):
-        """Parse LISO token as output directive
-
-        :param output_type: output type
-        :type output_type: str
-        :param options: input options
-        :type options: Sequence[str]
-        """
-
-        output_type = output_type.lower()
-
-        # transfer function output
-        self.set_output_type(self.TYPE_TF)
-
-        for option in options:
-            # split option by colon, ignore scaling
-            output = option.split(":")[0].lower()
-
-            if output_type == "uoutput":
-                # option is node
-                if output == "all":
-                    # all outputs requested
-                    self.output_all_nodes = True
-                    LOGGER.info("all output node voltages requested")
-                elif output == "allop":
-                    # all op-amp outputs requested
-                    self.output_all_opamp_nodes = True
-                    LOGGER.info("all op-amp output node voltages requested")
-                elif self.output_all_nodes:
-                    LOGGER.warning("output node %s already requested with "
-                                   "\"all\"" % output)
-                else:
-                    self.add_output_node(output)
-                    LOGGER.info("adding output node %s", output)
-            elif output_type == "ioutput":
-                # option is component
-                if output == "all":
-                    # all outputs requested
-                    self.output_all_components = True
-                    LOGGER.info("all output component currents requested")
-                elif output == "allop":
-                    # all op-amp outputs requested
-                    self.output_all_opamp_components = True
-                    LOGGER.info("all op-amp output component currents requested")
-                elif self.output_all_components:
-                    LOGGER.warning("output component %s already requested with "
-                                   "\"all\"" % output)
-                else:
-                    self.add_output_component(output)
-                    LOGGER.info("adding output component %s", output)
-            else:
-                raise ValueError("invalid output type")
-
-    def _parse_noise(self, node_str):
-        """Parse LISO token as noise node directive
-
-        :param node_str: noise node name, and (unused) plot scaling \
-                         separated by colons
-        :type node_str: str
-        """
-
-        # noise output
-        self.set_output_type(self.TYPE_NOISE)
-
-        # split options by colon
-        options = node_str.split(":")
-
-        # only use first option, which is the node name
-        node = Node(options[0])
-
-        LOGGER.info("setting noise node %s", node)
-        self.noise_node = node
-
-        if len(options) > 1:
-            LOGGER.warning("ignoring plot options in noise command")
-
-    def _parse_frequencies(self, options):
-        """Parse LISO input file frequency options
-
-        :param options: frequency options
-        :type options: Sequence[str]
-        """
-
-        if len(options) != 4:
-            raise ValueError("syntax: freq lin|log start stop steps")
-
-        scale = options[0].lower()
-        start, _ = SIFormatter.parse(options[1])
-        stop, _ = SIFormatter.parse(options[2])
-        # steps + 1
-        count = int(options[3]) + 1
-
-        if scale == "lin":
-            scaling_str = "linear"
-            self.frequencies = np.linspace(start, stop, count)
-        elif scale == "log":
-            scaling_str = "logarithmic"
-            self.frequencies = np.logspace(np.log10(start), np.log10(stop),
-                                           count)
-        else:
-            raise ValueError("space function can be \"lin\" or \"log\"")
-
-        LOGGER.info("simulating %i frequencies between %s and %s with %s "
-                    "scaling", count, SIFormatter.format(start, "Hz"),
-                    SIFormatter.format(stop, "Hz"), scaling_str)
-
-    def solution(self, *args, **kwargs):
-        return self.run_native(*args, **kwargs)
-
-class OutputParser(BaseParser):
-    """LISO output parser"""
-
-    # circuit definitions
-    # match text after e.g. "#2 capacitors:" and before the first line with
-    # a non-whitespace character after the "#"
-    COMPONENT_REGEX = re.compile(r"^#(\d+) "
-                                 r"(op-amps?|capacitors?|resistors?|coils?|nodes?):"
-                                 r"([\s\S]+?)(?=\n#\S+)",
-                                 re.MULTILINE)
-
-    # text to ignore in op-amp list
-    OPAMP_IGNORE_STRINGS = [
-        "*OVR*", # overridden parameter flag
-        "s***DEFAULT", # default parameter used
-        "***DEFAULT"
-    ]
-
-    # op-amp parameters
-    OPAMP_REGEX = re.compile(r"^#\s+\d+\s+" # count
-                             r"([\w\d]+)\s+" # name
-                             r"([\w\d]+)\s+" # model
-                             r"'\+'=([\w\d]+)\s+" # +in
-                             r"'\-'=([\w\d]+)\s+" # -in
-                             r"'out'=([\w\d]+)\s+" # out
-                             r"a0=([\w\d\s\.]+)\s+" # gain
-                             r"gbw=([\w\d\s\.]+)^" # gbw
-                             r"\#\s+un=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # un
-                             r"uc=([\w\d\s\.]+)\s+" # uc
-                             r"in=([\w\d\s\.]+)\/sqrt\(Hz\)\s+" # in
-                             r"ic=([\w\d\s\.]+)^" # ic
-                             r"\#\s+umax=([\w\d\s\.]+)\s+" # umax
-                             r"imax=([\w\d\s\.]+)\s+" # imax
-                             r"sr=([\w\d\s\.]+)\/us\s+" # sr
-                             r"delay=([\w\d\s\.]+)" # delay
-                             r"(^\#\s+(.*)$)*", # poles/zeros (optional line)
-                             re.MULTILINE)
-
-    # op-amp roots
-    OPAMP_ROOT_REGEX = re.compile(r"(pole|zero) at ([\w\d\s\.]+) "
-                                  r"\((real|Q=([\w\d\s\.]+))\)")
-
-    # data column definitions
-    TF_VOLTAGE_OUTPUT_REGEX = re.compile(r"^\#OUTPUT (\d+) voltage outputs:$")
-    TF_CURRENT_OUTPUT_REGEX = re.compile(r"^\#OUTPUT (\d+) current outputs:$")
-    NOISE_OUTPUT_REGEX = re.compile(r"^\#Noise is computed at node ([\w\d]+) "
-                                    r"for \(nnoise=(\d+), nnoisy=(\d+)\) :$")
-    # "0 node: nin dB Degrees"
-    TF_VOLTAGE_SINK_REGEX = re.compile(r"^\#\s*(\d+) node: ([\w\d]+) (\w+) (\w+)$")
-    # "#  0 C:c2 dB Degrees"
-    TF_CURRENT_SINK_REGEX = re.compile(r"^\#\s*(\d+) (\w+):([\w\d]+) (\w+) (\w+)$")
-    # """#Noise is computed at node no for (nnoise=6, nnoisy=6) :
-    #    #  r1 r3 r4 r6 op1(U) op1(I-) """
-    NOISE_VOLTAGE_SOURCE_REGEX = re.compile(r"^\#Noise is computed at node "
-                                            r"[\w\d]+ for .* :\n"
-                                            r"\#\s*([\w\d\s\(\)\-\+]*)\s*$",
-                                            re.MULTILINE)
-    # "o1(I+)"
-    NOISE_COMPONENT_REGEX = re.compile(r"^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
-
-    # input nodes
-    FIXED_VOLTAGE_INPUT_NODE_REGEX = re.compile(r"\#Voltage input at node "
-                                                r"(.+), impedance (.+)Ohm")
-    FIXED_CURRENT_INPUT_NODE_REGEX = re.compile(r"\#Current input into node "
-                                                r"(.+), impedance (.+)Ohm")
-    FLOATING_VOLTAGE_INPUT_NODES_REGEX = re.compile(r"\#Floating voltage input "
-                                                    r"between nodes (.+) "
-                                                    r"and (.+), impedance "
-                                                    r"(.+) Ohm")
-
-    def __init__(self, *args, **kwargs):
-        # defaults
-        self.data = None
-        self.functions = []
-        self._found_column_count = 0
-
-        super(OutputParser, self).__init__(*args, **kwargs)
 
     def add_function(self, function):
         if function in self.functions:
@@ -991,7 +706,7 @@ class OutputParser(BaseParser):
         assert count > 0
 
         # set TF output type
-        self.set_output_type(self.TYPE_TF)
+        self.set_output_type("tf")
 
         found = 0
 
@@ -1059,7 +774,7 @@ class OutputParser(BaseParser):
         assert count > 0
 
         # set TF output type
-        self.set_output_type(self.TYPE_TF)
+        self.set_output_type("tf")
 
         found = 0
 
@@ -1129,7 +844,7 @@ class OutputParser(BaseParser):
         assert count > 0
 
         # set noise output type
-        self.set_output_type(self.TYPE_NOISE)
+        self.set_output_type("noise")
 
         # find noise component information
         matches = re.search(self.NOISE_VOLTAGE_SOURCE_REGEX, "".join(lines))
@@ -1197,99 +912,3 @@ class OutputParser(BaseParser):
                                         resistance=component.resistance)
 
         return noise_source
-
-class Runner(object):
-    """LISO runner"""
-
-    def __init__(self, script_path):
-        self.script_path = script_path
-
-    def run(self, plot=False, liso_path=None, output_path=None):
-        self.liso_path = liso_path
-
-        if not output_path:
-            temp_file = NamedTemporaryFile()
-            output_path = temp_file.name
-
-        return self._liso_result(self.script_path, output_path, plot)
-
-    def _liso_result(self, script_path, output_path, plot):
-        """Get LISO results
-
-        :param script_path: path to LISO ".fil" file
-        :type script_path: str
-        :param output_path: path to LISO ".out" file to be created
-        :type output_path: str
-        :param plot: whether to show result with gnuplot
-        :type plot: bool
-        :return: LISO output
-        :rtype: :class:`~OutputParser`
-        """
-
-        self._run_liso_process(script_path, output_path, plot)
-
-        return OutputParser(output_path)
-
-    def _run_liso_process(self, script_path, output_path, plot):
-        input_path = os.path.abspath(script_path)
-
-        if not os.path.exists(input_path):
-            raise Exception("input file %s does not exist" % input_path)
-
-        # LISO flags
-        flags = [input_path, output_path]
-
-        # plotting
-        if not plot:
-            flags.append("-n")
-
-        liso_path = self.liso_path
-        LOGGER.debug("running LISO binary at %s", liso_path)
-
-        # run LISO
-        result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.PIPE)
-        
-        if result.returncode != 0:
-            raise Exception("error during LISO run: %s" % result.stderr)
-        
-        return result
-
-    @property
-    def liso_path(self):
-        if self._liso_path is not None:
-            return self._liso_path
-
-        # use environment variable
-        try:
-            liso_dir = os.environ["LISO_DIR"]
-        except KeyError:
-            raise Exception("environment variable \"LISO_DIR\" must point to the "
-                            "directory containing the LISO binary")
-
-        return self.find_liso(liso_dir)
-
-    @liso_path.setter
-    def liso_path(self, path):
-        self._liso_path = path
-
-    @staticmethod
-    def find_liso(directory):
-        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
-            # in order of preference
-            filenames = ["fil_static", "fil"]
-        elif sys.platform.startswith("win32"):
-            filenames = ["fil.exe"]
-        else:
-            raise EnvironmentError("unrecognised operating system")
-
-        for filename in filenames:
-            path = os.path.join(directory, filename)
-
-            if os.path.isfile(path):
-                return path
-
-        raise FileNotFoundError("no appropriate LISO binary found")
-
-class InvalidLisoFileException(Exception):
-    pass

@@ -11,7 +11,8 @@ import textwrap
 import collections
 
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
-from .liso import InputParser, OutputParser, InvalidLisoFileException
+from .liso.input import LisoInputParser
+from .liso.output import LisoOutputParser, InvalidLisoFileException
 
 PROG = "circuit"
 AUTHOR = "Sean Leavey <electronics@attackllama.com>"
@@ -101,17 +102,17 @@ class Sim(Cmd):
     def call(self, args):
         # try parsing first as an input file, then an output file
         try:
-            parser = InputParser(args.file)
+            parser = LisoInputParser(filepath=args.file)
             LOGGER.debug("parsed as LISO input file")
 
             parser.show(print_equations=args.print_equations,
                         print_matrix=args.print_matrix,
                         print_progress=args.verbose)
-        except InvalidLisoFileException:
+        except SyntaxError:
             LOGGER.debug("attempt to parse file as LISO input failed, trying "
                          "to parse as output instead")
             # try as output file
-            parser = OutputParser(args.file)
+            parser = LisoOutputParser(args.file)
             LOGGER.debug("parsed as LISO output file")
             solution = parser.run_native(print_equations=args.print_equations,
                                          print_matrix=args.print_matrix,
@@ -136,7 +137,7 @@ class Liso(Cmd):
         if args.verbose:
             logging_on()
 
-        parser = OutputParser(args.output_file)
+        parser = LisoOutputParser(args.output_file)
         parser.show()
 
 class Help(Cmd):

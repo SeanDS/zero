@@ -5,7 +5,7 @@ used."""
 import sys
 from circuit import logging_on
 logging_on()
-from circuit.liso import InputParser
+from circuit.liso.input import LisoInputParser
 
 # parse liso filename, if present
 if len(sys.argv) > 1:
@@ -14,6 +14,6 @@ else:
     filename = "liso1.fil"
 
 # parse input file
-parser = InputParser(filename)
+parser = LisoInputParser(filename=filename)
 # simulate and show results
 parser.show(print_equations=True, print_matrix=True)

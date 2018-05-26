@@ -4,7 +4,7 @@ the results. If no file is specified, "liso1.out" is used."""
 import sys
 from circuit import logging_on
 logging_on()
-from circuit.liso import OutputParser
+from circuit.liso.output import LisoOutputParser
 
 # parse liso filename, if present
 if len(sys.argv) > 1:
@@ -13,6 +13,6 @@ else:
     filename = "liso1.out"
 
 # parse output file
-parser = OutputParser(filename)
+parser = LisoOutputParser(filename)
 # show results
 parser.show()
