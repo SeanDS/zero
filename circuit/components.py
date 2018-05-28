@@ -212,8 +212,8 @@ class OpAmp(Component):
         self.params = {"a0": SIFormatter.parse(a0)[0], # gain
                        "gbw": SIFormatter.parse(gbw)[0], # gain-bandwidth product (Hz)
                        "delay": SIFormatter.parse(delay)[0], # delay (s)
-                       "zeros": zeros, # array of additional zeros
-                       "poles": poles, # array of additional poles
+                       "zeros": np.array(zeros), # array of additional zeros
+                       "poles": np.array(poles), # array of additional poles
                        "vn": SIFormatter.parse(v_noise)[0], # voltage noise (V/sqrt(Hz))
                        "in": SIFormatter.parse(i_noise)[0], # current noise (A/sqrt(Hz))
                        "vc": SIFormatter.parse(v_corner)[0], # voltage noise corner frequency (Hz)
