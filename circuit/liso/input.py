@@ -2,13 +2,9 @@ import numpy as np
 import logging
 
 from ..format import SIFormatter
-from .base import LisoParser
+from .base import LisoParser, LisoOutputElement, LisoNoiseSource
 
 LOGGER = logging.getLogger("liso")
-
-class LisoInputFormatException(Exception):
-    pass
-
 
 class LisoInputParser(LisoParser):
     """LISO input file parser
@@ -16,6 +12,20 @@ class LisoInputParser(LisoParser):
     This implements a lexer to identify appropriate definitions in a LISO input file,
     and a parser to build a circuit from what is found.
     """
+
+    # dict mapping LISO op-amp parameter overrides to `circuit.components.OpAmp` arguments
+    OP_OVERRIDE_MAP = {
+        "a0": "a0",
+        "gbw": "gbw",
+        "delay": "delay",
+        "un": "vn",
+        "uc": "vc",
+        "in": "in",
+        "ic": "ic",
+        "umax": "vmax",
+        "imax": "imax",
+        "sr": "slew_rate"
+    }
 
     # top level tokens
     tokens = [
@@ -32,6 +42,11 @@ class LisoInputParser(LisoParser):
     # ignore comments
     t_ignore_COMMENT = r'\#.*'
 
+    def __init__(self, *args, **kwargs):
+        self._instructions = []
+
+        super(LisoInputParser, self).__init__(*args, **kwargs)
+
     # detect new lines
     def t_newline(self, t):
         r'\n+'
@@ -46,11 +61,8 @@ class LisoInputParser(LisoParser):
     # error handling
     def t_error(self, t):
         # anything that gets past the other filters
-        print("Illegal character '%s' on line %i at position %i" %
-              (t.value[0], self.lineno, t.lexer.lexpos - self._previous_newline_position))
-
-        # skip forward a character
-        t.lexer.skip(1)
+        raise SyntaxError("Illegal character '%s' on line %i at position %i" %
+                          (t.value[0], self.lineno, t.lexer.lexpos - self._previous_newline_position))
     
     def p_instruction_list(self, p):
         '''instruction_list : instruction
@@ -69,7 +81,7 @@ class LisoInputParser(LisoParser):
         
         p[0] = p[1]
 
-        self.parse_instruction(p[0])
+        self._instructions.append(p[0])
 
     def p_tokens(self, p):
         '''tokens : CHUNK
@@ -81,27 +93,37 @@ class LisoInputParser(LisoParser):
 
     def p_error(self, p):
         if p:
-            error_msg = "LISO syntax error '%s' at line %i" % (p.value, self.lineno)
+            error_msg = "'%s' at line %i" % (p.value, self.lineno)
         else:
-            error_msg = "LISO syntax error at end of file"
+            error_msg = "'%s' at end of file" % p.value
         
-        raise LisoInputFormatException(error_msg)
+        raise SyntaxError(error_msg)
 
-    def parse_instruction(self, text):
-        """Parses the specified text as a LISO instruction"""
+    def build(self):
+        for instruction in self._instructions:
+            self.parse_instruction(instruction)
+
+    def parse_instruction(self, instruction):
+        """Parses the specified text as a LISO input file instruction"""
 
         # split using spaces
-        chunks = text.split()
+        chunks = instruction.split()
 
         ident = chunks[0].lower()
         params = chunks[1:]
 
-        if ident in ["r", "c", "l"]:
-            # resistor, capacitor or inductor
-            return self.parse_passive(ident, *params)
+        if ident == "r":
+            # resistor
+            return self.parse_passive("r", *params)
+        elif ident == "c":
+            # capacitor
+            return self.parse_passive("c", *params)
+        elif ident == "l":
+            # inductor
+            return self.parse_passive("l", *params)
         elif ident == "op":
             # op-amp
-            return self.parse_opamp(*params)
+            return self.parse_library_opamp(*params)
         elif ident == "freq":
             # frequency vector
             return self.parse_frequencies(*params)
@@ -119,14 +141,14 @@ class LisoInputParser(LisoParser):
             return self.parse_current_output(*params)
         elif ident in ["noise"]:
             # noise input
-            return self.parse_noise(*params)
+            return self.parse_noise_output(*params)
 
         raise SyntaxError
 
     def parse_passive(self, passive_type, *params):
         if len(params) != 4:
             # TODO: add the error
-            raise LisoInputFormatException("LISO syntax error")
+            raise SyntaxError("LISO syntax error")
 
         arg_names = ["name", "value", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -140,7 +162,7 @@ class LisoInputParser(LisoParser):
         
         raise SyntaxError
 
-    def parse_opamp(self, *params):
+    def parse_library_opamp(self, *params):
         arg_names = ["name", "model", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
         
@@ -176,7 +198,7 @@ class LisoInputParser(LisoParser):
     def parse_frequencies(self, *params):
         if len(params) != 4:
             # TODO: add the error
-            raise LisoInputFormatException("LISO syntax error")
+            raise SyntaxError("invalid frequency definition")
         
         scale = params[0].lower()
         start, _ = SIFormatter.parse(params[1])
@@ -239,20 +261,21 @@ class LisoInputParser(LisoParser):
         self.output_type = "tf"
 
         for param in params:
-            # split option by colon, ignore scaling
-            output = param.split(":")[0].lower()
+            # split option by colon
+            self.add_voltage_output(param.split(":"))
 
-            # option is node
-            if output == "all":
-                # all outputs requested
-                self.output_all_nodes = True
-            elif output == "allop":
-                # all op-amp outputs requested
-                self.output_all_opamp_nodes = True
-            elif self.output_all_nodes:
-                LOGGER.warning("output node %s already requested with \"all\"" % output)
-            else:
-                self.output_nodes.add(output)
+    def add_voltage_output(self, params):
+        node_name = params[0].lower()
+        scales = params[1:]
+
+        if node_name == "all":
+            outputs = [LisoOutputElement(node, scales) for node in self.circuit.non_gnd_nodes]
+        elif node_name == "allop":
+            outputs = [LisoOutputElement(node, scales) for node in self.circuit.opamp_output_nodes]
+        else:
+            outputs = [LisoOutputElement(self.circuit.get_node(node_name), scales)]
+
+        self.tf_outputs.extend(outputs)
 
     def parse_current_output(self, *params):
         if len(params) < 1:
@@ -262,30 +285,52 @@ class LisoInputParser(LisoParser):
         self.output_type = "tf"
 
         for param in params:
-            # split option by colon, ignore scaling
-            output = param.split(":")[0].lower()
-               
-            # option is component
-            if output == "all":
-                # all outputs requested
-                self.output_all_components = True
-            elif output == "allop":
-                # all op-amp outputs requested
-                self.output_all_opamp_components = True
-            elif self.output_all_components:
-                LOGGER.warning("output component %s already requested with \"all\"" % output)
-            else:
-                self.output_components.add(output)
+            # split option by colon
+            self.add_current_output(param.split(":"))
 
-    def parse_noise(self, *params):
+    def add_current_output(self, params):
+        component_name = params[0].lower()
+        scales = params[1:]
+
+        if component_name == "all":
+            outputs = [LisoOutputElement(component, scales) for component in self.circuit.components]
+        elif component_name == "allop":
+            outputs = [LisoOutputElement(component, scales) for component in self.circuit.opamps]
+        else:
+            outputs = [LisoOutputElement(self.circuit.get_component(component_name), scales)]
+
+        self.tf_outputs.extend(outputs)
+
+    def parse_noise_output(self, *params):
         if len(params) < 2:
             raise SyntaxError
         
+        if len(params) > 2:
+            LOGGER.warning("ignoring noise source options in noise command")
+
+        nodes = []
+
         # noise output
         self.output_type = "noise"
 
-        # noise input
-        self.noise_node = params[1]
+        noise_node = params[0].lower()
+        
+        # TODO: loop over rest of params
+        noise_input = params[1].lower()
 
-        if len(params) > 2:
-            LOGGER.warning("ignoring plot options in noise command")
+        if noise_node == "all":
+            pass
+        elif noise_node == "allr":
+            pass
+        elif noise_node == "allop":
+            pass
+        elif noise_node == "sum":
+            raise NotImplementedError
+        else:
+            nodes.append(LisoNoiseSource(self.circuit.get_node(noise_node)))
+
+        # noise input
+        #self.noise_sources.extend(nodes)
+    
+        # noise output
+        self.noise_output_node = self.circuit.get_node(noise_node)

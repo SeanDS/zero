@@ -12,7 +12,7 @@ import collections
 
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
 from .liso.input import LisoInputParser
-from .liso.output_old import LisoOutputParser, InvalidLisoFileException
+from .liso.output import LisoOutputParser
 
 PROG = "circuit"
 AUTHOR = "Sean Leavey <electronics@attackllama.com>"
@@ -105,19 +105,20 @@ class Sim(Cmd):
             parser = LisoInputParser(filepath=args.file)
             LOGGER.debug("parsed as LISO input file")
 
-            parser.show(print_equations=args.print_equations,
-                        print_matrix=args.print_matrix,
-                        print_progress=args.verbose)
+            solution = parser.run(print_equations=args.print_equations,
+                                  print_matrix=args.print_matrix,
+                                  print_progress=args.verbose)
         except SyntaxError:
             LOGGER.debug("attempt to parse file as LISO input failed, trying "
                          "to parse as output instead")
             # try as output file
-            parser = LisoOutputParser(args.file)
+            parser = LisoOutputParser(filepath=args.file)
             LOGGER.debug("parsed as LISO output file")
-            solution = parser.run_native(print_equations=args.print_equations,
-                                         print_matrix=args.print_matrix,
-                                         print_progress=args.verbose)
-            solution.plot()
+            solution = parser.run(print_equations=args.print_equations,
+                                  print_matrix=args.print_matrix,
+                                  print_progress=args.verbose)
+        
+        solution.plot()
 
 class Liso(Cmd):
     """Plot a LISO output file.
@@ -137,7 +138,7 @@ class Liso(Cmd):
         if args.verbose:
             logging_on()
 
-        parser = LisoOutputParser(args.output_file)
+        parser = LisoOutputParser(filepath=args.output_file)
         parser.show()
 
 class Help(Cmd):

@@ -53,6 +53,15 @@ class Circuit(object):
 
         return [node for node in self.nodes if node is not Node("gnd")]
 
+    @property
+    def elements(self):
+        yield from self.non_gnd_nodes
+        yield from self.components
+
+    @property
+    def opamp_output_nodes(self):
+        return [node for node in [opamp.node3 for opamp in self.opamps]]
+
     def add_component(self, component):
         """Add component, and its nodes, to the circuit.
 
