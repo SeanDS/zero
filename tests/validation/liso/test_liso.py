@@ -18,14 +18,15 @@ class LisoTester(unittest.TestCase):
         self.fil_path = fil_path
 
     def test_liso_vs_native(self):
-        self.compare(self._liso_output())
+        with self.subTest(msg=self.fil_path):
+            self.compare(self._liso_output())
 
     def compare(self, liso_output):
         # get LISO solution
         liso_solution = liso_output.solution()
 
         # run native
-        native_solution = liso_output.run_native()
+        native_solution = liso_output.solution(force=True)
 
         # check if they match
         self.assertEqual(liso_solution, native_solution)

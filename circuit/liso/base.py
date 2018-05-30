@@ -14,7 +14,7 @@ from ..format import SIFormatter
 LOGGER = logging.getLogger("liso")
 
 class LisoParser(object, metaclass=abc.ABCMeta):
-    def __init__(self, **kwargs):
+    def __init__(self):
         # initial line number
         self.lineno = 1
         self._previous_newline_position = 0
@@ -44,9 +44,6 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
 
-        # parse the file or string
-        self.parse(**kwargs)
-
     def parse(self, filepath=None, text=None):
         if filepath is None and text is None:
             raise ValueError("must provide either a LISO filepath or LISO text")
@@ -63,13 +60,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         #        break      # No more input
         #    print(tok)
 
+        # add newline to end of text
+        # this allows parsers to use newline characters to separate lines
+        text += "\n"
+
         self.parser.parse(text, lexer=self.lexer)
-
-        # build circuit from parsed text
-        self.build()
-
-        # check the circuit is valid
-        self.validate()
 
     def show(self, *args, **kwargs):
         """Show LISO results"""
@@ -81,16 +76,17 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         solution = self.solution(*args, **kwargs)
 
         # draw plots
-        print(self.output_nodes)
-        print(self.output_components)
         solution.plot(output_nodes=self.output_nodes,
                       output_components=self.output_components)
         # display plots
         solution.show()
 
     def run(self, *args, **kwargs):
-        # add input component, if not yet present
-        self._set_circuit_input()
+        # build circuit from parsed text
+        self.build()
+
+        # check the circuit is valid
+        self.validate()
 
         if self.output_type == "tf":
             return SmallSignalAcAnalysis(circuit=self.circuit).calculate_tfs(

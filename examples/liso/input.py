@@ -14,6 +14,7 @@ else:
     filename = "liso1.fil"
 
 # parse input file
-parser = LisoInputParser(filename=filename)
+parser = LisoInputParser()
+parser.parse(filename=filename)
 # simulate and show results
 parser.show(print_equations=True, print_matrix=True)

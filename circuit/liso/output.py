@@ -88,8 +88,8 @@ class LisoOutputParser(LisoParser):
         'CURRENT_OUTPUT_COMPONENT',
     ]
 
-    # data point
-    t_DATUM = r'-?(\d+\.\d*|\d*\.\d+|\d+)([eE][-]?\d*\.?\d*)?'
+    # data point (scientific notation float, or +/- inf)
+    t_DATUM = r'-?(inf|(\d+\.\d*|\d*\.\d+|\d+)([eE]-?\d*\.?\d*)?)'
 
     # ignore comments (sometimes)
     # this is overridden by methods below; some do parse comments
@@ -99,8 +99,11 @@ class LisoOutputParser(LisoParser):
     t_ignore = ' \t'
 
     def __init__(self, *args, **kwargs):
-        # data from parsed file
-        self._data = []
+        # raw data lists from parsed file
+        self._raw_data = []
+
+        # data in numpy array format
+        self._data = None
 
         # number of each element as reported by the output file
         self.nresistors = None
@@ -115,8 +118,11 @@ class LisoOutputParser(LisoParser):
         super(LisoOutputParser, self).__init__(*args, **kwargs)
 
     def build(self, *args, **kwargs):
+        # add input component, if not yet present
+        self._set_circuit_input()
+        
         # parse data
-        self._data = np.array(self._data)
+        self._data = np.array(self._raw_data)
 
         # frequencies are the first data column
         self.frequencies = self._data[:, 0]
@@ -325,7 +331,7 @@ class LisoOutputParser(LisoParser):
             return
 
         # add new row to data
-        self._data.append(p[1])
+        self._raw_data.append(p[1])
 
     def p_data(self, p):
         # list of measurements
@@ -593,7 +599,7 @@ class LisoOutputParser(LisoParser):
         if plane == "real":
             roots.append(frequency)
         else:
-            q_factor = plane.split("=")[0]
+            q_factor = plane.split("=")[1]
 
             # calculate complex frequency using q-factor
             q_factor, _ = SIFormatter.parse(q_factor)
@@ -665,7 +671,7 @@ class LisoOutputParser(LisoParser):
         self.add_voltage_output(output_str)
 
     def add_voltage_output(self, output):
-        # split by whitespace
+        # split by colon
         params = output.split()
 
         node = self.circuit.get_node(params[0])
@@ -680,14 +686,16 @@ class LisoOutputParser(LisoParser):
         self.tf_outputs.append(output)
 
     def parse_current_output(self, output_str):
-
         self.add_current_output(output_str)
 
     def add_current_output(self, output):
-        # split by whitespace
+        # split by colon
         params = output.split()
 
-        component = self.circuit.get_component(params[0])
+        # get rid of component type in first param
+        component_name = params[0].split(":")[1]
+
+        component = self.circuit.get_component(component_name)
         scales = params[1:]
 
         # TODO: can "all" be set here?

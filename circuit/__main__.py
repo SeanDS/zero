@@ -102,7 +102,8 @@ class Sim(Cmd):
     def call(self, args):
         # try parsing first as an input file, then an output file
         try:
-            parser = LisoInputParser(filepath=args.file)
+            parser = LisoInputParser()
+            parser.parse(filepath=args.file)
             LOGGER.debug("parsed as LISO input file")
 
             solution = parser.run(print_equations=args.print_equations,
@@ -112,7 +113,8 @@ class Sim(Cmd):
             LOGGER.debug("attempt to parse file as LISO input failed, trying "
                          "to parse as output instead")
             # try as output file
-            parser = LisoOutputParser(filepath=args.file)
+            parser = LisoOutputParser()
+            parser.parse(filepath=args.file)
             LOGGER.debug("parsed as LISO output file")
             solution = parser.run(print_equations=args.print_equations,
                                   print_matrix=args.print_matrix,
@@ -138,7 +140,8 @@ class Liso(Cmd):
         if args.verbose:
             logging_on()
 
-        parser = LisoOutputParser(filepath=args.output_file)
+        parser = LisoOutputParser()
+        parser.parse(filepath=args.output_file)
         parser.show()
 
 class Help(Cmd):

@@ -6,7 +6,7 @@ import logging
 from tempfile import NamedTemporaryFile
 import subprocess
 
-from .output_old import LisoOutputParser
+from .output import LisoOutputParser
 
 LOGGER = logging.getLogger("liso")
 
@@ -40,7 +40,10 @@ class Runner(object):
 
         self._run_liso_process(script_path, output_path, plot)
 
-        return LisoOutputParser(output_path)
+        parser = LisoOutputParser()
+        parser.parse(filepath=output_path)
+
+        return parser
 
     def _run_liso_process(self, script_path, output_path, plot):
         input_path = os.path.abspath(script_path)

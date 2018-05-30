@@ -63,11 +63,10 @@ class LisoInputParser(LisoParser):
         # anything that gets past the other filters
         raise SyntaxError("Illegal character '%s' on line %i at position %i" %
                           (t.value[0], self.lineno, t.lexer.lexpos - self._previous_newline_position))
-    
+
     def p_instruction_list(self, p):
         '''instruction_list : instruction
                             | instruction_list instruction'''
-        # no nothing
         pass
 
     # match instruction on their own lines
@@ -79,9 +78,10 @@ class LisoInputParser(LisoParser):
             # skip empty line
             return
         
-        p[0] = p[1]
+        instruction = p[1]
+        p[0] = instruction
 
-        self._instructions.append(p[0])
+        self.parse_instruction(instruction)
 
     def p_tokens(self, p):
         '''tokens : CHUNK
@@ -93,15 +93,15 @@ class LisoInputParser(LisoParser):
 
     def p_error(self, p):
         if p:
-            error_msg = "'%s' at line %i" % (p.value, self.lineno)
+            message = "LISO syntax error '%s' at line %i" % (p.value, self.lineno)
         else:
-            error_msg = "'%s' at end of file" % p.value
+            message = "LISO syntax error at end of file"
         
-        raise SyntaxError(error_msg)
+        raise SyntaxError(message)
 
     def build(self):
-        for instruction in self._instructions:
-            self.parse_instruction(instruction)
+        # add input component, if not yet present
+        self._set_circuit_input()
 
     def parse_instruction(self, instruction):
         """Parses the specified text as a LISO input file instruction"""
@@ -143,7 +143,7 @@ class LisoInputParser(LisoParser):
             # noise input
             return self.parse_noise_output(*params)
 
-        raise SyntaxError
+        raise SyntaxError("LISO syntax error")
 
     def parse_passive(self, passive_type, *params):
         if len(params) != 4:
