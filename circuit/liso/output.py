@@ -449,12 +449,13 @@ class LisoOutputParser(LisoParser):
         # remove ignored strings
         params = self._remove_ignored_opamp_strings(params)
 
-        # op-amp name, model, +, - and out nodes
+        # op-amp name and model
         name = next(params)
         model = next(params)
-        node1 = next(params)
-        node2 = next(params)
-        node3 = next(params)
+        # in+, in- and out nodes, with first characters stripped out
+        node1 = next(params).lstrip("'+'=")
+        node2 = next(params).lstrip("'-'=")
+        node3 = next(params).lstrip("'out'=")
 
         # default op-amp constructor keywords
         kwargs = {"poles": [],

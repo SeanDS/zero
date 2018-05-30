@@ -81,6 +81,8 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         solution = self.solution(*args, **kwargs)
 
         # draw plots
+        print(self.output_nodes)
+        print(self.output_components)
         solution.plot(output_nodes=self.output_nodes,
                       output_components=self.output_components)
         # display plots
