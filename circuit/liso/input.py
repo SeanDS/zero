@@ -2,7 +2,7 @@ import numpy as np
 import logging
 
 from ..format import SIFormatter
-from .base import LisoParser, LisoOutputElement, LisoNoiseSource
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource
 
 LOGGER = logging.getLogger("liso")
 
@@ -269,11 +269,11 @@ class LisoInputParser(LisoParser):
         scales = params[1:]
 
         if node_name == "all":
-            outputs = [LisoOutputElement(node, scales) for node in self.circuit.non_gnd_nodes]
+            outputs = [LisoOutputVoltage(node, scales) for node in self.circuit.non_gnd_nodes]
         elif node_name == "allop":
-            outputs = [LisoOutputElement(node, scales) for node in self.circuit.opamp_output_nodes]
+            outputs = [LisoOutputVoltage(node, scales) for node in self.circuit.opamp_output_nodes]
         else:
-            outputs = [LisoOutputElement(self.circuit.get_node(node_name), scales)]
+            outputs = [LisoOutputVoltage(self.circuit.get_node(node_name), scales)]
 
         self.tf_outputs.extend(outputs)
 
@@ -293,11 +293,11 @@ class LisoInputParser(LisoParser):
         scales = params[1:]
 
         if component_name == "all":
-            outputs = [LisoOutputElement(component, scales) for component in self.circuit.components]
+            outputs = [LisoOutputCurrent(component, scales) for component in self.circuit.components]
         elif component_name == "allop":
-            outputs = [LisoOutputElement(component, scales) for component in self.circuit.opamps]
+            outputs = [LisoOutputCurrent(component, scales) for component in self.circuit.opamps]
         else:
-            outputs = [LisoOutputElement(self.circuit.get_component(component_name), scales)]
+            outputs = [LisoOutputCurrent(self.circuit.get_component(component_name), scales)]
 
         self.tf_outputs.extend(outputs)
 

@@ -107,19 +107,20 @@ class Sim(Cmd):
             LOGGER.debug("parsed as LISO input file")
 
             solution = parser.run(print_equations=args.print_equations,
-                                  print_matrix=args.print_matrix,
-                                  print_progress=args.verbose)
-        except SyntaxError:
+                                print_matrix=args.print_matrix,
+                                print_progress=args.verbose)
+        except:
             LOGGER.debug("attempt to parse file as LISO input failed, trying "
                          "to parse as output instead")
             # try as output file
             parser = LisoOutputParser()
             parser.parse(filepath=args.file)
             LOGGER.debug("parsed as LISO output file")
+
             solution = parser.run(print_equations=args.print_equations,
-                                  print_matrix=args.print_matrix,
-                                  print_progress=args.verbose)
-        
+                                print_matrix=args.print_matrix,
+                                print_progress=args.verbose)
+
         solution.plot()
 
 class Liso(Cmd):

@@ -4,8 +4,9 @@ import re
 
 from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
 from ..solution import Solution
+from ..data import ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF, CurrentCurrentTF
 from ..format import SIFormatter
-from .base import LisoParser, LisoOutputElement
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent
 
 LOGGER = logging.getLogger("liso")
 
@@ -102,7 +103,7 @@ class LisoOutputParser(LisoParser):
         # raw data lists from parsed file
         self._raw_data = []
 
-        # data in numpy array format
+        # data in float array
         self._data = None
 
         # number of each element as reported by the output file
@@ -122,13 +123,16 @@ class LisoOutputParser(LisoParser):
         self._set_circuit_input()
         
         # parse data
-        self._data = np.array(self._raw_data)
+        data = np.array(self._raw_data)
 
         # frequencies are the first data column
-        self.frequencies = self._data[:, 0]
+        self.frequencies = data[:, 0]
+
+        # the rest is data
+        self._data = data[:, 1:]
 
         # create solution
-        #self.build_solution()
+        self.build_solution()
         
         # clear data
         self._data = None
@@ -136,9 +140,72 @@ class LisoOutputParser(LisoParser):
     def build_solution(self):
         self._solution = Solution(self.circuit, self.frequencies)
 
-        # add functions
-        for function in self.functions:
-            solution.add_function(function)
+        # column offset
+        offset = 0
+
+        for tf_output in self.tf_outputs:
+            # get data
+            if tf_output.has_real and tf_output.has_imag:
+                real_index, real_scale = tf_output.real_index
+                imag_index, imag_scale = tf_output.imag_index
+
+                raise NotImplementedError("cannot handle real and imaginary data yet")
+            elif tf_output.has_magnitude or tf_output.has_phase:
+                if tf_output.has_magnitude:
+                    mag_index, mag_scale = tf_output.magnitude_index
+
+                    # get magnitude data
+                    mag_data = self._data[:, offset + mag_index]
+                
+                if tf_output.has_phase:
+                    phase_index, phase_scale = tf_output.phase_index
+
+                    # get phase data
+                    phase_data = self._data[:, offset + phase_index]
+            else:
+                raise ValueError("cannot build solution without either magnitude or phase, or "
+                                 "both real and imaginary data columns present")
+
+            # create data series
+            series = ComplexSeries(x=self.frequencies, magnitude=mag_data,
+                                   phase=phase_data, magnitude_scale=mag_scale,
+                                   phase_scale=phase_scale)
+
+            # create appropriate transfer function depending on analysis
+            if self.output_type == "tf":
+                if self.input_type == "voltage":
+                    input_node = self.input_node_p
+
+                    if tf_output.output_type == "voltage":
+                        function = VoltageVoltageTF(series=series, source=input_node,
+                                                    sink=tf_output.element)
+                    elif tf_output.output_type == "current":
+                        function = VoltageCurrentTF(series=series, source=input_node,
+                                                    sink=tf_output.element)
+                    else:
+                        raise ValueError("invalid output type")
+                elif self.input_type == "current":
+                    input_component = self.circuit.get_component("input")
+
+                    if tf_output.output_type == "voltage":
+                        function = CurrentVoltageTF(series=series, source=input_component,
+                                                    sink=tf_output.element)
+                    elif tf_output.output_type == "current":
+                        function = CurrentCurrentTF(series=series, source=input_component,
+                                                    sink=tf_output.element)
+                    else:
+                        raise ValueError("invalid output type")
+                else:
+                    raise ValueError("invalid input type")
+            elif self.output_type == "noise":
+                raise NotImplementedError
+            else:
+                raise ValueError("invalid output type")
+
+            self._solution.add_function(function)
+
+            # increment offset
+            offset += tf_output.n_scales
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
@@ -278,15 +345,15 @@ class LisoOutputParser(LisoParser):
         return t
 
     def t_voltageoutputnodes_VOLTAGE_OUTPUT_NODE(self, t):
-        r'\#\s+\d+\snode:\s(?P<node>.*)'
+        r'\#\s+(?P<index>\d+)\snode:\s(?P<node>.*)'
         t.type = "VOLTAGE_OUTPUT_NODE"
-        t.value = t.lexer.lexmatch.group('node')
+        t.value = (t.lexer.lexmatch.group('index'), t.lexer.lexmatch.group('node'))
         return t
 
     def t_currentoutputcomponents_CURRENT_OUTPUT_COMPONENT(self, t):
-        r'\#\s+\d+\s(?P<component>.*)'
+        r'\#\s+(?P<index>\d+)\s(?P<component>.*)'
         t.type = "CURRENT_OUTPUT_COMPONENT"
-        t.value = t.lexer.lexmatch.group('component')
+        t.value = (t.lexer.lexmatch.group('index'), t.lexer.lexmatch.group('component'))
         return t
 
     def t_gnuplotoptions(self, t):
@@ -405,10 +472,10 @@ class LisoOutputParser(LisoParser):
 
     def p_voltage_output_node(self, p):
         '''voltage_output_node : VOLTAGE_OUTPUT_NODE NEWLINE'''
-        output_str = p[1]
-        p[0] = output_str
+        output = p[1]
+        p[0] = output
 
-        self.parse_voltage_output(output_str)
+        self.parse_voltage_output(output)
 
     def p_current_output_component(self, p):
         '''current_output_component : CURRENT_OUTPUT_COMPONENT NEWLINE'''
@@ -667,30 +734,34 @@ class LisoOutputParser(LisoParser):
 
         return noise_source
 
-    def parse_voltage_output(self, output_str):
-        self.add_voltage_output(output_str)
+    def parse_voltage_output(self, output):
+        self.add_voltage_output(output)
 
     def add_voltage_output(self, output):
+        index, output_str = output
+
         # split by colon
-        params = output.split()
+        params = output_str.split()
 
         node = self.circuit.get_node(params[0])
         scales = params[1:]
 
         # TODO: can "all" be set here?
-        output = LisoOutputElement(node, scales)
+        output = LisoOutputVoltage(node, scales, index=index)
 
         if output in self.tf_outputs:
             raise SyntaxError("output already specified")
             
         self.tf_outputs.append(output)
 
-    def parse_current_output(self, output_str):
-        self.add_current_output(output_str)
+    def parse_current_output(self, output):
+        self.add_current_output(output)
 
     def add_current_output(self, output):
+        index, output_str = output
+
         # split by colon
-        params = output.split()
+        params = output_str.split()
 
         # get rid of component type in first param
         component_name = params[0].split(":")[1]
@@ -699,7 +770,7 @@ class LisoOutputParser(LisoParser):
         scales = params[1:]
 
         # TODO: can "all" be set here?
-        output = LisoOutputElement(component, scales)
+        output = LisoOutputCurrent(component, scales, index=index)
 
         if output in self.tf_outputs:
             raise SyntaxError("output component '%s' already specified" % output)

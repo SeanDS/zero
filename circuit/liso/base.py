@@ -47,8 +47,10 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def parse(self, filepath=None, text=None):
         if filepath is None and text is None:
             raise ValueError("must provide either a LISO filepath or LISO text")
-        
-        if filepath is not None:
+        elif filepath is not None and text is not None:
+            raise ValueError("cannot both parse from file and text")
+
+        if filepath is not None:            
             with open(filepath, "r") as obj:
                 text = obj.read()
 
@@ -195,6 +197,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             node_n = None
             impedance = None
 
+            if self.input_node_p is None:
+                pass#raise SyntaxError("no input node specified")
+
             if self.input_node_n is None:
                 # fixed input
                 node = self.input_node_p
@@ -217,9 +222,71 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                                    impedance=impedance)
 
 class LisoOutputElement(object):
-    def __init__(self, element, *scales):
+    magnitude_scales = ["dB", "Abs"]
+    phase_scales = ["Degrees", "Degrees (>0)", "Degrees (<0)", "Degrees (continuous)"]
+    real_scales = ["Real"]
+    imag_scales = ["Imag"]
+
+    def __init__(self, element, scales, index=None, output_type=None):
         self.element = element
         self.scales = scales
+
+        if index:
+            self.index = int(index)
+
+        if output_type:
+            self.output_type = output_type
+    
+    @property
+    def n_scales(self):
+        return len(self.scales)
+
+    @property
+    def has_magnitude(self):
+        return any([scale in self.scales for scale in self.magnitude_scales])
+    
+    @property
+    def has_phase(self):
+        return any([scale in self.scales for scale in self.phase_scales])
+
+    @property
+    def has_real(self):
+        return any([scale in self.scales for scale in self.real_scales])
+
+    @property
+    def has_imag(self):
+        return any([scale in self.scales for scale in self.imag_scales])
+
+    @property
+    def magnitude_index(self):
+        return self.get_scale(self.magnitude_scales)
+
+    @property
+    def phase_index(self):
+        return self.get_scale(self.phase_scales)
+
+    @property
+    def real_index(self):
+        return self.get_scale(self.real_scales)
+
+    @property
+    def imag_index(self):
+        return self.get_scale(self.imag_scales)
+
+    def get_scale(self, scale_names):
+        for index, scale in enumerate(self.scales):
+            if scale in scale_names:
+                return index, scale
+
+        raise ValueError("scale names not found")
+
+class LisoOutputVoltage(LisoOutputElement):
+    def __init__(self, *args, **kwargs):
+        super(LisoOutputVoltage, self).__init__(output_type="voltage", *args, **kwargs)
+
+class LisoOutputCurrent(LisoOutputElement):
+    def __init__(self, *args, **kwargs):
+        super(LisoOutputCurrent, self).__init__(output_type="current", *args, **kwargs)
 
 class LisoNoiseSource(object):
     def __init__(self, element, flags=None):

@@ -57,12 +57,12 @@ class ComplexSeries(Series):
         if magnitude_scale.lower() == "db":
             magnitude = 10 ** (magnitude / 20)
         else:
-            raise Exception("cannot handle scale %s", magnitude_scale)
+            raise Exception("cannot handle scale %s" % magnitude_scale)
 
         if phase_scale.lower() == "degrees":
             phase = np.radians(phase)
         else:
-            raise Exception("cannot handle scale %s", phase_scale)
+            raise Exception("cannot handle scale %s" % phase_scale)
 
         # convert magnitude and phase to complex
         complex_ = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
