@@ -290,6 +290,20 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         tfs = self.solve(frequencies, self.calculate_tf_matrix, self.input_vector,
                          stream=stream, *args, **kwargs)
 
+        # scale vector, for converting units, if necessary
+        scale = self.get_empty_results_matrix(1)
+        scale[:, 0] = 1
+
+        if self.prescale:
+            # convert currents from natural units back to amperes
+            prescaler = 1 / self.mean_resistance
+
+            for component in self.circuit.components:
+                scale[self.component_matrix_index(component), 0] = prescaler
+
+        # unscale
+        tfs *= scale
+
         # create solution
         solution = Solution(self.circuit, frequencies)
 
@@ -403,11 +417,25 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             # use noise node specified in this call
             self.noise_node = noise_node
 
+        # scale vector, for converting units, if necessary
+        scale = self.get_empty_results_matrix(1)
+        scale[:, 0] = 1
+
+        if self.prescale:
+            # convert currents from natural units back to amperes
+            prescaler = 1 / self.mean_resistance
+
+            for node in self.circuit.non_gnd_nodes:
+                scale[self.node_matrix_index(node), 0] = 1 / prescaler
+
         # calculate noise functions by solving the transfer matrix for input
         # at the circuit's noise sources
         noise_matrix = self.solve(frequencies, self.calculate_noise_matrix,
                                   self.noise_vector, stream=stream, *args,
                                   **kwargs)
+
+        # unscale
+        noise_matrix *= scale
 
         # create solution
         solution = Solution(self.circuit, frequencies)
@@ -501,17 +529,6 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         # results matrix
         results = self.get_empty_results_matrix(n_freqs)
 
-        # scale vector, for converting units, if necessary
-        scale = self.get_empty_results_matrix(1).T
-        scale[0, :] = 1
-
-        if self.prescale:
-            # convert currents from natural units back to amperes
-            prescaler = 1 / self.mean_resistance
-
-            for component in self.circuit.components:
-                scale[0, self.component_matrix_index(component)] = prescaler
-
         if print_progress:
             # update progress every 1% of the way there
             update = n_freqs // 100
@@ -535,7 +552,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             matrix = A_function(frequency).tocsr()
 
             # call solver function
-            results[:, index] = self.solver.solve(matrix, b) * scale
+            results[:, index] = self.solver.solve(matrix, b)
 
         return results
 

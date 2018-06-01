@@ -45,7 +45,7 @@ class Solution(object):
         if not np.all(tf.frequencies == self.frequencies):
             raise ValueError("tf doesn't fit this solution")
 
-        self.add_function(tf)
+        self._add_function(tf)
 
     def add_noise(self, noise_spectrum):
         """Add noise spectrum to the solution
@@ -58,9 +58,9 @@ class Solution(object):
         if not np.all(noise_spectrum.frequencies == self.frequencies):
             raise ValueError("noise spectrum doesn't fit this solution")
 
-        self.add_function(noise_spectrum)
+        self._add_function(noise_spectrum)
 
-    def add_function(self, function):
+    def _add_function(self, function):
         if function in self.functions:
             raise ValueError("duplicate function")
 

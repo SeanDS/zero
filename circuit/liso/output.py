@@ -198,7 +198,7 @@ class LisoOutputParser(LisoParser):
             else:
                 raise ValueError("invalid input type")
 
-            self._solution.add_function(function)
+            self._solution.add_tf(function)
 
             # increment offset
             offset += tf_output.n_scales
@@ -216,7 +216,7 @@ class LisoOutputParser(LisoParser):
                                      sink=self.noise_output_node,
                                      series=series)
 
-            self._solution.add_function(spectrum)
+            self._solution.add_noise(spectrum)
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
