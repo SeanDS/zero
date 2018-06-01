@@ -22,6 +22,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # create circuit
         self.circuit = Circuit()
 
+        # circuit built status
+        self.circuit_built = False
+
         # default circuit values
         self.frequencies = None
         self.input_type = None
@@ -35,7 +38,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.output_all_components = False
         self.output_all_opamp_components = False
         self.noise_output_node = None
-        self.noise_sources = None
+        self.noise_sources = []
 
         # circuit solution
         self._solution = None
@@ -71,6 +74,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def show(self, *args, **kwargs):
         """Show LISO results"""
 
+        # build circuit if necessary
+        self.build()
+
         if not self.plottable:
             LOGGER.warning("nothing to show")
 
@@ -83,12 +89,18 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # display plots
         solution.show()
 
-    def run(self, *args, **kwargs):
-        # build circuit from parsed text
+    def solution(self, force=False, *args, **kwargs):
+        # build circuit if necessary
         self.build()
+        
+        if not self._solution or force:
+            self._solution = self.run(*args, **kwargs)
+        
+        return self._solution
 
-        # check the circuit is valid
-        self.validate()
+    def run(self, *args, **kwargs):
+        # build circuit if necessary
+        self.build()
 
         if self.output_type == "tf":
             return SmallSignalAcAnalysis(circuit=self.circuit).calculate_tfs(
@@ -104,15 +116,23 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         
         raise SyntaxError("no outputs requested")
 
-    def solution(self, force=False, *args, **kwargs):
-        if not self._solution or force:
-            self._solution = self.run(*args, **kwargs)
-        
-        return self._solution
-
-    @abc.abstractmethod
     def build(self):
-        raise NotImplementedError
+        """Build circuit if not yet built"""
+
+        if not self.circuit_built:
+            self._do_build()
+
+            # check the circuit is valid
+            self.validate()
+
+            # set built flag
+            self.circuit_built = True
+
+    def _do_build(self):
+        """Build circuit"""
+
+        # add input component, if not yet present
+        self._set_circuit_input()
 
     def validate(self):
         if self.frequencies is None:
@@ -231,10 +251,10 @@ class LisoOutputElement(object):
         self.element = element
         self.scales = scales
 
-        if index:
+        if index is not None:
             self.index = int(index)
 
-        if output_type:
+        if output_type is not None:
             self.output_type = output_type
     
     @property
@@ -289,6 +309,11 @@ class LisoOutputCurrent(LisoOutputElement):
         super(LisoOutputCurrent, self).__init__(output_type="current", *args, **kwargs)
 
 class LisoNoiseSource(object):
-    def __init__(self, element, flags=None):
-        self.element = element
-        self.flags = flags
+    def __init__(self, noise, index=None, flags=None):
+        self.noise = noise
+
+        if index is not None:
+            self.index = index
+        
+        if flags is not None:
+            self.flags = flags

@@ -99,10 +99,6 @@ class LisoInputParser(LisoParser):
         
         raise SyntaxError(message)
 
-    def build(self):
-        # add input component, if not yet present
-        self._set_circuit_input()
-
     def parse_instruction(self, instruction):
         """Parses the specified text as a LISO input file instruction"""
 

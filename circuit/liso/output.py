@@ -4,9 +4,10 @@ import re
 
 from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
 from ..solution import Solution
-from ..data import ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF, CurrentCurrentTF
+from ..data import (Series, ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
+                    CurrentCurrentTF, NoiseSpectrum)
 from ..format import SIFormatter
-from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource
 
 LOGGER = logging.getLogger("liso")
 
@@ -46,14 +47,6 @@ class LisoOutputParser(LisoParser):
         "s***DEFAULT", # default parameter used
         "***DEFAULT"
     ]
-
-    # op-amp roots
-    OPAMP_ROOT_REGEX = re.compile(r"(pole|zero) at ([\w\d\s\.]+) "
-                                  r"\((real|Q=([\w\d\s\.]+))\)")
-
-    # noise components
-    # "o1(I+)"
-    NOISE_COMPONENT_REGEX = re.compile(r"^([\w\d]+)(\(([\w\d\-\+]*)\))?$")
 
     # additional states
     # avoid using underscores here to stop PLY sharing rules across states
@@ -118,10 +111,10 @@ class LisoOutputParser(LisoParser):
 
         super(LisoOutputParser, self).__init__(*args, **kwargs)
 
-    def build(self, *args, **kwargs):
-        # add input component, if not yet present
-        self._set_circuit_input()
-        
+    def _do_build(self, *args, **kwargs):
+        # call parent
+        super(LisoOutputParser, self)._do_build()
+
         # parse data
         data = np.array(self._raw_data)
 
@@ -140,6 +133,14 @@ class LisoOutputParser(LisoParser):
     def build_solution(self):
         self._solution = Solution(self.circuit, self.frequencies)
 
+        if self.output_type == "tf":
+            self._build_tfs()
+        elif self.output_type == "noise":
+            self._build_noise()
+        else:
+            raise ValueError("unrecognised output type")
+
+    def _build_tfs(self):
         # column offset
         offset = 0
 
@@ -172,40 +173,50 @@ class LisoOutputParser(LisoParser):
                                    phase_scale=phase_scale)
 
             # create appropriate transfer function depending on analysis
-            if self.output_type == "tf":
-                if self.input_type == "voltage":
-                    input_node = self.input_node_p
+            if self.input_type == "voltage":
+                input_node = self.input_node_p
 
-                    if tf_output.output_type == "voltage":
-                        function = VoltageVoltageTF(series=series, source=input_node,
-                                                    sink=tf_output.element)
-                    elif tf_output.output_type == "current":
-                        function = VoltageCurrentTF(series=series, source=input_node,
-                                                    sink=tf_output.element)
-                    else:
-                        raise ValueError("invalid output type")
-                elif self.input_type == "current":
-                    input_component = self.circuit.get_component("input")
-
-                    if tf_output.output_type == "voltage":
-                        function = CurrentVoltageTF(series=series, source=input_component,
-                                                    sink=tf_output.element)
-                    elif tf_output.output_type == "current":
-                        function = CurrentCurrentTF(series=series, source=input_component,
-                                                    sink=tf_output.element)
-                    else:
-                        raise ValueError("invalid output type")
+                if tf_output.output_type == "voltage":
+                    function = VoltageVoltageTF(series=series, source=input_node,
+                                                sink=tf_output.element)
+                elif tf_output.output_type == "current":
+                    function = VoltageCurrentTF(series=series, source=input_node,
+                                                sink=tf_output.element)
                 else:
-                    raise ValueError("invalid input type")
-            elif self.output_type == "noise":
-                raise NotImplementedError
+                    raise ValueError("invalid output type")
+            elif self.input_type == "current":
+                input_component = self.circuit.get_component("input")
+
+                if tf_output.output_type == "voltage":
+                    function = CurrentVoltageTF(series=series, source=input_component,
+                                                sink=tf_output.element)
+                elif tf_output.output_type == "current":
+                    function = CurrentCurrentTF(series=series, source=input_component,
+                                                sink=tf_output.element)
+                else:
+                    raise ValueError("invalid output type")
             else:
-                raise ValueError("invalid output type")
+                raise ValueError("invalid input type")
 
             self._solution.add_function(function)
 
             # increment offset
             offset += tf_output.n_scales
+
+    def _build_noise(self):
+        for noise_source in self.noise_sources:
+            # get noise spectrum
+            spectrum = self._data[:, noise_source.index]
+
+            # create data series
+            series = Series(x=self.frequencies, y=spectrum)
+
+            # create noise spectrum
+            spectrum = NoiseSpectrum(source=noise_source.noise,
+                                     sink=self.noise_output_node,
+                                     series=series)
+
+            self._solution.add_function(spectrum)
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
@@ -685,54 +696,49 @@ class LisoOutputParser(LisoParser):
         # split by whitespace
         source_strs = sources_line.split()
 
-        sources = []
+        for index, source_str in enumerate(source_strs):
+            noise = self._parse_noise(source_str)
 
-        for source_str in source_strs:
-            sources.append(self._parse_noise_source(source_str))
-        
-        self.noise_sources = sources
+            # create noise source
+            self.noise_sources.append(LisoNoiseSource(noise, index=index))
 
-    def _parse_noise_source(self, source_str):
-        # split by whitespace
-        sources = source_str.split()
+    def _parse_noise(self, source):
+        """Gets noise classification for a given source"""
 
-        for source in sources:
-            # strip any remaining whitespace
-            source = source.strip()
+        # strip any remaining whitespace
+        source = source.strip()
 
-        # look for component name and brackets
-        match = re.match(self.NOISE_COMPONENT_REGEX, source_str)
+        # look for bracket
+        source_pieces = source.split("(")
 
-        # find extracted component
-        component = self.circuit.get_component(match.group(1))
+        # component name is first piece
+        component = self.circuit.get_component(source_pieces[0])
 
-        # component noise type, e.g. I+ (or empty, for resistors)
-        noise_str = match.group(3)
+        if len(source_pieces) > 1:
+            # op-amp noise is the second piece with the closing bracket removed
+            opamp_noise_type = source_pieces[1].rstrip(")")
 
-        # group 2 is not empty if noise type is specified
-        if match.group(2):
-            # op-amp noise; check first character
-            if noise_str[0] == "U":
-                noise_source = VoltageNoise(component=component)
-            elif noise_str[0] == "I":
+            if opamp_noise_type == "U":
+                noise = VoltageNoise(component=component)
+            elif opamp_noise_type.startswith("I"):
                 # work out node
-                if noise_str[1] == "+":
+                if opamp_noise_type == "I+":
                     # non-inverting node
                     node = component.node1
-                elif noise_str[1] == "-":
+                elif opamp_noise_type == "I-":
                     # inverting node
                     node = component.node2
                 else:
                     raise SyntaxError("unexpected current noise node")
 
-                noise_source = CurrentNoise(node=node, component=component)
+                noise = CurrentNoise(node=node, component=component)
             else:
                 raise SyntaxError("unrecognised noise source")
         else:
-            noise_source = JohnsonNoise(component=component,
-                                        resistance=component.resistance)
+            noise = JohnsonNoise(component=component,
+                                 resistance=component.resistance)
 
-        return noise_source
+        return noise
 
     def parse_voltage_output(self, output):
         self.add_voltage_output(output)
