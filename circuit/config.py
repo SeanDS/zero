@@ -58,8 +58,7 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         """Load and parse the default config file"""
 
         self.load_config_file(
-            pkg_resources.resource_filename(__name__,
-                                            self.DEFAULT_CONFIG_FILENAME)
+            pkg_resources.resource_filename(__name__, self.DEFAULT_CONFIG_FILENAME)
         )
 
     def load_user_config_file(self):
@@ -68,10 +67,8 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         config_file = self.get_user_config_filepath()
 
         # check the config file exists
-        if not os.path.isfile(config_file):
-            self.create_user_config_file(config_file)
-
-        self.load_config_file(config_file)
+        if os.path.isfile(config_file):
+            self.load_config_file(config_file)
 
     @classmethod
     def get_user_config_filepath(cls):
@@ -88,25 +85,6 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         config_file = os.path.join(config_dir, cls.CONFIG_FILENAME)
 
         return config_file
-
-    @classmethod
-    def create_user_config_file(cls, config_file):
-        """Create empty config file in user directory
-
-        :param config_file: path to config file
-        :type config_file: str
-        """
-
-        directory = os.path.dirname(config_file)
-
-        # create user config directory
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        LOGGER.debug("creating empty config file at %s", directory)
-
-        # touch file
-        open(config_file, 'w').close()
 
 class CircuitConfig(BaseConfig):
     """Circuit config parser"""
