@@ -32,7 +32,7 @@ r  r11_b 154       nC9_R11_b nN2p_b
 r  r10_b 15.2k     nN4m_b nN2p_b
 
 # reference cavity pole compensation
-op N2_b  ad829 nN2p_b nN2m_b nN2_R3_b vn=10n
+op N2_b  ad829 nN2p_b nN2m_b nN2_R3_b un=10n
 r  r1_b  1k        nN2m_b nN2_R3_b
 r  r2_b  82        nN2m_b nR2_C3_b
 c  c3_b  68n       nR2_C3_b gnd

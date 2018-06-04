@@ -749,11 +749,11 @@ class LisoOutputParser(LisoParser):
         # split by colon
         params = output_str.split()
 
-        node = self.circuit.get_node(params[0])
+        node = params[0]
         scales = params[1:]
 
         # TODO: can "all" be set here?
-        output = LisoOutputVoltage(node, scales, index=index)
+        output = LisoOutputVoltage(node=node, scales=scales, index=index)
 
         if output in self.tf_outputs:
             raise SyntaxError("output already specified")
@@ -770,13 +770,12 @@ class LisoOutputParser(LisoParser):
         params = output_str.split()
 
         # get rid of component type in first param
-        component_name = params[0].split(":")[1]
-
-        component = self.circuit.get_component(component_name)
+        component = params[0].split(":")[1]
+        
         scales = params[1:]
 
         # TODO: can "all" be set here?
-        output = LisoOutputCurrent(component, scales, index=index)
+        output = LisoOutputCurrent(component=component, scales=scales, index=index)
 
         if output in self.tf_outputs:
             raise SyntaxError("output component '%s' already specified" % output)

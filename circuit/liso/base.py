@@ -1,5 +1,6 @@
 """Base LISO parser"""
 
+import os
 import abc
 from ply import lex, yacc
 import logging
@@ -47,14 +48,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
 
-    def parse(self, filepath=None, text=None):
-        if filepath is None and text is None:
-            raise ValueError("must provide either a LISO filepath or LISO text")
-        elif filepath is not None and text is not None:
-            raise ValueError("cannot both parse from file and text")
+    def parse(self, text):
+        if text is None:
+            raise ValueError("must provide either a filepath or text")
 
-        if filepath is not None:            
-            with open(filepath, "r") as obj:
+        if os.path.isfile(text):
+            with open(text, "r") as obj:
                 text = obj.read()
 
         #self.lexer.input(text)
@@ -167,11 +166,31 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
     @property
     def output_nodes(self):
-        return [element.element for element in self.tf_outputs if isinstance(element.element, Node)]
+        nodes = set([element.element for element in self.tf_outputs if element.type == "node"])
+
+        if "all" in nodes:
+            nodes.update([node.name for node in self.circuit.non_gnd_nodes])
+        elif "allop" in nodes:
+            nodes.update(self.opamp_output_node_names)
+        
+        # remove special keywords
+        nodes.difference_update(["all", "allop"])
+
+        return nodes
 
     @property
     def output_components(self):
-        return [element.element for element in self.tf_outputs if isinstance(element.element, Component)]
+        components = set([element.element for element in self.tf_outputs if element.type == "component"])
+
+        if "all" in components:
+            components.update([component.name for component in self.circuit.components])
+        elif "allop" in components:
+            components.update(self.opamp_names)
+        
+        # remove special keywords
+        components.difference_update(["all", "allop"])
+
+        return components
 
     @property
     def opamp_output_node_names(self):
@@ -247,15 +266,17 @@ class LisoOutputElement(object):
     real_scales = ["Real"]
     imag_scales = ["Imag"]
 
-    def __init__(self, element, scales, index=None, output_type=None):
+    def __init__(self, _type, element=None, scales=[], index=None, output_type=None):
+        scales = list(scales)
+        
+        if index is not None:
+            index = int(index)
+
+        self.type = str(_type)
         self.element = element
         self.scales = scales
-
-        if index is not None:
-            self.index = int(index)
-
-        if output_type is not None:
-            self.output_type = output_type
+        self.index = index
+        self.output_type = output_type
     
     @property
     def n_scales(self):
@@ -301,12 +322,18 @@ class LisoOutputElement(object):
         raise ValueError("scale names not found")
 
 class LisoOutputVoltage(LisoOutputElement):
-    def __init__(self, *args, **kwargs):
-        super().__init__(output_type="voltage", *args, **kwargs)
+    def __init__(self, node=None, all_nodes=False, all_opamps=False, *args, **kwargs):
+        super().__init__(_type="node", element=node, output_type="voltage", *args, **kwargs)
+
+        self.all_nodes = bool(all_nodes)
+        self.all_opamps = bool(all_opamps)
 
 class LisoOutputCurrent(LisoOutputElement):
-    def __init__(self, *args, **kwargs):
-        super().__init__(output_type="current", *args, **kwargs)
+    def __init__(self, component=None, all_components=False, all_opamps=False, *args, **kwargs):
+        super().__init__(_type="component", element=component, output_type="current", *args, **kwargs)
+
+        self.all_components = bool(all_components)
+        self.all_opamps = bool(all_opamps)
 
 class LisoNoiseSource(object):
     def __init__(self, noise, index=None, flags=None):
