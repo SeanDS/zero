@@ -103,7 +103,7 @@ class Sim(Cmd):
         # try parsing first as an input file, then an output file
         try:
             parser = LisoInputParser()
-            parser.parse(filepath=args.file)
+            parser.parse(args.file)
             LOGGER.debug("parsed as LISO input file")
 
             solution = parser.run(print_equations=args.print_equations,
@@ -114,7 +114,7 @@ class Sim(Cmd):
                          "to parse as output instead")
             # try as output file
             parser = LisoOutputParser()
-            parser.parse(filepath=args.file)
+            parser.parse(args.file)
             LOGGER.debug("parsed as LISO output file")
 
             solution = parser.run(print_equations=args.print_equations,
@@ -142,7 +142,7 @@ class Liso(Cmd):
             logging_on()
 
         parser = LisoOutputParser()
-        parser.parse(filepath=args.output_file)
+        parser.parse(args.output_file)
         parser.show()
 
 class Help(Cmd):

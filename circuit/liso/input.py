@@ -333,7 +333,7 @@ class LisoInputParser(LisoParser):
             self.add_current_output(param)
 
     def add_current_output(self, param_str):
-        params = param_str(":")
+        params = param_str.split(":")
         component_name = params[0]
         scales = params[1:]
 

@@ -150,8 +150,7 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
         else:
             format_str = "%s to %s %s"
 
-        return format_str % (self.source, self.sink,
-                             self.unit_str)
+        return format_str % (self.source.label(), self.sink.label(), self.unit_str)
 
     @property
     @abc.abstractmethod
@@ -170,7 +169,7 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
             worst_i, worst_diff = argmax_difference(self.magnitude, other.magnitude)
 
             LOGGER.error("%s tf magnitudes don't match (worst difference %f%% at %d (%f, %f))",
-                         self, worst_diff, worst_i, self.magnitude[worst_i],
+                         self, worst_diff, self.frequencies[worst_i], self.magnitude[worst_i],
                          other.magnitude[worst_i])
             return False
         return True

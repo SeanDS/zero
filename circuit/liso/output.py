@@ -174,25 +174,25 @@ class LisoOutputParser(LisoParser):
 
             # create appropriate transfer function depending on analysis
             if self.input_type == "voltage":
-                input_node = self.input_node_p
+                source = self.circuit.get_node(self.input_node_p)
 
                 if tf_output.output_type == "voltage":
-                    function = VoltageVoltageTF(series=series, source=input_node,
-                                                sink=tf_output.element)
+                    sink = self.circuit.get_node(tf_output.node)
+                    function = VoltageVoltageTF(series=series, source=source, sink=sink)
                 elif tf_output.output_type == "current":
-                    function = VoltageCurrentTF(series=series, source=input_node,
-                                                sink=tf_output.element)
+                    sink = self.circuit.get_component(tf_output.component)
+                    function = VoltageCurrentTF(series=series, source=source, sink=sink)
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
-                input_component = self.circuit.get_component("input")
+                source = self.circuit.get_component("input")
 
                 if tf_output.output_type == "voltage":
-                    function = CurrentVoltageTF(series=series, source=input_component,
-                                                sink=tf_output.element)
+                    sink = self.circuit.get_node(tf_output.node)
+                    function = CurrentVoltageTF(series=series, source=source, sink=sink)
                 elif tf_output.output_type == "current":
-                    function = CurrentCurrentTF(series=series, source=input_component,
-                                                sink=tf_output.element)
+                    sink = self.circuit.get_component(tf_output.component)
+                    function = CurrentCurrentTF(series=series, source=source, sink=sink)
                 else:
                     raise ValueError("invalid output type")
             else:

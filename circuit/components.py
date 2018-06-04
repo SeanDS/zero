@@ -337,7 +337,7 @@ class Input(Component):
             if impedance is None:
                 raise ValueError("impedance must be specified for noise input")
             
-            self.impedance = float(impedance)
+            impedance = float(impedance)
         else:
             if impedance is not None:
                 raise ValueError("impedance cannot be specified for non-noise "
@@ -348,9 +348,11 @@ class Input(Component):
             elif input_type == "current":
                 self.input_type = "current"
                 # assume 1 ohm impedance for transfer functions
-                self.impedance = 1
+                impedance = 1
             else:
                 raise ValueError("unrecognised input type")
+
+        self.impedance = impedance
 
     @property
     def node1(self):
@@ -385,7 +387,12 @@ class Input(Component):
         self.node2 = node
 
     def __str__(self):
-        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, Z={cmp.impedance}]".format(cmp=self)
+        if self.impedance:
+            z = self.impedance
+        else:
+            z = "default"
+        
+        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, Z={z}]".format(cmp=self, z=z)
 
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
@@ -480,6 +487,9 @@ class Node(object, metaclass=NamedInstance):
         """Instantiate a new node."""
 
         self.name = str(name)
+
+    def label(self):
+        return self.name
 
     def __str__(self):
         return self.name

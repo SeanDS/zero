@@ -328,12 +328,20 @@ class LisoOutputVoltage(LisoOutputElement):
         self.all_nodes = bool(all_nodes)
         self.all_opamps = bool(all_opamps)
 
+    @property
+    def node(self):
+        return self.element
+
 class LisoOutputCurrent(LisoOutputElement):
     def __init__(self, component=None, all_components=False, all_opamps=False, *args, **kwargs):
         super().__init__(_type="component", element=component, output_type="current", *args, **kwargs)
 
         self.all_components = bool(all_components)
         self.all_opamps = bool(all_opamps)
+
+    @property
+    def component(self):
+        return self.element
 
 class LisoNoiseSource(object):
     def __init__(self, noise, index=None, flags=None):
