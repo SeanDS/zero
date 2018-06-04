@@ -313,3 +313,30 @@ class Circuit(object):
             return False
 
         return True
+    
+    def __repr__(self):
+        """Circuit text representation"""
+
+        if self.n_components > 1:
+            cmp_str = "components"
+        else:
+            cmp_str = "component"
+
+        if self.n_nodes > 1:
+            node_str = "nodes"
+        else:
+            node_str = "node"
+
+        text = "Circuit with {n_cmps} {cmp_str} and {n_nodes} {node_str}".format(
+            n_cmps=self.n_components, cmp_str=cmp_str, n_nodes=self.n_nodes, node_str=node_str)
+        
+        if self.n_components > 0:
+            text += "\n"
+
+            # field size
+            iw = int(np.ceil(np.log10(len(self.components))))
+
+            for index, component in enumerate(sorted(self.components, key=lambda cmp: (cmp.__class__.__name__, cmp.name)), start=1):
+                text += "\n\t{index:{iw}}. {cmp}".format(index=index, iw=iw, cmp=component)
+
+        return text

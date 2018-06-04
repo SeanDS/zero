@@ -26,6 +26,8 @@ class Component(object, metaclass=abc.ABCMeta):
         component noise sources
     """
 
+    TYPE = "component"
+
     def __init__(self, name=None, nodes=None):
         """Instantiate a new component."""
 
@@ -75,7 +77,7 @@ class Component(object, metaclass=abc.ABCMeta):
         self.noise.add(noise)
 
     def label(self):
-        """Label for this passive component.
+        """Label for this component.
 
         Returns
         -------
@@ -199,6 +201,8 @@ class OpAmp(Component):
         Slew rate.
     """
 
+    TYPE = "op-amp"
+
     def __init__(self, model, node1, node2, node3, a0=1.5e6, gbw=8e6,
                  delay=0, zeros=np.array([]), poles=np.array([]),
                  v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
@@ -299,8 +303,13 @@ class OpAmp(Component):
         # ignore node; noise is same at both inputs
         return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
 
+    def __str__(self):
+        return super().__str__() + " [in+={cmp.node1}, in-={cmp.node2}, out={cmp.node3}, model={cmp.model}]".format(cmp=self)
+
 class Input(Component):
     """Represents the circuit's voltage input"""
+
+    TYPE = "input"
 
     def __init__(self, input_type, node=None, node_p=None, node_n=None,
                  impedance=None, *args, **kwargs):
@@ -375,10 +384,14 @@ class Input(Component):
     def node_p(self, node):
         self.node2 = node
 
+    def __str__(self):
+        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, Z={cmp.impedance}]".format(cmp=self)
+
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
 
     UNIT = "Ω"
+    TYPE = "resistor"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -398,10 +411,14 @@ class Resistor(PassiveComponent):
     def impedance(self, *args):
         return self.resistance
 
+    def __str__(self):
+        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, R={cmp.resistance}]".format(cmp=self)
+
 class Capacitor(PassiveComponent):
     """Represents a capacitor or set of series or parallel capacitors"""
 
     UNIT = "F"
+    TYPE = "capacitor"
 
     @property
     def capacitance(self):
@@ -415,10 +432,14 @@ class Capacitor(PassiveComponent):
     def impedance(self, frequency):
         return 1 / (2 * np.pi * 1j * frequency * self.capacitance)
 
+    def __str__(self):
+        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, C={cmp.capacitance}]".format(cmp=self)
+
 class Inductor(PassiveComponent):
     """Represents an inductor or set of series or parallel inductors"""
 
     UNIT = "H"
+    TYPE = "inductor"
 
     @property
     def inductance(self):
@@ -431,6 +452,9 @@ class Inductor(PassiveComponent):
 
     def impedance(self, frequency):
         return 2 * np.pi * 1j * frequency * self.inductance
+
+    def __str__(self):
+        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
 
 class Node(object, metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
