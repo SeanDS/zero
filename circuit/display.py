@@ -180,7 +180,7 @@ class MatrixDisplay(TableFormatter):
         self.rhs = rhs
         self.headers = headers
 
-        super(MatrixDisplay, self).__init__()
+        super().__init__()
 
     @property
     def row_cell_groups(self):
@@ -274,7 +274,7 @@ class EquationDisplay(TableFormatter):
         self.rhs = rhs
         self.elements = elements
 
-        super(EquationDisplay, self).__init__()
+        super().__init__()
 
     @property
     def row_cell_groups(self):

@@ -109,11 +109,11 @@ class LisoOutputParser(LisoParser):
         self.nioutputs = None
         self.nnoisesources = None
 
-        super(LisoOutputParser, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _do_build(self, *args, **kwargs):
         # call parent
-        super(LisoOutputParser, self)._do_build()
+        super()._do_build()
 
         # parse data
         data = np.array(self._raw_data)

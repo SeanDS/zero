@@ -45,7 +45,7 @@ class LisoInputParser(LisoParser):
     def __init__(self, *args, **kwargs):
         self._instructions = []
 
-        super(LisoInputParser, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     # detect new lines
     def t_newline(self, t):

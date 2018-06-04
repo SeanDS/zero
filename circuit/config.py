@@ -24,7 +24,7 @@ class SingletonAbstractMeta(abc.ABCMeta):
 
         if cls not in cls._SINGLETON_REGISTRY:
             # create new instance
-            cls._SINGLETON_REGISTRY[cls] = super(SingletonAbstractMeta, cls).__call__(*args, **kwargs)
+            cls._SINGLETON_REGISTRY[cls] = super().__call__(*args, **kwargs)
         
         return cls._SINGLETON_REGISTRY[cls]
 
@@ -37,7 +37,7 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
     def __init__(self, *args, **kwargs):
         """Instantiate a new BaseConfig"""
 
-        super(BaseConfig, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # load default config then overwrite with user config if present
         self.load_default_config_file()
@@ -125,7 +125,7 @@ class OpAmpLibrary(BaseConfig):
         """Instantiate a new op-amp library"""
 
         # call parent constructor
-        super(OpAmpLibrary, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # default options
         self.data = {}

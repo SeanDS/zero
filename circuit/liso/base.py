@@ -302,11 +302,11 @@ class LisoOutputElement(object):
 
 class LisoOutputVoltage(LisoOutputElement):
     def __init__(self, *args, **kwargs):
-        super(LisoOutputVoltage, self).__init__(output_type="voltage", *args, **kwargs)
+        super().__init__(output_type="voltage", *args, **kwargs)
 
 class LisoOutputCurrent(LisoOutputElement):
     def __init__(self, *args, **kwargs):
-        super(LisoOutputCurrent, self).__init__(output_type="current", *args, **kwargs)
+        super().__init__(output_type="current", *args, **kwargs)
 
 class LisoNoiseSource(object):
     def __init__(self, noise, index=None, flags=None):

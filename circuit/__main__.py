@@ -91,7 +91,7 @@ class Sim(Cmd):
     cmd = "sim"
 
     def __init__(self):
-        super(Sim, self).__init__()
+        super().__init__()
 
         self.parser.add_argument("file", help="path to LISO input or output file")
         self.parser.add_argument("--print-equations", action="store_true",
@@ -133,7 +133,7 @@ class Liso(Cmd):
     cmd = "liso"
 
     def __init__(self):
-        super(Liso, self).__init__()
+        super().__init__()
 
         self.parser.add_argument("output_file", help="LISO output file")
 

@@ -13,7 +13,7 @@ REL_FIL_DIR = "scripts"
 
 class LisoTester(unittest.TestCase):
     def __init__(self, method_name, fil_path=None):
-        super(LisoTester, self).__init__(method_name)
+        super().__init__(method_name)
 
         self.fil_path = fil_path
 

@@ -67,7 +67,7 @@ class ComplexSeries(Series):
         # convert magnitude and phase to complex
         complex_ = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
 
-        super(ComplexSeries, self).__init__(x=x, y=complex_)
+        super().__init__(x=x, y=complex_)
 
 class DataSet(object, metaclass=abc.ABCMeta):
     """Data set"""
@@ -93,8 +93,7 @@ class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
 
     def __init__(self, source, sink, series):
         # call parent constructor
-        super(SingleDataSet, self).__init__(sources=[source], sinks=[sink],
-                                            series_list=[series])
+        super().__init__(sources=[source], sinks=[sink], series_list=[series])
 
     @property
     def source(self):
@@ -265,9 +264,7 @@ class MultiNoiseSpectrum(DataSet):
         series = [spectrum.series for spectrum in spectra]
 
         # call parent constructor
-        super(MultiNoiseSpectrum, self).__init__(sources=sources, sinks=[sink],
-                                                 series_list=series, *args,
-                                                 **kwargs)
+        super().__init__(sources=sources, sinks=[sink], series_list=series, *args, **kwargs)
 
         self.noise_names = [spectrum.noise_name for spectrum in spectra]
 

@@ -117,7 +117,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     UNIT = "?"
 
     def __init__(self, value=None, node1=None, node2=None, *args, **kwargs):
-        super(PassiveComponent, self).__init__(nodes=[node1, node2], *args, **kwargs)
+        super().__init__(nodes=[node1, node2], *args, **kwargs)
 
         self.value = value
 
@@ -206,7 +206,7 @@ class OpAmp(Component):
         """"Instantiate new op-amp."""
 
         # call parent constructor
-        super(OpAmp, self).__init__(nodes=[node1, node2, node3], *args, **kwargs)
+        super().__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
         # default properties
         self.params = {"a0": SIFormatter.parse(a0)[0], # gain
@@ -318,7 +318,7 @@ class Input(Component):
             nodes = [node_n, node_p]
 
         # call parent constructor
-        super(Input, self).__init__(name="input", nodes=nodes, *args, **kwargs)
+        super().__init__(name="input", nodes=nodes, *args, **kwargs)
 
         input_type = input_type.lower()
 
@@ -381,7 +381,7 @@ class Resistor(PassiveComponent):
     UNIT = "Ω"
 
     def __init__(self, *args, **kwargs):
-        super(Resistor, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # register Johnson noise
         self.add_noise(JohnsonNoise(component=self, resistance=self.resistance))
@@ -494,7 +494,7 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, component, *args, **kwargs):
-        super(ComponentNoise, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.component = component
 
@@ -516,7 +516,7 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, node, component, *args, **kwargs):
-        super(NodeNoise, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.node = node
         self.component = component
@@ -533,8 +533,7 @@ class VoltageNoise(ComponentNoise):
 
 class JohnsonNoise(VoltageNoise):
     def __init__(self, resistance, *args, **kwargs):
-        super(JohnsonNoise, self).__init__(function=self.noise_voltage, *args,
-                                           **kwargs)
+        super().__init__(function=self.noise_voltage, *args, **kwargs)
 
         self.resistance = float(resistance)
 

@@ -23,7 +23,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
     """Small signal circuit analysis"""
 
     def __init__(self, prescale=True, *args, **kwargs):
-        super(SmallSignalAcAnalysis, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.prescale = prescale
 
@@ -950,7 +950,7 @@ class ComponentEquation(BaseEquation):
         """Instantiate a new component equation."""
 
         # call parent constructor
-        super(ComponentEquation, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.component = component
 
@@ -967,7 +967,7 @@ class NodeEquation(BaseEquation):
         """Instantiate a new node equation."""
 
         # call parent constructor
-        super(NodeEquation, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.node = node
 
@@ -1022,8 +1022,7 @@ class ImpedanceCoefficient(BaseCoefficient):
         self.component = component
 
         # call parent constructor
-        super(ImpedanceCoefficient, self).__init__(
-              coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
+        super().__init__(coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
 
 class CurrentCoefficient(BaseCoefficient):
     """Represents an current coefficient.
@@ -1040,8 +1039,7 @@ class CurrentCoefficient(BaseCoefficient):
         self.component = component
 
         # call parent constructor
-        super(CurrentCoefficient, self).__init__(
-              coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
+        super().__init__(coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
 
 class VoltageCoefficient(BaseCoefficient):
     """Represents a voltage coefficient.
@@ -1058,5 +1056,4 @@ class VoltageCoefficient(BaseCoefficient):
         self.node = node
 
         # call parent constructor
-        super(VoltageCoefficient, self).__init__(
-              coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
+        super().__init__(coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
