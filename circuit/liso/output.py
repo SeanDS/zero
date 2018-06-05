@@ -527,11 +527,11 @@ class LisoOutputParser(LisoParser):
         raise SyntaxError
 
     def parse_opamp(self, opamp_str):
-        # split by whitespace
-        params = opamp_str.split()
-
         # remove ignored strings
-        params = self._remove_ignored_opamp_strings(params)
+        opamp_str = self._remove_ignored_opamp_strings(opamp_str)
+
+        # split by whitespace
+        params = iter(opamp_str.split())
 
         # op-amp name and model
         name = next(params)
@@ -557,69 +557,36 @@ class LisoOutputParser(LisoParser):
             if prop.startswith("a0"):
                 kwargs["a0"] = value
             elif prop.startswith("gbw"):
-                if value != "0":
-                    unit = next(params)
-                else:
-                    unit = ""
-
+                unit = next(params)
                 kwargs["gbw"] = value + unit
             elif prop.startswith("un"):
-                if value != "0":
-                    unit = next(params)
-                    # split off "/sqrt(Hz)"
-                    unit = unit.rstrip("/sqrt(Hz)")
-                else:
-                    unit = ""
-
+                unit = next(params)
+                # split off "/sqrt(Hz)"
+                unit = unit.rstrip("/sqrt(Hz)")
                 kwargs["v_noise"] = value + unit
             elif prop.startswith("uc"):
-                if value != "0":
-                    unit = next(params)
-                else:
-                    unit = ""
-
+                unit = next(params)
                 kwargs["v_corner"] = value + unit
             elif prop.startswith("in"):
-                if value != "0":
-                    unit = next(params)
-                    # split off "/sqrt(Hz)"
-                    unit = unit.rstrip("/sqrt(Hz)")
-                else:
-                    unit = ""
-
+                unit = next(params)
+                # split off "/sqrt(Hz)"
+                unit = unit.rstrip("/sqrt(Hz)")
                 kwargs["i_noise"] = value + unit
             elif prop.startswith("ic"):
-                if value != "0":
-                    unit = next(params)
-                else:
-                    unit = ""
-
+                unit = next(params)
                 kwargs["i_corner"] = value + unit
             elif prop.startswith("umax"):
-                if value != "0":
-                    unit = next(params)
-                else:
-                    unit = ""
-
+                unit = next(params)
                 kwargs["v_max"] = value + unit
             elif prop.startswith("imax"):
-                if value != "0":
-                    unit = next(params)
-                else:
-                    unit = ""
-
+                unit = next(params)
                 kwargs["i_max"] = value + unit
             elif prop.startswith("sr"):
-                if value != "0":
-                    unit = next(params)
-
-                    # parse V/us and convert to V/s
-                    # FIXME: parse inverse units directly
-                    slew_rate, _ = SIFormatter.parse(value + unit)
-                    slew_rate *= 1e6
-                else:
-                    slew_rate = 0
-
+                unit = next(params)
+                # parse V/us and convert to V/s
+                # FIXME: parse inverse units directly
+                slew_rate, _ = SIFormatter.parse(value + unit)
+                slew_rate *= 1e6
                 kwargs["slew_rate"] = slew_rate
             elif prop.startswith("delay"):
                 if value != "0":
@@ -657,14 +624,11 @@ class LisoOutputParser(LisoParser):
                                **kwargs)
 
     @classmethod
-    def _remove_ignored_opamp_strings(cls, params):
-        for param in params:
-            for ignore in cls.OPAMP_IGNORE_STRINGS:
-                param = param.replace(ignore, "")
-            
-            # only return non-empty strings
-            if param:
-                yield param
+    def _remove_ignored_opamp_strings(cls, opamp_str):
+        for ignore in cls.OPAMP_IGNORE_STRINGS:
+            opamp_str = opamp_str.replace(ignore, "")
+        
+        return opamp_str
 
     def _parse_opamp_root(self, frequency, plane):
         # parse frequency

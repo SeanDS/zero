@@ -3,8 +3,8 @@
 import os
 from circuit import logging_on
 logging_on()
-from circuit.liso.runner import Runner
+from circuit.liso.runner import LisoRunner
 
 # run
-output = Runner("liso1.fil").run()
+output = LisoRunner("liso1.fil").run()
 output.solution().plot()

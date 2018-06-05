@@ -10,11 +10,14 @@ from .output import LisoOutputParser
 
 LOGGER = logging.getLogger("liso")
 
-class Runner(object):
+class LisoRunner(object):
     """LISO runner"""
 
-    def __init__(self, script_path):
+    def __init__(self, script_path=None):
         self.script_path = script_path
+
+        # defaults
+        self._liso_path = None
 
     def run(self, plot=False, liso_path=None, output_path=None):
         self.liso_path = liso_path

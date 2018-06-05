@@ -4,7 +4,7 @@ import numpy as np
 import unittest
 import logging
 
-from circuit.liso.runner import Runner
+from circuit.liso.runner import LisoRunner
 
 LOGGER = logging.getLogger("test")
 
@@ -34,7 +34,7 @@ class LisoTester(unittest.TestCase):
     def _liso_output(self):
         # run LISO and parse output
         LOGGER.info("Testing %s (%s)", self.fil_path, self.description)
-        return Runner(self.fil_path).run()
+        return LisoRunner(self.fil_path).run()
 
     @property
     def description(self):

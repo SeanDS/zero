@@ -13,253 +13,115 @@ import collections
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
 from .liso.input import LisoInputParser
 from .liso.output import LisoOutputParser
-
-PROG = "circuit"
-AUTHOR = "Sean Leavey <electronics@attackllama.com>"
-SYNOPSIS = "{} <command> [<args>...]".format(PROGRAM)
-HEADER = """{prog} {version}
-{author}
-""".format(prog=PROGRAM, version=__version__, author=AUTHOR)
-MANPAGE = """
-NAME
-  {prog} {version}
-
-SYNOPSIS
-  {synopsis}
-
-DESCRIPTION
-
-  {desc}
-
-COMMANDS
-
-{{cmds}}
-
-AUTHOR
-    Sean Leavey <sean.leavey@ligo.org>
-""".format(prog=PROGRAM, version=__version__, desc=DESCRIPTION,
-           synopsis=SYNOPSIS).strip()
+from .liso.runner import LisoRunner
 
 LOGGER = logging.getLogger()
 
-class Cmd(object, metaclass=abc.ABCMeta):
-    """Base class for commands"""
+parser = argparse.ArgumentParser()
 
-    cmd = ""
+# create subparsers, storing subcommand string
+subparsers = parser.add_subparsers(dest="subcommand")
 
-    def __init__(self):
-        """Initialise argument parser"""
+verbose = argparse.ArgumentParser(add_help=False)
+verbose.add_argument("-v", "--verbose", action="store_true", help="enable verbose output")
 
-        self.parser = argparse.ArgumentParser(
-            prog="{} {}".format(PROG, self.cmd),
-            description=self.__doc__.strip()
-        )
+liso_meta = argparse.ArgumentParser(add_help=False)
+liso_meta.add_argument("path", help="file path")
 
-        self.parser.add_argument("-v", "--verbose", action="store_true",
-                                 help="enable verbose output")
+liso_in_or_out = argparse.ArgumentParser(add_help=False)
+liso_in_or_out.add_argument("--force-input", action="store_true", help="force parsing as LISO input file")
+liso_in_or_out.add_argument("--force-output", action="store_true", help="force parsing as LISO output file")
 
-    def parse_args(self, args):
-        """Parse arguments and return :class:`argparse.Namespace` object
+# interpret a LISO file, then run it
+liso_native_parser = subparsers.add_parser("liso", help="parse and run a LISO input or output file",
+                                           parents=[verbose, liso_meta, liso_in_or_out])
 
-        :param args: arguments
-        """
+# interpret a LISO file, run it, then compare it to LISO's results
+liso_compare_parser = subparsers.add_parser("liso-compare", help="parse and run a LISO input or output file, "
+                                            "and show a comparison to LISO's own results",
+                                            parents=[verbose, liso_meta, liso_in_or_out])
 
-        return self.parser.parse_args(args)
+# run LISO directly
+liso_external_parser = subparsers.add_parser("liso-external", help="run an input file with a local LISO binary "
+                                             "and show its results",
+                                             parents=[verbose, liso_meta])
+liso_external_parser.add_argument("--liso-plot", action="store_true", 
+                                  help="allow LISO to plot its results")
 
-    def __call__(self, args):
-        """Execute command within a try/except block, obeying verbosity"""
-        if args.verbose:
-            logging_on()
+# LISO path settings
+liso_path_parser = subparsers.add_parser("liso-path", help="show or set LISO binary path")
+liso_path_parser.add_argument("--set-path", action="store", help="set path to LISO binary")
 
-            # print title and version
-            print(HEADER)
+def action(namespace):
+    if hasattr(namespace, "verbose") and namespace.verbose:
+        logging_on()
 
-        # run command
-        self.call(args)
+    if namespace.subcommand:
+        subcommand = namespace.subcommand
 
-    @abc.abstractmethod
-    def call(self, args):
-        """Take Namespace object as input and execute command"""
-        raise NotImplementedError
-
-class Sim(Cmd):
-    """Parse either a LISO input file or output file, simulate its circuit,
-    then plot the results. The existing data in LISO output files is ignored.
-
-    To directly plot the results of a LISO output file, see \"liso\"."""
-
-    cmd = "sim"
-
-    def __init__(self):
-        super().__init__()
-
-        self.parser.add_argument("file", help="path to LISO input or output file")
-        self.parser.add_argument("--print-equations", action="store_true",
-                                 help="print circuit equations")
-        self.parser.add_argument("--print-matrix", action="store_true",
-                                 help="print circuit matrix")
-
-    def call(self, args):
-        # try parsing first as an input file, then an output file
-        try:
-            parser = LisoInputParser()
-            parser.parse(args.file)
-            LOGGER.debug("parsed as LISO input file")
-
-            solution = parser.run(print_equations=args.print_equations,
-                                print_matrix=args.print_matrix,
-                                print_progress=args.verbose)
-        except:
-            LOGGER.debug("attempt to parse file as LISO input failed, trying "
-                         "to parse as output instead")
-            # try as output file
-            parser = LisoOutputParser()
-            parser.parse(args.file)
-            LOGGER.debug("parsed as LISO output file")
-
-            solution = parser.run(print_equations=args.print_equations,
-                                print_matrix=args.print_matrix,
-                                print_progress=args.verbose)
-
-        solution.plot()
-
-class Liso(Cmd):
-    """Plot a LISO output file.
-
-    To model a LISO output file using this utility's built-in simulator, see
-    \"sim\".
-    """
-
-    cmd = "liso"
-
-    def __init__(self):
-        super().__init__()
-
-        self.parser.add_argument("output_file", help="LISO output file")
-
-    def call(self, args):
-        if args.verbose:
-            logging_on()
-
-        parser = LisoOutputParser()
-        parser.parse(args.output_file)
-        parser.show()
-
-class Help(Cmd):
-    """Print manpage or command help (also "-h" after command)."""
-
-    cmd = "help"
-
-    def __init__(self):
-        Cmd.__init__(self)
-        self.parser.add_argument("cmd", nargs="?",
-                                 help="command")
-
-    def call(self, args):
-        if args.cmd:
-            get_func(args.cmd).parser.print_help()
-        else:
-            print(MANPAGE.format(cmds=format_commands(man=True)))
-
-CMDS = collections.OrderedDict([
-    ("sim", Sim),
-    ("liso", Liso),
-    ("help", Help),
-])
-
-ALIAS = {
-    "--help": "help",
-    "-h": "help",
-}
-
-def format_commands(man=False):
-    """Generate documentation for available commands"""
-
-    # documentation indentation
-    prefix = " " * 8
-
-    # documentation text format
-    wrapper = textwrap.TextWrapper(
-        width=70,
-        initial_indent=prefix,
-        subsequent_indent=prefix,
-    )
-
-    with io.StringIO() as stream:
-        for name, func in CMDS.items():
-            if man:
-                command = func()
-
-                # format usage
-                usage = command.parser.format_usage()[len("usage: {} ".format(PROG)):].strip()
-
-                # format description
-                desc = wrapper.fill("\n".join([line.strip()
-                                               for line in command.parser.description.splitlines()
-                                               if line]))
-
-                # print documentation
-                stream.write("  {}  \n".format(usage))
-                stream.write(desc + "\n")
-                stream.write("\n")
+        if subcommand == "liso":
+            if namespace.force_output:
+                liso_parser = LisoOutputParser()
+                liso_parser.parse(namespace.path)
             else:
-                desc = func.__doc__.splitlines()[0]
-                stream.write("  {:10}{}\n".format(name, desc))
+                try:
+                    liso_parser = LisoInputParser()
+                    liso_parser.parse(namespace.path)
+                except SyntaxError:
+                    # file is invalid as input
+                    if namespace.force_input:
+                        # don't continue
+                        raise
 
-        output = stream.getvalue()
+                    # try as output
+                    liso_parser = LisoOutputParser()
+                    liso_parser.parse(namespace.path)
+            
+            liso_parser.show()
+        elif subcommand == "liso-compare":
+            # compare native simulation to LISO
 
-    return output.rstrip()
+            # LISO runner
+            runner = LisoRunner(namespace.path)
 
-def get_func(cmd):
-    """Find command from specified string
+            # run LISO, and parse its output
+            liso_parser = runner.run()
 
-    :param cmd: command string
-    """
+            # get LISO solution
+            liso_solution = liso_parser.solution()
 
-    if cmd in ALIAS:
-        # get the command the alias points to
-        cmd = ALIAS[cmd]
+            # get native solution
+            native_solution = liso_parser.solution(force=True)
 
-    try:
-        # return command if it exists
-        return CMDS[cmd]()
-    except KeyError:
-        # command not found; print error message
-        print("Unknown command:", cmd, file=sys.stderr)
-        print("See 'help' for usage.", file=sys.stderr)
+            # compare
+            figure = liso_solution.bode_figure()
+            liso_solution.plot_tfs(figure=figure)
+            native_solution.plot_tfs(figure=figure)
+            liso_solution.show()
+        elif subcommand == "liso-external":
+            # run LISO directly and plot its results
+            runner = LisoRunner(namespace.path)
+            
+            # run
+            solution = runner.run(namespace.liso_plot)
 
-        # exit with error code
-        sys.exit(1)
+            if not namespace.liso_plot:
+                solution.show()
+        elif subcommand == "liso-path":
+            if namespace.set_path:
+                raise NotImplementedError("this feature is not yet available")
+            else:
+                runner = LisoRunner()
+                print(runner.liso_path)
 
 def main():
     """Main program"""
 
-    if len(sys.argv) < 2:
-        # no command specified
-
-        # print title and version
-        print(HEADER)
-
-        # print usage
-        print("Command not specified.", file=sys.stderr)
-        print("usage: " + SYNOPSIS, file=sys.stderr)
-        print(file=sys.stderr)
-
-        # print available commands
-        print(format_commands(), file=sys.stderr)
-
-        # exit with error code
-        sys.exit(1)
-
-    # parse command
-    cmd = sys.argv[1]
-
     # parse arguments
-    args = sys.argv[2:]
+    namespace = parser.parse_args(sys.argv[1:])
 
-    # get and execute command
-    func = get_func(cmd)
-    func(func.parse_args(args))
+    # conduct action
+    action(namespace)
 
 if __name__ == "__main__":
     main()

@@ -158,12 +158,9 @@ class Solution(object):
         """Plot all available functions"""
 
         if self.has_tfs:
-            self.plot_tfs(output_components=output_components,
-                          output_nodes=output_nodes)
+            self.plot_tfs(output_components=output_components, output_nodes=output_nodes)
         if self.has_noise:
             self.plot_noise()
-
-        self.show()
 
     def plot_tfs(self, figure=None, output_components=None, output_nodes=None,
                  *args, **kwargs):
