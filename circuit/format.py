@@ -58,9 +58,7 @@ class SIFormatter(BaseFormatter):
     # other strings used to represent prefices
     PREFIX_ALIASES = {"u": "µ"}
 
-    # regular expression to find values with unit prefixes and units in text;
-    # this technically allows strings with both exponents and unit prefices,
-    # like ".1e-6.MHz", but these should fail later validation
+    # regular expression to find values with unit prefixes and units in text
     VALUE_REGEX_STR = (r"^([+-]?\d*\.?\d*)" # base
                        r"([eE]([+-]?\d*\.?\d*))?\s*" # numeric exponent
                        r"([yzafpnuµmkMGTEZY])?" # unit prefix exponent
@@ -141,19 +139,17 @@ class SIFormatter(BaseFormatter):
         # first result should be the base number
         base = float(results.group(1))
 
-        if results.group(3) and results.group(4):
-            # both exponent and unit prefix are specified, but this is
-            # ambiguous (does the unit prefix apply to the number or the
-            # exponent?)
-            raise ValueError("cannot specify both exponent and unit prefix")
-
         # handle exponent
-        if results.group(3):
-            # exponent specified directly
-            exponent = float(results.group(3))
-        elif results.group(4):
-            # exponent specified as unit prefix
-            exponent = cls.unit_exponent(results.group(4))
+        if results.group(3) or results.group(4):
+            exponent = 0
+
+            if results.group(3):
+                # exponent specified directly
+                exponent += float(results.group(3))
+            
+            if results.group(4):
+                # exponent specified as unit prefix
+                exponent += cls.unit_exponent(results.group(4))
         else:
             # neither prefix nor exponent
             exponent = 0
