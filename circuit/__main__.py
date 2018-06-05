@@ -32,14 +32,18 @@ liso_in_or_out = argparse.ArgumentParser(add_help=False)
 liso_in_or_out.add_argument("--force-input", action="store_true", help="force parsing as LISO input file")
 liso_in_or_out.add_argument("--force-output", action="store_true", help="force parsing as LISO output file")
 
+liso_solver_data = argparse.ArgumentParser(add_help=False)
+liso_solver_data.add_argument("--print-equations", action="store_true", help="print circuit equations")
+liso_solver_data.add_argument("--print-matrix", action="store_true", help="print circuit matrix")
+
 # interpret a LISO file, then run it
 liso_native_parser = subparsers.add_parser("liso", help="parse and run a LISO input or output file",
-                                           parents=[verbose, liso_meta, liso_in_or_out])
+                                           parents=[verbose, liso_meta, liso_in_or_out, liso_solver_data])
 
 # interpret a LISO file, run it, then compare it to LISO's results
 liso_compare_parser = subparsers.add_parser("liso-compare", help="parse and run a LISO input or output file, "
                                             "and show a comparison to LISO's own results",
-                                            parents=[verbose, liso_meta, liso_in_or_out])
+                                            parents=[verbose, liso_meta, liso_in_or_out, liso_solver_data])
 
 # run LISO directly
 liso_external_parser = subparsers.add_parser("liso-external", help="run an input file with a local LISO binary "
@@ -60,6 +64,9 @@ def action(namespace):
         subcommand = namespace.subcommand
 
         if subcommand == "liso":
+            kwargs = {"print_equations": namespace.print_equations,
+                      "print_matrix": namespace.print_matrix}
+
             if namespace.force_output:
                 liso_parser = LisoOutputParser()
                 liso_parser.parse(namespace.path)
@@ -77,9 +84,12 @@ def action(namespace):
                     liso_parser = LisoOutputParser()
                     liso_parser.parse(namespace.path)
             
-            liso_parser.show()
+            liso_parser.show(**kwargs)
         elif subcommand == "liso-compare":
             # compare native simulation to LISO
+
+            kwargs = {"print_equations": namespace.print_equations,
+                      "print_matrix": namespace.print_matrix}
 
             # LISO runner
             runner = LisoRunner(namespace.path)
@@ -91,7 +101,7 @@ def action(namespace):
             liso_solution = liso_parser.solution()
 
             # get native solution
-            native_solution = liso_parser.solution(force=True)
+            native_solution = liso_parser.solution(force=True, **kwargs)
 
             # compare
             figure = liso_solution.bode_figure()

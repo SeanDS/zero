@@ -420,7 +420,7 @@ class EquationDisplay(TableFormatter):
                     formatted_coefficient += " × "
 
                 # write coefficient and element
-                clause += "%s%s" % (formatted_coefficient,  element_format % element)
+                clause += "%s%s" % (formatted_coefficient,  element_format % element.label())
                 
                 clauses.append(clause)
 
@@ -469,7 +469,7 @@ class EquationDisplay(TableFormatter):
                     raise ValueError("unexpected element type")
 
                 # write coefficient and element
-                expression += self.format_coefficient_latex(coefficient) + element_format % element
+                expression += self.format_coefficient_latex(coefficient) + element_format % element.label()
 
             # add right hand side, with alignment character
             expression += r"&="
