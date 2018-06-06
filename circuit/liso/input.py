@@ -190,7 +190,7 @@ class LisoInputParser(LisoParser):
             # TODO: add the error
             raise SyntaxError("LISO syntax error")
 
-        arg_names = ["name", "value", "node1", "node2", "node3"]
+        arg_names = ["name", "value", "node1", "node2"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
 
         if passive_type == "r":
