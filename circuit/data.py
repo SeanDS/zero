@@ -56,6 +56,9 @@ class ComplexSeries(Series):
     def __init__(self, x, magnitude, phase, magnitude_scale, phase_scale):
         if magnitude_scale.lower() == "db":
             magnitude = 10 ** (magnitude / 20)
+        elif magnitude_scale.lower() == "abs":
+            # don't need to scale
+            pass
         else:
             raise Exception("cannot handle scale %s" % magnitude_scale)
 
