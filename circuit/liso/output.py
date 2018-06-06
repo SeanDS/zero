@@ -232,7 +232,7 @@ class LisoOutputParser(LisoParser):
 
     def t_ANY_inductors(self, t):
         # match start of inductor section
-        r'\#(?P<n>\d+)\sinductors?:'
+        r'\#(?P<n>\d+)\scoils?:'
         self.ninductors = t.lexer.lexmatch.group('n')
         t.lexer.begin('inductors')
 
@@ -514,7 +514,7 @@ class LisoOutputParser(LisoParser):
         # splice together value and unit
         tokens[1:3] = [''.join(tokens[1:3])]
 
-        arg_names = ["name", "value", "node1", "node2", "node3"]
+        arg_names = ["name", "value", "node1", "node2"]
         kwargs = {name: value for name, value in zip(arg_names, tokens)}
 
         if passive_type == "r":
