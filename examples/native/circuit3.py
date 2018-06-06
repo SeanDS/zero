@@ -11,7 +11,7 @@ import numpy as np
 from circuit import logging_on
 logging_on()
 from circuit.circuit import Circuit
-from circuit.analysis.ac import SmallSignalAcAnalysis
+from circuit.analysis import SmallSignalAcAnalysis
 
 # frequency vector
 frequencies = np.logspace(0, 6, 1000)

@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from ..circuit import Circuit
 from ..components import Component, Node
-from ..analysis.ac import SmallSignalAcAnalysis
+from ..analysis import SmallSignalAcAnalysis
 from ..format import SIFormatter
 
 LOGGER = logging.getLogger("liso")

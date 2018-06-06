@@ -14,7 +14,7 @@ from ..circuit import Circuit
 from ..components import (Component, Resistor, Capacitor, Inductor, OpAmp, Input,
                           Node, CurrentNoise, VoltageNoise, JohnsonNoise)
 from ..solution import Solution
-from ..analysis.ac import SmallSignalAcAnalysis
+from ..analysis import SmallSignalAcAnalysis
 
 LOGGER = logging.getLogger("liso")
 
