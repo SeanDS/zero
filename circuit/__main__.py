@@ -104,9 +104,17 @@ def action(namespace):
             native_solution = liso_parser.solution(force=True, **kwargs)
 
             # compare
-            figure = liso_solution.bode_figure()
-            liso_solution.plot_tfs(figure=figure)
-            native_solution.plot_tfs(figure=figure)
+            if liso_solution.has_tfs:
+                # compare transfer functions
+                figure = liso_solution.bode_figure()
+                liso_solution.plot_tfs(figure=figure)
+                native_solution.plot_tfs(figure=figure)
+            else:
+                # noise
+                figure = liso_solution.noise_figure()
+                liso_solution.plot_noise(figure=figure)
+                native_solution.plot_noise(figure=figure)
+
             liso_solution.show()
         elif subcommand == "liso-external":
             # run LISO directly and plot its results
