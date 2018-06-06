@@ -109,11 +109,15 @@ class LisoOutputParser(LisoParser):
         self.nioutputs = None
         self.nnoisesources = None
 
+        # noise source definitions, later turned into noise objects
+        # (order represents data column order)
+        self._noise_source_defs = []
+
         super().__init__(*args, **kwargs)
 
     def _do_build(self, *args, **kwargs):
         # call parent
-        super()._do_build()
+        super()._do_build(*args, **kwargs)
 
         # parse data
         data = np.array(self._raw_data)
@@ -204,19 +208,46 @@ class LisoOutputParser(LisoParser):
             offset += tf_output.n_scales
 
     def _build_noise(self):
-        for noise_source in self.noise_sources:
+        sources = []
+
+        # now that we have all the circuit components, create noise source objects
+        for index, definition in enumerate(self._noise_source_defs):
+            component = definition[0]
+
+            if len(definition) > 1:
+                # op-amp noise type specified
+                type_str = definition[1]
+
+                if type_str == "U":
+                    noise = component.voltage_noise
+                elif type_str == "I+":
+                    # non-inverting input current noise
+                    noise = component.non_inv_current_noise
+                elif type_str == "I-":
+                    # inverting input current noise
+                    noise = component.inv_current_noise
+                else:
+                    raise SyntaxError("unrecognised op-amp noise source '%s'" % type_str)
+            else:
+                # must be a resistor
+                noise = component.johnson_noise
+        
+            # add noise source
+            sources.append(noise)
+
             # get noise spectrum
-            spectrum = self._data[:, noise_source.index]
+            spectrum = self._data[:, index]
 
             # create data series
             series = Series(x=self.frequencies, y=spectrum)
 
             # create noise spectrum
-            spectrum = NoiseSpectrum(source=noise_source.noise,
-                                     sink=self.noise_output_node,
-                                     series=series)
+            spectrum = NoiseSpectrum(source=noise, sink=self.noise_output_node, series=series)
 
             self._solution.add_noise(spectrum)
+
+        # set noise sources
+        self.noise_sources = sources
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
@@ -660,14 +691,11 @@ class LisoOutputParser(LisoParser):
         # split by whitespace
         source_strs = sources_line.split()
 
-        for index, source_str in enumerate(source_strs):
-            noise = self._parse_noise(source_str)
+        for source_str in source_strs:
+            self._parse_noise_source(source_str)
 
-            # create noise source
-            self.noise_sources.append(LisoNoiseSource(noise, index=index))
-
-    def _parse_noise(self, source):
-        """Gets noise classification for a given source"""
+    def _parse_noise_source(self, source):
+        """Gets noise object for a given source"""
 
         # strip any remaining whitespace
         source = source.strip()
@@ -676,33 +704,19 @@ class LisoOutputParser(LisoParser):
         source_pieces = source.split("(")
 
         # component name is first piece
-        component = self.circuit.get_component(source_pieces[0])
+        component_name = self.circuit.get_component(source_pieces[0])
 
+        # individual component
+        definition = [component_name]
+        
         if len(source_pieces) > 1:
-            # op-amp noise is the second piece with the closing bracket removed
-            opamp_noise_type = source_pieces[1].rstrip(")")
+            # remove trailing bracket
+            type_str = source_pieces[1].rstrip(")")
 
-            if opamp_noise_type == "U":
-                noise = VoltageNoise(component=component)
-            elif opamp_noise_type.startswith("I"):
-                # work out node
-                if opamp_noise_type == "I+":
-                    # non-inverting node
-                    node = component.node1
-                elif opamp_noise_type == "I-":
-                    # inverting node
-                    node = component.node2
-                else:
-                    raise SyntaxError("unexpected current noise node")
-
-                noise = CurrentNoise(node=node, component=component)
-            else:
-                raise SyntaxError("unrecognised noise source")
-        else:
-            noise = JohnsonNoise(component=component,
-                                 resistance=component.resistance)
-
-        return noise
+            # add op-amp noise type
+            definition.append(type_str)
+        
+        self._noise_source_defs.append(definition)
 
     def parse_voltage_output(self, output):
         self.add_voltage_output(output)

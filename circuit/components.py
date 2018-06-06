@@ -235,9 +235,11 @@ class OpAmp(Component):
 
         # op-amp input current noise
         if self.node1 is not Node("gnd"):
+            # non-inverting input noise
             self.add_noise(CurrentNoise(node=self.node1, component=self,
                                         function=self._noise_current))
         if self.node2 is not Node("gnd"):
+            # inverting input noise
             self.add_noise(CurrentNoise(node=self.node2, component=self,
                                         function=self._noise_current))
 
@@ -302,6 +304,32 @@ class OpAmp(Component):
     def _noise_current(self, node, frequencies):
         # ignore node; noise is same at both inputs
         return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
+
+    @property
+    def voltage_noise(self):
+        for noise in self.noise:
+            if isinstance(noise, VoltageNoise):
+                return noise
+        
+        raise ValueError("no voltage noise")
+
+    @property
+    def non_inv_current_noise(self):
+        for noise in self.noise:
+            if isinstance(noise, CurrentNoise):
+                if noise.node == self.node1:
+                    return noise
+        
+        raise ValueError("no non-inverting current noise")
+
+    @property
+    def inv_current_noise(self):
+        for noise in self.noise:
+            if isinstance(noise, CurrentNoise):
+                if noise.node == self.node2:
+                    return noise
+        
+        raise ValueError("no inverting current noise")
 
     def __str__(self):
         return super().__str__() + " [in+={cmp.node1}, in-={cmp.node2}, out={cmp.node3}, model={cmp.model}]".format(cmp=self)
@@ -418,6 +446,14 @@ class Resistor(PassiveComponent):
     def impedance(self, *args):
         return self.resistance
 
+    @property
+    def johnson_noise(self):
+        for noise in self.noise:
+            if isinstance(noise, JohnsonNoise):
+                return noise
+        
+        raise ValueError("no Johnson noise")
+
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, R={cmp.resistance}]".format(cmp=self)
 
@@ -517,6 +553,9 @@ class Noise(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def label(self):
         return NotImplemented
+
+    def __repr__(self):
+        return str(self)
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
     """Component noise spectral density.

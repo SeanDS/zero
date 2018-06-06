@@ -34,12 +34,21 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.input_impedance = None
         self._output_type = None
         self.tf_outputs = []
-        self.output_all_nodes = False
-        self.output_all_opamp_nodes = False
-        self.output_all_components = False
-        self.output_all_opamp_components = False
+
+        # output/noise flags
+        self._output_all_nodes = False
+        self._output_all_opamp_nodes = False
+        self._output_all_components = False
+        self._output_all_opamps = False
+        self._source_all_components = False
+        self._source_all_opamps = False
+        self._source_all_resistors = False
+
+        # the node noise is projected to
         self.noise_output_node = None
-        self.noise_sources = []
+
+        # sources to project noise from
+        self._noise_sources = []
 
         # circuit solution
         self._solution = None
@@ -55,14 +64,6 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         if os.path.isfile(text):
             with open(text, "r") as obj:
                 text = obj.read()
-
-        #self.lexer.input(text)
-        # Tokenize
-        #while True:
-        #    tok = self.lexer.token()
-        #    if not tok: 
-        #        break      # No more input
-        #    print(tok)
 
         # add newline to end of text
         # this allows parsers to use newline characters to separate lines
@@ -110,7 +111,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         elif self.output_type == "noise":
             return SmallSignalAcAnalysis(circuit=self.circuit).calculate_noise(
                 frequencies=self.frequencies,
-                noise_node=self.noise_output_node,
+                noise_node=self.noise_output_node, noise_sources=self.noise_sources,
                 *args, **kwargs)
         
         raise SyntaxError("no outputs requested")
@@ -168,13 +169,10 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def output_nodes(self):
         nodes = set([element.element for element in self.tf_outputs if element.type == "node"])
 
-        if "all" in nodes:
+        if self._output_all_nodes:
             nodes.update([node.name for node in self.circuit.non_gnd_nodes])
-        elif "allop" in nodes:
+        elif self._output_all_opamp_nodes:
             nodes.update(self.opamp_output_node_names)
-        
-        # remove special keywords
-        nodes.difference_update(["all", "allop"])
 
         return nodes
 
@@ -182,15 +180,29 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def output_components(self):
         components = set([element.element for element in self.tf_outputs if element.type == "component"])
 
-        if "all" in components:
-            components.update([component.name for component in self.circuit.components])
-        elif "allop" in components:
-            components.update(self.opamp_names)
+        if self._output_all_components:
+            components.update(*[component.name for component in self.circuit.components])
+        elif self._output_all_opamps:
+            components.update(*self.opamp_names)
         
-        # remove special keywords
-        components.difference_update(["all", "allop"])
-
         return components
+
+    @property
+    def noise_sources(self):
+        sources = set(self._noise_sources)
+
+        if self._source_all_components:
+            sources.update(*[component.noise for component in self.circuit.components])
+        elif self._source_all_opamps:
+            sources.update(*[component.noise for component in self.circuit.opamps])
+        elif self._source_all_resistors:
+            sources.update(*[component.noise for component in self.circuit.resistors])
+
+        return sources
+
+    @noise_sources.setter
+    def noise_sources(self, sources):
+        self._noise_sources = list(sources)
 
     @property
     def opamp_output_node_names(self):
@@ -203,6 +215,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def opamp_names(self):
         """Get set of op-amp component names in the circuit"""
         return set([component.name for component in self.circuit.opamps])
+
+    @property
+    def resistor_names(self):
+        """Get set of resistor component names in the circuit"""
+        return set([component.name for component in self.circuit.resistors])
 
     @property
     def output_type(self):
@@ -322,33 +339,28 @@ class LisoOutputElement(object):
         raise ValueError("scale names not found")
 
 class LisoOutputVoltage(LisoOutputElement):
-    def __init__(self, node=None, all_nodes=False, all_opamps=False, *args, **kwargs):
+    def __init__(self, node=None, *args, **kwargs):
         super().__init__(_type="node", element=node, output_type="voltage", *args, **kwargs)
-
-        self.all_nodes = bool(all_nodes)
-        self.all_opamps = bool(all_opamps)
 
     @property
     def node(self):
         return self.element
 
 class LisoOutputCurrent(LisoOutputElement):
-    def __init__(self, component=None, all_components=False, all_opamps=False, *args, **kwargs):
+    def __init__(self, component=None, *args, **kwargs):
         super().__init__(_type="component", element=component, output_type="current", *args, **kwargs)
-
-        self.all_components = bool(all_components)
-        self.all_opamps = bool(all_opamps)
 
     @property
     def component(self):
         return self.element
 
 class LisoNoiseSource(object):
-    def __init__(self, noise, index=None, flags=None):
-        self.noise = noise
-
+    def __init__(self, noise, index=None):
         if index is not None:
-            self.index = index
-        
-        if flags is not None:
-            self.flags = flags
+            index = int(index)
+
+        self.noise = noise
+        self.index = index
+    
+    def __str__(self):
+        return "LISO {noise}".format(noise=self.noise)

@@ -377,7 +377,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
 
         return solution
 
-    def calculate_noise(self, frequencies, noise_node, stream=sys.stdout,
+    def calculate_noise(self, frequencies, noise_node, noise_sources=None, stream=sys.stdout,
                         print_equations=False, print_matrix=False, *args, **kwargs):
         """Calculate noise from circuit :class:`component <.Component>` / \
         :class:`node <.Node>` at a particular :class:`node <.Node>`.
@@ -388,6 +388,8 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             sequence of frequencies to solve circuit for
         noise_node : :class:`~.components.Node`, :class:`str`
             node to project noise to
+        noise_sources : sequence of :class:`~..components.Noise`
+            noise sources to project to the noise node; defaults to all components
         stream : :class:`io.IOBase`
             stream to print to
         print_equations : :class:`bool`
@@ -417,6 +419,10 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             # use noise node specified in this call
             self.noise_node = noise_node
 
+        if noise_sources is None:
+            # project all noise sources
+            noise_sources = self.circuit.noise_sources
+
         # scale vector, for converting units, if necessary
         scale = self.get_empty_results_matrix(1)
         scale[:, 0] = 1
@@ -444,7 +450,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         skips = []
 
         # loop over circuit's noise sources
-        for noise in self.circuit.noise_sources:
+        for noise in noise_sources:
             # get this element's noise spectral density
             spectral_density = noise.spectral_density(frequencies=frequencies)
 

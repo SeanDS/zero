@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 
+from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
 from ..format import SIFormatter
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource
 
@@ -59,7 +60,42 @@ class LisoInputParser(LisoParser):
     def __init__(self, *args, **kwargs):
         self._instructions = []
 
+        # noise source definitions, later turned into LisoNoiseSource objects
+        self._noise_source_defs = []
+
         super().__init__(*args, **kwargs)
+
+    def _do_build(self, *args, **kwargs):
+        super()._do_build(*args, **kwargs)
+
+        sources = []
+
+        # now that we have all the circuit components, create noise source objects
+        for index, definition in enumerate(self._noise_source_defs):
+            component = definition[0]
+
+            if len(definition) > 1:
+                # op-amp noise type specified
+                type_str = definition[1].lower()
+
+                if type_str == "u":
+                    noise = component.voltage_noise
+                elif type_str == "+":
+                    # non-inverting input current noise
+                    noise = component.non_inv_current_noise
+                elif type_str == "-":
+                    # inverting input current noise
+                    noise = component.inv_current_noise
+                else:
+                    raise SyntaxError("unrecognised op-amp noise source")
+            else:
+                # must be a resistor
+                noise = component.johnson_noise
+        
+            # add noise source
+            sources.append(LisoNoiseSource(noise=noise, index=index))
+
+        self.noise_sources = sources
 
     # detect new lines
     def t_newline(self, t):
@@ -155,19 +191,19 @@ class LisoInputParser(LisoParser):
         '''uoutput : UOUTPUT chunks'''
 
         # parse voltage outputs
-        self.parse_voltage_output(*p[2:])
+        self.parse_voltage_output(p[2:])
 
     def p_ioutput(self, p):
         '''ioutput : IOUTPUT chunks'''
 
         # parse current outputs
-        self.parse_current_output(*p[2:])
+        self.parse_current_output(p[2:])
 
     def p_noise(self, p):
         '''noise : NOISE chunks'''
 
         # parse noise node
-        self.parse_noise_output(*p[2:])
+        self.parse_noise_output(p[2])
 
     def p_chunks(self, p):
         '''chunks : CHUNK
@@ -296,14 +332,11 @@ class LisoInputParser(LisoParser):
             # default
             self.input_impedance = 50
 
-    def parse_voltage_output(self, params):
-        if len(params) < 1:
-            raise SyntaxError
-        
+    def parse_voltage_output(self, output_str):        
         # transfer function output
         self.output_type = "tf"
 
-        for param in params.split():
+        for param in output_str.split():
             # split option by colon
             self.add_voltage_output(param)
 
@@ -313,22 +346,20 @@ class LisoInputParser(LisoParser):
         scales = params[1:]
 
         if node_name.lower() == "all":
-            output = LisoOutputVoltage(scales=scales, all_nodes=True)
+            # all node voltages
+            self._output_all_nodes = True
         elif node_name.lower() == "allop":
-            output = LisoOutputVoltage(scales=scales, all_opamps=True)
+            # op-amp outputs voltages
+            self._output_all_opamp_nodes = True
         else:
-            output = LisoOutputVoltage(node=node_name, scales=scales)
+            # add output
+            self.tf_outputs.append(LisoOutputVoltage(node=node_name, scales=scales))
 
-        self.tf_outputs.append(output)
-
-    def parse_current_output(self, params):
-        if len(params) < 1:
-            raise SyntaxError
-
+    def parse_current_output(self, output_str):
         # transfer function output
         self.output_type = "tf"
 
-        for param in params.split():
+        for param in output_str.split():
             # split option by colon
             self.add_current_output(param)
 
@@ -338,44 +369,52 @@ class LisoInputParser(LisoParser):
         scales = params[1:]
 
         if component_name.lower() == "all":
-            output = LisoOutputCurrent(scales=scales, all_components=True)
+            # all component currents
+            self._output_all_components = True
         elif component_name.lower() == "allop":
-            output = LisoOutputCurrent(scales=scales, all_opamps=True)
+            # op-amp output currents
+            self._output_all_opamps = True
         else:
-            output = LisoOutputCurrent(component=component_name, scales=scales)
+            # add output
+            self.tf_outputs.append(LisoOutputCurrent(component=component_name, scales=scales))
 
-        self.tf_outputs.append(output)
-
-    def parse_noise_output(self, *params):
-        if len(params) < 2:
-            raise SyntaxError
-        
-        if len(params) > 2:
-            LOGGER.warning("ignoring noise source options in noise command")
-
-        nodes = []
+    def parse_noise_output(self, noise_str):
+        # split by whitespace
+        params = noise_str.split()
 
         # noise output
         self.output_type = "noise"
 
-        noise_node = params[0].lower()
-        
-        # TODO: loop over rest of params
-        noise_input = params[1].lower()
-
-        if noise_node == "all":
-            pass
-        elif noise_node == "allr":
-            pass
-        elif noise_node == "allop":
-            pass
-        elif noise_node == "sum":
-            raise NotImplementedError
-        else:
-            nodes.append(LisoNoiseSource(self.circuit.get_node(noise_node)))
-
-        # noise input
-        #self.noise_sources.extend(nodes)
-    
         # noise output
-        self.noise_output_node = self.circuit.get_node(noise_node)
+        self.noise_output_node = params[0]
+
+        if len(params) > 1:
+            # parse noise sources
+            for source_str in params[1:]:
+                # strip any remaining whitespace
+                source_str = source_str.strip()
+
+                # split off op-amp port settings
+                source_pieces = source_str.split(":")
+
+                component_name = source_pieces[0]
+
+                if component_name == "all":
+                    # all component noises
+                    self._source_all_components = True
+                elif component_name == "allop":
+                    self._source_all_opamps = True
+                elif component_name == "allr":
+                    # all resistor noises
+                    self._source_all_resistors = True
+                elif component_name == "sum":
+                    raise NotImplementedError
+                else:
+                    # individual component
+                    definition = [component_name]
+                    
+                    if len(source_pieces) > 1:
+                        # add op-amp noise type
+                        definition.append(source_pieces[1])
+                    
+                    self._noise_source_defs.append(definition)
