@@ -69,7 +69,13 @@ class LisoRunner(object):
                               stderr=subprocess.PIPE)
         
         if result.returncode != 0:
-            raise Exception("error during LISO run: %s" % result.stderr)
+            # parse LISO error message
+            output = result.stderr.decode("utf-8")
+
+            # LISO reports its error on the final line
+            error_msg = output.splitlines()[-1].strip()
+            
+            raise LisoError(error_msg)
         
         return result
 
@@ -108,3 +114,6 @@ class LisoRunner(object):
                 return path
 
         raise FileNotFoundError("no appropriate LISO binary found")
+
+class LisoError(Exception):
+    pass
