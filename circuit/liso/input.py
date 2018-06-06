@@ -191,13 +191,13 @@ class LisoInputParser(LisoParser):
         '''uoutput : UOUTPUT chunks'''
 
         # parse voltage outputs
-        self.parse_voltage_output(p[2:])
+        self.parse_voltage_output(p[2])
 
     def p_ioutput(self, p):
         '''ioutput : IOUTPUT chunks'''
 
         # parse current outputs
-        self.parse_current_output(p[2:])
+        self.parse_current_output(p[2])
 
     def p_noise(self, p):
         '''noise : NOISE chunks'''
