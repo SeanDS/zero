@@ -35,3 +35,4 @@ solution = analysis.calculate_noise(frequencies, noise_node="nout",
 
 # plot
 solution.plot()
+solution.show()

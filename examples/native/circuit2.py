@@ -37,3 +37,4 @@ solution = analysis.calculate_tfs(frequencies, output_components="all",
 
 # plot
 solution.plot()
+solution.show()
