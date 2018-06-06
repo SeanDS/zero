@@ -1,6 +1,6 @@
 import unittest
 
-from circuit.liso.input import LisoInputParser
+from circuit.liso import LisoInputParser
 
 class LisoInputParserTestCase(unittest.TestCase):
     def setUp(self):

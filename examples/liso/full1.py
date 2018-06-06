@@ -3,7 +3,7 @@
 import os
 from circuit import logging_on
 logging_on()
-from circuit.liso.runner import LisoRunner
+from circuit.liso import LisoRunner
 
 # run
 output = LisoRunner("liso1.fil").run()

@@ -5,7 +5,7 @@ used."""
 import sys
 from circuit import logging_on
 logging_on()
-from circuit.liso.input import LisoInputParser
+from circuit.liso import LisoInputParser
 
 # parse liso filename, if present
 if len(sys.argv) > 1:

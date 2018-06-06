@@ -4,7 +4,7 @@ import numpy as np
 import unittest
 import logging
 
-from circuit.liso.runner import LisoRunner
+from circuit.liso import LisoRunner
 
 LOGGER = logging.getLogger("test")
 

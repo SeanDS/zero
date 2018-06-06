@@ -11,9 +11,9 @@ import textwrap
 import collections
 
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
-from .liso.input import LisoInputParser
-from .liso.output import LisoOutputParser
-from .liso.runner import LisoRunner
+from .liso import LisoInputParser
+from .liso import LisoOutputParser
+from .liso import LisoRunner
 
 LOGGER = logging.getLogger()
 
