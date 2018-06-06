@@ -104,7 +104,7 @@
            1000000        9.896334487       -148.5056726        -6.09556781        130.5162311 
 #LISO analog circuit simulation 2.03 (Oct 28 2011) gerhard.heinzel@aei.mpg.de
 #  Input file liso7.fil, Output file liso7.out, Gnuplot file liso7.gnu
-#sean@ Thu Jan 11 22:47:33 2018
+#
 #
 #2 capacitors:
 #  0 c2 4.7 nF nsum GND 
