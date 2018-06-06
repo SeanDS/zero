@@ -1,5 +1,9 @@
 import sys
+import os.path
 from unittest import TestLoader, TextTestRunner
+
+# this directory
+this_dir = os.path.dirname(os.path.realpath(__file__))
 
 loader = TestLoader()
 
@@ -29,7 +33,7 @@ if __name__ == "__main__":
 
         if suite_name == "all":
             print("Running all test suites")
-            run_suite(find_tests('.'))
+            run_suite(find_tests(os.path.join(this_dir, '.')))
         else:
             print("Running %s test suite" % suite_name)
-            run_suite(find_tests(suites[suite_name]))
+            run_suite(find_tests(os.path.join(this_dir, suites[suite_name])))
