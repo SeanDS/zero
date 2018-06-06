@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from .base import BaseAnalysis
 from ..config import CircuitConfig
-from ..solve import Solver
+from ..solve import DefaultSolver
 from ..components import Component, Input, Node, ComponentNoise, NodeNoise
 from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
                     CurrentVoltageTF, NoiseSpectrum, Series)
@@ -28,7 +28,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         self.prescale = prescale
 
         # create solver
-        self.solver = Solver()
+        self.solver = DefaultSolver()
 
         # empty fields
         self._noise_node = None

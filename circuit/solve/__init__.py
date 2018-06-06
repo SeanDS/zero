@@ -1,6 +1,9 @@
 from ..config import CircuitConfig
 from .scipy import ScipySolver
 
+# solvers
+from .scipy import ScipySolver
+
 CONF = CircuitConfig()
 
 # available solver classes
@@ -16,5 +19,5 @@ if solver_name not in available_solvers:
     raise ValueError("Invalid solver \"%s\" specified in configuration. Choose from %s."
                      % (solver_name, ", ".join(available_solvers)))
 
-# get solver type
-Solver = available_solvers[solver_name]
+# get default solver
+DefaultSolver = available_solvers[solver_name]
