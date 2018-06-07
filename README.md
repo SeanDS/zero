@@ -41,7 +41,7 @@ access to the package's command line utility.
 If you want to update the library to a later version after having previously
 installed it, run:
 ```bash
-pip3 install git+https://git.ligo.org/sean-leavey/circuit.git --upgrade
+pip install git+https://git.ligo.org/sean-leavey/circuit.git --upgrade
 ```
 
 ## Basic usage
