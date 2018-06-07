@@ -11,9 +11,8 @@ logging.getLogger().addHandler(logging.NullHandler())
 locale.setlocale(locale.LC_ALL, "")
 
 __version__ = "0.4.0"
-# description must be one line
-DESCRIPTION = "Linear circuit simulator based on Gerhard Heinzel's LISO"
 PROGRAM = "circuit"
+DESCRIPTION = "Linear circuit simulator"
 
 try:
     from matplotlib import rcParams

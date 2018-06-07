@@ -7,20 +7,21 @@ import abc
 import logging
 import argparse
 
-from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
+from circuit import __version__, PROGRAM, DESCRIPTION, logging_on
 from .liso import LisoInputParser
 from .liso import LisoOutputParser
 from .liso import LisoRunner
 
 LOGGER = logging.getLogger()
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(prog=PROGRAM, description=DESCRIPTION)
+parser.add_argument("--version", action="version", version=f"{PROGRAM} {__version__}")
 
 # create subparsers, storing subcommand string
 subparsers = parser.add_subparsers(dest="subcommand")
 
-verbose = argparse.ArgumentParser(add_help=False)
-verbose.add_argument("-v", "--verbose", action="store_true", help="enable verbose output")
+meta = argparse.ArgumentParser(add_help=False)
+meta.add_argument("-v", "--verbose", action="store_true", help="enable verbose output")
 
 liso_meta = argparse.ArgumentParser(add_help=False)
 liso_meta.add_argument("path", help="file path")
@@ -35,17 +36,17 @@ liso_solver_data.add_argument("--print-matrix", action="store_true", help="print
 
 # interpret a LISO file, then run it
 liso_native_parser = subparsers.add_parser("liso", help="parse and run a LISO input or output file",
-                                           parents=[verbose, liso_meta, liso_in_or_out, liso_solver_data])
+                                           parents=[meta, liso_meta, liso_in_or_out, liso_solver_data])
 
 # interpret a LISO file, run it, then compare it to LISO's results
 liso_compare_parser = subparsers.add_parser("liso-compare", help="parse and run a LISO input or output file, "
                                             "and show a comparison to LISO's own results",
-                                            parents=[verbose, liso_meta, liso_in_or_out, liso_solver_data])
+                                            parents=[meta, liso_meta, liso_in_or_out, liso_solver_data])
 
 # run LISO directly
 liso_external_parser = subparsers.add_parser("liso-external", help="run an input file with a local LISO binary "
                                              "and show its results",
-                                             parents=[verbose, liso_meta])
+                                             parents=[meta, liso_meta])
 liso_external_parser.add_argument("--liso-plot", action="store_true", 
                                   help="allow LISO to plot its results")
 
