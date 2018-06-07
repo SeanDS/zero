@@ -2,13 +2,10 @@
 
 """Circuit simulator utility"""
 
-import io
 import sys
 import abc
 import logging
 import argparse
-import textwrap
-import collections
 
 from circuit import __version__, DESCRIPTION, PROGRAM, logging_on
 from .liso import LisoInputParser
