@@ -72,7 +72,7 @@ class LisoInputParser(LisoParser):
 
         # now that we have all the circuit components, create noise source objects
         for index, definition in enumerate(self._noise_source_defs):
-            component = definition[0]
+            component = self.circuit.get_component(definition[0])
 
             if len(definition) > 1:
                 # op-amp noise type specified
@@ -399,15 +399,15 @@ class LisoInputParser(LisoParser):
 
                 component_name = source_pieces[0]
 
-                if component_name == "all":
+                if component_name.lower() == "all":
                     # all component noises
                     self._source_all_components = True
-                elif component_name == "allop":
+                elif component_name.lower() == "allop":
                     self._source_all_opamps = True
-                elif component_name == "allr":
+                elif component_name.lower() == "allr":
                     # all resistor noises
                     self._source_all_resistors = True
-                elif component_name == "sum":
+                elif component_name.lower() == "sum":
                     raise NotImplementedError
                 else:
                     # individual component
