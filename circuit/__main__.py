@@ -132,6 +132,10 @@ def action(namespace):
 def main():
     """Main program"""
 
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     # parse arguments
     namespace = parser.parse_args(sys.argv[1:])
 
