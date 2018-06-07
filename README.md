@@ -15,7 +15,7 @@ functions between nodes/components or noise at a particular node.
 
 Under the hood, components in the circuit generate their own equations in the
 circuit matrix, using Kirchoff's voltage and current laws as described in the
-[LISO manual](http://www2.mpq.mpg.de/~ros/geo600_docu/soft/liso/manual.pdf).
+[LISO manual](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso#manual).
 
 Credit goes to Tobin Fricke's [Elektrotickle](https://github.com/tobin/Elektrotickle/)
 for providing easy to read source code showing an approach to solving a circuit
@@ -30,11 +30,10 @@ This library requires that Python 3 is installed. It has been tested on version
 look at [this](https://www.python.org/downloads/).
 
 This library contains a `setup.py` file which tells Python how it should be
-installed. Installation can be automated using `pip`, or, on some systems,
-`pip3`. Open up a terminal (Linux, Mac, etc.) or command prompt (Windows) and
-type:
+installed. Installation can be automated using `pip`. Open up a terminal or
+command prompt (Windows) and type:
 ```bash
-pip3 install git+https://git.ligo.org/sean-leavey/circuit.git
+pip install git+https://git.ligo.org/sean-leavey/circuit.git
 ```
 This installs the library and adds a console script `circuit` which provides
 access to the package's command line utility.
@@ -48,9 +47,9 @@ pip3 install git+https://git.ligo.org/sean-leavey/circuit.git --upgrade
 ## Basic usage
 There is a very basic CLI provided by the program. Open up a terminal and type:
 ```bash
-circuit help
+circuit --help
 ```
-for a list of available commands. Run `circuit help command` for more detailed
+for a list of available commands. Run `circuit command --help` for more detailed
 help for a particular `command`.
 
 `circuit.py` can also be included as a library within other Python code. For
@@ -59,11 +58,7 @@ directory.
 
 ## Tests
 The script in `/tests/liso/liso.py` can be run to automatically test the
-solver against LISO with a set of LISO input files. Currently, most scripts
-produce results that agree with LISO outputs to 1 part in 10,000 (both
-relative and absolute). Certain circuits with very small numbers (for example,
-transfer functions around -100 dB or more) do not always agree within this
-bound, possibly due to numerical precision of the solver routine.
+solver against LISO with a set of LISO input files.
 
 ## Current limitations
 
@@ -121,11 +116,6 @@ Finally, the English convention of using "v" to represent voltage instead of "u"
 has been used, so `un` and `uc` are instead `vn` and `vc`.
 
 A LISO op-amp library parser may be added at a later date.
-
-### Tests
-  - Comparisons of complex value series don't handle phase wrapping, and so
-    occasionally flag two matched series as different. Might be better to
-    compare complex numbers instead.
 
 ## Contributing
 Bug reports and feature requests are always welcome, as are contributions to the
