@@ -3,8 +3,6 @@ simulates the resulting circuit. If no file is specified, "liso1.fil" is
 used."""
 
 import sys
-from circuit import logging_on
-logging_on()
 from circuit.liso import LisoInputParser
 
 # parse liso filename, if present

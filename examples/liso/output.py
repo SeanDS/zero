@@ -2,8 +2,6 @@
 the results. If no file is specified, "liso1.out" is used."""
 
 import sys
-from circuit import logging_on
-logging_on()
 from circuit.liso import LisoOutputParser
 
 # parse liso filename, if present

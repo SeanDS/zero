@@ -1,6 +1,9 @@
 import logging
 import locale
 
+# make Circuit class available from main package
+from .circuit import Circuit
+
 # suppress warnings when the user code does not include a handler
 logging.getLogger().addHandler(logging.NullHandler())
 

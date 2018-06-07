@@ -9,12 +9,10 @@ Sean Leavey
 """
 
 import numpy as np
-from circuit import logging_on
-logging_on()
-from circuit.circuit import Circuit
+from circuit import Circuit
 from circuit.analysis import SmallSignalAcAnalysis
 
-# frequency vector
+# 1000 frequencies between 1 Hz to 1 MHz
 frequencies = np.logspace(0, 6, 1000)
 
 # create circuit object
