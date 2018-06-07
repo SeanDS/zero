@@ -21,7 +21,8 @@ REQUIREMENTS = [
 EXTRAS = {
     "dev": [
         "sphinx",
-        "sphinx-bootstrap-theme",
+        "sphinx_rtd_theme",
+        "numpydoc",
         "graphviz"
     ]
 }

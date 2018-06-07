@@ -17,10 +17,10 @@ LIBRARY = OpAmpLibrary()
 class Circuit(object):
     """Represents an electronic circuit containing linear components.
 
-    A circuit can contain components like :class:`resistors <.Resistor>`,
-    :class:`capacitors <.Capacitor>`, :class:`inductors <.Inductor>` and
-    :class:`op-amps <.OpAmp>`. These are added to the circuit via
-    the :meth:`~Circuit.add_component` method.
+    A circuit can contain components like :class:`resistors <.components.Resistor>`,
+    :class:`capacitors <.components.Capacitor>`, :class:`inductors <.components.Inductor>`
+    and :class:`op-amps <.components.OpAmp>`. These are added to the circuit via the
+    :meth:`add_component` method.
 
     Attributes
     ----------
@@ -47,7 +47,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~Node`
+        :class:`.components.Node`
             Circuit nodes, excluding ground.
         """
 
@@ -55,6 +55,13 @@ class Circuit(object):
 
     @property
     def elements(self):
+        """Circuit nodes and components
+        
+        Yields
+        ------
+        :class:`.components.Node`, :class:`.components.Component`
+        """
+        
         yield from self.non_gnd_nodes
         yield from self.components
 
@@ -67,7 +74,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        component : :class:`~.components.Component`
+        component : :class:`.components.Component`
             component to add
 
         Raises
@@ -127,7 +134,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        node : :class:`~.components.Node`
+        node : :class:`.components.Node`
             node to add
 
         Raises
@@ -153,7 +160,7 @@ class Circuit(object):
 
         Returns
         -------
-        :class:`~.components.Component`
+        :class:`.components.Component`
             component
 
         Raises
@@ -180,7 +187,7 @@ class Circuit(object):
 
         Returns
         -------
-        :class:`~.components.Node`
+        :class:`.components.Node`
             node
 
         Raises
@@ -227,7 +234,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~.components.Resistor`
+        :class:`.components.Resistor`
             circuit resistors
         """
 
@@ -240,7 +247,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~.components.Capacitor`
+        :class:`.components.Capacitor`
             circuit capacitors
         """
 
@@ -253,7 +260,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~.components.Inductor`
+        :class:`.components.Inductor`
             circuit inductors
         """
 
@@ -274,7 +281,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~.components.OpAmp`
+        :class:`.components.OpAmp`
             circuit op-amps
         """
 
@@ -287,7 +294,7 @@ class Circuit(object):
 
         Yields
         ------
-        :class:`~.components.ComponentNoise`
+        :class:`.components.ComponentNoise`
             noise source
         """
 

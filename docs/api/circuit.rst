@@ -1,26 +1,22 @@
 .. currentmodule:: circuit.circuit
 
-####################
-The :class:`Circuit`
-####################
+###########
+The circuit
+###########
 
 .. code-block:: python
 
-   >>> from circuit.circuit import Circuit
+   >>> from circuit import Circuit
 
 ====================
 What is a 'circuit'?
 ====================
 
-A :class:`circuit <Circuit>` describes a collection of
-:class:`components <.components.Component>` connected at
-:class:`nodes <.components.Node>`. It may contain
-:class:`resistors <.components.Resistor>`,
-:class:`capacitors <.components.Capacitor>`,
-:class:`inductors <.components.Inductor>` and
-:class:`op-amps <.components.OpAmp>`, and the circuit can be supplied with an
-:class:`input <.components.Input>` in order to produce a current through and
-voltage across these components.
+A :class:`circuit <Circuit>` describes a collection of :class:`components <.Component>`
+connected at :class:`nodes <.Node>`. It may contain :class:`resistors <.Resistor>`,
+:class:`capacitors <.Capacitor>`, :class:`inductors <.Inductor>` and
+:class:`op-amps <.OpAmp>`, and the circuit can be supplied with an :class:`input <.Input>`
+in order to produce a current through and voltage across these components.
 
 -------------------
 Solving the circuit
@@ -45,7 +41,7 @@ Circuit equations
 Components and nodes describe themselves using `Kirchoff's voltage and current
 laws <https://en.wikipedia.org/wiki/Kirchhoff%27s_circuit_laws>`_. When
 calculating signals or noise, the solver will ask each
-:class:`component <.components.Component>` or :class:`node <.components.Node>`
+:class:`component <circuit.components.Component>` or :class:`node <circuit.components.Node>`
 for its :class:`equation <.components.BaseEquation>`, which describes the
 potential differences the component creates between nodes and the corresponding
 current `admittance <https://en.wikipedia.org/wiki/Admittance>`_ that is created.
