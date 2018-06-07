@@ -52,6 +52,19 @@ circuit --help
 for a list of available commands. Run `circuit command --help` for more detailed
 help for a particular `command`.
 
+### Run LISO files
+```bash
+circuit liso path/to/liso/file
+```
+
+`circuit.py` can parse both LISO input (`.fil`) and LISO output (`.out`) files.
+The above command will display the results. Some commands are not yet supported
+(see `LISO parsing` below). Additionally, a comparison between `circuit.py`'s
+native result and that of LISO can be made with `circuit liso-compare path/to/liso/file`.
+Note that any operations that involve running LISO (e.g. `liso-compare`) require
+the LISO binary to be set using the `LISO_DIR` environment variable.
+
+### As a library
 `circuit.py` can also be included as a library within other Python code. For
 examples of how to build simulation scripts with Python, see the `examples`
 directory.
