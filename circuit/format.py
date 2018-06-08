@@ -3,6 +3,7 @@
 import abc
 import math
 import re
+from decimal import Decimal
 
 class BaseFormatter(metaclass=abc.ABCMeta):
     """Abstract class for all formatters"""
@@ -137,7 +138,7 @@ class SIFormatter(BaseFormatter):
         results = re.match(cls.VALUE_REGEX, value_str)
 
         # first result should be the base number
-        base = float(results.group(1))
+        base = Decimal(results.group(1))
 
         # handle exponent
         if results.group(3) or results.group(4):
@@ -153,9 +154,12 @@ class SIFormatter(BaseFormatter):
         else:
             # neither prefix nor exponent
             exponent = 0
+        
+        # raise quantity to its exponent
+        number = base * Decimal(10) ** Decimal(exponent)
 
         # return float equivalent
-        return base * 10 ** exponent, results.group(5)
+        return float(number), results.group(5)
 
     @classmethod
     def unit_exponent(cls, prefix):
