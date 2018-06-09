@@ -1,4 +1,5 @@
 import unittest
+import numpy as np
 
 from circuit.liso import LisoInputParser
 from circuit.components import Node
@@ -39,6 +40,14 @@ class LisoInputParserTestCase(unittest.TestCase):
         self.assertEqual(op.node1, Node("n1"))
         self.assertEqual(op.node2, Node("n2"))
         self.assertEqual(op.node3, Node("n3"))
+
+    def test_lin_frequencies(self):
+        self.parser.parse("freq lin 0.1 100k 1000")
+        self.assertTrue(np.allclose(self.parser.frequencies, np.linspace(1e-1, 1e5, 1001)))
+
+    def test_log_frequencies(self):
+        self.parser.parse("freq log 0.1 100k 1000")
+        self.assertTrue(np.allclose(self.parser.frequencies, np.logspace(np.log10(1e-1), np.log10(1e5), 1001)))
 
     def test_component_invalid_type(self):
         kwargs = {"text": """
