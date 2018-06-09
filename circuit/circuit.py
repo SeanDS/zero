@@ -76,7 +76,7 @@ class Circuit(object):
 
     @property
     def opamp_output_nodes(self):
-        return [node for node in [opamp.node3 for opamp in self.opamps]]
+        return [opamp.node3 for opamp in self.opamps]
 
     def add_component(self, component):
         """Add component to the circuit
