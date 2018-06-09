@@ -41,7 +41,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
-    'numpydoc'
+    'sphinx.ext.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -367,7 +367,8 @@ texinfo_documents = [
 
 # -- Options for Numpy docstring documentation ----------------------------
 
-import numpydoc
+# show parameter type on same line as description
+napoleon_use_param = False
 
-# needed to suppress build warnings
-numpydoc_show_class_members = False
+# show return type on same line as description
+napoleon_use_rtype = False

@@ -15,7 +15,7 @@ CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
 
 class Circuit(object):
-    """Represents an electronic circuit containing linear components
+    """Represents an electronic circuit containing components.
 
     A circuit can contain components like :class:`resistors <.components.Resistor>`,
     :class:`capacitors <.components.Capacitor>`, :class:`inductors <.components.Inductor>`
@@ -25,76 +25,72 @@ class Circuit(object):
     Attributes
     ----------
     components : :class:`list` of :class:`.Component`
-        circuit components
-    prescale : :class:`bool`
-        whether to prescale matrix elements into natural units for numerical
-        precision purposes
+        The circuit components.
     """
 
     def __init__(self):
         # empty lists of components and nodes
         self.components = []
-        self.prescale = True
 
     @property
     def nodes(self):
-        """Circuit's nodes, including ground, if present
+        """Circuit nodes, including ground if present.
         
         Returns
         -------
-        nodes : :class:`set` of :class:`.Node`
-            circuit nodes
+        :class:`set` of :class:`.Node`
+            The circuit nodes.
         """
         return set([node for component in self.components for node in component.nodes])
 
     @property
     def non_gnd_nodes(self):
-        """Circuit nodes, excluding ground
+        """Circuit nodes, excluding ground.
 
         Returns
         -------
-        nodes : :class:`list` of :class:`.Node`
-            circuit nodes
+        :class:`list` of :class:`.Node`
+            The circuit nodes.
         """
         return [node for node in self.nodes if node is not Node("gnd")]
 
     @property
     def elements(self):
-        """Circuit nodes and components
+        """Circuit nodes and components.
         
         Yields
         ------
-        node: :class:`.Node`
-            nodes
-        component : :class:`.Component`
-            components
+        :class:`.Node`
+            The circuit nodes.
+        :class:`.Component`
+            The circuit components.
         """
         yield from self.non_gnd_nodes
         yield from self.components
 
     @property
     def opamp_output_nodes(self):
-        """Op-amp output nodes
+        """Circuit op-amp output nodes.
 
         Returns
         -------
-        nodes : :class:`list` of :class:`.Node`
-            op-amp output nodes
+        :class:`list` of :class:`.Node`
+            The op-amp output nodes.
         """
         return [opamp.node3 for opamp in self.opamps]
 
     def add_component(self, component):
-        """Add circuit component
+        """Add existing component to circuit.
 
         Parameters
         ----------
         component : :class:`.Component`
-            component to add
+            The component to add.
 
         Raises
         ------
         ValueError
-            if component is None, or already present in the circuit
+            If component is None, or already present in the circuit.
         """
 
         if component is None:
@@ -106,29 +102,34 @@ class Circuit(object):
         self.components.append(component)
 
     def add_input(self, *args, **kwargs):
-        """Add input to circuit"""
+        """Add input to circuit."""
         self.add_component(Input(*args, **kwargs))
 
     def add_resistor(self, *args, **kwargs):
-        """Add resistor to circuit"""
+        """Add resistor to circuit."""
         self.add_component(Resistor(*args, **kwargs))
 
     def add_capacitor(self, *args, **kwargs):
-        """Add capacitor to circuit"""
+        """Add capacitor to circuit."""
         self.add_component(Capacitor(*args, **kwargs))
 
     def add_inductor(self, *args, **kwargs):
-        """Add inductor to circuit"""
+        """Add inductor to circuit."""
         self.add_component(Inductor(*args, **kwargs))
 
     def add_opamp(self, *args, **kwargs):
-        """Add op-amp to circuit"""
+        """Add op-amp to circuit."""
         self.add_component(OpAmp(*args, **kwargs))
 
-    def add_library_opamp(self, model, *args, **kwargs):
-        """Add library op-amp to circuit
+    def add_library_opamp(self, model, **kwargs):
+        """Add library op-amp to circuit.
         
         Keyword arguments can be used to override individual library parameters.
+
+        Parameters
+        ----------
+        model : :class:`str`
+            The op-amp model name.
         """
         # get library data
         data = LIBRARY.get_data(model)
@@ -136,41 +137,41 @@ class Circuit(object):
         # override library data with keyword arguments
         data = {**data, **kwargs}
 
-        self.add_opamp(model=OpAmpLibrary.format_name(model), *args, **data)
+        self.add_opamp(model=OpAmpLibrary.format_name(model), **data)
 
     def remove_component(self, component):
-        """Remove circuit component
+        """Remove component from circuit.
 
         Parameters
         ----------
         component : :class:`str` or :class:`.Component`
-            component to remove
+            The component to remove.
         
         Raises
         ------
         ValueError
-            if the component is not in the circuit
+            If the component is not in the circuit.
         """
         # remove
         self.components.remove(component)
 
     def get_component(self, component_name):
-        """Get circuit component by name
+        """Get circuit component by name.
 
         Parameters
         ----------
         component_name : str
-            name of component to fetch
+            The name of the component to fetch.
 
         Returns
         -------
         :class:`.Component`
-            component
+            The component.
 
         Raises
         ------
         ValueError
-            if component not found
+            If the component is not found.
         """
         component_name = component_name.lower()
 
@@ -181,22 +182,22 @@ class Circuit(object):
         raise ValueError("component %s not found" % component_name)
 
     def get_node(self, node_name):
-        """Get circuit node by name
+        """Get circuit node by name.
 
         Parameters
         ----------
         node_name : :class:`str`
-            name of node to fetch
+            The name of the node to fetch.
 
         Returns
         -------
-        node : :class:`.Node`
-            node
+        :class:`.Node`
+            The node.
 
         Raises
         ------
         ValueError
-            if node not found
+            If the node is not found.
         """
         node_name = node_name.lower()
 
@@ -208,71 +209,71 @@ class Circuit(object):
 
     @property
     def n_components(self):
-        """Get number of components in circuit
+        """The number of components in the circuit.
 
         Returns
         -------
-        int
-            number of components
+        :class:`int`
+            The number of components.
         """
         return len(self.components)
 
     @property
     def n_nodes(self):
-        """Get number of nodes in circuit
+        """The number of nodes in the circuit.
 
         Returns
         -------
-        int
-            number of nodes
+        :class:`int`
+            The number of nodes.
         """
         return len(self.nodes)
 
     @property
     def resistors(self):
-        """Circuit resistors
+        """The circuit resistors.
 
         Returns
         -------
-        resistors : :class:`list` of :class:`.Resistor`
-            circuit resistors
+        :class:`list` of :class:`.Resistor`
+            The resistors in the circuit.
         """
         return [component for component in self.components if isinstance(component, Resistor)]
 
     @property
     def capacitors(self):
-        """Circuit capacitors
+        """The circuit capacitors.
 
         Returns
         -------
-        capacitors : :class:`list` of :class:`.Capacitor`
-            circuit capacitors
+        :class:`list` of :class:`.Capacitor`
+            The capacitors in the circuit.
         """
         return [component for component in self.components if isinstance(component, Capacitor)]
 
     @property
     def inductors(self):
-        """Circuit inductors
+        """The circuit inductors.
 
         Returns
         -------
-        inductors : :class:`list` of :class:`.Inductor`
-            circuit inductors
+        :class:`list` of :class:`.Inductor`
+            The inductors in the circuit.
         """
         return [component for component in self.components if isinstance(component, Inductor)]
 
     @property
     def passive_components(self):
-        """Circuit passive components
+        """The circuit passive components.
         
         Yields
         ------
-        resistor : :class:`.Resistor`
-            circuit resistors
-        capacitor : :class:`.Capacitor`
-            circuit capacitors
-        inductor : :class:`.Inductor`
-            circuit inductors
+        :class:`.Resistor`
+            The resistors in the circuit.
+        :class:`.Capacitor`
+            The capacitors in the circuit.
+        :class:`.Inductor`
+            The inductors in the circuit.
         """
         yield from self.resistors
         yield from self.capacitors
@@ -280,39 +281,57 @@ class Circuit(object):
 
     @property
     def opamps(self):
-        """Circuit op-amps
+        """The op-amps in the circuit.
 
         Returns
         -------
-        opamps : :class:`list` of :class:`.OpAmp`
-            circuit op-amps
+        :class:`list` of :class:`.OpAmp`
+            The op-amps.
         """
         return [component for component in self.components if isinstance(component, OpAmp)]
 
     @property
     def noise_sources(self):
-        """Noise sources in the circuit
+        """The noise sources in the circuit.
 
         Returns
         -------
-        noise_sources : :class:`list` of :class:`.ComponentNoise`
-            circuit component noise sources
+        :class:`list` of :class:`.ComponentNoise`
+            The component noise sources.
         """
         return [noise for component in self.components for noise in component.noise]
 
     @property
     def input_component(self):
-        """Circuit input component"""
+        """The circuit input component.
+        
+        Returns
+        -------
+        :class:`.Input`
+            The circuit input.
+        """
         return self.get_component("input")
 
     @property
     def input_impedance(self):
-        """Circuit input impedance"""
+        """The circuit input impedance.
+        
+        Returns
+        -------
+        :class:`float`
+            circuit input impedance
+        """
         return self.input_component.impedance
 
     @property
     def has_input(self):
-        """Check if circuit has an input"""
+        """Whether the circuit has an input.
+        
+        Returns
+        -------
+        :class:`bool`
+            True if the circuit has an input, False otherwise.
+        """
         try:
             self.input_component
         except ValueError:
