@@ -26,8 +26,6 @@ class Circuit(object):
     ----------
     components : sequence of :class:`components <.components.Component>`
         The circuit's components.
-    nodes : sequence of :class:`nodes <.components.Node>`
-        The circuit's nodes.
     prescale : :class:`bool`
         whether to prescale matrix elements into natural units for numerical
         precision purposes
@@ -38,8 +36,19 @@ class Circuit(object):
 
         # empty lists of components and nodes
         self.components = []
-        self.nodes = []
         self.prescale = True
+
+    @property
+    def nodes(self):
+        """Circuit's nodes, including ground, if present
+        
+        Returns
+        -------
+        set
+            Circuit nodes
+        """
+
+        return set([node for component in self.components for node in component.nodes])
 
     @property
     def non_gnd_nodes(self):
@@ -70,7 +79,7 @@ class Circuit(object):
         return [node for node in [opamp.node3 for opamp in self.opamps]]
 
     def add_component(self, component):
-        """Add component, and its nodes, to the circuit.
+        """Add component to the circuit
 
         Parameters
         ----------
@@ -90,10 +99,6 @@ class Circuit(object):
 
         # add component to end of list
         self.components.append(component)
-
-        # register component's nodes
-        for node in component.nodes:
-            self._add_node(node)
 
     def add_input(self, *args, **kwargs):
         """Add input to circuit."""
@@ -129,26 +134,22 @@ class Circuit(object):
 
         self.add_opamp(model=OpAmpLibrary.format_name(model), *args, **data)
 
-    def _add_node(self, node):
-        """Add node to circuit.
+    def remove_component(self, component):
+        """Remove component from the circuit
 
         Parameters
         ----------
-        node : :class:`.components.Node`
-            node to add
-
+        component : :class:`str` or :class:`.components.Component`
+            component to remove
+        
         Raises
         ------
         ValueError
-            if the node is None
+            if the component is not in the circuit
         """
 
-        if node is None:
-            raise ValueError("node cannot be None")
-
-        if node not in self.nodes:
-            # add
-            self.nodes.append(node)
+        # remove
+        self.components.remove(component)
 
     def get_component(self, component_name):
         """Get circuit component by name.
@@ -182,7 +183,7 @@ class Circuit(object):
 
         Parameters
         ----------
-        node_name : :class:`str`
+        node_name : str
             name of node to fetch
 
         Returns
