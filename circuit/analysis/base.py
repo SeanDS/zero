@@ -1,15 +1,30 @@
+import sys
+import os
 import abc
 import copy
 import statistics
+import progressbar
 
 from ..components import (Component, Resistor, Capacitor, Inductor, OpAmp,
                           Input, Node, ComponentNoise, NodeNoise)
 
 class BaseAnalysis(object, metaclass=abc.ABCMeta):
-    """Base class for circuit analysis"""
+    """Base class for circuit analysis.
 
-    def __init__(self, circuit):
+    Parameters
+    ----------
+    circuit : :class:`.Circuit`
+        The circuit to analyse.
+    print_progress : :class:`bool`, optional
+        Whether to print analysis output.
+    stream : :class:`io.IOBase`, optional
+        Stream to print analysis output to.
+    """
+
+    def __init__(self, circuit, print_progress=True, stream=sys.stdout):
         self.circuit = circuit
+        self.print_progress = bool(print_progress)
+        self.stream = stream
 
     def component_index(self, component):
         """Get component serial number.
@@ -91,3 +106,53 @@ class BaseAnalysis(object, metaclass=abc.ABCMeta):
     def mean_resistance(self):
         """Average circuit resistance"""
         return statistics.mean([resistor.resistance for resistor in self.circuit.resistors])
+
+    def progress(self, sequence, total, update=100000):
+        """Print progress of generator with known length
+
+        :param sequence: sequence to report iteration progress for
+        :type sequence: Sequence[Any]
+        :param total: number of items generator will produce
+        :type total: int
+        :param update: number of items to yield before next updating display
+        :type update: float or int
+        :return: input sequence
+        :rtype: Generator[Any]
+        """
+
+        total = int(total)
+        update = float(update)
+
+        if total <= 0:
+            raise ValueError("total must be > 0")
+
+        if update <= 0:
+            raise ValueError("update must be > 0")
+
+        if self.print_progress:
+            stream = self.stream
+        else:
+            # null file
+            stream = os.devnull
+
+        # set up progress bar
+        pbar = progressbar.ProgressBar(widgets=['Calculating: ',
+                                                progressbar.Percentage(),
+                                                progressbar.Bar(),
+                                                progressbar.ETA()],
+                                       max_value=100, fd=stream).start()
+
+        count = 0
+
+        for item in sequence:
+            count += 1
+
+            if count % update == 0:
+                if count == total:
+                    fraction = 1
+                else:
+                    fraction = 100 * count // total
+                
+                pbar.update(fraction)
+
+            yield item

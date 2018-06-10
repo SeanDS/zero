@@ -4,7 +4,6 @@ import abc
 import sys
 import math
 import numpy as np
-import progressbar
 
 class Singleton(abc.ABCMeta):
     """Metaclass implementing the singleton pattern
@@ -45,53 +44,6 @@ class NamedInstance(abc.ABCMeta):
             cls._names[name] = super().__call__(name, *args, **kwargs)
 
         return cls._names[name]
-
-def _print_progress(sequence, total, update=100000, stream=sys.stdout):
-    """Print progress of generator with known length
-
-    :param sequence: sequence to report iteration progress for
-    :type sequence: Sequence[Any]
-    :param total: number of items generator will produce
-    :type total: int
-    :param update: number of items to yield before next updating display
-    :type update: float or int
-    :param stream: output stream
-    :type stream: :class:`io.IOBase`
-    :return: input sequence
-    :rtype: Generator[Any]
-    """
-
-    total = int(total)
-    update = float(update)
-
-    if total <= 0:
-        raise ValueError("total must be > 0")
-
-    if update <= 0:
-        raise ValueError("update must be > 0")
-
-    # set up progress bar
-    pbar = progressbar.ProgressBar(widgets=['Calculating: ',
-                                            progressbar.Percentage(),
-                                            progressbar.Bar(),
-                                            progressbar.ETA()],
-                                   max_value=100, fd=stream).start()
-
-    count = 0
-
-    for item in sequence:
-        count += 1
-
-        if count % update == 0:
-            if count == total:
-                fraction = 1
-            else:
-                fraction = 100 * count // total
-            
-            pbar.update(fraction)
-            stream.flush()
-
-        yield item
 
 def db(magnitude):
     """Calculate (power) magnitude in decibels

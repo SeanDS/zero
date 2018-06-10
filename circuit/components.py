@@ -4,7 +4,7 @@ import abc
 import logging
 import numpy as np
 
-from .misc import NamedInstance, _print_progress
+from .misc import NamedInstance
 from .format import SIFormatter
 from .config import CircuitConfig
 

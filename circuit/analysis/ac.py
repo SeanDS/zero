@@ -13,9 +13,6 @@ from ..data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
 from ..solution import Solution
 from ..display import MatrixDisplay, EquationDisplay
 
-# FIXME: move this into base analysis, make `progress_generator` function
-from ..misc import _print_progress
-
 LOGGER = logging.getLogger("ac-analysis")
 CONF = CircuitConfig()
 
@@ -234,8 +231,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         return e_n
 
     def calculate_tfs(self, frequencies, output_components=[], output_nodes=[],
-                      stream=sys.stdout, print_equations=False, print_matrix=False,
-                      *args, **kwargs):
+                      print_equations=False, print_matrix=False, **kwargs):
         """Calculate circuit transfer functions from input \
         :class:`component <.Component>` / :class:`node <.Node>` to output \
         :class:`components <.Component>` / :class:`nodes <.Node>`.
@@ -250,14 +246,10 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         output_nodes : sequence of :class:`~.components.Node` or :class:`str`, :class:`str`
             output nodes to calculate transfer functions to; specify "all" to
             compute all
-        stream : :class:`io.IOBase`
-            stream to print to
-        print_equations : :class:`bool`
+        print_equations : :class:`bool`, optional
             whether to print circuit equations
-        print_matrix : :class:`bool`
+        print_matrix : :class:`bool`, optional
             whether to print circuit matrix
-        print_progress : :class:`bool`
-            whether to print solve progress to stream
 
         Returns
         -------
@@ -287,8 +279,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
 
         # calculate transfer functions by solving the transfer matrix for input
         # at the circuit's input node/component
-        tfs = self.solve(frequencies, self.calculate_tf_matrix, self.input_vector,
-                         stream=stream, *args, **kwargs)
+        tfs = self.solve(frequencies, self.calculate_tf_matrix, self.input_vector, **kwargs)
 
         # scale vector, for converting units, if necessary
         scale = self.get_empty_results_matrix(1)
@@ -370,15 +361,15 @@ class SmallSignalAcAnalysis(BaseAnalysis):
 
         if print_equations:
             print(self.circuit_equations(matrix=self.calculate_tf_matrix(frequency=1),
-                                         rhs=self.input_vector), file=stream)
+                                         rhs=self.input_vector))
         if print_matrix:
             print(self.circuit_matrix(matrix=self.calculate_tf_matrix(frequency=1),
-                                      rhs=self.input_vector), file=stream)
+                                      rhs=self.input_vector))
 
         return solution
 
-    def calculate_noise(self, frequencies, noise_node, noise_sources=None, stream=sys.stdout,
-                        print_equations=False, print_matrix=False, *args, **kwargs):
+    def calculate_noise(self, frequencies, noise_node, noise_sources=None, print_equations=False,
+                        print_matrix=False, **kwargs):
         """Calculate noise from circuit :class:`component <.Component>` / \
         :class:`node <.Node>` at a particular :class:`node <.Node>`.
 
@@ -388,16 +379,12 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             sequence of frequencies to solve circuit for
         noise_node : :class:`~.components.Node`, :class:`str`
             node to project noise to
-        noise_sources : sequence of :class:`~..components.Noise`
+        noise_sources : sequence of :class:`~..components.Noise`, optional
             noise sources to project to the noise node; defaults to all components
-        stream : :class:`io.IOBase`
-            stream to print to
-        print_equations : :class:`bool`
+        print_equations : :class:`bool`, optional
             whether to print circuit equations
-        print_matrix : :class:`bool`
+        print_matrix : :class:`bool`, optional
             whether to print circuit matrix
-        print_progress : :class:`bool`
-            whether to print solve progress to stream
 
         Returns
         -------
@@ -437,8 +424,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         # calculate noise functions by solving the transfer matrix for input
         # at the circuit's noise sources
         noise_matrix = self.solve(frequencies, self.calculate_noise_matrix,
-                                  self.noise_vector, stream=stream, *args,
-                                  **kwargs)
+                                  self.noise_vector, **kwargs)
 
         # unscale
         noise_matrix *= scale
@@ -490,15 +476,14 @@ class SmallSignalAcAnalysis(BaseAnalysis):
 
         if print_equations:
             print(self.circuit_equations(matrix=self.calculate_noise_matrix(frequency=1),
-                                         rhs=self.noise_vector), file=stream)
+                                         rhs=self.noise_vector))
         if print_matrix:
             print(self.circuit_matrix(matrix=self.calculate_noise_matrix(frequency=1),
-                                      rhs=self.noise_vector), file=stream)
+                                      rhs=self.noise_vector))
 
         return solution
 
-    def solve(self, frequencies, A_function, b, stream=sys.stdout,
-              print_progress=True):
+    def solve(self, frequencies, A_function, b):
         """Solve matrix equation Ax = b.
 
         Parameters
@@ -510,10 +495,6 @@ class SmallSignalAcAnalysis(BaseAnalysis):
             must take as its only parameter a frequency
         b : :class:`~np.ndarray`, :class:`scipy.sparse.spmatrix`
             right hand side of matrix equation
-        stream : :class:`io.IOBase`
-            stream to print to
-        print_progress : bool
-            whether to print solve progress to stream
 
         Returns
         -------
@@ -535,21 +516,16 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         # results matrix
         results = self.get_empty_results_matrix(n_freqs)
 
-        if print_progress:
-            # update progress every 1% of the way there
-            update = n_freqs // 100
+        # update progress every 1% of the way there
+        update = n_freqs // 100
 
-            # if there are less than 100 frequencies, update progress after
-            # every frequency
-            if update == 0:
-                update += 1
+        # if there are less than 100 frequencies, update progress after
+        # every frequency
+        if update == 0:
+            update += 1
 
-            # create frequency generator with progress bar
-            freq_gen = _print_progress(frequencies, n_freqs, update=update,
-                                       stream=stream)
-        else:
-            # just use provided frequency sequence
-            freq_gen = frequencies
+        # create frequency generator with progress bar
+        freq_gen = self.progress(frequencies, n_freqs, update=update)
 
         # frequency loop
         for index, frequency in enumerate(freq_gen):
