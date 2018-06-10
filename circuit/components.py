@@ -599,6 +599,9 @@ class Noise(object, metaclass=abc.ABCMeta):
     def label(self):
         return NotImplemented
 
+    def __str__(self):
+        return self.label()
+
     def __repr__(self):
         return str(self)
 
@@ -620,9 +623,6 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
 
     def spectral_density(self, frequencies):
         return self.function(component=self.component, frequencies=frequencies)
-
-    def __str__(self):
-        return "%s[%s]" % (self.label(), self.component.name)
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
     """Node noise spectral density.
@@ -646,14 +646,11 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
     def spectral_density(self, *args, **kwargs):
         return self.function(node=self.node, *args, **kwargs)
 
-    def __str__(self):
-        return "%s[%s, %s]" % (self.label(), self.component.name, self.node.name)
-
 class VoltageNoise(ComponentNoise):
     SUBTYPE = "voltage"
 
     def label(self):
-        return "VNoise"
+        return "V(%s)" % self.component.name
 
 class JohnsonNoise(VoltageNoise):
     SUBTYPE = "johnson"
@@ -671,10 +668,10 @@ class JohnsonNoise(VoltageNoise):
         return np.ones(frequencies.shape) * white_noise
 
     def label(self):
-        return "RNoise"
+        return "R(%s)" % self.component.name
 
 class CurrentNoise(NodeNoise):
     SUBTYPE = "current"
 
     def label(self):
-        return "INoise"
+        return "I(%s, %s)" % (self.component.name, self.node.name)

@@ -29,7 +29,9 @@ class LisoTester(unittest.TestCase):
         native_solution = liso_output.solution(force=True)
 
         # check if they match
-        self.assertEqual(liso_solution, native_solution)
+        # IMPORTANT: native solution must be first, because it usually contains more noise/tf data
+        # than LISO
+        self.assertEqual(native_solution, liso_solution)
 
     def _liso_output(self):
         # run LISO and parse output

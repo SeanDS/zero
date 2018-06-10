@@ -207,6 +207,32 @@ class Circuit(object):
 
         raise ValueError("node %s not found" % node_name)
 
+    def get_noise(self, noise_name):
+        """Get noise by component or node name.
+
+        Parameters
+        ----------
+        noise_name : :class:`str`
+            The name of the noise to fetch.
+        
+        Returns
+        -------
+        :class:`Noise`
+            The noise.
+        
+        Raises
+        ------
+        ValueError
+            If the noise is not found.
+        """
+        noise_name = noise_name.lower()
+
+        for noise in self.noise_sources:
+            if noise_name == noise.label().lower():
+                return noise
+        
+        raise ValueError("noise not found")
+
     @property
     def n_components(self):
         """The number of components in the circuit.
@@ -296,8 +322,8 @@ class Circuit(object):
 
         Returns
         -------
-        :class:`list` of :class:`.ComponentNoise`
-            The component noise sources.
+        :class:`list` of :class:`.ComponentNoise` or :class:`.NodeNoise`
+            The component and node noise sources.
         """
         return [noise for component in self.components for noise in component.noise]
 

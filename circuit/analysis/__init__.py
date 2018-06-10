@@ -1,2 +1,2 @@
 # analyses
-from .ac import SmallSignalAcAnalysis
+from .ac import AcSignalAnalysis, AcNoiseAnalysis

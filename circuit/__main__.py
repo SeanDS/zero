@@ -107,7 +107,7 @@ def action(namespace):
                 figure = liso_solution.bode_figure()
                 liso_solution.plot_tfs(figure=figure)
                 native_solution.plot_tfs(figure=figure)
-            else:
+            elif liso_solution.has_noise:
                 # noise
                 figure = liso_solution.noise_figure()
                 liso_solution.plot_noise(figure=figure)

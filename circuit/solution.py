@@ -10,7 +10,7 @@ from .config import CircuitConfig
 from .data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
                    CurrentCurrentTF, CurrentVoltageTF, NoiseSpectrum,
                    MultiNoiseSpectrum, Series)
-from .components import Component, Node
+from .components import Component, Node, Noise
 
 LOGGER = logging.getLogger("solution")
 CONF = CircuitConfig()
@@ -67,252 +67,257 @@ class Solution(object):
         self.functions.append(function)
 
     @property
-    def output_nodes(self):
+    def tfs(self):
+        return [function for function in self.functions if isinstance(function, TransferFunction)]
+
+    @property
+    def noise(self):
+        return [function for function in self.functions if isinstance(function, NoiseSpectrum)]
+
+    @property
+    def has_tfs(self):
+        return len(self.tfs) > 0
+
+    @property
+    def has_noise(self):
+        return len(self.noise) > 0
+
+    @property
+    def tf_source_nodes(self):
+        """Get transfer function input nodes.
+
+        :return: input nodes
+        :rtype: Set[:class:`Node`]
+        """
+        return set([function.source for function in self.tfs if isinstance(function.source, Node)])
+
+    @property
+    def tf_source_components(self):
+        """Get transfer function input components.
+
+        :return: output components
+        :rtype: Sequence[:class:`Component`]
+        """
+        return set([function.source for function in self.tfs if isinstance(function.source, Component)])
+
+    @property
+    def tf_sources(self):
+        return self.tf_source_nodes | self.tf_source_components
+
+    def get_tf_source(self, source_name):
+        source_name = source_name.lower()
+
+        for source in self.tf_sources:
+            if source_name == source.name.lower():
+                return source
+        
+        raise ValueError("signal source '%s' not found" % source_name)
+
+    @property
+    def tf_sink_nodes(self):
         """Get output nodes in solution
 
         :return: output nodes
         :rtype: Set[:class:`Node`]
         """
-
-        return set([function.sink for function in self.voltage_voltage_tfs()] \
-                    + [function.sink for function in self.current_voltage_tfs()])
+        return set([function.sink for function in self.tfs if isinstance(function.sink, Node)])
 
     @property
-    def output_components(self):
+    def tf_sink_components(self):
         """Get output components in solution
 
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
+        return set([function.sink for function in self.tfs if isinstance(function.sink, Component)])
 
-        return set([function.sink for function in self.current_current_tfs()] \
-                   + [function.sink for function in self.voltage_current_tfs()])
+    @property
+    def tf_sinks(self):
+        return self.tf_sink_nodes | self.tf_sink_components
+
+    def get_tf_sink(self, sink_name):
+        sink_name = sink_name.lower()
+
+        for sink in self.tf_sinks:
+            if sink_name == sink.name.lower():
+                return sink
+        
+        raise ValueError("signal sink '%s' not found" % sink_name)
+
+    @property
+    def noise_sources(self):
+        """Get noise sources.
+
+        :return: noise sources
+        """
+        return [function.source for function in self.noise]
+
+    def get_noise_source(self, source_name):
+        source_name = source_name.lower()
+
+        for source in self.noise_sources:
+            if source_name == source.label().lower():
+                return source
+        
+        raise ValueError("noise source '%s' not found" % source_name)
+
+    @property
+    def noise_sink_nodes(self):
+        """Get noise nodes in solution
+
+        :return: noise nodes
+        :rtype: Set[:class:`Node`]
+        """
+        return set([function.sink for function in self.noise if isinstance(function.sink, Node)])
+
+    @property
+    def noise_sink_components(self):
+        """Get output components in solution
+
+        :return: output components
+        :rtype: Sequence[:class:`Component`]
+        """
+        return set([function.sink for function in self.noise if isinstance(function.sink, Component)])
+
+    @property
+    def noise_sinks(self):
+        return self.noise_sink_nodes | self.noise_sink_components
+
+    def get_noise_sink(self, sink_name):
+        sink_name = sink_name.lower()
+
+        for sink in self.noise_sinks:
+            if sink_name == sink.name.lower():
+                return sink
+        
+        raise ValueError("noise sink '%s' not found" % sink_name)
 
     @property
     def n_frequencies(self):
         return len(list(self.frequencies))
 
-    def _filter_function(self, _class, sources=[], sinks=[]):
+    def _filter_function(self, _class, sources=None, sinks=None):
         functions = [function for function in self.functions
                      if isinstance(function, _class)]
 
         # filter by source
-        if len(sources):
+        if sources is not None:
             functions = [function for function in functions
                          if function.source in sources]
 
         # filter by sink
-        if len(sinks):
+        if sinks is not None:
             functions = [function for function in functions
                          if function.sink in sinks]
 
         return functions
 
-    @property
-    def has_tfs(self):
-        return len(list(self.tfs())) > 0
+    def filter_tfs(self, sources=None, sinks=None):
+        source_elements = []
+        sink_elements = []
 
-    @property
-    def has_voltage_voltage_tfs(self):
-        return len(list(self.voltage_voltage_tfs())) > 0
+        if not sources:
+            # all sources
+            source_elements = self.tf_sources
+        else:
+            if isinstance(sources, str):
+                # parse source name
+                source_elements.append(self.get_tf_source(sources))
+            else:
+                # assume list
+                for source in sources:
+                    if isinstance(source, str):
+                        # parse source name
+                        source_elements.append(self.get_tf_source(source))
+                    else:
+                        if not isinstance(source, (Component, Node)):
+                            raise ValueError("signal source '%s' is not a component or node" % source)
+                        
+                        source_elements.append(source)
 
-    @property
-    def has_voltage_current_tfs(self):
-        return len(list(self.voltage_current_tfs())) > 0
+        if not sinks:
+            # all sinks
+            sink_elements = self.tf_sinks
+        else:
+            if isinstance(sinks, str):
+                # parse source name
+                sink_elements.append(self.get_tf_sink(sinks))
+            else:
+                # assume list
+                for sink in sinks:
+                    if isinstance(sink, str):
+                        # parse source name
+                        sink_elements.append(self.get_tf_sink(sink))
+                    else:
+                        if not isinstance(sink, (Component, Node)):
+                            raise ValueError("signal sink '%s' is not a component or node" % sink)
+                        
+                        sink_elements.append(sink)
 
-    @property
-    def has_current_current_tfs(self):
-        return len(list(self.current_current_tfs())) > 0
+        # filter transfer functions
+        return self._filter_function(TransferFunction, sources=source_elements, sinks=sink_elements)
 
-    @property
-    def has_current_voltage_tfs(self):
-        return len(list(self.current_voltage_tfs())) > 0
+    def filter_noise(self, sources=None, sinks=None):
+        source_elements = []
+        sink_elements = []
 
-    @property
-    def has_noise(self):
-        return len(list(self.noise())) > 0
+        if not sources:
+            # all sources
+            source_elements = self.noise_sources
+        else:
+            if isinstance(sources, str):
+                # parse source name
+                source_elements.append(self.get_noise_source(sources))
+            else:
+                # assume list
+                for source in sources:
+                    if isinstance(source, str):
+                        # parse source name
+                        source_elements.append(self.get_noise_source(source))
+                    else:
+                        if not isinstance(source, Noise):
+                            raise ValueError("noise source '%s' is not a noise source" % source)
+                        
+                        source_elements.append(source)
 
-    def tfs(self, *args, **kwargs):
-        return self._filter_function(TransferFunction, *args, **kwargs)
+        if not sinks:
+            # all sinks
+            sink_elements = self.noise_sinks
+        else:
+            if isinstance(sinks, str):
+                # parse source name
+                sink_elements.append(self.get_noise_sink(sinks))
+            else:
+                # assume list
+                for sink in sinks:
+                    if isinstance(sink, str):
+                        # parse source name
+                        sink_elements.append(self.get_noise_sink(sink))
+                    else:
+                        if not isinstance(sink, Node):
+                            raise ValueError("noise sink '%s' is not a node" % sink)
+                        
+                        sink_elements.append(sink)
 
-    def voltage_voltage_tfs(self, *args, **kwargs):
-        return self._filter_function(VoltageVoltageTF, *args, **kwargs)
-
-    def voltage_current_tfs(self, *args, **kwargs):
-        return self._filter_function(VoltageCurrentTF, *args, **kwargs)
-
-    def current_current_tfs(self, *args, **kwargs):
-        return self._filter_function(CurrentCurrentTF, *args, **kwargs)
-
-    def current_voltage_tfs(self, *args, **kwargs):
-        return self._filter_function(CurrentVoltageTF, *args, **kwargs)
-
-    def noise(self, *args, **kwargs):
-        return self._filter_function(NoiseSpectrum, *args, **kwargs)
+        # filter noise spectra
+        return self._filter_function(NoiseSpectrum, sources=source_elements, sinks=sink_elements)
 
     def _result_node_index(self, node):
-        return (self.circuit.n_components
-                + self.circuit.node_index(node))
+        return self.circuit.n_components + self.circuit.node_index(node)
 
-    def plot(self, output_components=None, output_nodes=None):
-        """Plot all available functions"""
-
-        if self.has_tfs:
-            self.plot_tfs(output_components=output_components, output_nodes=output_nodes)
-        if self.has_noise:
-            self.plot_noise()
-
-    def plot_tfs(self, figure=None, output_components=None, output_nodes=None,
-                 *args, **kwargs):
-        if not self.has_tfs:
-            raise Exception("transfer functions were not computed in this "
-                            "solution")
-
+    def plot_tfs(self, figure=None, sources=None, sinks=None, **kwargs):
         if figure is None:
             figure = self.bode_figure()
 
-        if self.has_voltage_voltage_tfs:
-            self.plot_voltage_voltage_tfs(figure=figure,
-                                          output_nodes=output_nodes, *args,
-                                          **kwargs)
-        if self.has_voltage_current_tfs:
-            self.plot_voltage_current_tfs(figure=figure,
-                                          output_components=output_components,
-                                          *args, **kwargs)
-        if self.has_current_current_tfs:
-            self.plot_current_current_tfs(figure=figure,
-                                          output_components=output_components,
-                                          *args, **kwargs)
-        if self.has_current_voltage_tfs:
-            self.plot_current_voltage_tfs(figure=figure,
-                                          output_nodes=output_nodes, *args,
-                                          **kwargs)
+        # transfer functions between the sources and sinks
+        tfs = self.filter_tfs(sources=sources, sinks=sinks)
 
-    def plot_voltage_voltage_tfs(self, figure=None, output_nodes=None,
-                                 title=None):
-        if not self.has_voltage_voltage_tfs:
-            raise Exception("voltage-voltage transfer functions were not "
-                            "computed in this solution")
+        if not tfs:
+            raise NoDataException("no transfer functions found between specified sources and sinks")
 
-        # work out which sinks to plot
-        if output_nodes is not None:
-            # use output node specified in this call
-            output_nodes = list(output_nodes)
-            for index, node in enumerate(output_nodes):
-                if not isinstance(node, Node):
-                    # parse node name
-                    output_nodes[index] = self.circuit.get_node(node)
-
-            if not set(output_nodes).issubset(set(self.output_nodes)):
-                raise ValueError("not all specified output nodes were computed "
-                                 "in solution")
-        else:
-            # plot all output nodes
-            output_nodes = self.output_nodes
-
-        # get transfer functions to specified output nodes
-        tfs = self.voltage_voltage_tfs(sinks=output_nodes)
-
-        figure = self._plot_bode(self.frequencies, tfs, figure=figure,
-                                 title=title)
-        LOGGER.info("voltage-voltage tf(s) plotted on %s",
-                    figure.canvas.get_window_title())
-
-        return figure
-
-    def plot_voltage_current_tfs(self, figure=None, output_components=None,
-                                 title=None):
-        if not self.has_voltage_current_tfs:
-            raise Exception("voltage-current transfer functions were not "
-                            "computed in this solution")
-
-        # work out which sinks to plot
-        if output_components is not None:
-            # use output components specified in this call
-            output_components = list(output_components)
-            for index, component in enumerate(output_components):
-                if not isinstance(component, Component):
-                    # parse component name
-                    output_components[index] = self.circuit.get_component(component)
-
-            if not set(output_components).issubset(set(self.output_components)):
-                raise ValueError("not all specified output components were "
-                                 "computed in solution")
-        else:
-            # plot all output components
-            output_components = self.output_components
-
-        # get transfer functions to specified output components
-        tfs = self.voltage_current_tfs(sinks=output_components)
-
-        figure = self._plot_bode(self.frequencies, tfs, figure=figure,
-                                 title=title)
-        LOGGER.info("voltage-current tf(s) plotted on %s",
-                    figure.canvas.get_window_title())
-
-        return figure
-
-    def plot_current_current_tfs(self, figure=None, output_components=None,
-                                 title=None):
-        if not self.has_current_current_tfs:
-            raise Exception("current-current transfer functions were not "
-                            "computed in this solution")
-
-        # work out which sinks to plot
-        if output_components is not None:
-            # use output components specified in this call
-            output_components = list(output_components)
-            for index, component in enumerate(output_components):
-                if not isinstance(component, Component):
-                    # parse component name
-                    output_components[index] = self.circuit.get_component(component)
-
-            if not set(output_components).issubset(set(self.output_components)):
-                raise ValueError("not all specified output components were "
-                                 "computed in solution")
-        else:
-            # plot all output components
-            output_components = self.output_components
-
-        # get transfer functions to specified output components
-        tfs = self.current_current_tfs(sinks=output_components)
-
-        figure = self._plot_bode(self.frequencies, tfs, figure=figure,
-                                 title=title)
-        LOGGER.info("current-current tf(s) plotted on %s",
-                    figure.canvas.get_window_title())
-
-        return figure
-
-    def plot_current_voltage_tfs(self, figure=None, output_nodes=None,
-                                 title=None):
-        if not self.has_current_voltage_tfs:
-            raise Exception("current-voltage transfer functions were not "
-                            "computed in this solution")
-
-        # work out which sinks to plot
-        if output_nodes is not None:
-            # use output node specified in this call
-            output_nodes = list(output_nodes)
-            for index, node in enumerate(output_nodes):
-                if not isinstance(node, Node):
-                    # parse node name
-                    output_nodes[index] = self.circuit.get_node(node)
-
-            if not set(output_nodes).issubset(set(self.output_nodes)):
-                raise ValueError("not all specified output nodes were computed "
-                                 "in solution")
-        else:
-            # plot all output nodes
-            output_nodes = self.output_nodes
-
-        # get transfer functions to specified output nodes
-        tfs = self.current_voltage_tfs(sinks=output_nodes)
-
-        figure = self._plot_bode(self.frequencies, tfs, figure=figure,
-                                 title=title)
-        LOGGER.info("current-voltage tf(s) plotted on %s",
-                    figure.canvas.get_window_title())
+        # draw plot
+        figure = self._plot_bode(self.frequencies, tfs, figure=figure, **kwargs)
+        LOGGER.info("tf(s) plotted on %s", figure.canvas.get_window_title())
 
         return figure
 
@@ -383,22 +388,23 @@ class Solution(object):
 
         return figure
 
-    def plot_noise(self, figure=None, total=True, individual=True, title=None):
-        if not self.has_noise:
-            raise Exception("noise was not computed in this solution")
-
+    def plot_noise(self, figure=None, sources=None, sinks=None, total=True, individual=True,
+                   title=None):
         if not total and not individual:
             raise Exception("at least one of total and individual flags must "
                             "be set")
+        
+        # get noise
+        noise = self.filter_noise(sources=sources, sinks=sinks)
 
-        noise = list(self.noise())
+        if not noise:
+            raise NoDataException("no noise spectra found between specified sources and sinks")
 
         if total:
             # create combined noise spectrum
             noise.append(MultiNoiseSpectrum(noise))
 
-        figure = self._plot_noise(self.frequencies, noise, figure=figure,
-                                  title=title)
+        figure = self._plot_noise(self.frequencies, noise, figure=figure, title=title)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
 
         return figure
@@ -464,16 +470,16 @@ class Solution(object):
             LOGGER.info("%s (%s)", f, f.__class__)
 
         # check functions match
-        other_tfs = other.tfs()
-        other_noise = other.noise()
+        other_tfs = other.tfs
+        other_noise = other.noise
 
-        for tf in self.tfs():
+        for tf in self.tfs:
             # with builtin list object, "in" uses __eq__
             if tf in other_tfs:
                 # we have a match
                 other_tfs.remove(tf)
 
-        for noise in self.noise():
+        for noise in self.noise:
             # with builtin list object, "in" uses __eq__
             if noise in other_noise:
                 # we have a match
@@ -486,3 +492,6 @@ class Solution(object):
             return False
 
         return True
+
+class NoDataException(Exception):
+    pass
