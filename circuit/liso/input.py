@@ -119,7 +119,7 @@ class LisoInputParser(LisoParser):
     # error handling
     def t_error(self, t):
         # anything that gets past the other filters
-        raise SyntaxError("Illegal character '%s' on line %i at position %i" %
+        raise SyntaxError("LISO syntax error: illegal character '%s' on line %i at position %i" %
                           (t.value[0], self.lineno, t.lexer.lexpos - self._previous_newline_position))
 
     def p_instruction_list(self, p):
@@ -215,7 +215,11 @@ class LisoInputParser(LisoParser):
 
     def p_error(self, p):
         if p:
-            message = "LISO syntax error '%s' at line %i" % (p.value, self.lineno)
+            # check for unexpected new line
+            if p.value == "\n":
+                message = "LISO syntax error: unexpected end of line on line %i" % self.lineno
+            else:
+                message = "LISO syntax error '%s' at line %i" % (p.value, self.lineno)
         else:
             message = "LISO syntax error at end of file"
         
