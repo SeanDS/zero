@@ -322,7 +322,7 @@ class OpAmp(Component):
     @property
     def voltage_noise(self):
         for noise in self.noise:
-            if isinstance(noise, VoltageNoise):
+            if noise.SUBTYPE == "voltage":
                 return noise
         
         raise ValueError("no voltage noise")
@@ -330,7 +330,7 @@ class OpAmp(Component):
     @property
     def non_inv_current_noise(self):
         for noise in self.noise:
-            if isinstance(noise, CurrentNoise):
+            if noise.SUBTYPE == "current":
                 if noise.node == self.node1:
                     return noise
         
@@ -339,7 +339,7 @@ class OpAmp(Component):
     @property
     def inv_current_noise(self):
         for noise in self.noise:
-            if isinstance(noise, CurrentNoise):
+            if noise.SUBTYPE == "current":
                 if noise.node == self.node2:
                     return noise
         
@@ -470,7 +470,7 @@ class Resistor(PassiveComponent):
     @property
     def johnson_noise(self):
         for noise in self.noise:
-            if isinstance(noise, JohnsonNoise):
+            if noise.SUBTYPE == "johnson":
                 return noise
         
         raise ValueError("no Johnson noise")
@@ -586,6 +586,8 @@ class Noise(object, metaclass=abc.ABCMeta):
         vector.
     """
 
+    TYPE = ""
+
     def __init__(self, function=None):
         self.function = function
 
@@ -609,6 +611,8 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
         Component associated with the noise.
     """
 
+    TYPE = "component"
+
     def __init__(self, component, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -631,6 +635,8 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
         Component associated with the noise.
     """
 
+    TYPE = "node"
+
     def __init__(self, node, component, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -644,10 +650,14 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
         return "%s[%s, %s]" % (self.label(), self.component.name, self.node.name)
 
 class VoltageNoise(ComponentNoise):
+    SUBTYPE = "voltage"
+
     def label(self):
         return "VNoise"
 
 class JohnsonNoise(VoltageNoise):
+    SUBTYPE = "johnson"
+
     def __init__(self, resistance, *args, **kwargs):
         super().__init__(function=self.noise_voltage, *args, **kwargs)
 
@@ -664,5 +674,7 @@ class JohnsonNoise(VoltageNoise):
         return "RNoise"
 
 class CurrentNoise(NodeNoise):
+    SUBTYPE = "current"
+
     def label(self):
         return "INoise"

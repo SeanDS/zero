@@ -142,10 +142,10 @@ class SmallSignalAcAnalysis(BaseAnalysis):
                 else:
                     value = coefficient.value
 
-                if isinstance(coefficient, ImpedanceCoefficient):
+                if coefficient.TYPE == "impedance":
                     # don't change indices, but scale impedance
                     value *= scale
-                elif isinstance(coefficient, VoltageCoefficient):
+                elif coefficient.TYPE == "voltage":
                     # includes extra I[in] column (at index == self.n_components)
                     column = self.node_matrix_index(coefficient.node)
                 else:
@@ -156,7 +156,7 @@ class SmallSignalAcAnalysis(BaseAnalysis):
         # Kirchoff's current law
         for equation in self.node_equations:
             for coefficient in equation.coefficients:
-                if not isinstance(coefficient, CurrentCoefficient):
+                if not coefficient.TYPE == "current":
                     raise ValueError("invalid coefficient type")
 
                 row = self.node_matrix_index(equation.node)
@@ -460,10 +460,10 @@ class SmallSignalAcAnalysis(BaseAnalysis):
                 # skip this iteration
                 continue
 
-            if isinstance(noise, ComponentNoise):
+            if noise.TYPE == "component":
                 # noise is from a component; use its matrix index
                 index = self.component_matrix_index(noise.component)
-            elif isinstance(noise, NodeNoise):
+            elif noise.TYPE == "node":
                 # noise is from a node; use its matrix index
                 index = self.node_matrix_index(noise.node)
             else:
@@ -984,34 +984,14 @@ class BaseCoefficient(object, metaclass=abc.ABCMeta):
     ----------
     value : :class:`float`
         Coefficient value.
-    coefficient_type : {0, 1, 2}
-        Coefficient type. Impedance is 0, current is 1, voltage is 2.
     """
 
-    # coefficient types
-    TYPE_IMPEDANCE = 0
-    TYPE_CURRENT = 1
-    TYPE_VOLTAGE = 2
+    TYPE = ""
 
-    def __init__(self, value, coefficient_type):
+    def __init__(self, value):
         """Instantiate a new coefficient."""
 
         self.value = value
-        self.coefficient_type = coefficient_type
-
-    @property
-    def coefficient_type(self):
-        return self._coefficient_type
-
-    @coefficient_type.setter
-    def coefficient_type(self, coefficient_type):
-        # validate coefficient
-        if coefficient_type not in [self.TYPE_IMPEDANCE,
-                                    self.TYPE_CURRENT,
-                                    self.TYPE_VOLTAGE]:
-            raise ValueError("Unrecognised coefficient type")
-
-        self._coefficient_type = coefficient_type
 
 class ImpedanceCoefficient(BaseCoefficient):
     """Represents an impedance coefficient.
@@ -1022,13 +1002,13 @@ class ImpedanceCoefficient(BaseCoefficient):
         Component this impedance coefficient represents.
     """
 
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new impedance coefficient."""
+    TYPE = "impedance"
 
+    def __init__(self, component, *args, **kwargs):
         self.component = component
 
         # call parent constructor
-        super().__init__(coefficient_type=self.TYPE_IMPEDANCE, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 class CurrentCoefficient(BaseCoefficient):
     """Represents an current coefficient.
@@ -1039,13 +1019,13 @@ class CurrentCoefficient(BaseCoefficient):
         Component this current coefficient represents.
     """
 
-    def __init__(self, component, *args, **kwargs):
-        """Instantiate a new current coefficient."""
+    TYPE = "current"
 
+    def __init__(self, component, *args, **kwargs):
         self.component = component
 
         # call parent constructor
-        super().__init__(coefficient_type=self.TYPE_CURRENT, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 class VoltageCoefficient(BaseCoefficient):
     """Represents a voltage coefficient.
@@ -1056,10 +1036,10 @@ class VoltageCoefficient(BaseCoefficient):
         Node this voltage coefficient represents.
     """
 
-    def __init__(self, node, *args, **kwargs):
-        """Instantiate a new voltage coefficient."""
+    TYPE = "voltage"
 
+    def __init__(self, node, *args, **kwargs):
         self.node = node
 
         # call parent constructor
-        super().__init__(coefficient_type=self.TYPE_VOLTAGE, *args, **kwargs)
+        super().__init__(*args, **kwargs)
