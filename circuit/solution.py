@@ -138,6 +138,8 @@ class Solution(object):
     def get_tf_sink(self, sink_name):
         sink_name = sink_name.lower()
 
+        print([t.sink for t in self.tfs])
+
         for sink in self.tf_sinks:
             if sink_name == sink.name.lower():
                 return sink

@@ -119,8 +119,8 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         self._build_solution(noise_matrix)
 
     def _build_solution(self, noise_matrix):
-        # skipped noise sources
-        skips = []
+        # empty noise sources
+        empty = []
 
         # loop over circuit's noise sources
         for noise in self.circuit.noise_sources:
@@ -128,10 +128,8 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             spectral_density = noise.spectral_density(frequencies=self.frequencies)
 
             if np.all(spectral_density) == 0:
-                # skip null noise source
-                skips.append(noise)
-                # skip this iteration
-                continue
+                # null noise source
+                empty.append(noise)
 
             if noise.TYPE == "component":
                 # noise is from a component; use its matrix index
@@ -156,9 +154,9 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.node,
                                                   series=series))
 
-        if len(skips):
-            LOGGER.info("skipped null noise sources: %s",
-                        ", ".join([str(noise) for noise in skips]))
+        if len(empty):
+            LOGGER.warning("there are empty noise sources: %s",
+                        ", ".join([str(tf) for tf in empty]))
 
     @property
     def noise_node_index(self):

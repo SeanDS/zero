@@ -74,8 +74,8 @@ class AcSignalAnalysis(BaseAcAnalysis):
         self._build_solution(tfs)
 
     def _build_solution(self, tfs):
-        # skipped tfs
-        skips = []
+        # empty tfs
+        empty = []
 
         # output component indices
         for component in self.circuit.components:
@@ -83,10 +83,8 @@ class AcSignalAnalysis(BaseAcAnalysis):
             tf = tfs[self.component_matrix_index(component), :]
 
             if np.all(tf) == 0:
-                # skip null transfer function
-                skips.append(component)
-                # skip this iteration
-                continue
+                # null transfer function
+                empty.append(component)
 
             # create data series
             series = Series(x=self.frequencies, y=tf)
@@ -110,10 +108,8 @@ class AcSignalAnalysis(BaseAcAnalysis):
             tf = tfs[self.node_matrix_index(node), :]
 
             if np.all(tf) == 0:
-                # skip null tf
-                skips.append(node)
-                # skip this iteration
-                continue
+                # null transfer function
+                empty.append(node)
 
             # create series
             series = Series(x=self.frequencies, y=tf)
@@ -131,9 +127,9 @@ class AcSignalAnalysis(BaseAcAnalysis):
             # add transfer function to solution
             self.solution.add_tf(function)
 
-        if len(skips):
-            LOGGER.info("skipped null elements: %s",
-                        ", ".join([str(tf) for tf in skips]))
+        if len(empty):
+            LOGGER.warning("there are empty transfer functions: %s",
+                        ", ".join([str(tf) for tf in empty]))
 
     @property
     def input_component_index(self):
