@@ -15,22 +15,20 @@ class Component(object, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    name : :class:`str`
-        component name
-    nodes : sequence of :class:`~Node` or :class:`str`
-        component nodes
+    name : :class:`str`, optional
+        The component name.
+    nodes : sequence of :class:`~Node` or :class:`str`, optional
+        The component nodes.
 
     Attributes
     ----------
-    noise : :class:`set`
-        component noise sources
+    noise : :class:`set` of :class:`.ComponentNoise`
+        The component noise sources.
     """
 
     TYPE = "component"
 
     def __init__(self, name=None, nodes=None):
-        """Instantiate a new component."""
-
         if name is not None:
             name = str(name)
 
@@ -46,14 +44,13 @@ class Component(object, metaclass=abc.ABCMeta):
 
     @property
     def nodes(self):
-        """Component nodes.
+        """The component nodes.
 
         Returns
         -------
-        list of :class:`~Node`
-            list of component nodes
+        :class:`list` of :class:`~Node`
+            The component nodes.
         """
-
         return self._nodes
 
     @nodes.setter
@@ -71,20 +68,18 @@ class Component(object, metaclass=abc.ABCMeta):
         Parameters
         ----------
         noise : :class:`~Noise`
-            noise to add
+            The noise to add.
         """
-
         self.noise.add(noise)
 
     def label(self):
-        """Label for this component.
+        """Get component label.
 
         Returns
         -------
         :class:`str`
-            Component label
+            The component label.
         """
-
         return self.name
 
     def __repr__(self):
@@ -103,28 +98,34 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    value : any
-        Component value.
-    node1 : :class:`~Node`
-        First component node.
-    node2 : :class:`~Node`
-        Second component node.
+    value : any, optional
+        The component value.
+    node1 : :class:`~Node`, optional
+        The first component node.
+    node2 : :class:`~Node`, optional
+        The second component node.
 
     Attributes
     ----------
     value : :class:`float`
-        Component value.
+        The component value.
     """
 
     UNIT = "?"
 
     def __init__(self, value=None, node1=None, node2=None, *args, **kwargs):
         super().__init__(nodes=[node1, node2], *args, **kwargs)
-
         self.value = value
 
     @property
     def value(self):
+        """The component value.
+        
+        Returns
+        -------
+        :class:`float`
+            The component value.
+        """
         return self._value
 
     @value.setter
@@ -136,6 +137,13 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @property
     def node1(self):
+        """The first component node.
+        
+        Returns
+        -------
+        :class:`.Node`
+            The first component node.
+        """
         return self.nodes[0]
 
     @node1.setter
@@ -144,6 +152,13 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @property
     def node2(self):
+        """The second component node.
+        
+        Returns
+        -------
+        :class:`.Node`
+            The second component node.
+        """
         return self.nodes[1]
 
     @node2.setter
@@ -152,6 +167,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def impedance(self, frequency):
+        """The passive impedance."""
         return NotImplemented
 
 class OpAmp(Component):
@@ -175,29 +191,29 @@ class OpAmp(Component):
         Inverting input node.
     node3 : :class:`Node`
         Output node.
-    a0 : :class:`float`
+    a0 : :class:`float`, optional
         Open loop gain.
-    gbw : :class:`float`
+    gbw : :class:`float`, optional
         Gain-bandwidth product.
-    delay : :class:`float`
+    delay : :class:`float`, optional
         Delay.
-    zeros : :class:`np.ndarray`
+    zeros : sequence, optional
         Zeros.
-    poles : :class:`np.ndarray`
+    poles : sequence, optional
         Poles.
-    v_noise : :class:`float`
+    v_noise : :class:`float`, optional
         Flat voltage noise.
-    i_noise : :class:`float`
+    i_noise : :class:`float`, optional
         Float current noise.
-    v_corner : :class:`float`
+    v_corner : :class:`float`, optional
         Voltage noise corner frequency.
-    i_corner : :class:`float`
+    i_corner : :class:`float`, optional
         Current noise corner frequency.
-    v_max : :class:`float`
+    v_max : :class:`float`, optional
         Maximum input voltage.
-    i_max : :class:`float`
+    i_max : :class:`float`, optional
         Maximum output current.
-    slew_rate : :class:`float`
+    slew_rate : :class:`float`, optional
         Slew rate.
     """
 
@@ -207,8 +223,6 @@ class OpAmp(Component):
                  delay=0, zeros=np.array([]), poles=np.array([]),
                  v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
                  v_max=12, i_max=0.06, slew_rate=1e6, *args, **kwargs):
-        """"Instantiate new op-amp."""
-
         # call parent constructor
         super().__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
@@ -444,6 +458,13 @@ class Resistor(PassiveComponent):
         self.value = float(resistance)
 
     def impedance(self, *args):
+        """The impedance.
+        
+        Returns
+        -------
+        :class:`complex`
+            The impedance.
+        """
         return self.resistance
 
     @property
@@ -473,6 +494,17 @@ class Capacitor(PassiveComponent):
         self.value = float(capacitance)
 
     def impedance(self, frequency):
+        """The impedance.
+
+        Parameters
+        ----------
+        frequency : :class:`float` or array_like
+        
+        Returns
+        -------
+        :class:`complex`
+            The impedance.
+        """
         return 1 / (2 * np.pi * 1j * frequency * self.capacitance)
 
     def __str__(self):
@@ -494,6 +526,17 @@ class Inductor(PassiveComponent):
         self.value = float(inductance)
 
     def impedance(self, frequency):
+        """The impedance.
+
+        Parameters
+        ----------
+        frequency : :class:`float` or array_like
+        
+        Returns
+        -------
+        :class:`complex`
+            The impedance.
+        """
         return 2 * np.pi * 1j * frequency * self.inductance
 
     def __str__(self):

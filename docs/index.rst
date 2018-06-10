@@ -26,3 +26,4 @@ Contents
 
    introduction/index
    api/index
+   contributing/index
