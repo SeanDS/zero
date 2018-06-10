@@ -81,3 +81,12 @@ c c1 -10u gnd n1
 """}
 
         self.assertRaisesRegex(SyntaxError, r"illegal character '-' on line 3 at position 5", self.parser.parse, **kwargs)
+
+    def test_component_invalid_node(self):
+        # invalid component value
+        kwargs = {"text": """
+r r1 430 n1 nm
+c c1 10u gnd @
+"""}
+
+        self.assertRaisesRegex(SyntaxError, r"illegal character '@' on line 3 at position 13", self.parser.parse, **kwargs)
