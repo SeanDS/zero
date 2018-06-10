@@ -63,6 +63,7 @@ uoutput nout:db:deg
         """}
 
         self.assertRaises(SyntaxError, self.parser.parse, **kwargs)
+        self.assertRaisesRegex(SyntaxError, r"LISO syntax error 'a' at line 3", self.parser.parse, **kwargs)
 
     def test_component_missing_name(self):
         kwargs = {"text": """

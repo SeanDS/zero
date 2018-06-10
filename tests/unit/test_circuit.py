@@ -16,13 +16,13 @@ class CircuitTestCase(TestCase):
         circuit.add_component(r)
         circuit.add_component(c)
 
-        self.assertEqual(circuit.components, [r, c])
-        self.assertEqual(circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertCountEqual(circuit.components, [r, c])
+        self.assertCountEqual(circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
 
         circuit.remove_component(r)
 
         self.assertEqual(circuit.components, [c])
-        self.assertEqual(circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertCountEqual(circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
 
         circuit.remove_component(c)
 
