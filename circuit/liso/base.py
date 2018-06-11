@@ -44,7 +44,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.circuit = Circuit()
 
         # circuit built status
-        self.circuit_built = False
+        self._circuit_built = False
 
         # default circuit values
         self.frequencies = None
@@ -159,14 +159,14 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def build(self):
         """Build circuit if not yet built"""
 
-        if not self.circuit_built:
+        if not self._circuit_built:
             self._do_build()
 
             # check the circuit is valid
             self.validate()
 
             # set built flag
-            self.circuit_built = True
+            self._circuit_built = True
 
     def _do_build(self):
         """Build circuit"""
