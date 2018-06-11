@@ -138,3 +138,22 @@ c c1 10u gnd @
 """}
 
         self.assertRaisesRegex(LisoParserError, r"illegal character '@' at line 3 at position 13", self.parser.parse, **kwargs)
+    
+    def test_duplicate_component(self):
+        # duplicate component
+        kwargs = {"text": """
+r r1 10k n1 n2
+r r1 10k n1 n2
+"""}
+
+        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit", self.parser.parse, **kwargs)
+
+        self.reset()
+
+        # different component with same name
+        kwargs = {"text": """
+r r1 10k n1 n2
+op r1 op00 n1 n2 n3
+"""}
+
+        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit", self.parser.parse, **kwargs)

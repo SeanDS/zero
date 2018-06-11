@@ -16,7 +16,7 @@ class Component(object, metaclass=abc.ABCMeta):
     Parameters
     ----------
     name : :class:`str`, optional
-        The component name.
+        The component name. Must be unique.
     nodes : sequence of :class:`~Node` or :class:`str`, optional
         The component nodes.
 
@@ -87,6 +87,13 @@ class Component(object, metaclass=abc.ABCMeta):
 
     def __str__(self):
         return self.label()
+    
+    def __eq__(self, other):
+        return self.name == other.name
+    
+    def __hash__(self):
+        """Components uniquely defined by their name"""
+        return hash((self.name))
 
 class PassiveComponent(Component, metaclass=abc.ABCMeta):
     """Represents a passive component.
