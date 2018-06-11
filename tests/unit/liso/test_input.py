@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 from circuit.liso import LisoInputParser
+from circuit.liso.base import LisoParserError
 from circuit.components import Node
 
 class LisoInputParserTestCase(unittest.TestCase):
@@ -62,7 +63,7 @@ a c1 10u gnd n1
 r r1 430 n1 nm
 """}
 
-        self.assertRaisesRegex(SyntaxError, r"'a' at line 2", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"'a' at line 2", self.parser.parse, **kwargs)
 
     def test_component_missing_name(self):
         # no component name given
@@ -71,7 +72,7 @@ c 10u gnd n1
 r r1 430 n1 nm
 """}
 
-        self.assertRaisesRegex(SyntaxError, r"unexpected end of line on line 3", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"LISO syntax error: unexpected end of line at line 3", self.parser.parse, **kwargs)
 
     def test_component_invalid_value(self):
         # invalid component value
@@ -80,7 +81,7 @@ r r1 430 n1 nm
 c c1 -10u gnd n1
 """}
 
-        self.assertRaisesRegex(SyntaxError, r"illegal character '-' on line 3 at position 5", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"LISO syntax error: illegal character '-' at line 3 at position 5", self.parser.parse, **kwargs)
 
     def test_component_invalid_node(self):
         # invalid component value
@@ -89,4 +90,14 @@ r r1 430 n1 nm
 c c1 10u gnd @
 """}
 
-        self.assertRaisesRegex(SyntaxError, r"illegal character '@' on line 3 at position 13", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"LISO syntax error: illegal character '@' at line 3 at position 13", self.parser.parse, **kwargs)
+
+    def test_component_invalid_freq(self):
+        # invalid scale
+        kwargs = {"text": """
+r r1 430 n1 nm
+freq dec 1 1M 1234
+c c1 10u gnd n1
+"""}
+
+        self.assertRaisesRegex(LisoParserError, r"LISO syntax error: invalid frequency scale 'dec' at line 3", self.parser.parse, **kwargs)

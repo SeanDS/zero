@@ -3,7 +3,7 @@ import logging
 
 from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
 from ..format import SIFormatter
-from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource, LisoParserError
 
 LOGGER = logging.getLogger("liso")
 
@@ -87,7 +87,7 @@ class LisoInputParser(LisoParser):
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:
-                    raise SyntaxError("unrecognised op-amp noise source")
+                    raise LisoParserError("unrecognised op-amp noise source '%s'" % definition[1], self.lineno)
             else:
                 # must be a resistor
                 noise = component.johnson_noise
@@ -119,8 +119,7 @@ class LisoInputParser(LisoParser):
     # error handling
     def t_error(self, t):
         # anything that gets past the other filters
-        raise SyntaxError("LISO syntax error: illegal character '%s' on line %i at position %i" %
-                          (t.value[0], self.lineno, t.lexer.lexpos - self._previous_newline_position))
+        raise LisoParserError(f"illegal character '{t.value[0]}'", self.lineno, t.lexer.lexpos - self._previous_newline_position)
 
     def p_instruction_list(self, p):
         '''instruction_list : instruction
@@ -217,18 +216,17 @@ class LisoInputParser(LisoParser):
         if p:
             # check for unexpected new line
             if p.value == "\n":
-                message = "LISO syntax error: unexpected end of line on line %i" % self.lineno
+                message = "unexpected end of line"
             else:
-                message = "LISO syntax error '%s' at line %i" % (p.value, self.lineno)
+                message = "'%s'" % p.value
         else:
-            message = "LISO syntax error at end of file"
+            message = "unexpected end of file"
         
-        raise SyntaxError(message)
+        raise LisoParserError(message, self.lineno)
 
     def parse_passive(self, passive_type, *params):
         if len(params) != 4:
-            # TODO: add the error
-            raise SyntaxError("LISO syntax error")
+            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
 
         arg_names = ["name", "value", "node1", "node2"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -240,11 +238,11 @@ class LisoInputParser(LisoParser):
         elif passive_type == "l":
             return self.circuit.add_inductor(**kwargs)
         
-        raise SyntaxError
+        raise LisoParserError(f"unrecognised passive component '{passive_type}'", self.lineno)
 
     def parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:
-            raise SyntaxError
+            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
         
         arg_names = ["name", "model", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -255,8 +253,7 @@ class LisoInputParser(LisoParser):
 
         self.circuit.add_library_opamp(**kwargs)
 
-    @classmethod
-    def _parse_op_amp_overrides(cls, override_list):
+    def _parse_op_amp_overrides(self, override_list):
         """Parses op-amp override strings from input file
         
         In LISO, op-amp parameters can be overridden by specifying a library parameter
@@ -269,46 +266,43 @@ class LisoInputParser(LisoParser):
             try:
                 key, value = override.split("=")
             except ValueError:
-                raise SyntaxError
+                raise LisoParserError("op-amp parameter override must be in the form 'param=value'", self.lineno)
             
-            if key not in cls.OP_OVERRIDE_MAP.keys():
-                raise SyntaxError("unknown op-amp parameter override '%s'" % key)
+            if key not in self.OP_OVERRIDE_MAP.keys():
+                raise LisoParserError(f"unknown op-amp override parameter '{key}'", self.lineno)
             
-            extra_args[cls.OP_OVERRIDE_MAP[key]] = value
+            extra_args[self.OP_OVERRIDE_MAP[key]] = value
         
         return extra_args
 
     def parse_frequencies(self, *params):
         if len(params) != 4:
-            # TODO: add the error
-            raise SyntaxError("invalid frequency definition")
+            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
         
-        scale = params[0].lower()
+        scale = params[0]
         start, _ = SIFormatter.parse(params[1])
         stop, _ = SIFormatter.parse(params[2])
         # LISO simulates specified steps + 1
         count = int(params[3]) + 1
 
-        if scale == "lin":
+        if scale.lower() == "lin":
             self.frequencies = np.linspace(start, stop, count)
-        elif scale == "log":
+        elif scale.lower() == "log":
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
         else:
-            raise SyntaxError
+            raise LisoParserError(f"invalid frequency scale '{scale}'", self.lineno)
 
     def parse_voltage_input(self, *params):
-        if len(params) < 1:
-            raise SyntaxError
+        if len(params) < 1 or len(params) > 3:
+            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
         
         self.input_type = "voltage"
 
         # we always have at least a positive node
         self.input_node_p = params[0]
 
-        if len(params) > 3:
-            raise SyntaxError
-        elif len(params) == 3:
+        if len(params) == 3:
             # floating input
             self.input_node_n = params[1]
             self.input_impedance = params[2]
@@ -319,8 +313,8 @@ class LisoInputParser(LisoParser):
             self.input_impedance = 50
 
     def parse_current_input(self, *params):
-        if len(params) < 1:
-            raise SyntaxError
+        if len(params) < 1 or len(params) > 2:
+            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
         
         self.input_type = "current"
 
@@ -328,9 +322,7 @@ class LisoInputParser(LisoParser):
         self.input_node_p = params[0]
         self.input_node_n = None
 
-        if len(params) > 2:
-            raise SyntaxError
-        elif len(params) == 2:
+        if len(params) == 2:
             self.input_impedance = params[1]
         else:
             # default

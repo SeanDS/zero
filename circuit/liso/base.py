@@ -15,6 +15,25 @@ from ..format import SIFormatter
 
 LOGGER = logging.getLogger("liso")
 
+class LisoParserError(ValueError):
+    def __init__(self, message, line=None, pos=None, **kwargs):
+        if line is not None:
+            line = int(line)
+
+            # add line number
+            message = f"{message} at line {line}"
+        
+        if pos is not None:
+            pos = int(pos)
+
+            # add position
+            message = f"{message} at position {pos}"
+
+        # prepend message
+        message = f"LISO syntax error: {message}"
+
+        super().__init__(message, **kwargs)
+
 class LisoParser(object, metaclass=abc.ABCMeta):
     def __init__(self):
         # initial line number
