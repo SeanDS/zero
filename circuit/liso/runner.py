@@ -44,7 +44,7 @@ class LisoRunner(object):
         self._run_liso_process(script_path, output_path, plot)
 
         parser = LisoOutputParser()
-        parser.parse(output_path)
+        parser.parse(path=output_path)
 
         return parser
 

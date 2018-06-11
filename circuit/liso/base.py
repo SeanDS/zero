@@ -77,12 +77,18 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
 
-    def parse(self, text):
-        if text is None:
-            raise ValueError("must provide either a filepath or text")
+    def parse(self, text=None, path=None):
+        if text is None and path is None:
+            raise ValueError("must provide either text or a path")
 
-        if os.path.isfile(text):
-            with open(text, "r") as obj:
+        if path is not None:
+            if text is not None:
+                raise ValueError("cannot specify both text and a file to parse")
+            
+            if not os.path.isfile(path):
+                raise ValueError(f"cannot read '{path}'")
+            
+            with open(path, "r") as obj:
                 text = obj.read()
 
         # add newline to end of text

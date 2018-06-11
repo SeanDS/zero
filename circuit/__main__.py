@@ -67,11 +67,11 @@ def action(namespace):
 
             if namespace.force_output:
                 liso_parser = LisoOutputParser()
-                liso_parser.parse(namespace.path)
+                liso_parser.parse(path=namespace.path)
             else:
                 try:
                     liso_parser = LisoInputParser()
-                    liso_parser.parse(namespace.path)
+                    liso_parser.parse(path=namespace.path)
                 except SyntaxError:
                     # file is invalid as input
                     if namespace.force_input:
@@ -80,7 +80,7 @@ def action(namespace):
 
                     # try as output
                     liso_parser = LisoOutputParser()
-                    liso_parser.parse(namespace.path)
+                    liso_parser.parse(path=namespace.path)
             
             liso_parser.show(**kwargs)
         elif subcommand == "liso-compare":
