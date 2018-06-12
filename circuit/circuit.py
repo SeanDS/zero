@@ -28,6 +28,9 @@ class Circuit(object):
         The circuit components.
     """
 
+    # disallowed component names
+    RESERVED_NAMES = ["all", "sum"]
+
     def __init__(self):
         # empty lists of components and nodes
         self.components = []
@@ -97,6 +100,8 @@ class Circuit(object):
             raise ValueError("component cannot be None")
         elif component in self.components:
             raise ValueError(f"component with name '{component.name}' already in circuit")
+        elif component.name in self.RESERVED_NAMES:
+            raise ValueError(f"component name '{component.name}' is reserved")
 
         # add component to end of list
         self.components.append(component)
