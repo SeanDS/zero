@@ -78,7 +78,7 @@ op op1 op27 np nm nout a1=123e6
 c c1 10u gnd n1
 """}
 
-        self.assertRaisesRegex(LisoParserError, r"unknown op-amp override parameter 'a1' at line 4", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"unknown op-amp override parameter 'a1' \(line 4\)", self.parser.parse, **kwargs)
 
 class FrequencyTestCase(LisoInputParserTestCase):
     def test_frequencies(self):
@@ -98,14 +98,14 @@ freq dec 1 1M 1234
 c c1 10u gnd n1
 """}
 
-        self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' at line 3", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' \(line 3\)", self.parser.parse, **kwargs)
     
     def test_cannot_redefine_frequencies(self):
         self.parser.parse("freq lin 0.1 100k 1000")
         self.assertTrue(np.allclose(self.parser.frequencies, np.linspace(1e-1, 1e5, 1001)))
 
         # try to set frequencies again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies at line 2", self.parser.parse, "freq lin 0.1 100k 1000")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)", self.parser.parse, "freq lin 0.1 100k 1000")
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""
@@ -117,7 +117,7 @@ a c1 10u gnd n1
 r r1 430 n1 nm
 """}
 
-        self.assertRaisesRegex(LisoParserError, r"'a' at line 2", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"'a' \(line 2\)", self.parser.parse, **kwargs)
 
     def test_missing_component_name(self):
         # no component name given
@@ -126,7 +126,7 @@ c 10u gnd n1
 r r1 430 n1 nm
 """}
 
-        self.assertRaisesRegex(LisoParserError, r"unexpected end of line at line 3", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 3\)", self.parser.parse, **kwargs)
 
     def test_invalid_component_value(self):
         # invalid component value
@@ -135,7 +135,7 @@ r r1 430 n1 nm
 c c1 -10u gnd n1
 """}
 
-        self.assertRaisesRegex(LisoParserError, r"illegal character '-' at line 3 at position 5", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"illegal character '-' \(line 3, position 5\)", self.parser.parse, **kwargs)
 
     def test_invalid_component_node(self):
         # invalid component value
@@ -144,7 +144,7 @@ r r1 430 n1 nm
 c c1 10u gnd @
 """}
 
-        self.assertRaisesRegex(LisoParserError, r"illegal character '@' at line 3 at position 13", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"illegal character '@' \(line 3, position 13\)", self.parser.parse, **kwargs)
     
     def test_duplicate_component(self):
         # duplicate component
