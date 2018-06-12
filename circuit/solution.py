@@ -340,13 +340,11 @@ class Solution(object):
 
         return figure
 
-    def _plot_bode(self, frequencies, tfs, figure=None, legend=True,
-                   legend_loc="best", title=None, xlim=None, ylim=None,
-                   xlabel=r"$\bf{Frequency}$ (Hz)",
-                   ylabel_mag=r"$\bf{Magnitude}$ (dB)",
-                   ylabel_phase=r"$\bf{Phase}$ ($\degree$)", xtick_major_step=20,
-                   xtick_minor_step=10, ytick_major_step=30,
-                   ytick_minor_step=15):
+    def _plot_bode(self, frequencies, tfs, figure=None, legend=True, legend_loc="best",
+                   title=None, xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
+                   ylabel_mag=r"$\bf{Magnitude}$ (dB)", ylabel_phase=r"$\bf{Phase}$ ($\degree$)",
+                   mag_tick_major_step=20, mag_tick_minor_step=10, phase_tick_major_step=30,
+                   phase_tick_minor_step=15):
         if figure is None:
             # create figure
             figure = self.bode_figure()
@@ -383,10 +381,10 @@ class Solution(object):
         ax2.grid(True)
 
         # magnitude and phase tick locators
-        ax1.yaxis.set_major_locator(MultipleLocator(base=xtick_major_step))
-        ax1.yaxis.set_minor_locator(MultipleLocator(base=xtick_minor_step))
-        ax2.yaxis.set_major_locator(MultipleLocator(base=ytick_major_step))
-        ax2.yaxis.set_minor_locator(MultipleLocator(base=ytick_minor_step))
+        ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
+        ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
+        ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
+        ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
 
         return figure
 
