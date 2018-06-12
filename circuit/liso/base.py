@@ -48,7 +48,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
         # default circuit values
         self._frequencies = None
-        self.input_type = None
+        self._input_type = None
         self.input_node_n = None
         self.input_node_p = None
         self.input_impedance = None
@@ -77,6 +77,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
 
+        # whether parser end of file has been reached
+        self._eof = False
+
     @property
     def frequencies(self):
         return self._frequencies
@@ -84,9 +87,20 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     @frequencies.setter
     def frequencies(self, frequencies):
         if self._frequencies is not None:
-            raise LisoParserError("cannot redefine frequencies", self.lineno)
+            self.p_error("cannot redefine frequencies")
         
         self._frequencies = np.array(frequencies)
+
+    @property
+    def input_type(self):
+        return self._input_type
+    
+    @input_type.setter
+    def input_type(self, input_type):
+        if self._input_type is not None:
+            self.p_error("cannot redefine input type")
+        
+        self._input_type = input_type
 
     def parse(self, text=None, path=None):
         if text is None and path is None:
@@ -102,11 +116,16 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             with open(path, "r") as obj:
                 text = obj.read()
 
-        # add newline to end of text
-        # this allows parsers to use newline characters to separate lines
-        text += "\n"
+        if self._eof:
+            # reset end of file
+            self._eof = False
 
         self.parser.parse(text, lexer=self.lexer)
+
+    @abc.abstractmethod
+    def p_error(self, p):
+        """Child classes must implement error handler"""
+        raise NotImplementedError
 
     def show(self, *args, **kwargs):
         """Show LISO results"""

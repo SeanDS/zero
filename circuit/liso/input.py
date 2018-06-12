@@ -45,7 +45,8 @@ class LisoInputParser(LisoParser):
     # top level tokens
     tokens = [
         'CHUNK',
-        'NEWLINE'
+        'NEWLINE',
+        'EOF'
     ]
 
     # add reserved tokens
@@ -87,7 +88,7 @@ class LisoInputParser(LisoParser):
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:
-                    raise LisoParserError("unrecognised op-amp noise source '%s'" % definition[1], self.lineno)
+                    self.p_error("unrecognised op-amp noise source '%s'" % definition[1])
             else:
                 # must be a resistor
                 noise = component.johnson_noise
@@ -108,6 +109,22 @@ class LisoInputParser(LisoParser):
 
         return t
 
+    # detect end of file
+    def t_eof(self, t):
+        if self._eof:
+            # EOF token already thrown
+            # finish
+            return None
+        
+        self._eof = True
+
+        # EOF acts like a newline
+        self.lineno += 1
+
+        # throw one more EOF token
+        t.type = "EOF"
+        return t
+
     def t_CHUNK(self, t):
         r'[a-zA-Z0-9_=.:]+'
 
@@ -126,80 +143,75 @@ class LisoInputParser(LisoParser):
                             | instruction_list instruction'''
         pass
 
-    # match instruction on their own lines
-    def p_instruction(self, p):
-        '''instruction : resistor NEWLINE
-                       | capacitor NEWLINE
-                       | inductor NEWLINE
-                       | opamp NEWLINE
-                       | freq NEWLINE
-                       | uinput NEWLINE
-                       | iinput NEWLINE
-                       | uoutput NEWLINE
-                       | ioutput NEWLINE
-                       | noise NEWLINE
-                       | NEWLINE'''
+    def p_empty_instruction(self, p):
+        '''instruction : end'''
+        pass
+    
+    def p_end(self, p):
+        '''end : NEWLINE
+               | EOF'''
         pass
 
     def p_resistor(self, p):
-        '''resistor : R CHUNK CHUNK CHUNK CHUNK'''
+        '''instruction : R CHUNK CHUNK CHUNK CHUNK end'''
         
         # parse as resistor
-        self.parse_passive("r", *p[2:])
+        self.parse_passive("r", *p[2:-1])
 
     def p_capacitor(self, p):
-        '''capacitor : C CHUNK CHUNK CHUNK CHUNK'''
+        '''instruction : C CHUNK CHUNK CHUNK CHUNK end'''
         
         # parse as capacitor
-        self.parse_passive("c", *p[2:])
+        self.parse_passive("c", *p[2:-1])
 
     def p_inductor(self, p):
-        '''inductor : L CHUNK CHUNK CHUNK CHUNK'''
+        '''instruction : L CHUNK CHUNK CHUNK CHUNK end'''
         
         # parse as inductor
-        self.parse_passive("l", *p[2:])
+        self.parse_passive("l", *p[2:-1])
 
     def p_opamp(self, p):
-        '''opamp : OP CHUNK CHUNK CHUNK CHUNK CHUNK
-                 | OP CHUNK CHUNK CHUNK CHUNK CHUNK chunks'''
+        '''instruction : OP CHUNK CHUNK CHUNK CHUNK CHUNK end
+                       | OP CHUNK CHUNK CHUNK CHUNK CHUNK chunks end'''
         
         # parse as op-amp
-        self.parse_library_opamp(*p[2:])
+        self.parse_library_opamp(*p[2:-1])
 
     def p_freq(self, p):
-        '''freq : FREQ CHUNK CHUNK CHUNK CHUNK'''
+        '''instruction : FREQ CHUNK CHUNK CHUNK CHUNK end'''
 
         # parse frequencies
-        self.parse_frequencies(*p[2:])
+        self.parse_frequencies(*p[2:-1])
 
     def p_uinput(self, p):
-        '''uinput : UINPUT CHUNK
-                  | UINPUT CHUNK CHUNK
-                  | UINPUT CHUNK CHUNK CHUNK'''
+        '''instruction : UINPUT CHUNK end
+                       | UINPUT CHUNK CHUNK end
+                       | UINPUT CHUNK CHUNK CHUNK end'''
 
         # parse voltage input
-        self.parse_voltage_input(*p[2:])
+        self.parse_voltage_input(*p[2:-1])
 
     def p_iinput(self, p):
-        '''iinput : IINPUT CHUNK CHUNK'''
+        '''instruction : IINPUT CHUNK end
+                       | IINPUT CHUNK CHUNK end'''
 
         # parse current input
-        self.parse_current_input(*p[2:])
+        self.parse_current_input(*p[2:-1])
 
     def p_uoutput(self, p):
-        '''uoutput : UOUTPUT chunks'''
+        '''instruction : UOUTPUT chunks end'''
 
         # parse voltage outputs
         self.parse_voltage_output(p[2])
 
     def p_ioutput(self, p):
-        '''ioutput : IOUTPUT chunks'''
+        '''instruction : IOUTPUT chunks end'''
 
         # parse current outputs
         self.parse_current_output(p[2])
 
     def p_noise(self, p):
-        '''noise : NOISE chunks'''
+        '''instruction : NOISE chunks end'''
 
         # parse noise node
         self.parse_noise_output(p[2])
@@ -213,20 +225,33 @@ class LisoInputParser(LisoParser):
             p[0] += " " + p[2]
 
     def p_error(self, p):
+        lineno = self.lineno
+
         if p:
-            # check for unexpected new line
-            if p.value == "\n":
-                message = "unexpected end of line"
+            if hasattr(p, 'value'):
+                # parser object
+                
+                # check for unexpected new line
+                if p.value == "\n":
+                    message = "unexpected end of line"
+                    # compensate for mistaken newline
+                    lineno -= 1
+                else:
+                    message = "'%s'" % p.value
             else:
-                message = "'%s'" % p.value
+                # error message thrown by production
+                message = str(p)
+
+                # productions always end with newlines, so errors in productions are on previous lines
+                lineno -= 1
         else:
             message = "unexpected end of file"
         
-        raise LisoParserError(message, self.lineno)
+        raise LisoParserError(message, lineno)
 
     def parse_passive(self, passive_type, *params):
         if len(params) != 4:
-            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
+            self.p_error("unexpected parameter count (%d)" % len(params))
 
         arg_names = ["name", "value", "node1", "node2"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -238,11 +263,11 @@ class LisoInputParser(LisoParser):
         elif passive_type == "l":
             return self.circuit.add_inductor(**kwargs)
         
-        raise LisoParserError(f"unrecognised passive component '{passive_type}'", self.lineno)
+        self.p_error(f"unrecognised passive component '{passive_type}'")
 
     def parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:
-            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
+            self.p_error("unexpected parameter count (%d)" % len(params))
         
         arg_names = ["name", "model", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -266,10 +291,10 @@ class LisoInputParser(LisoParser):
             try:
                 key, value = override.split("=")
             except ValueError:
-                raise LisoParserError("op-amp parameter override must be in the form 'param=value'", self.lineno)
+                self.p_error("op-amp parameter override must be in the form 'param=value'")
             
             if key not in self.OP_OVERRIDE_MAP.keys():
-                raise LisoParserError(f"unknown op-amp override parameter '{key}'", self.lineno)
+                self.p_error(f"unknown op-amp override parameter '{key}'")
             
             extra_args[self.OP_OVERRIDE_MAP[key]] = value
         
@@ -277,7 +302,7 @@ class LisoInputParser(LisoParser):
 
     def parse_frequencies(self, *params):
         if len(params) != 4:
-            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
+            self.p_error("unexpected parameter count (%d)" % len(params))
         
         scale = params[0]
         start, _ = SIFormatter.parse(params[1])
@@ -291,11 +316,11 @@ class LisoInputParser(LisoParser):
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
         else:
-            raise LisoParserError(f"invalid frequency scale '{scale}'", self.lineno)
+            self.p_error(f"invalid frequency scale '{scale}'")
 
     def parse_voltage_input(self, *params):
         if len(params) < 1 or len(params) > 3:
-            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
+            self.p_error("unexpected parameter count (%d)" % len(params))
         
         self.input_type = "voltage"
 
@@ -314,7 +339,7 @@ class LisoInputParser(LisoParser):
 
     def parse_current_input(self, *params):
         if len(params) < 1 or len(params) > 2:
-            raise LisoParserError("unexpected parameter count (%d)" % len(params), self.lineno)
+            self.p_error("unexpected parameter count (%d)" % len(params))
         
         self.input_type = "current"
 
