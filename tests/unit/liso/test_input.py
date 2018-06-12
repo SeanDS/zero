@@ -99,6 +99,13 @@ c c1 10u gnd n1
 """}
 
         self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' at line 3", self.parser.parse, **kwargs)
+    
+    def test_cannot_redefine_frequencies(self):
+        self.parser.parse("freq lin 0.1 100k 1000")
+        self.assertTrue(np.allclose(self.parser.frequencies, np.linspace(1e-1, 1e5, 1001)))
+
+        # try to set frequencies again
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies at line 2", self.parser.parse, "freq lin 0.1 100k 1000")
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""

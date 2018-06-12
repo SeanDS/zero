@@ -47,7 +47,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._circuit_built = False
 
         # default circuit values
-        self.frequencies = None
+        self._frequencies = None
         self.input_type = None
         self.input_node_n = None
         self.input_node_p = None
@@ -76,6 +76,17 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # create lexer and parser handlers
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
+
+    @property
+    def frequencies(self):
+        return self._frequencies
+    
+    @frequencies.setter
+    def frequencies(self, frequencies):
+        if self._frequencies is not None:
+            raise LisoParserError("cannot redefine frequencies", self.lineno)
+        
+        self._frequencies = np.array(frequencies)
 
     def parse(self, text=None, path=None):
         if text is None and path is None:
