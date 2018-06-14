@@ -116,6 +116,16 @@ class InputTestCase(LisoInputParserTestCase):
         # try to set input again
         self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse, "uinput nin")
 
+class NoiseOutputNodeTestCase(LisoInputParserTestCase):
+    def test_noise(self):
+        self.parser.parse("noise nout")
+        self.assertEqual(self.parser.noise_output_node, "nout")
+
+    def test_cannot_redefine_noise_node(self):
+        self.parser.parse("noise nout")
+        # try to set noise node again
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine noise output node \(line 2\)", self.parser.parse, "noise nin")
+
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""
 

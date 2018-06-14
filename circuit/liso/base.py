@@ -65,7 +65,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._source_all_resistors = False
 
         # the node noise is projected to
-        self.noise_output_node = None
+        self._noise_output_node = None
 
         # sources to project noise from
         self._noise_sources = []
@@ -101,6 +101,17 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.p_error("cannot redefine input type")
         
         self._input_type = input_type
+
+    @property
+    def noise_output_node(self):
+        return self._noise_output_node
+    
+    @noise_output_node.setter
+    def noise_output_node(self, noise_output_node):
+        if self._noise_output_node is not None:
+            self.p_error("cannot redefine noise output node")
+        
+        self._noise_output_node = noise_output_node
 
     def parse(self, text=None, path=None):
         if text is None and path is None:
