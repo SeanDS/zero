@@ -105,11 +105,15 @@ class InputTestCase(LisoInputParserTestCase):
     def test_input(self):
         self.parser.parse("uinput nin")
         self.assertEqual(self.parser.input_type, "voltage")
+        self.assertEqual(self.parser.input_node_p, Node("nin"))
+        self.assertEqual(self.parser.input_node_n, None)
 
         self.reset()
 
         self.parser.parse("iinput nin")
         self.assertEqual(self.parser.input_type, "current")
+        self.assertEqual(self.parser.input_node_p, Node("nin"))
+        self.assertEqual(self.parser.input_node_n, None)
 
     def test_cannot_redefine_input_type(self):
         self.parser.parse("uinput nin")
@@ -119,6 +123,7 @@ class InputTestCase(LisoInputParserTestCase):
 class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):
         self.parser.parse("noise nout")
+        self.assertEqual(self.parser.output_type, "noise")
         self.assertEqual(self.parser.noise_output_node, Node("nout"))
 
     def test_cannot_redefine_noise_node(self):
