@@ -8,9 +8,7 @@ import logging
 import argparse
 
 from circuit import __version__, PROGRAM, DESCRIPTION, logging_on
-from .liso import LisoInputParser
-from .liso import LisoOutputParser
-from .liso import LisoRunner
+from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 
 LOGGER = logging.getLogger()
 
@@ -72,7 +70,7 @@ def action(namespace):
                 try:
                     liso_parser = LisoInputParser()
                     liso_parser.parse(path=namespace.path)
-                except SyntaxError:
+                except LisoParserError:
                     # file is invalid as input
                     if namespace.force_input:
                         # don't continue

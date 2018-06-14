@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
 
-from circuit.liso import LisoInputParser
-from circuit.liso.base import LisoParserError
+from circuit.liso import LisoInputParser, LisoParserError
 from circuit.components import Node
 
 class LisoInputParserTestCase(unittest.TestCase):
