@@ -66,7 +66,7 @@ class LisoRunner(object):
 
         # run LISO
         result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE)
         
         if result.returncode != 0:
             # parse LISO error message
@@ -75,7 +75,7 @@ class LisoRunner(object):
             # LISO reports its error on the final line
             error_msg = output.splitlines()[-1].strip()
             
-            raise LisoError(error_msg)
+            raise LisoError(error_msg, script_path=script_path)
         
         return result
 
@@ -116,4 +116,21 @@ class LisoRunner(object):
         raise FileNotFoundError("no appropriate LISO binary found")
 
 class LisoError(Exception):
-    pass
+    def __init__(self, message, script_path=None, *args, **kwargs):
+        if script_path is not None:
+            if os.path.isfile(script_path):
+                parser = LisoOutputParser()
+
+                # attempt to parse as input
+                try:
+                    parser.parse(path=script_path)
+
+                    is_output = True
+                except IOError:
+                    is_output = False
+                
+                if is_output:
+                    # add message
+                    message = f"{message} (this appears to be a LISO output file)"            
+
+        super().__init__(message, *args, **kwargs)

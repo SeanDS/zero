@@ -36,10 +36,10 @@ liso_solver_data.add_argument("--print-matrix", action="store_true", help="print
 liso_native_parser = subparsers.add_parser("liso", help="parse and run a LISO input or output file",
                                            parents=[meta, liso_meta, liso_in_or_out, liso_solver_data])
 
-# interpret a LISO file, run it, then compare it to LISO's results
-liso_compare_parser = subparsers.add_parser("liso-compare", help="parse and run a LISO input or output file, "
-                                            "and show a comparison to LISO's own results",
-                                            parents=[meta, liso_meta, liso_in_or_out, liso_solver_data])
+# interpret a LISO input file, run it, then compare it to LISO's results
+liso_compare_parser = subparsers.add_parser("liso-compare", help="parse and run a LISO input file, and show "
+                                            "a comparison to LISO's own results",
+                                            parents=[meta, liso_meta, liso_solver_data])
 
 # run LISO directly
 liso_external_parser = subparsers.add_parser("liso-external", help="run an input file with a local LISO binary "
