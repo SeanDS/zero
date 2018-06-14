@@ -22,7 +22,6 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 
 import circuit
-import sphinx_bootstrap_theme
 
 # -- General configuration ------------------------------------------------
 
