@@ -136,7 +136,8 @@ class LisoInputParser(LisoParser):
     # error handling
     def t_error(self, t):
         # anything that gets past the other filters
-        raise LisoParserError(f"illegal character '{t.value[0]}'", self.lineno, t.lexer.lexpos - self._previous_newline_position)
+        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
+                              t.lexer.lexpos - self._previous_newline_position)
 
     def p_instruction_list(self, p):
         '''instruction_list : instruction
@@ -263,7 +264,7 @@ class LisoInputParser(LisoParser):
         elif passive_type == "l":
             return self.circuit.add_inductor(**kwargs)
         
-        self.p_error(f"unrecognised passive component '{passive_type}'")
+        self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
 
     def parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:
@@ -294,7 +295,7 @@ class LisoInputParser(LisoParser):
                 self.p_error("op-amp parameter override must be in the form 'param=value'")
             
             if key not in self.OP_OVERRIDE_MAP.keys():
-                self.p_error(f"unknown op-amp override parameter '{key}'")
+                self.p_error("unknown op-amp override parameter '{key}'".format(key=key))
             
             extra_args[self.OP_OVERRIDE_MAP[key]] = value
         
@@ -316,7 +317,7 @@ class LisoInputParser(LisoParser):
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
         else:
-            self.p_error(f"invalid frequency scale '{scale}'")
+            self.p_error("invalid frequency scale '{scale}'".format(scale=scale))
 
     def parse_voltage_input(self, *params):
         if len(params) < 1 or len(params) > 3:

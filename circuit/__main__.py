@@ -13,7 +13,7 @@ from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 LOGGER = logging.getLogger()
 
 parser = argparse.ArgumentParser(prog=PROGRAM, description=DESCRIPTION)
-parser.add_argument("--version", action="version", version=f"{PROGRAM} {__version__}")
+parser.add_argument("--version", action="version", version="{prog} {version}".format(prog=PROGRAM, version=__version__))
 
 # create subparsers, storing subcommand string
 subparsers = parser.add_subparsers(dest="subcommand")

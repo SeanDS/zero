@@ -131,6 +131,6 @@ class LisoError(Exception):
                 
                 if is_output:
                     # add message
-                    message = f"{message} (this appears to be a LISO output file)"            
+                    message = "{message} (this appears to be a LISO output file)".format(message=message)
 
         super().__init__(message, *args, **kwargs)

@@ -24,13 +24,13 @@ class LisoParserError(ValueError):
                 pos = int(pos)
 
                 # add line number and position
-                message = f"{message} (line {line}, position {pos})"
+                message = "{message} (line {line}, position {pos})".format(message=message, line=line, pos=pos)
             else:
                 # add line number
-                message = f"{message} (line {line})"
+                message = "{message} (line {line})".format(message=message, line=line)
 
         # prepend message
-        message = f"LISO syntax error: {message}"
+        message = "LISO syntax error: {message}".format(message=message)
 
         super().__init__(message, **kwargs)
 
@@ -144,7 +144,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                 raise ValueError("cannot specify both text and a file to parse")
             
             if not os.path.isfile(path):
-                raise FileNotFoundError(f"cannot read '{path}'")
+                raise FileNotFoundError("cannot read '{path}'".format(path=path))
             
             with open(path, "r") as obj:
                 text = obj.read()

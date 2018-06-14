@@ -24,9 +24,8 @@ structure, support for current transfer functions, much more comprehensive plott
 tools to make direct comparisons to LISO, displaying of circuit equations and more.
 
 ## Installation
-This library requires that Python 3 is installed. It requires at least version 3.6, but
-this is mainly due to string formatting. If there is significant interest in support for
-earlier versions of Python 3, this may be implemented. Python 2 will not be supported.
+This library requires that Python 3 is installed. It has been tested on version 3.5, but
+may work on earlier versions of Python 3. Python 2 is not supported.
 
 If you don't have Python 3 installed, have a look at [this](https://www.python.org/downloads/).
 

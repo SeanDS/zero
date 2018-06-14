@@ -99,9 +99,9 @@ class Circuit(object):
         if component is None:
             raise ValueError("component cannot be None")
         elif component in self.components:
-            raise ValueError(f"component with name '{component.name}' already in circuit")
+            raise ValueError("component with name '{name}' already in circuit".format(name=component.name))
         elif component.name in self.RESERVED_NAMES:
-            raise ValueError(f"component name '{component.name}' is reserved")
+            raise ValueError("component name '{name}' is reserved".format(name=component.name))
 
         # add component to end of list
         self.components.append(component)
