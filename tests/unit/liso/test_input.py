@@ -119,7 +119,7 @@ class InputTestCase(LisoInputParserTestCase):
 class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):
         self.parser.parse("noise nout")
-        self.assertEqual(self.parser.noise_output_node, "nout")
+        self.assertEqual(self.parser.noise_output_node, Node("nout"))
 
     def test_cannot_redefine_noise_node(self):
         self.parser.parse("noise nout")
