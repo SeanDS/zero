@@ -7,6 +7,9 @@ This tool is inspired by [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/s
 It also (somewhat) understands LISO input and output files, and can plot or
 re-simulate their contents.
 
+## Documentation
+See the [documentation](https://docs.ligo.org/sean-leavey/circuit/).
+
 ## Program and library
 The simulator tries to replicate LISO's operation: a small signal ac analysis.
 The electrical components in a circuit are defined using their nodal
