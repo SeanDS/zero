@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from setuptools import setup
-
-import circuit
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
@@ -30,8 +28,8 @@ EXTRAS = {
 
 setup(
     name="circuit.py",
-    version=circuit.__version__,
-    description=circuit.DESCRIPTION,
+    version="0.4.1",
+    description="Linear circuit simulator",
     long_description=readme,
     author="Sean Leavey",
     author_email="sean.leavey@ligo.org",
@@ -44,7 +42,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            '%s = circuit.__main__:main' % circuit.PROGRAM
+            '%s = circuit.__main__:main' % "circuit"
         ]
     },
     install_requires=REQUIREMENTS,
@@ -56,6 +54,7 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5"
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6"
     ]
 )

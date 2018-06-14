@@ -10,6 +10,7 @@ logging.getLogger().addHandler(logging.NullHandler())
 # use default locale (required for number formatting in log warnings)
 locale.setlocale(locale.LC_ALL, "")
 
+# NOTE: these must be updated in setup.py when changed
 __version__ = "0.4.1"
 PROGRAM = "circuit"
 DESCRIPTION = "Linear circuit simulator"
