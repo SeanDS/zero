@@ -23,6 +23,7 @@ EXTRAS = {
         "sphinx",
         "sphinx_rtd_theme",
         "numpydoc",
+        "nbsphinx",
         "graphviz"
     ]
 }

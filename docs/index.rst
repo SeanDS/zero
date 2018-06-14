@@ -26,4 +26,5 @@ Contents
 
    introduction/index
    api/index
+   examples/index
    contributing/index
