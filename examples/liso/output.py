@@ -12,6 +12,6 @@ else:
 
 # parse output file
 parser = LisoOutputParser()
-parser.parse(filename)
+parser.parse(path=filename)
 # show results
 parser.show()
