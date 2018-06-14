@@ -49,8 +49,8 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # default circuit values
         self._frequencies = None
         self._input_type = None
-        self.input_node_n = None
-        self.input_node_p = None
+        self._input_node_n = None
+        self._input_node_p = None
         self.input_impedance = None
         self._output_type = None
         self.tf_outputs = []
@@ -101,6 +101,28 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.p_error("cannot redefine input type")
         
         self._input_type = input_type
+
+    @property
+    def input_node_p(self):
+        return self._input_node_p
+    
+    @input_node_p.setter
+    def input_node_p(self, input_node_p):
+        if self._input_node_p is not None:
+            self.p_error("cannot redefine positive input node")
+        
+        self._input_node_p = Node(input_node_p)
+
+    @property
+    def input_node_n(self):
+        return self._input_node_n
+    
+    @input_node_n.setter
+    def input_node_n(self, input_node_n):
+        if self._input_node_n is not None:
+            self.p_error("cannot redefine negative input node")
+        
+        self._input_node_n = Node(input_node_n)
 
     @property
     def noise_output_node(self):

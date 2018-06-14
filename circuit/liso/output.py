@@ -178,7 +178,7 @@ class LisoOutputParser(LisoParser):
 
             # create appropriate transfer function depending on analysis
             if self.input_type == "voltage":
-                source = self.circuit.get_node(self.input_node_p)
+                source = self.input_node_p
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)

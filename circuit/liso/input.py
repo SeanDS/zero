@@ -345,7 +345,6 @@ class LisoInputParser(LisoParser):
 
         # only a positive node
         self.input_node_p = params[0]
-        self.input_node_n = None
 
         if len(params) == 2:
             self.input_impedance = params[1]
