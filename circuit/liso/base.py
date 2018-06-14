@@ -111,7 +111,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         if self._noise_output_node is not None:
             self.p_error("cannot redefine noise output node")
         
-        self._noise_output_node = noise_output_node
+        self._noise_output_node = Node(noise_output_node)
 
     def parse(self, text=None, path=None):
         if text is None and path is None:
