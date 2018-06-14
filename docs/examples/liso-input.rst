@@ -6,9 +6,6 @@ Input file parsing
 .. code:: python
 
     from circuit.liso import LisoInputParser
-    
-    # switch on inline plotting
-    %matplotlib inline
 
 then create a parser object:
 
