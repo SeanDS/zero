@@ -1,0 +1,12 @@
+# https://git.ligo.org/lscsoft/example-ci-project/wikis/automatically-produce-documentation
+# https://wiki.ligo.org/viewauth/DASWG/GitLigoOrg#Accessing_GitLab_Pages
+pages:
+  image: ligo/software:stretch
+  script:
+    - python setup.py install .[dev]
+    - cd docs
+    - make html
+    - mv _build/html public
+  artifacts:
+    paths:
+    - public
