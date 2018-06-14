@@ -3,8 +3,8 @@
 pages:
   image: ligo/software:stretch
   script:
-    - apt install --assume-yes python3-pip
     - python3 --version
+    - apt install --assume-yes python3-pip
     - pip3 install .[dev]
     - cd docs
     - make html
