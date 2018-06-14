@@ -3,10 +3,11 @@
 pages:
   image: ligo/software:stretch
   script:
-    - python setup.py install .[dev]
+    - apt install --assume-yes python3-pip
+    - pip3 install .[dev]
     - cd docs
     - make html
-    - mv _build/html public
+    - mv _build/html ../public
   artifacts:
     paths:
     - public
