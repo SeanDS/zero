@@ -3,9 +3,9 @@ Linear electronic circuit simulator utility. This package provides tools to
 simulate transfer functions and noise in linear electronic circuits, SI unit
 parsing and formatting and more.
 
-This tool is inspired by, and partially based on, [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso)
-and [Elektrotickle](https://github.com/tobin/Elektrotickle/). It also (somewhat)
-understands LISO input and output files.
+This tool is inspired by [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso).
+It also (somewhat) understands LISO input and output files, and can plot or
+re-simulate their contents.
 
 ## Program and library
 The simulator tries to replicate LISO's operation: a small signal ac analysis.
@@ -20,14 +20,15 @@ circuit matrix, using Kirchoff's voltage and current laws as described in the
 Credit goes to Tobin Fricke's [Elektrotickle](https://github.com/tobin/Elektrotickle/)
 for providing easy to read source code showing an approach to solving a circuit
 problem. This library evolves Elektrotickle to use a more object-oriented
-structure, support for current transfer functions, direct comparison to LISO
-results and more advanced plotting, but the basic solving functionality is
-almost the same.
+structure, support for current transfer functions, much more comprehensive plotting,
+tools to make direct comparisons to LISO, displaying of circuit equations and more.
 
 ## Installation
-This library requires that Python 3 is installed. It has been tested on version
-3.5, but it might worth on 3.4. If you don't have Python 3 installed, have a
-look at [this](https://www.python.org/downloads/).
+This library requires that Python 3 is installed. It requires at least version 3.6, but
+this is mainly due to string formatting. If there is significant interest in support for
+earlier versions of Python 3, this may be implemented. Python 2 will not be supported.
+
+If you don't have Python 3 installed, have a look at [this](https://www.python.org/downloads/).
 
 This library contains a `setup.py` file which tells Python how it should be
 installed. Installation can be automated using `pip`. Open up a terminal or
@@ -59,10 +60,21 @@ circuit liso path/to/liso/file
 
 `circuit.py` can parse both LISO input (`.fil`) and LISO output (`.out`) files.
 The above command will display the results. Some commands are not yet supported
-(see `LISO parsing` below). Additionally, a comparison between `circuit.py`'s
-native result and that of LISO can be made with `circuit liso-compare path/to/liso/file`.
-Note that any operations that involve running LISO (e.g. `liso-compare`) require
-the LISO binary to be set using the `LISO_DIR` environment variable.
+(see `LISO parsing` below).
+
+#### Parser hints
+To force a file to be parsed as either an input or an output file, specify the
+`--force-input` or `--force-output` flags.
+
+### Comparing results to LISO
+A comparison between `circuit.py`'s native result and that of LISO can be made
+with `circuit liso-compare path/to/liso/file`. Note that any operations that
+involve running LISO (e.g. `liso-compare`) require the LISO binary to be set
+using the `LISO_DIR` environment variable.
+
+LISO can also be run by `circuit.py` directly, using the `circuit liso-external`
+command. To allow LISO to plot its own results, instead of plotting the results
+in `circuit.py`, specify the `--liso-plot` flag.
 
 ### As a library
 `circuit.py` can also be included as a library within other Python code. For
@@ -70,8 +82,10 @@ examples of how to build simulation scripts with Python, see the `examples`
 directory.
 
 ## Tests
-The script in `/tests/liso/liso.py` can be run to automatically test the
-solver against LISO with a set of LISO input files.
+The script in `/tests/runner.py` can be run to automatically test `circuit.py`.
+There are various tests which compare the results of simulations to LISO; these
+can be run with `runner.py validation`. To run all tests, call `runner.py` with
+the `all` argument.
 
 ## Current limitations
 
@@ -158,6 +172,8 @@ code. Please use the project's [issue tracker](https://git.ligo.org/sean-leavey/
   - Parallelised solving (need to be careful about thread safety)
   - Warn user if numerical precision might prevent LISO agreement (e.g. for
     magnitudes <100 dB)
+  - Other analyses, e.g. DC operating point (linearises circuits for AC analyses,
+    thereby allowing nonlinear components like diodes to be modelled)
 
 ## Credits
 Sean Leavey  
