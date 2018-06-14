@@ -122,7 +122,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                 raise ValueError("cannot specify both text and a file to parse")
             
             if not os.path.isfile(path):
-                raise ValueError(f"cannot read '{path}'")
+                raise FileNotFoundError(f"cannot read '{path}'")
             
             with open(path, "r") as obj:
                 text = obj.read()
