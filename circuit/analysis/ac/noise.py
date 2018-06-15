@@ -155,8 +155,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
                                                   series=series))
 
         if len(empty):
-            LOGGER.warning("there are empty noise sources: %s",
-                        ", ".join([str(tf) for tf in empty]))
+            LOGGER.debug("empty noise sources: %s", ", ".join([str(tf) for tf in empty]))
 
     @property
     def noise_node_index(self):

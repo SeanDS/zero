@@ -128,8 +128,7 @@ class AcSignalAnalysis(BaseAcAnalysis):
             self.solution.add_tf(function)
 
         if len(empty):
-            LOGGER.warning("there are empty transfer functions: %s",
-                        ", ".join([str(tf) for tf in empty]))
+            LOGGER.debug("empty transfer functions: %s", ", ".join([str(tf) for tf in empty]))
 
     @property
     def input_component_index(self):
