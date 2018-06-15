@@ -119,6 +119,22 @@ class InputTestCase(LisoInputParserTestCase):
         # try to set input again
         self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse, "uinput nin")
 
+    def test_impedance(self):
+        # defaults to 50 ohm
+        self.parser.parse("uinput nin")
+        self.assertEqual(self.parser.input_impedance, 50)
+        self.reset()
+        self.parser.parse("iinput nin")
+        self.assertEqual(self.parser.input_impedance, 50)
+        self.reset()
+
+        # unit parsing
+        self.parser.parse("uinput nin 10M")
+        self.assertEqual(self.parser.input_impedance, 10e6)
+        self.reset()
+        self.parser.parse("iinput nin 10k")
+        self.assertEqual(self.parser.input_impedance, 10e3)
+
 class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):
         self.parser.parse("noise nout")

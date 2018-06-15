@@ -386,11 +386,10 @@ class Input(Component):
             if impedance is None:
                 raise ValueError("impedance must be specified for noise input")
             
-            impedance = float(impedance)
+            impedance, _ = SIFormatter.parse(impedance)
         else:
             if impedance is not None:
-                raise ValueError("impedance cannot be specified for non-noise "
-                                 "input")
+                raise ValueError("impedance cannot be specified for non-noise input")
 
             if input_type == "voltage":
                 self.input_type = "voltage"
