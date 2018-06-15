@@ -10,28 +10,36 @@ class BaseFormatter(metaclass=abc.ABCMeta):
 
     @abc.abstractclassmethod
     def format(cls, value, unit=""):
-        """Method to format the specified value and unit
+        """Format the specified value and unit for display.
 
-        :param value: value to format
-        :type value: Numeric
-        :param unit: optional unit to append
-        :type unit: str
-        :return: formatted value and unit
-        :rtype: str
+        Parameters
+        ----------
+        value : :class:`float`
+            The value to format.
+        unit : :class:`str`, optional
+            The unit to append to the value.
+        
+        Returns
+        -------
+        :class:`str`
+            Formatted value and unit
         """
-
         raise NotImplementedError
 
     @staticmethod
     def exponent(value):
-        """Calculate the exponent of 10 corresponding to the specified value
+        """Calculate the exponent of 10 corresponding to the specified value.
 
-        :param value: value to find exponent of 10 for
-        :type value: Numeric
-        :return: exponent of 10 for the given value
-        :rtype: float
+        Parameters
+        ----------
+        value : :class:`float`
+            The value.
+        
+        Returns
+        -------
+        :class:`float`
+            The exponent of 10 for the specified value.
         """
-
         if value == 0:
             return 0
 
@@ -39,12 +47,11 @@ class BaseFormatter(metaclass=abc.ABCMeta):
         return math.log(abs(value), 10)
 
 class SIFormatter(BaseFormatter):
-    """SI unit formatter
+    """SI unit formatter.
 
     Partially based on `EngineerIO` from
     https://github.com/ulikoehler/UliEngineering/.
     """
-
     # supported units
     SI_UNITS = ["m", "kg", "s", "A", "K", "mol", "cd", # base units
                 "rad", "sr", "Hz", "N", "Pa", "J", "W", # derived units
@@ -71,16 +78,20 @@ class SIFormatter(BaseFormatter):
 
     @classmethod
     def format(cls, value, unit=""):
-        """Method to format the specified value and unit
+        """Format the specified value and unit for display.
 
-        :param value: value to format
-        :type value: Numeric
-        :param unit: optional unit to append
-        :type unit: str
-        :return: formatted value and unit
-        :rtype: str
+        Parameters
+        ----------
+        value : :class:`float`
+            The value to format.
+        unit : :class:`str`, optional
+            The unit to append to the value.
+        
+        Returns
+        -------
+        :class:`str`
+            Formatted value and unit
         """
-
         value = float(value)
 
         # multiple of 3 corresponding to the unit prefix list
@@ -111,31 +122,39 @@ class SIFormatter(BaseFormatter):
 
     @classmethod
     def prefices(cls):
-        """Get unit prefices, including aliases
+        """Get unit prefices, including aliases.
 
-        :return: unit prefices/aliases
-        :rtype: Generator[str]
+        Yields
+        ------
+        :class:`str`
+            Unit prefices/aliases
         """
-
         yield from cls.UNIT_PREFICES.values()
         yield from cls.PREFIX_ALIASES.keys()
 
     @classmethod
-    def parse(cls, value_str):
-        """Parse value string as number
+    def parse(cls, quantity):
+        """Parse quantity as a number.
 
-        :param value_str: value to parse
-        :type value_str: str
-        :return: parsed number, without units or prefix
-        :rtype: float
+
+        Parameters
+        ----------
+        quantity : :class:`str`
+            Value string to parse as a number.
+        
+        Returns
+        -------
+        number : :class:`float`
+            The numeric representation of the quantity.
+        unit : :class:`str`
+            The parsed unit. If no unit is found, `None` is returned.
         """
-
         # don't need to handle units if there aren't any
-        if isinstance(value_str, (int, float)):
-            return float(value_str), None
+        if isinstance(quantity, (int, float)):
+            return float(quantity), None
 
         # find floating point numbers and optional unit prefix in string
-        results = re.match(cls.VALUE_REGEX, value_str)
+        results = re.match(cls.VALUE_REGEX, quantity)
 
         # first result should be the base number
         base = Decimal(results.group(1))
@@ -163,15 +182,23 @@ class SIFormatter(BaseFormatter):
 
     @classmethod
     def unit_exponent(cls, prefix):
-        """Return exponent equivalent of unit prefix
+        """Find exponent equivalent of unit prefix.
 
-        :param prefix: unit prefix
-        :type prefix: str
-        :return: exponent
-        :rtype: int
-        :raises ValueError: if prefix is unknown
+        Parameters
+        ----------
+        prefix : :class:`str`
+            The unit prefix.
+        
+        Returns
+        -------
+        :class:`int`
+            The quantity's exponent.
+        
+        Raises
+        ------
+        ValueError
+            If the specified prefix is unknown.
         """
-
         if prefix in cls.PREFIX_ALIASES:
             # use real prefix for this alias
             prefix = cls.PREFIX_ALIASES[prefix]
