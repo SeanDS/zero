@@ -20,12 +20,18 @@ class CircuitTestCase(TestCase):
         self.circuit.add_component(r)
         self.assertCountEqual(self.circuit.components, [r])
         self.assertCountEqual(self.circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertEqual(self.circuit.n_components, 1)
+        self.assertEqual(self.circuit.n_nodes, 2)
         self.circuit.add_component(c)
         self.assertCountEqual(self.circuit.components, [r, c])
         self.assertCountEqual(self.circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertEqual(self.circuit.n_components, 2)
+        self.assertEqual(self.circuit.n_nodes, 2)
         self.circuit.add_component(l)
         self.assertCountEqual(self.circuit.components, [r, c, l])
         self.assertCountEqual(self.circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertEqual(self.circuit.n_components, 3)
+        self.assertEqual(self.circuit.n_nodes, 2)
 
     def test_remove_component(self):
         r = Resistor(name="r1", value=10e3, node1="n1", node2="n2")
@@ -36,17 +42,23 @@ class CircuitTestCase(TestCase):
 
         self.assertCountEqual(self.circuit.components, [r, c])
         self.assertCountEqual(self.circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertEqual(self.circuit.n_components, 2)
+        self.assertEqual(self.circuit.n_nodes, 2)
 
         self.circuit.remove_component(r)
 
         self.assertEqual(self.circuit.components, [c])
         self.assertCountEqual(self.circuit.non_gnd_nodes, [Node("n1"), Node("n2")])
+        self.assertEqual(self.circuit.n_components, 1)
+        self.assertEqual(self.circuit.n_nodes, 2)
 
         self.circuit.remove_component(c)
 
         self.assertEqual(self.circuit.components, [])
         self.assertEqual(self.circuit.non_gnd_nodes, [])
-    
+        self.assertEqual(self.circuit.n_components, 0)
+        self.assertEqual(self.circuit.n_nodes, 0)
+
     def test_add_invalid_component(self):
         # name "all" is invalid
         r = Resistor(name="all", value=1e3, node1="n1", node2="n2")
