@@ -42,7 +42,7 @@ Plot the result with `show`:
 
     parser.show()
 
-.. image:: resources/liso-input-tf.png
+.. image:: /_static/liso-input-tf.png
 
 You can at any time list the circuit's constituent components:
 
@@ -68,7 +68,7 @@ You can also plot the circuit's node network using Graphviz, if installed:
     from circuit.display import NodeGraph
     NodeGraph(parser.circuit)
 
-.. image:: resources/liso-input-node-graph.svg
+.. image:: /_static/liso-input-node-graph.svg
 
 Graphviz almost always produces a messy representation, but it can sometimes be useful to help
 spot simple mistakes in circuit definitions.
