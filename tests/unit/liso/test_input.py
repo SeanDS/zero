@@ -57,12 +57,15 @@ class OpAmpTestCase(LisoInputParserTestCase):
         op = self.parser.circuit.get_component("op1")
         self.assertEqual(op.params["a0"], 123e6)
 
-        self.parser.parse("op op2 ad797 n4 n5 n6 gbw=456k")
+        self.parser.parse("op op2 ad797 n4 n5 n6 a0=123M gbw=456k")
         op = self.parser.circuit.get_component("op2")
+        self.assertEqual(op.params["a0"], 123e6)
         self.assertEqual(op.params["gbw"], 456e3)
 
-        self.parser.parse("op op3 lt1124 n4 n5 n6 sr=1G")
+        self.parser.parse("op op3 lt1124 n4 n5 n6 a0=123M gbw=456k sr=1G")
         op = self.parser.circuit.get_component("op3")
+        self.assertEqual(op.params["a0"], 123e6)
+        self.assertEqual(op.params["gbw"], 456e3)
         self.assertEqual(op.params["sr"], 1e9)
 
     def test_opamp_invalid_override(self):
