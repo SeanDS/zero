@@ -100,17 +100,10 @@ c c1 10u gnd n1
         # try to set frequencies again
         self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)", self.parser.parse, "freq lin 0.1 100k 1000")
 
-class InputTestCase(LisoInputParserTestCase):
+class VoltageInputTestCase(LisoInputParserTestCase):
     def test_input(self):
         self.parser.parse("uinput nin")
         self.assertEqual(self.parser.input_type, "voltage")
-        self.assertEqual(self.parser.input_node_p, Node("nin"))
-        self.assertEqual(self.parser.input_node_n, None)
-
-        self.reset()
-
-        self.parser.parse("iinput nin")
-        self.assertEqual(self.parser.input_type, "current")
         self.assertEqual(self.parser.input_node_p, Node("nin"))
         self.assertEqual(self.parser.input_node_n, None)
 
@@ -123,15 +116,34 @@ class InputTestCase(LisoInputParserTestCase):
         # defaults to 50 ohm
         self.parser.parse("uinput nin")
         self.assertEqual(self.parser.input_impedance, 50)
-        self.reset()
-        self.parser.parse("iinput nin")
-        self.assertEqual(self.parser.input_impedance, 50)
+        
         self.reset()
 
         # unit parsing
         self.parser.parse("uinput nin 10M")
         self.assertEqual(self.parser.input_impedance, 10e6)
+
+class CurrentInputTestCase(LisoInputParserTestCase):
+    def test_input(self):
+        self.parser.parse("iinput nin")
+        self.assertEqual(self.parser.input_type, "current")
+        self.assertEqual(self.parser.output_type, None)
+        self.assertEqual(self.parser.input_node_p, Node("nin"))
+        self.assertEqual(self.parser.input_node_n, None)
+
+    def test_cannot_redefine_input_type(self):
+        self.parser.parse("iinput nin")
+        # try to set input again
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse, "iinput nin")
+
+    def test_impedance(self):
+        # defaults to 50 ohm
+        self.parser.parse("iinput nin")
+        self.assertEqual(self.parser.input_impedance, 50)
+
         self.reset()
+
+        # unit parsing
         self.parser.parse("iinput nin 10k")
         self.assertEqual(self.parser.input_impedance, 10e3)
 
