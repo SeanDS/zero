@@ -70,13 +70,14 @@ class OpAmpTestCase(LisoInputParserTestCase):
 
     def test_opamp_invalid_override(self):
         # invalid scale
-        kwargs = {"text": """
+        text = """
 r r1 430 n1 nm
 op op1 op27 np nm nout a1=123e6
 c c1 10u gnd n1
-"""}
+"""
 
-        self.assertRaisesRegex(LisoParserError, r"unknown op-amp override parameter 'a1' \(line 3\)", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"unknown op-amp override parameter 'a1' \(line 3\)",
+                               self.parser.parse, text=text)
 
 class FrequencyTestCase(LisoInputParserTestCase):
     def test_frequencies(self):
@@ -90,18 +91,20 @@ class FrequencyTestCase(LisoInputParserTestCase):
 
     def test_invalid_scale(self):
         # invalid scale
-        kwargs = {"text": """
+        text = """
 r r1 430 n1 nm
 freq dec 1 1M 1234
 c c1 10u gnd n1
-"""}
+"""
 
-        self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' \(line 3\)", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' \(line 3\)", self.parser.parse,
+                               text)
     
     def test_cannot_redefine_frequencies(self):
         self.parser.parse("freq lin 0.1 100k 1000")
         # try to set frequencies again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)", self.parser.parse, "freq lin 0.1 100k 1000")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)", self.parser.parse,
+                               "freq lin 0.1 100k 1000")
 
 class VoltageInputTestCase(LisoInputParserTestCase):
     def test_input(self):
@@ -113,7 +116,8 @@ class VoltageInputTestCase(LisoInputParserTestCase):
     def test_cannot_redefine_input_type(self):
         self.parser.parse("uinput nin")
         # try to set input again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse, "uinput nin")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse,
+                               "uinput nin")
 
     def test_impedance(self):
         # defaults to 50 ohm
@@ -137,7 +141,8 @@ class CurrentInputTestCase(LisoInputParserTestCase):
     def test_cannot_redefine_input_type(self):
         self.parser.parse("iinput nin")
         # try to set input again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse, "iinput nin")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse,
+                               "iinput nin")
 
     def test_impedance(self):
         # defaults to 50 ohm
@@ -159,62 +164,68 @@ class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_cannot_redefine_noise_node(self):
         self.parser.parse("noise nout")
         # try to set noise node again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine noise output node \(line 2\)", self.parser.parse, "noise nin")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine noise output node \(line 2\)",
+                               self.parser.parse, "noise nin")
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""
 
     def test_invalid_component(self):
         # component type "a" doesn't exist
-        kwargs = {"text": """
+        text = """
 a c1 10u gnd n1
 r r1 430 n1 nm
-"""}
+"""
 
-        self.assertRaisesRegex(LisoParserError, r"'a' \(line 2\)", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"'a' \(line 2\)", self.parser.parse, text)
 
     def test_missing_component_name(self):
         # no component name given
-        kwargs = {"text": """
+        text = """
 c 10u gnd n1
 r r1 430 n1 nm
-"""}
+"""
 
-        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)", self.parser.parse,
+                               text)
 
     def test_invalid_component_value(self):
         # invalid component value
-        kwargs = {"text": """
+        text = """
 r r1 430 n1 nm
 c c1 -10u gnd n1
-"""}
+"""
 
-        self.assertRaisesRegex(LisoParserError, r"illegal character '-' \(line 3, position 5\)", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"illegal character '-' \(line 3, position 5\)",
+                               self.parser.parse, text)
 
     def test_invalid_component_node(self):
         # invalid component value
-        kwargs = {"text": """
+        text = """
 r r1 430 n1 nm
 c c1 10u gnd @
-"""}
+"""
 
-        self.assertRaisesRegex(LisoParserError, r"illegal character '@' \(line 3, position 13\)", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(LisoParserError, r"illegal character '@' \(line 3, position 13\)",
+                               self.parser.parse, text)
     
     def test_duplicate_component(self):
         # duplicate component
-        kwargs = {"text": """
+        text = """
 r r1 10k n1 n2
 r r1 10k n1 n2
-"""}
+"""
 
-        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit", self.parser.parse,
+                               text)
 
         self.reset()
 
         # different component with same name
-        kwargs = {"text": """
+        text = """
 r r1 10k n1 n2
 op r1 op00 n1 n2 n3
-"""}
+"""
 
-        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit", self.parser.parse, **kwargs)
+        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit", self.parser.parse,
+                               text)
