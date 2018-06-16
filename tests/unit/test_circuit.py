@@ -3,10 +3,13 @@
 from unittest import TestCase
 
 from circuit import Circuit
-from circuit.components import Resistor, Capacitor, Inductor, Node
+from circuit.components import Resistor, Capacitor, Inductor, OpAmp, Node
 
 class CircuitTestCase(TestCase):
     def setUp(self):
+        self.reset()
+
+    def reset(self):
         self.circuit = Circuit()
 
     def test_add_component(self):
@@ -52,3 +55,22 @@ class CircuitTestCase(TestCase):
         # name "sum" is invalid
         c = Capacitor(name="sum", value=1e3, node1="n1", node2="n2")
         self.assertRaisesRegex(ValueError, r"component name 'sum' is reserved", self.circuit.add_component, c)
+
+    def test_duplicate_component(self):
+        # duplicate component
+        r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
+        r2 = Resistor(name="r1", value=2e5, node1="n3", node2="n4")
+
+        self.circuit.add_component(r1)
+        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit",
+                               self.circuit.add_component, r2)
+
+        self.reset()
+
+        # different component with same name
+        r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
+        op1 = OpAmp(name="r1", model="OP00", node1="n3", node2="n4", node3="n5")
+
+        self.circuit.add_component(r1)
+        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit",
+                               self.circuit.add_component, op1)
