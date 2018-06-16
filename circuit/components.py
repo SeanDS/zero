@@ -362,21 +362,24 @@ class Input(Component):
 
     def __init__(self, input_type, node=None, node_p=None, node_n=None,
                  impedance=None, *args, **kwargs):
+        # default input nodes
+        nodes = None
+
         # handle nodes
         if node is not None:
             if node_p is not None or node_n is not None:
-                raise ValueError("node cannot be specified alongside node_p or "
-                                 "node_n")
+                raise ValueError("node cannot be specified alongside node_p or node_n")
 
             nodes = [Node("gnd"), node]
         else:
-            if node_p is None or node_n is None:
+            if node_p is None and node_n is None:
+                # no nodes specified
+                raise ValueError("input node(s) must be specified")
+            elif node_p is None or node_n is None:
+                # only one of node_p or node_n specified
                 raise ValueError("node_p and node_n must both be specified")
 
             nodes = [node_n, node_p]
-
-        # call parent constructor
-        super().__init__(name="input", nodes=nodes, *args, **kwargs)
 
         input_type = input_type.lower()
 
@@ -401,6 +404,9 @@ class Input(Component):
                 raise ValueError("unrecognised input type")
 
         self.impedance = impedance
+
+        # call parent constructor
+        super().__init__(name="input", nodes=nodes, *args, **kwargs)
 
     @property
     def node1(self):
