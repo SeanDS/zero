@@ -95,6 +95,9 @@ class Circuit(object):
         ValueError
             If component is None, or already present in the circuit.
         """
+        if component.name is None:
+            # assign name
+            self._set_default_name(component)
 
         if component is None:
             raise ValueError("component cannot be None")
@@ -237,6 +240,48 @@ class Circuit(object):
                 return noise
         
         raise ValueError("noise not found")
+
+    def _set_default_name(self, component):
+        """Set a default name unique to this circuit for the specified component
+        
+        Parameters
+        ----------
+        component : :class:`Component`
+            The component to set the name for.
+        """
+        # base name of component
+        base = component.BASE_NAME
+
+        # number to append
+        count = 1
+
+        # first attempt
+        new_name = "{base}{count}".format(base=base, count=count)
+
+        while new_name in self.component_names:
+            # next attempt
+            count += 1
+            new_name = "{base}{count}".format(base=base, count=count)
+    
+        # set new name
+        component.name = new_name
+
+        # set flag showing component has been automatically named
+        component.autonamed = True
+
+        LOGGER.info("component {component} assigned name {name}".format(component=component,
+                                                                        name=component.name))
+
+    @property
+    def component_names(self):
+        """The names of the components in the circuit.
+
+        Returns
+        -------
+        :class:`list` of :class:`str`
+            The component names.
+        """
+        return [component.name for component in self.components]
 
     @property
     def n_components(self):

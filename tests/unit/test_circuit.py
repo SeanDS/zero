@@ -33,6 +33,28 @@ class CircuitTestCase(TestCase):
         self.assertEqual(self.circuit.n_components, 3)
         self.assertEqual(self.circuit.n_nodes, 2)
 
+    def test_add_component_without_name(self):
+        r = Resistor(value=10e3, node1="n1", node2="n2")
+        c = Capacitor(value="10u", node1="n1", node2="n2")
+        l = Inductor(value="1u", node1="n1", node2="n2")
+        op = OpAmp(model="OP00", node1="n1", node2="n2", node3="n3")
+
+        self.assertEqual(r.name, None)
+        self.circuit.add_component(r)
+        self.assertEqual(r.name, "r1")
+
+        self.assertEqual(c.name, None)
+        self.circuit.add_component(c)
+        self.assertEqual(c.name, "c1")
+
+        self.assertEqual(l.name, None)
+        self.circuit.add_component(l)
+        self.assertEqual(l.name, "l1")
+
+        self.assertEqual(op.name, None)
+        self.circuit.add_component(op)
+        self.assertEqual(op.name, "op1")
+
     def test_remove_component(self):
         r = Resistor(name="r1", value=10e3, node1="n1", node2="n2")
         c = Capacitor(name="c1", value="10u", node1="n1", node2="n2")
