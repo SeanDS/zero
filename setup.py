@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
@@ -12,6 +12,7 @@ REQUIREMENTS = [
     "progressbar2",
     "appdirs",
     "tabulate",
+    "setuptools_scm",
     "ply"
 ]
 
@@ -27,16 +28,14 @@ EXTRAS = {
 }
 
 setup(
-    name="circuit.py",
-    version="0.4.1",
+    name="circuit",
+    use_scm_version=True,
     description="Linear circuit simulator",
     long_description=readme,
     author="Sean Leavey",
     author_email="sean.leavey@ligo.org",
     url="https://git.ligo.org/sean-leavey/circuit",
-    packages=[
-        "circuit"
-    ],
+    packages=find_packages(),
     package_data={
         "circuit": ["circuit.conf.dist", "library.conf.dist"]
     },
@@ -47,6 +46,7 @@ setup(
     },
     install_requires=REQUIREMENTS,
     extras_require=EXTRAS,
+    setup_requires=['setuptools_scm'],
     license="GPLv3",
     zip_safe=False,
     classifiers=[

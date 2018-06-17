@@ -1,19 +1,25 @@
 import logging
 import locale
+from pkg_resources import get_distribution, DistributionNotFound
 
 # make Circuit class available from main package
 from .circuit import Circuit
+
+# get version
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
+
+PROGRAM = "circuit"
+DESCRIPTION = "Linear circuit simulator"
 
 # suppress warnings when the user code does not include a handler
 logging.getLogger().addHandler(logging.NullHandler())
 
 # use default locale (required for number formatting in log warnings)
 locale.setlocale(locale.LC_ALL, "")
-
-# NOTE: these must be updated in setup.py when changed
-__version__ = "0.4.1"
-PROGRAM = "circuit"
-DESCRIPTION = "Linear circuit simulator"
 
 try:
     from matplotlib import rcParams
