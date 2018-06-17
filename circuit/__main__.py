@@ -2,13 +2,16 @@
 
 """Circuit simulator utility"""
 
+import os
 import sys
+import stat
 import abc
 import logging
 import argparse
 
 from circuit import __version__, PROGRAM, DESCRIPTION, logging_on
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
+from .display import NodeGraph
 
 LOGGER = logging.getLogger()
 
@@ -51,6 +54,10 @@ liso_external_parser.add_argument("--liso-plot", action="store_true",
 # LISO path settings
 liso_path_parser = subparsers.add_parser("liso-path", help="show or set LISO binary path")
 liso_path_parser.add_argument("--set-path", action="store", help="set path to LISO binary")
+
+# LISO node graph display
+node_graph_parser = subparsers.add_parser("liso-graph", help="show node graph for LISO file",
+                                          parents=[meta, liso_meta, liso_in_or_out, liso_solver_data])
 
 def action(namespace):
     if hasattr(namespace, "verbose") and namespace.verbose:
@@ -127,6 +134,34 @@ def action(namespace):
             else:
                 runner = LisoRunner()
                 print(runner.liso_path)
+        elif subcommand == "liso-graph":
+            kwargs = {"print_equations": namespace.print_equations,
+                      "print_matrix": namespace.print_matrix}
+
+            if namespace.force_output:
+                liso_parser = LisoOutputParser()
+                liso_parser.parse(path=namespace.path)
+            else:
+                try:
+                    liso_parser = LisoInputParser()
+                    liso_parser.parse(path=namespace.path)
+                except LisoParserError:
+                    # file is invalid as input
+                    if namespace.force_input:
+                        # don't continue
+                        raise
+
+                    # try as output
+                    liso_parser = LisoOutputParser()
+                    liso_parser.parse(path=namespace.path)
+            
+            solution = liso_parser.solution(**kwargs)
+            
+            # create node graph
+            graph = NodeGraph(solution.circuit)
+            
+            # open PDF
+            graph.view_pdf()
 
 def main():
     """Main program"""

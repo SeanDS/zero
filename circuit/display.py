@@ -4,6 +4,7 @@ import abc
 from importlib import import_module
 import numpy as np
 import collections
+import tempfile
 import numbers
 from tabulate import tabulate
 
@@ -81,6 +82,10 @@ class NodeGraph(object):
 
         return graph
 
+    def view_pdf(self):
+        """View the graph as a PDF"""
+        return self.node_graph().view(directory=tempfile.gettempdir(), cleanup=True)
+
     def _repr_svg_(self):
         """Graphviz rendering for Jupyter notebooks."""
         return self.node_graph()._repr_svg_()
@@ -92,7 +97,7 @@ class TableFormatter(object, metaclass=abc.ABCMeta):
     """
 
     def sanitise_cell(self, cell):
-        if isinstance(cell, (str, np.string_)):
+        if isinstance(cell, (str, np.str)):
             # leave strings alone
             return str(cell)
         
