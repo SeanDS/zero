@@ -19,12 +19,11 @@ circuit = Circuit()
 
 # add components
 circuit.add_input(input_type="noise", node="n1", impedance=50)
-circuit.add_capacitor(name="c1", value="10u", node1="gnd", node2="n1")
+circuit.add_capacitor(value="10u", node1="gnd", node2="n1")
 circuit.add_resistor(name="r1", value="430", node1="n1", node2="nm")
-circuit.add_resistor(name="r2", value="43k", node1="nm", node2="nout")
-circuit.add_capacitor(name="c2", value="47p", node1="nm", node2="nout")
-circuit.add_library_opamp(name="o1", model="LT1124", node1="gnd", node2="nm",
-                          node3="nout")
+circuit.add_resistor(value="43k", node1="nm", node2="nout")
+circuit.add_capacitor(value="47p", node1="nm", node2="nout")
+circuit.add_library_opamp(name="o1", model="LT1124", node1="gnd", node2="nm", node3="nout")
 
 # solve circuit
 analysis = AcNoiseAnalysis(node="nout", circuit=circuit, frequencies=frequencies)
