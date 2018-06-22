@@ -9,7 +9,7 @@ from configparser import ConfigParser
 import pkg_resources
 import appdirs
 
-from .format import SIFormatter
+from .format import Quantity
 
 LOGGER = logging.getLogger("config")
 
@@ -205,25 +205,25 @@ class OpAmpLibrary(BaseConfig):
 
         # add other op-amp data
         if "a0" in opamp_data:
-            class_data["a0"] = self._parse_param(opamp_data["a0"])
+            class_data["a0"] = Quantity(self._strip_comments(opamp_data["a0"]))
         if "gbw" in opamp_data:
-            class_data["gbw"] = self._parse_param(opamp_data["gbw"])
+            class_data["gbw"] = Quantity(self._strip_comments(opamp_data["gbw"]), "Hz")
         if "delay" in opamp_data:
-            class_data["delay"] = self._parse_param(opamp_data["delay"])
+            class_data["delay"] = Quantity(self._strip_comments(opamp_data["delay"]), "s")
         if "vn" in opamp_data:
-            class_data["v_noise"] = self._parse_param(opamp_data["vn"])
+            class_data["v_noise"] = Quantity(self._strip_comments(opamp_data["vn"]), "V/sqrt(Hz)")
         if "in" in opamp_data:
-            class_data["i_noise"] = self._parse_param(opamp_data["in"])
+            class_data["i_noise"] = Quantity(self._strip_comments(opamp_data["in"]), "A/sqrt(Hz)")
         if "vc" in opamp_data:
-            class_data["v_corner"] = self._parse_param(opamp_data["vc"])
+            class_data["v_corner"] = Quantity(self._strip_comments(opamp_data["vc"]), "Hz")
         if "ic" in opamp_data:
-            class_data["i_corner"] = self._parse_param(opamp_data["ic"])
+            class_data["i_corner"] = Quantity(self._strip_comments(opamp_data["ic"]), "Hz")
         if "vmax" in opamp_data:
-            class_data["v_max"] = self._parse_param(opamp_data["vmax"])
+            class_data["v_max"] = Quantity(self._strip_comments(opamp_data["vmax"]), "V")
         if "imax" in opamp_data:
-            class_data["i_max"] = self._parse_param(opamp_data["imax"])
+            class_data["i_max"] = Quantity(self._strip_comments(opamp_data["imax"]), "A")
         if "sr" in opamp_data:
-            class_data["slew_rate"] = self._parse_param(opamp_data["sr"])
+            class_data["slew_rate"] = Quantity(self._strip_comments(opamp_data["sr"]), "V/s")
 
         # add data to library
         self.add_data(section, class_data)
@@ -255,19 +255,6 @@ class OpAmpLibrary(BaseConfig):
 
         # set data
         self.data[name] = data
-
-    def _parse_param(self, param):
-        """Parse as a float an op-amp config parameter
-
-        This also strips out comments.
-
-        :param param: parameter to clean and parse
-        :type param: str
-        :return: parsed parameter
-        :rtype: float
-        """
-
-        return SIFormatter.parse(self._strip_comments(param))[0]
 
     @property
     def opamp_names(self):
@@ -334,14 +321,14 @@ class OpAmpLibrary(BaseConfig):
         parts = token.split()
 
         # frequency is always first in the list
-        frequency, _ = SIFormatter.parse(parts[0])
+        frequency = Quantity(parts[0], "Hz")
 
         # q-factor is second, if present
         if len(parts) == 1:
             frequencies.append(frequency)
         elif len(parts) == 2:
             # calculate complex frequency using q-factor
-            qfactor, _ = SIFormatter.parse(parts[1])
+            qfactor = Quantity(parts[1])
             # cast to complex to avoid issues with arccos
             qfactor = complex(qfactor)
             theta = np.arccos(1 / (2 * qfactor))

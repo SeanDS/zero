@@ -6,7 +6,7 @@ from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
 from ..solution import Solution
 from ..data import (Series, ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
                     CurrentCurrentTF, NoiseSpectrum)
-from ..format import SIFormatter
+from ..format import Quantity
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource
 
 LOGGER = logging.getLogger("liso")
@@ -615,8 +615,7 @@ class LisoOutputParser(LisoParser):
             elif prop.startswith("sr"):
                 unit = next(params)
                 # parse V/us and convert to V/s
-                # FIXME: parse inverse units directly
-                slew_rate, _ = SIFormatter.parse(value + unit)
+                slew_rate = Quantity(value + unit, "V/s")
                 slew_rate *= 1e6
                 kwargs["slew_rate"] = slew_rate
             elif prop.startswith("delay"):
@@ -663,7 +662,7 @@ class LisoOutputParser(LisoParser):
 
     def _parse_opamp_root(self, frequency, plane):
         # parse frequency
-        frequency, _ = SIFormatter.parse(frequency)
+        frequency = Quantity(frequency, "Hz")
 
         plane = plane.lstrip("(").rstrip(")")
 
@@ -675,7 +674,7 @@ class LisoOutputParser(LisoParser):
             q_factor = plane.split("=")[1]
 
             # calculate complex frequency using q-factor
-            q_factor, _ = SIFormatter.parse(q_factor)
+            q_factor = Quantity(q_factor)
             theta = np.arccos(1 / (2 * q_factor))
 
             # add negative/positive pair of poles/zeros

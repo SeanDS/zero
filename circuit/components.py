@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 from .misc import NamedInstance
-from .format import SIFormatter
+from .format import Quantity
 from .config import CircuitConfig
 
 CONF = CircuitConfig()
@@ -142,7 +142,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     @value.setter
     def value(self, value):
         if value is not None:
-            value, _ = SIFormatter.parse(value)
+            value = Quantity(value, self.UNIT)
 
         self._value = value
 
@@ -239,18 +239,18 @@ class OpAmp(Component):
         super().__init__(nodes=[node1, node2, node3], *args, **kwargs)
 
         # default properties
-        self.params = {"a0": SIFormatter.parse(a0)[0], # gain
-                       "gbw": SIFormatter.parse(gbw)[0], # gain-bandwidth product (Hz)
-                       "delay": SIFormatter.parse(delay)[0], # delay (s)
+        self.params = {"a0": Quantity(a0), # gain
+                       "gbw": Quantity(gbw, "Hz"), # gain-bandwidth product (Hz)
+                       "delay": Quantity(delay, "s"), # delay (s)
                        "zeros": np.array(zeros), # array of additional zeros
                        "poles": np.array(poles), # array of additional poles
-                       "vn": SIFormatter.parse(v_noise)[0], # voltage noise (V/sqrt(Hz))
-                       "in": SIFormatter.parse(i_noise)[0], # current noise (A/sqrt(Hz))
-                       "vc": SIFormatter.parse(v_corner)[0], # voltage noise corner frequency (Hz)
-                       "ic": SIFormatter.parse(i_corner)[0], # current noise corner frequency (Hz)
-                       "vmax": SIFormatter.parse(v_max)[0], # maximum output voltage amplitude (V)
-                       "imax": SIFormatter.parse(i_max)[0], # maximum output current amplitude (A)
-                       "sr": SIFormatter.parse(slew_rate)[0]} # maximum slew rate (V/s)
+                       "vn": Quantity(v_noise, "V/sqrt(Hz)"), # voltage noise (V/sqrt(Hz))
+                       "in": Quantity(i_noise, "A/sqrt(Hz)"), # current noise (A/sqrt(Hz))
+                       "vc": Quantity(v_corner, "Hz"), # voltage noise corner frequency (Hz)
+                       "ic": Quantity(i_corner, "Hz"), # current noise corner frequency (Hz)
+                       "vmax": Quantity(v_max, "V"), # maximum output voltage amplitude (V)
+                       "imax": Quantity(i_max, "A"), # maximum output current amplitude (A)
+                       "sr": Quantity(slew_rate, "V/s")} # maximum slew rate (V/s)
 
         # set model name
         self.model = model
@@ -395,7 +395,7 @@ class Input(Component):
             if impedance is None:
                 raise ValueError("impedance must be specified for noise input")
             
-            impedance, _ = SIFormatter.parse(impedance)
+            impedance = Quantity(impedance, "Ω")
         else:
             if impedance is not None:
                 raise ValueError("impedance cannot be specified for non-noise input")
