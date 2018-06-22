@@ -11,12 +11,19 @@ class AcNoiseAnalysis(BaseAcAnalysis):
     """Small signal circuit analysis"""
 
     def __init__(self, node, **kwargs):
-        super().__init__(**kwargs)
-
         # empty fields
         self._node = None
 
         self.node = node
+    
+        # call parent constructor
+        super().__init__(**kwargs)
+
+    def validate_circuit(self):
+        """Validate circuit for noise analysis"""
+        # check input
+        if self.circuit.input_component.input_type != "noise":
+            raise ValueError("circuit input type must be 'noise'")
 
     @property
     def node(self):
@@ -155,8 +162,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
                                                   series=series))
 
         if len(empty):
-            LOGGER.warning("there are empty noise sources: %s",
-                        ", ".join([str(tf) for tf in empty]))
+            LOGGER.debug("empty noise sources: %s", ", ".join([str(tf) for tf in empty]))
 
     @property
     def noise_node_index(self):

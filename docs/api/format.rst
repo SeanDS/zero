@@ -4,11 +4,11 @@
 Formatting and parsing quantities
 #################################
 
-SI formatting tools.
+Quantity formatting tools.
 
 .. code-block:: python
 
-   >>> from circuit.format import SIFormatter
+   >>> from circuit.format import Quantity
 
 ===============
 Class reference
@@ -19,11 +19,11 @@ This reference contains the following `class` entries:
 .. autosummary::
    :nosignatures:
 
-   SIFormatter
+   Quantity
 
 -------
 Details
 -------
 
-.. autoclass:: SIFormatter
+.. autoclass:: Quantity
     :members:

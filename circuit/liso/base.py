@@ -11,7 +11,7 @@ from collections import defaultdict
 from ..circuit import Circuit
 from ..components import Component, Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
-from ..format import SIFormatter
+from ..format import Quantity
 
 LOGGER = logging.getLogger("liso")
 
@@ -51,7 +51,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._input_type = None
         self._input_node_n = None
         self._input_node_p = None
-        self.input_impedance = None
+        self._input_impedance = None
         self._output_type = None
         self.tf_outputs = []
 
@@ -123,6 +123,17 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.p_error("cannot redefine negative input node")
         
         self._input_node_n = Node(input_node_n)
+
+    @property
+    def input_impedance(self):
+        return self._input_impedance
+    
+    @input_impedance.setter
+    def input_impedance(self, input_impedance):
+        if self._input_impedance is not None:
+            self.p_error("cannot redefine input impedance")
+        
+        self._input_impedance = Quantity(input_impedance, "Ω")
 
     @property
     def noise_output_node(self):

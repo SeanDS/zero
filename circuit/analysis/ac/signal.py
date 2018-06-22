@@ -9,7 +9,12 @@ from ...components import Component, Node
 LOGGER = logging.getLogger("ac-analysis")
 
 class AcSignalAnalysis(BaseAcAnalysis):
-    """AC signal analysis"""
+    """AC signal analysis"""    
+    def validate_circuit(self):
+        """Validate circuit for signal analysis"""
+        # check input
+        if self.circuit.input_component.input_type not in ["voltage", "current"]:
+            raise ValueError("circuit input type must be either 'voltage' or 'current'")
 
     def right_hand_side(self):
         """Circuit signal (input) vector.
@@ -128,8 +133,7 @@ class AcSignalAnalysis(BaseAcAnalysis):
             self.solution.add_tf(function)
 
         if len(empty):
-            LOGGER.warning("there are empty transfer functions: %s",
-                        ", ".join([str(tf) for tf in empty]))
+            LOGGER.debug("empty transfer functions: %s", ", ".join([str(tf) for tf in empty]))
 
     @property
     def input_component_index(self):

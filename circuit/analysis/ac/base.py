@@ -12,9 +12,8 @@ from ...display import MatrixDisplay, EquationDisplay
 
 LOGGER = logging.getLogger("ac-analysis")
 
-class BaseAcAnalysis(BaseAnalysis):
+class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
-
     def __init__(self, frequencies, prescale=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -26,6 +25,14 @@ class BaseAcAnalysis(BaseAnalysis):
 
         # empty fields
         self._solution = None
+
+        # validate the circuit for the current analysis
+        self.validate_circuit()
+
+    @abc.abstractmethod
+    def validate_circuit(self):
+        """Validate circuit"""
+        raise NotImplementedError
 
     @property
     def dim_size(self):

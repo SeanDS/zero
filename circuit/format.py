@@ -3,183 +3,269 @@
 import abc
 import math
 import re
-from decimal import Decimal
+import logging
 
-class BaseFormatter(metaclass=abc.ABCMeta):
-    """Abstract class for all formatters"""
+LOGGER = logging.getLogger("format")
 
-    @abc.abstractclassmethod
-    def format(cls, value, unit=""):
-        """Method to format the specified value and unit
+class Quantity(float):
+    """Container for numeric values and their associated units.
 
-        :param value: value to format
-        :type value: Numeric
-        :param unit: optional unit to append
-        :type unit: str
-        :return: formatted value and unit
-        :rtype: str
-        """
-
-        raise NotImplementedError
-
-    @staticmethod
-    def exponent(value):
-        """Calculate the exponent of 10 corresponding to the specified value
-
-        :param value: value to find exponent of 10 for
-        :type value: Numeric
-        :return: exponent of 10 for the given value
-        :rtype: float
-        """
-
-        if value == 0:
-            return 0
-
-        # calculate log of value to get exponent
-        return math.log(abs(value), 10)
-
-class SIFormatter(BaseFormatter):
-    """SI unit formatter
-
-    Partially based on `EngineerIO` from
-    https://github.com/ulikoehler/UliEngineering/.
+    Partially based on `QuantiPhy <https://github.com/KenKundert/quantiphy>`_.
+    
+    Parameters
+    ----------
+    value : :class:`float`, :class:`str`, :class:`Quantity`
+        The quantity. SI units and prefices can be specified and are recognised.
+    unit : :class:`str`, optional
+        The quantity's unit. This can be used to directly specify the unit associated with
+        the specified `value`.
     """
+    # default display precision
+    DEFAULT_PRECISION = 4
 
-    # supported units
-    SI_UNITS = ["m", "kg", "s", "A", "K", "mol", "cd", # base units
-                "rad", "sr", "Hz", "N", "Pa", "J", "W", # derived units
-                "C", "V", "F", "Ω", "S", "Wb", "T", "H",
-                "°C", "lm", "lx", "Bq", "Gy", "Sv", "kat"]
+    # input scale mappings
+    MAPPINGS = {
+        'Y': 24,
+        'Z': 21,
+        'E': 18,
+        'P': 15,
+        'T': 12,
+        'G': 9,
+        'M': 6,
+        'k': 3,
+        'c': -2, # only available for input, not used in output
+        'm': -3,
+        'u': -6,
+        'µ': -6,
+        'n': -9,
+        'p': -12,
+        'f': -15,
+        'a': -18,
+        'z': -21,
+        'y': -24
+    }
 
-    # exponents and their SI prefixes
-    UNIT_PREFICES = {-24: "y", -21: "z", -18: "a", -15: "f", -12: "p", -9: "n",
-                     -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G", 12: "T",
-                     15: "E", 18: "Z", 21: "Y"}
+    # scale factors every 3rd decade, in order from 0
+    LARGE_SCALES = "kMGTPEZY"
+    SMALL_SCALES = "mµnpfazy"
 
-    # other strings used to represent prefices
-    PREFIX_ALIASES = {"u": "µ"}
+    # output scale factors (only display these scales regardless of input)
+    OUTPUT_SCALES = "TGMkmµnpf"
 
     # regular expression to find values with unit prefixes and units in text
     VALUE_REGEX_STR = (r"^([+-]?\d*\.?\d*)" # base
                        r"([eE]([+-]?\d*\.?\d*))?\s*" # numeric exponent
-                       r"([yzafpnuµmkMGTEZY])?" # unit prefix exponent
-                       r"(m|kg|s|A|K|mol|cd|rad|" # SI unit
-                       r"sr|Hz|N|Pa|J|W|C|V|F|Ω|"
-                       r"S|Wb|T|H|°C|lm|lx|Bq|Gy"
-                       r"|Sv|kat)?")
+                       r"([yzafpnuµmkMGTPEZY])?" # unit prefix
+                       r"(s|A|rad|Hz|W|C|V|F|Ω|H|°C)?") # SI unit
     VALUE_REGEX = re.compile(VALUE_REGEX_STR)
 
-    @classmethod
-    def format(cls, value, unit=""):
-        """Method to format the specified value and unit
+    def __new__(cls, value, unit=None):
+        if isinstance(value, Quantity):
+            number = float(value)
+            mantissa = value._mantissa
+            scale = value._scale
 
-        :param value: value to format
-        :type value: Numeric
-        :param unit: optional unit to append
-        :type unit: str
-        :return: formatted value and unit
-        :rtype: str
-        """
+            if value.unit:
+                unit = value.unit
+        elif isinstance(value, str):
+            number, mantissa, scale, parsed_unit = cls.parse(value, unit)
 
-        value = float(value)
-
-        # multiple of 3 corresponding to the unit prefix list
-        exponent_index = int(math.floor(cls.exponent(value) / 3))
-
-        # check for out of range exponents
-        if not (min(cls.UNIT_PREFICES.keys())
-                < exponent_index
-                < max(cls.UNIT_PREFICES.keys())):
-            raise ValueError("{} out of range".format(value))
-
-        # create suffix with unit
-        suffix = cls.UNIT_PREFICES[exponent_index * 3] + unit
-
-        # numerals without scale; should always be < 1000 (10 ** 3)
-        numerals = value * (10 ** -(exponent_index * 3))
-
-        # show only three digits
-        if numerals < 10:
-            result = "{:.2f}".format(numerals)
-        elif numerals < 100:
-            result = "{:.1f}".format(numerals)
+            if unit is not None and parsed_unit is not None:
+                LOGGER.warning("overriding detected unit with specified unit")
+            else:
+                unit = parsed_unit
         else:
-            result = str(int(round(numerals)))
+            # assume float
+            number = value
+            mantissa = None
+            scale = None
+    
+        # create object from identified information
+        self = float.__new__(cls, number)
+        self._mantissa = mantissa
+        self._scale = scale
+        self.unit = unit
 
-        # return formatted string with space between numeral and unit if present
-        return "{0} {1}".format(result, suffix) if suffix else result
-
-    @classmethod
-    def prefices(cls):
-        """Get unit prefices, including aliases
-
-        :return: unit prefices/aliases
-        :rtype: Generator[str]
-        """
-
-        yield from cls.UNIT_PREFICES.values()
-        yield from cls.PREFIX_ALIASES.keys()
+        return self
 
     @classmethod
-    def parse(cls, value_str):
-        """Parse value string as number
+    def parse(cls, quantity, unit=None):
+        """Parse quantity as a number.
 
-        :param value_str: value to parse
-        :type value_str: str
-        :return: parsed number, without units or prefix
-        :rtype: float
+        Parameters
+        ----------
+        quantity : :class:`str`
+            Value string to parse as a number.
+        unit : :class:`str`, optional
+            The quantity's unit.
+        
+        Returns
+        -------
+        value : :class:`float`
+            The numeric representation of the quantity.
+        mantissa : :class:`str`
+            The quantity's mantissa. Provided to help avoid floating point precision
+            display errors.
+        scale : :class:`float`
+            The quantity's scale factor.
+        unit : :class:`str`
+            The parsed unit. If no unit is found, `None` is returned.
         """
-
         # don't need to handle units if there aren't any
-        if isinstance(value_str, (int, float)):
-            return float(value_str), None
+        if isinstance(quantity, (int, float)):
+            return float(quantity), None
 
         # find floating point numbers and optional unit prefix in string
-        results = re.match(cls.VALUE_REGEX, value_str)
+        results = re.match(cls.VALUE_REGEX, quantity)
 
-        # first result should be the base number
-        base = Decimal(results.group(1))
-
-        # handle exponent
-        if results.group(3) or results.group(4):
-            exponent = 0
-
-            if results.group(3):
-                # exponent specified directly
-                exponent += float(results.group(3))
-            
-            if results.group(4):
-                # exponent specified as unit prefix
-                exponent += cls.unit_exponent(results.group(4))
-        else:
-            # neither prefix nor exponent
-            exponent = 0
+        # mantissa is first match
+        mantissa = results.group(1)
+        # scale is the fourth match
+        scale = results.group(4)
+        # unit is fifth match
+        unit = results.group(5)        
         
-        # raise quantity to its exponent
-        number = base * Decimal(10) ** Decimal(exponent)
+        # convert value to float
+        value = float(mantissa)
 
-        # return float equivalent
-        return float(number), results.group(5)
+        # special case: parse "1.23E" as 1.23e18
+        if results.group(2) == "E" and results.group(3) == "":
+            exponent = 18
+            scale = "E"
+        else:
+            # handle exponent
+            if results.group(3) or results.group(4):
+                exponent = 0
 
-    @classmethod
-    def unit_exponent(cls, prefix):
-        """Return exponent equivalent of unit prefix
+                if results.group(3):
+                    # exponent specified directly
+                    exponent += float(results.group(3))
+                
+                if results.group(4):
+                    # exponent specified as unit prefix
+                    exponent += cls.MAPPINGS[results.group(4)]
+            else:
+                # neither prefix nor exponent
+                exponent = 0
+        
+        # raise value to the intended exponent
+        value *= 10 ** exponent
 
-        :param prefix: unit prefix
-        :type prefix: str
-        :return: exponent
-        :rtype: int
-        :raises ValueError: if prefix is unknown
+        return value, mantissa, scale, unit
+
+    def format(self, show_unit=True, show_si=True, precision=None):
+        """Format the specified value and unit for display.
+
+        Parameters
+        ----------
+        show_unit : :class:`bool`, optional
+            Whether to display the quantity's unit.
+        show_si : :class:`bool`, optional
+            Whether to show quantity with scale factors using SI notation, e.g. "k" for 10e3.
+            If `False`, the value defaults to using standard float notation.
+        precision : :class:`int` or 'full', optional
+            Number of decimal places to display quantity with. If "full", uses the precision
+            of the number as originally specified. When "full" is used, but `show_unit` and
+            `show_si` are both `False`, then the decimal point may be moved.
+        
+        Returns
+        -------
+        :class:`str`
+            Formatted quantity.
         """
+        if precision is None:
+            precision = self.DEFAULT_PRECISION
 
-        if prefix in cls.PREFIX_ALIASES:
-            # use real prefix for this alias
-            prefix = cls.PREFIX_ALIASES[prefix]
+        if precision == "full" and self._mantissa is not None:
+            # parsed mantissa and scale factor
+            mantissa = self._mantissa
+            scale = self._scale
 
-        # find exponent in prefix dict
-        for exponent, this_prefix in cls.UNIT_PREFICES.items():
-            if this_prefix == prefix:
-                return exponent
+            # convert scale factor to integer exponent
+            try:
+                exp = int(scale)
+            except ValueError:
+                if scale:
+                    exp = int(self.MAPPINGS[scale])
+                else:
+                    exp = 0
 
-        # prefix not found
-        raise ValueError("Unknown prefix")
+            # add decimal point to mantissa if missing
+            mantissa += '' if '.' in mantissa else '.'
+            # strip off leading zeros and break into components
+            whole, frac = mantissa.strip('0').split('.')
+
+            if whole == "":
+                # remove leading zeros from fractional part
+                orig_len = len(frac)
+                frac = frac.lstrip('0')
+
+                if frac:
+                    whole = frac[:1]
+                    frac = frac[1:]
+                    exp -= orig_len - len(frac)
+                else:
+                    # stripping off zeros left us with nothing, this must be 0
+                    whole = '0'
+                    frac = ''
+                    exp = 0
+
+            # reconstruct the mantissa
+            mantissa = whole[0] + '.' + whole[1:] + frac
+            exp += len(whole) - 1
+        else:
+            if precision == "full":
+                # no parsed mantissa available; use default precision
+                precision = self.DEFAULT_PRECISION
+
+            # get float value
+            number = self.real
+
+            # split number into components
+            number = "%.*e" % (precision, number)
+            mantissa, exp = number.split("e")
+            exp = int(exp)
+
+        # scale factor
+        index = exp // 3
+        shift = exp % 3
+        scale = "e%d" % (exp - shift)
+
+        if index == 0:
+            scale = ''
+        elif show_si:
+            if index > 0:
+                if index <= len(self.LARGE_SCALES):
+                    if self.LARGE_SCALES[index-1] in self.OUTPUT_SCALES:
+                        scale = self.LARGE_SCALES[index-1]
+            else:
+                index = -index
+
+                if index <= len(self.SMALL_SCALES):
+                    if self.SMALL_SCALES[index-1] in self.OUTPUT_SCALES:
+                        scale = self.SMALL_SCALES[index-1]
+
+        # shift the decimal place as needed
+        sign = '-' if mantissa[0] == '-' else ''
+        mantissa = mantissa.lstrip('-').replace('.', '')
+        mantissa += (shift + 1 - len(mantissa)) * '0'
+        mantissa = sign + mantissa[0:(shift+1)] + '.' + mantissa[(shift+1):]
+
+        # get rid of trailing decimal points and leading + if present
+        mantissa = mantissa.rstrip('.')
+        mantissa = mantissa.lstrip('+')
+
+        if show_unit and self.unit is not None:
+            if scale in self.MAPPINGS:
+                # standard suffix
+                fmt_str = "{mantissa} {scale}{unit}"
+            else:
+                # scientific notation
+                if self.unit is not None:
+                    fmt_str = "{mantissa}{scale} {unit}"
+                else:
+                    fmt_str = "{mantissa}{scale}"
+        else:
+            fmt_str = "{mantissa}{scale}"
+
+        return fmt_str.format(mantissa=mantissa, scale=scale, unit=self.unit)

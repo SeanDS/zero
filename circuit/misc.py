@@ -4,6 +4,7 @@ import abc
 import sys
 import math
 import numpy as np
+import webbrowser
 
 class Singleton(abc.ABCMeta):
     """Metaclass implementing the singleton pattern
