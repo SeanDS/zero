@@ -473,34 +473,3 @@ class Quantity(float):
             fmt_str = "{mantissa}{scale}"
 
         return fmt_str.format(mantissa=mantissa, scale=scale, unit=self.unit)
-
-    def exponent(self, value):
-        """Calculate the exponent of 10 corresponding to the specified value.
-
-        Parameters
-        ----------
-        value : :class:`float`
-            The value.
-        
-        Returns
-        -------
-        :class:`float`
-            The exponent of 10 for the specified value.
-        
-        Raises
-        ------
-        ValueError
-            If `value` is negative.
-        """
-        if value == 0:
-            return 0
-
-        # calculate log of value to get exponent
-        return math.log(value, 10)
-
-    def __str__(self):
-        return self.format()
-    
-    def __repr__(self):
-        # display using originally defined precision
-        return self.format(precision="full")
