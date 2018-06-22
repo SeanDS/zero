@@ -48,7 +48,7 @@ provided, e.g.:
 * 1e-9 Hz
 * 6.4 kHz
 
-The provided string will be parsed by :class:`.SIFormatter` into an
+The provided string will be parsed by :class:`.Quantity` into an
 appropriate :class:`float`. The unit, if provided, will be ignored.
 
 ===============

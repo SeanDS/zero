@@ -2,7 +2,7 @@ import numpy as np
 import logging
 
 from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
-from ..format import SIFormatter
+from ..format import Quantity
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource, LisoParserError
 
 LOGGER = logging.getLogger("liso")
@@ -306,8 +306,8 @@ class LisoInputParser(LisoParser):
             self.p_error("unexpected parameter count (%d)" % len(params))
         
         scale = params[0]
-        start, _ = SIFormatter.parse(params[1])
-        stop, _ = SIFormatter.parse(params[2])
+        start = Quantity(params[1], "Hz")
+        stop = Quantity(params[2], "Hz")
         # LISO simulates specified steps + 1
         count = int(params[3]) + 1
 
