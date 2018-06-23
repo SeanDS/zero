@@ -58,17 +58,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # the node noise is projected to
         self._noise_output_node = None
 
-        # sources to project noise from
-        self._noise_sources = []
-
-        # noise sources included in sum
-        self._noise_sum_sources = []
+        # noise sources to calculate
+        self._noise_sources = None
 
         # noise sum flag
         self._source_sum = False
-
-        # noisy sources used in "sum" noise curve
-        self._noisy_source_defs = []
 
         # circuit solution
         self._solution = None
@@ -255,9 +249,6 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # add input component, if not yet present
         self._set_circuit_input()
 
-        # configure sources included in noise sum
-        self._configure_noise_sum_sources()
-
     def validate(self):
         if self.frequencies is None:
             # no frequencies found
@@ -302,21 +293,14 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         return self.output_components | self.output_nodes
 
     @property
+    @abc.abstractmethod
     def noise_sources(self):
-        return self._noise_sources
-
-    @noise_sources.setter
-    def noise_sources(self, sources):
-        self._noise_sources = set(sources)
+        raise NotImplementedError
 
     @property
+    @abc.abstractmethod
     def noise_sum_sources(self):
-        # always include plotted noise sources
-        return set(self.noise_sources) | set(self._noise_sum_sources)
-    
-    @noise_sum_sources.setter
-    def noise_sum_sources(self, sum_sources):
-        self._noise_sum_sources = set(sum_sources)
+        raise NotImplementedError
 
     @property
     def opamp_output_node_names(self):
@@ -391,35 +375,36 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                                    node_p=node_p, node_n=node_n,
                                    impedance=impedance)
 
-    def _configure_noise_sum_sources(self):
-        sum_sources = []
+    def _get_noise_sources(self, definitions):
+        """Get noise objects for the specified raw noise defintions"""
+        sources = []
 
-        # now that we have all the circuit components, create noisy source objects
-        for definition in self._noisy_source_defs:
+        # create noise source objects
+        for definition in definitions:
             component = self.circuit.get_component(definition[0])
 
             if len(definition) > 1:
                 # op-amp noise type specified
                 type_str = definition[1].lower()
 
-                if type_str == "u":
+                if type_str in ["u", "U", 0]:
                     noise = component.voltage_noise
-                elif type_str == "+":
+                elif type_str == ["+", "I+", 1]:
                     # non-inverting input current noise
                     noise = component.non_inv_current_noise
-                elif type_str == "-":
+                elif type_str == ["-", "I-", 2]:
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:
                     self.p_error("unrecognised op-amp noise source '%s'" % definition[1])
                 
                 # add noise source
-                sum_sources.append(noise)
+                sources.append(noise)
             else:
                 # get all of the component's noise sources
-                sum_sources.extend(component.noise)
+                sources.extend(component.noise)
 
-        self.noise_sum_sources = sum_sources
+        return sources
 
 class LisoOutputElement(object):
     magnitude_scales = ["dB", "Abs"]

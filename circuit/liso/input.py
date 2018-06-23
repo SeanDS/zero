@@ -78,42 +78,14 @@ class LisoInputParser(LisoParser):
         self._noisy_all_opamps = False
         self._noisy_all_resistors = False
 
-        # noise source definitions, later turned into LisoNoiseSource objects
-        self._noise_source_defs = []
+        # raw noise source lists
+        self._noise_defs = [] # displayed noise
+        self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
 
         super().__init__(*args, **kwargs)
 
     def _do_build(self, *args, **kwargs):
         super()._do_build(*args, **kwargs)
-
-        sources = []
-
-        # now that we have all the circuit components, create noise source objects
-        for definition in self._noise_source_defs:
-            component = self.circuit.get_component(definition[0])
-
-            if len(definition) > 1:
-                # op-amp noise type specified
-                type_str = definition[1].lower()
-
-                if type_str == "u":
-                    noise = component.voltage_noise
-                elif type_str == "+":
-                    # non-inverting input current noise
-                    noise = component.non_inv_current_noise
-                elif type_str == "-":
-                    # inverting input current noise
-                    noise = component.inv_current_noise
-                else:
-                    self.p_error("unrecognised op-amp noise source '%s'" % definition[1])
-                
-                # add noise source
-                sources.append(noise)
-            else:
-                # get all of the component's noise sources
-                sources.extend(component.noise)
-
-        self.noise_sources = sources
 
     @LisoParser.output_nodes.getter
     def output_nodes(self):
@@ -143,7 +115,8 @@ class LisoInputParser(LisoParser):
 
     @LisoParser.noise_sources.getter
     def noise_sources(self):
-        sources = set(super().noise_sources)
+        """Noise sources to be plotted"""
+        sources = set(self._get_noise_sources(self._noise_defs))
 
         if self._source_all_components:
             # show all noise sources
@@ -159,7 +132,11 @@ class LisoInputParser(LisoParser):
 
     @LisoParser.noise_sum_sources.getter
     def noise_sum_sources(self):
-        sum_sources = set(super().noise_sum_sources)
+        """Noise sources included in the sum column"""
+        sum_sources = set(self._get_noise_sources(self._noisy_extra_defs))
+
+        # add outputs if not already present
+        sum_sources.update(self.noise_sources)
 
         if self._noisy_all_components:
             # show all noise sources
@@ -499,29 +476,23 @@ class LisoInputParser(LisoParser):
                 # split off op-amp port settings
                 source_pieces = source_str.split(":")
 
-                component_name = source_pieces[0]
+                component_name = source_pieces[0].lower()
 
-                if component_name.lower() == "all":
+                if component_name == "all":
                     # all component noises
                     self._source_all_components = True
-                elif component_name.lower() == "allop":
+                elif component_name == "allop":
                     # all op-amp noises
                     self._source_all_opamps = True
-                elif component_name.lower() == "allr":
+                elif component_name == "allr":
                     # all resistor noises
                     self._source_all_resistors = True
-                elif component_name.lower() == "sum":
+                elif component_name == "sum":
                     # sum of circuit noises
                     self._source_sum = True
                 else:
                     # individual component
-                    definition = [component_name]
-                    
-                    if len(source_pieces) > 1:
-                        # add op-amp noise type
-                        definition.append(source_pieces[1])
-                    
-                    self._noise_source_defs.append(definition)
+                    self._noise_defs.append(source_pieces)
 
     def parse_noisy_source(self, noisy_str):
         """Set contributions to "sum" noise curve"""
@@ -536,22 +507,16 @@ class LisoInputParser(LisoParser):
             # split off op-amp port settings
             source_pieces = source_str.split(":")
 
-            component_name = source_pieces[0]
+            component_name = source_pieces[0].lower()
 
-            if component_name.lower() == "all":
+            if component_name == "all":
                 # all components noisy
                 self._noisy_all_components = True
-            elif component_name.lower() == "allop":
+            elif component_name == "allop":
                 self._noisy_all_opamps = True
-            elif component_name.lower() == "allr":
+            elif component_name == "allr":
                 # all resistor noises
                 self._noisy_all_resistors = True
             else:
-                # individual component
-                definition = [component_name]
-                
-                if len(source_pieces) > 1:
-                    # add op-amp noise type
-                    definition.append(source_pieces[1])
-                
-                self._noisy_source_defs.append(definition)
+                # individual component                
+                self._noisy_extra_defs.append(source_pieces)
