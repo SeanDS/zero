@@ -55,20 +55,20 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._output_type = None
         self.tf_outputs = []
 
-        # output/noise flags
-        self._output_all_nodes = False
-        self._output_all_opamp_nodes = False
-        self._output_all_components = False
-        self._output_all_opamps = False
-        self._source_all_components = False
-        self._source_all_opamps = False
-        self._source_all_resistors = False
-
         # the node noise is projected to
         self._noise_output_node = None
 
         # sources to project noise from
         self._noise_sources = []
+
+        # noise sources included in sum
+        self._noise_sum_sources = []
+
+        # noise sum flag
+        self._source_sum = False
+
+        # noisy sources used in "sum" noise curve
+        self._noisy_source_defs = []
 
         # circuit solution
         self._solution = None
@@ -192,7 +192,14 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             else:
                 raise ValueError("unrecognised input type")
         elif self.output_type == "noise":
-            solution.plot_noise(sources=self.noise_sources, sinks=[self.noise_output_node])
+            sum_kwargs = {}
+            
+            if self._source_sum:
+                # plot noise sum
+                sum_kwargs["show_sum"] = True
+                sum_kwargs["sum_sources"] = self.noise_sum_sources
+            
+            solution.plot_noise(sources=self.noise_sources, sinks=[self.noise_output_node], **sum_kwargs)
         else:
             raise Exception("unrecognised output type")
 
@@ -248,6 +255,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # add input component, if not yet present
         self._set_circuit_input()
 
+        # configure sources included in noise sum
+        self._configure_noise_sum_sources()
+
     def validate(self):
         if self.frequencies is None:
             # no frequencies found
@@ -281,25 +291,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
     @property
     def output_nodes(self):
-        nodes = set([element.element for element in self.tf_outputs if element.type == "node"])
-
-        if self._output_all_nodes:
-            nodes.update(self.circuit.non_gnd_nodes)
-        elif self._output_all_opamp_nodes:
-            nodes.update(self.circuit.opamp_output_nodes)
-
-        return nodes
+        return set([element.element for element in self.tf_outputs if element.type == "node"])
 
     @property
     def output_components(self):
-        components = set([element.element for element in self.tf_outputs if element.type == "component"])
-
-        if self._output_all_components:
-            components.update(self.circuit.components)
-        elif self._output_all_opamps:
-            components.update(self.circuit.opamps)
-        
-        return components
+        return set([element.element for element in self.tf_outputs if element.type == "component"])
 
     @property
     def outputs(self):
@@ -307,20 +303,20 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
     @property
     def noise_sources(self):
-        sources = set(self._noise_sources)
-
-        if self._source_all_components:
-            sources.update(*[component.noise for component in self.circuit.components])
-        elif self._source_all_opamps:
-            sources.update(*[component.noise for component in self.circuit.opamps])
-        elif self._source_all_resistors:
-            sources.update(*[component.noise for component in self.circuit.resistors])
-
-        return sources
+        return self._noise_sources
 
     @noise_sources.setter
     def noise_sources(self, sources):
-        self._noise_sources = list(sources)
+        self._noise_sources = set(sources)
+
+    @property
+    def noise_sum_sources(self):
+        # always include plotted noise sources
+        return set(self.noise_sources) | set(self._noise_sum_sources)
+    
+    @noise_sum_sources.setter
+    def noise_sum_sources(self, sum_sources):
+        self._noise_sum_sources = set(sum_sources)
 
     @property
     def opamp_output_node_names(self):
@@ -394,6 +390,36 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.circuit.add_input(input_type=input_type, node=node,
                                    node_p=node_p, node_n=node_n,
                                    impedance=impedance)
+
+    def _configure_noise_sum_sources(self):
+        sum_sources = []
+
+        # now that we have all the circuit components, create noisy source objects
+        for definition in self._noisy_source_defs:
+            component = self.circuit.get_component(definition[0])
+
+            if len(definition) > 1:
+                # op-amp noise type specified
+                type_str = definition[1].lower()
+
+                if type_str == "u":
+                    noise = component.voltage_noise
+                elif type_str == "+":
+                    # non-inverting input current noise
+                    noise = component.non_inv_current_noise
+                elif type_str == "-":
+                    # inverting input current noise
+                    noise = component.inv_current_noise
+                else:
+                    self.p_error("unrecognised op-amp noise source '%s'" % definition[1])
+                
+                # add noise source
+                sum_sources.append(noise)
+            else:
+                # get all of the component's noise sources
+                sum_sources.extend(component.noise)
+
+        self.noise_sum_sources = sum_sources
 
 class LisoOutputElement(object):
     magnitude_scales = ["dB", "Abs"]
