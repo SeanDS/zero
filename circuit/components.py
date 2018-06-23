@@ -474,7 +474,7 @@ class Resistor(PassiveComponent):
 
     @resistance.setter
     def resistance(self, resistance):
-        self.value = float(resistance)
+        self.value = resistance
 
     def impedance(self, *args):
         """The impedance.
@@ -511,7 +511,7 @@ class Capacitor(PassiveComponent):
 
     @capacitance.setter
     def capacitance(self, capacitance):
-        self.value = float(capacitance)
+        self.value = capacitance
 
     def impedance(self, frequency):
         """The impedance.
@@ -544,7 +544,7 @@ class Inductor(PassiveComponent):
 
     @inductance.setter
     def inductance(self, inductance):
-        self.value = float(inductance)
+        self.value = inductance
 
     def impedance(self, frequency):
         """The impedance.
