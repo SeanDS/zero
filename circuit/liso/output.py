@@ -764,7 +764,6 @@ class LisoOutputParser(LisoParser):
         
         scales = params[1:]
 
-        # TODO: can "all" be set here?
         output = LisoOutputCurrent(component=component, scales=scales, index=index)
 
         if output in self.tf_outputs:
