@@ -246,6 +246,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def _do_build(self):
         """Build circuit"""
 
+        # unset lineno to avoid using the last line in subsequent errors
+        self.lineno = None
+
         # add input component, if not yet present
         self._set_circuit_input()
 
@@ -387,12 +390,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                 # op-amp noise type specified
                 type_str = definition[1].lower()
 
-                if type_str in ["u", "U", 0]:
+                if type_str in ["u", 0]:
                     noise = component.voltage_noise
-                elif type_str == ["+", "I+", 1]:
+                elif type_str in ["+", "i+", 1]:
                     # non-inverting input current noise
                     noise = component.non_inv_current_noise
-                elif type_str == ["-", "I-", 2]:
+                elif type_str in ["-", "i-", 2]:
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:
