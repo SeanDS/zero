@@ -117,13 +117,13 @@ class LisoInputParser(LisoParser):
 
         if self._source_all_components:
             # show all noise sources
-            sources.update(*[component.noise for component in self.circuit.components])
+            sources.update(self.circuit.noise_sources)
         elif self._source_all_opamps:
             # show all op-amp noise sources
-            sources.update(*[component.noise for component in self.circuit.opamps])
+            sources.update(self.circuit.opamp_noise_sources)
         elif self._source_all_resistors:
             # show all resistor noise sources
-            sources.update(*[component.noise for component in self.circuit.resistors])
+            sources.update(self.circuit.resistor_noise_sources)
 
         return sources
 
@@ -137,13 +137,13 @@ class LisoInputParser(LisoParser):
 
         if self._noisy_all_components:
             # show all noise sources
-            sum_sources.update(*[component.noise for component in self.circuit.components])
+            sum_sources.update(self.circuit.noise_sources)
         elif self._noisy_all_opamps:
             # show all op-amp noise sources
-            sum_sources.update(*[component.noise for component in self.circuit.opamps])
+            sum_sources.update(self.circuit.opamp_noise_sources)
         elif self._noisy_all_resistors:
             # show all resistor noise sources
-            sum_sources.update(*[component.noise for component in self.circuit.resistors])
+            sum_sources.update(self.circuit.resistor_noise_sources)
 
         return sum_sources
 
