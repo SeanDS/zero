@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import abc
+import collections
 
 from .config import CircuitConfig
 from .data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
@@ -392,10 +393,32 @@ class Solution(object):
         return figure
 
     def plot_noise(self, figure=None, sources="all", sinks="all", show_sums=True,
-                   compute_sum=False, compute_sum_sources=None, extras=[], title=None):
-        """Plot noise.
+                   compute_sum_sources=None, title=None):
+        """Plot noise spectra.
 
-        Existing sum noise sources present in the solution are not included in the computed sum.
+        Existing :class:`sum noise sources <SumNoiseSpectrum>` present in the solution are not
+        included in computed sums requested with `compute_sum_sources`.
+
+        Parameters
+        ----------
+        figure : :class:`plt.figure`, optional
+            The figure to plot to. If `None`, a new figure is generated.
+        sources, sinks : :class:`list` of :class`Node` or :class:`Component`, or "all", optional
+            Individual noise sources and sinks to plot spectra between.
+        show_sums : :class:`bool`, optional
+            Show sum noise spectra that have been added to this object, if present.
+        compute_sum_sources : :class:`dict` or :class:`list`, optional
+            Sources to include in the sum. If this is a :class:`dict`, a separate sum is
+            calculated for each entry, with each key as the label. If this is a :class:`list`,
+            the sources included in the list are used and the label is the default label used
+            by :class:`MultiNoiseSpectrum`.
+        title : :class:`str`, optional
+            Plot title.
+        
+        Returns
+        -------
+        :class:`plt.figure`
+            The plot figure.
         """
         # get noise
         noise = self.filter_noise(sources=sources, sinks=sinks)
@@ -404,9 +427,16 @@ class Solution(object):
             # add sum noises
             noise.extend(self.noise_sums)
 
-        if compute_sum:
-            # create combined noise spectrum
-            noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources, sinks=sinks)))
+        if compute_sum_sources is not None:
+            if isinstance(compute_sum_sources, collections.Mapping):
+                # dict-like mapping provided
+                for key in compute_sum_sources:
+                    # create combined noise spectrum
+                    noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources[key],
+                                                    sinks=sinks), label=key))
+            else:
+                # single list of nodes provided
+                noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources, sinks=sinks)))
 
         if not noise:
             raise NoDataException("no noise spectra found between specified sources and sinks "

@@ -378,6 +378,30 @@ class Circuit(object):
         return [noise for component in self.components for noise in component.noise]
 
     @property
+    def resistor_noise_sources(self):
+        """The resistor noise sources in the circuit.
+
+        Yields
+        ------
+        :class:`.Noise`
+            The resistor noise source.
+        """
+        for resistor in self.resistors:
+            yield from resistor.noise
+
+    @property
+    def opamp_noise_sources(self):
+        """The op-amp noise sources in the circuit.
+
+        Yields
+        ------
+        :class:`.Noise`
+            The op-amp noise source.
+        """
+        for opamp in self.opamps:
+            yield from opamp.noise
+
+    @property
     def input_component(self):
         """The circuit input component.
         

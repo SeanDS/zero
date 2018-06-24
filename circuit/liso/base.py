@@ -191,7 +191,6 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             
             if self._noise_sum_requested:
                 # calculate and plot noise sum
-                sum_kwargs["compute_sum"] = True
                 sum_kwargs["compute_sum_sources"] = self.summed_noise_sources
             
             solution.plot_noise(sources=self.displayed_noise_sources, sinks=[self.noise_output_node],

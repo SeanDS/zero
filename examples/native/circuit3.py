@@ -31,6 +31,8 @@ analysis = AcNoiseAnalysis(node="nout", circuit=circuit, frequencies=frequencies
 analysis.calculate()
 solution = analysis.solution
 
-# plot
-solution.plot_noise(sources=["R(r1)", "I(o1, nm)"])
+# plot, with sums of resistors and op-amp noise sources
+solution.plot_noise(sources=["R(r1)", "I(o1, nm)"],
+                    compute_sum_sources={"all resistors": circuit.resistor_noise_sources,
+                                         "all op-amps": circuit.opamp_noise_sources})
 solution.show()
