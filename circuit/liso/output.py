@@ -212,21 +212,25 @@ class LisoOutputParser(LisoParser):
         """Build noise outputs"""
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):
-            component = self.circuit.get_component(definition[0])
-
             # get data
             series = Series(x=self.frequencies, y=self._data[:, index])
 
             # data sink is the noise output node
             sink = self.noise_output_node
 
-            if component == "sum":
+            if definition[0] == "sum":
+                # set sum flag
+                self._source_sum = True
+
                 # get source spectra
                 sources = self.noise_sources
 
                 # create sum noise
                 spectrum = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
             else:
+                # this is a component name
+                component = self.circuit.get_component(definition[0])
+
                 if len(definition) > 1:
                     # op-amp noise type specified
                     noise_type_id = int(definition[1])
