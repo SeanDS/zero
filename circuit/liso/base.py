@@ -53,7 +53,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._input_node_p = None
         self._input_impedance = None
         self._output_type = None
-        self.tf_outputs = []
+        self.tf_sinks = []
 
         # the node noise is projected to
         self._noise_output_node = None
@@ -141,6 +141,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         
         self._noise_output_node = Node(noise_output_node)
 
+    def add_tf_sink(self, sink):
+        if sink in self.tf_sinks:
+            raise ValueError("sink '%s' is already present" % sink)
+        
+        self.tf_sinks.append(sink)
+
     def parse(self, text=None, path=None):
         if text is None and path is None:
             raise ValueError("must provide either text or a path")
@@ -180,12 +186,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
         # draw plots
         if self.output_type == "tf":
-            if self.input_type == "voltage":
-                solution.plot_tfs(sources=[self.circuit.input_component.node2], sinks=self.outputs)
-            elif self.input_type == "current":
-                solution.plot_tfs(sources=[self.circuit.input_component], sinks=self.outputs)
-            else:
-                raise ValueError("unrecognised input type")
+            solution.plot_tfs(sources=self.default_tf_sources(), sinks=self.default_tf_sinks())
         elif self.output_type == "noise":
             sum_kwargs = {}
             
@@ -193,13 +194,30 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                 # calculate and plot noise sum
                 sum_kwargs["compute_sum_sources"] = self.summed_noise_sources
             
-            solution.plot_noise(sources=self.displayed_noise_sources, sinks=[self.noise_output_node],
+            solution.plot_noise(sources=self.displayed_noise_sources,
                                 show_sums=self._noise_sum_present, **sum_kwargs)
         else:
             raise Exception("unrecognised output type")
 
         # display plots
         solution.show()
+
+    def default_tf_sources(self):
+        """Default transfer function sources"""
+        # note: this cannot be a property, otherwise lex will execute the property before
+        # input_type is set.
+        if self.input_type == "voltage":
+            sources = [self.circuit.input_component.node2]
+        elif self.input_type == "current":
+            sources = [self.circuit.input_component]
+        else:
+            raise ValueError("unrecognised input type")
+        
+        return sources
+
+    def default_tf_sinks(self):
+        """Default transfer function sinks."""
+        return self.tf_sinks
 
     def solution(self, force=False, **kwargs):
         # build circuit if necessary
@@ -260,7 +278,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         elif (self.input_node_n is None and self.input_node_p is None):
             # no input nodes found
             raise SyntaxError("no input nodes found")
-        elif (len(self.outputs) == 0 and self.noise_output_node is None):
+        elif (len(self.tf_sinks) == 0 and self.noise_output_node is None):
             # no output requested
             raise SyntaxError("no output requested")
 
@@ -286,19 +304,16 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
     @property
     def output_nodes(self):
-        return set([element.element for element in self.tf_outputs if element.type == "node"])
+        return set([element.element for element in self.tf_sinks if element.type == "node"])
 
     @property
     def output_components(self):
-        return set([element.element for element in self.tf_outputs if element.type == "component"])
-
-    @property
-    def outputs(self):
-        return self.output_components | self.output_nodes
+        return set([element.element for element in self.tf_sinks if element.type == "component"])
 
     @property
     @abc.abstractmethod
     def displayed_noise_sources(self):
+        """Displayed noise sources, not including sums"""
         raise NotImplementedError
 
     @property
