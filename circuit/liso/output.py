@@ -411,7 +411,7 @@ class LisoOutputParser(LisoParser):
         return t
 
     def t_noiseoutputs_NOISE_OUTPUTS(self, t):
-        r'\#\s+(?P<components>.*)'
+        r'\#\s*(?P<components>.*)'
         t.type = "NOISE_OUTPUTS"
         t.value = t.lexer.lexmatch.group('components')
         return t
