@@ -387,16 +387,17 @@ class Solution(object):
         return figure
 
     def plot_noise(self, figure=None, sources=None, sinks=None, show_sum=False, sum_sources=None,
-                   title=None):        
+                   title=None):
         # get noise
         noise = self.filter_noise(sources=sources, sinks=sinks)
-
-        if not noise:
-            raise NoDataException("no noise spectra found between specified sources and sinks")
 
         if show_sum:
             # create combined noise spectrum
             noise.append(MultiNoiseSpectrum(self.filter_noise(sources=sum_sources, sinks=sinks)))
+
+        if not noise:
+            raise NoDataException("no noise spectra found between specified sources and sinks "
+                                  "and/or sum")
 
         figure = self._plot_noise(self.frequencies, noise, figure=figure, title=title)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
