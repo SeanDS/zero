@@ -86,7 +86,7 @@ class Solution(object):
 
     @property
     def has_noise(self):
-        return len(self.noise) > 0
+        return len(self.noise) > 0 or len(self.noise_sums) > 0
 
     @property
     def tf_source_nodes(self):
@@ -392,8 +392,8 @@ class Solution(object):
 
         return figure
 
-    def plot_noise(self, figure=None, sources="all", sinks="all", show_sums=True,
-                   compute_sum_sources=None, title=None):
+    def plot_noise(self, figure=None, sources="all", show_sums=True, compute_sum_sources=None,
+                   title=None):
         """Plot noise spectra.
 
         Existing :class:`sum noise sources <SumNoiseSpectrum>` present in the solution are not
@@ -403,8 +403,8 @@ class Solution(object):
         ----------
         figure : :class:`plt.figure`, optional
             The figure to plot to. If `None`, a new figure is generated.
-        sources, sinks : :class:`list` of :class`Node` or :class:`Component`, or "all", optional
-            Individual noise sources and sinks to plot spectra between.
+        sources : :class:`list` of :class`Node` or :class:`Component`, or "all", optional
+            Individual noise sources to plot spectra from.
         show_sums : :class:`bool`, optional
             Show sum noise spectra that have been added to this object, if present.
         compute_sum_sources : :class:`dict` or :class:`list`, optional
@@ -421,7 +421,7 @@ class Solution(object):
             The plot figure.
         """
         # get noise
-        noise = self.filter_noise(sources=sources, sinks=sinks)
+        noise = self.filter_noise(sources=sources, sinks="all")
 
         if show_sums:
             # add sum noises
@@ -433,14 +433,15 @@ class Solution(object):
                 for key in compute_sum_sources:
                     # create combined noise spectrum
                     noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources[key],
-                                                    sinks=sinks), label=key))
+                                                                      sinks="all"),
+                                                    label=key))
             else:
                 # single list of nodes provided
-                noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources, sinks=sinks)))
+                noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources,
+                                                                  sinks="all")))
 
         if not noise:
-            raise NoDataException("no noise spectra found between specified sources and sinks "
-                                  "and/or sum")
+            raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
 
         figure = self._plot_noise(self.frequencies, noise, figure=figure, title=title)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
@@ -483,6 +484,10 @@ class Solution(object):
         ax.grid(True)
 
         return figure
+
+    def plot_style_context(self, *args, **kwargs):
+        """Plot style context manager, used to override the default style"""
+        return plt.rc_context(*args, **kwargs)
 
     @staticmethod
     def show():
