@@ -55,7 +55,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._input_node_p = None
         self._input_impedance = None
         self._output_type = None
-        self.tf_sinks = []
+        self.tf_outputs = []
 
         # the node noise is projected to
         self._noise_output_node = None
@@ -149,8 +149,8 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
         self._noise_output_node = Node(noise_output_node)
 
-    def add_tf_sink(self, sink):
-        """Add transfer function sink.
+    def add_tf_output(self, output):
+        """Add transfer function output.
 
         This stores the specified sink for use in building the solution.
 
@@ -164,10 +164,10 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         :class:`ValueError`
             If the specified sink is already present.
         """
-        if sink in self.tf_sinks:
-            raise ValueError("sink '%s' is already present" % sink)
+        if output in self.tf_outputs:
+            raise ValueError("sink '%s' is already present" % output)
 
-        self.tf_sinks.append(sink)
+        self.tf_outputs.append(output)
 
     def parse(self, text=None, path=None):
         if text is None and path is None:
@@ -237,8 +237,13 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         return sources
 
     def default_tf_sinks(self):
-        """Default transfer function sinks."""
-        return self.tf_sinks
+        """Default transfer function sinks.
+        
+        Returns
+        -------
+        :class:`list` of :class:`Component` or :class:`Node`
+        """
+        return [element.element for element in self.tf_outputs]
 
     def solution(self, force=False, **kwargs):
         """Get the solution to the analysis defined in the parsed file"""
@@ -300,7 +305,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         elif self.input_node_n is None and self.input_node_p is None:
             # no input nodes found
             raise SyntaxError("no input nodes found")
-        elif not self.tf_sinks and self.noise_output_node is None:
+        elif not self.tf_outputs and self.noise_output_node is None:
             # no output requested
             raise SyntaxError("no output requested")
 
@@ -332,12 +337,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     @property
     def output_nodes(self):
         """The output nodes of the transfer functions computed in the analysis"""
-        return set([element.element for element in self.tf_sinks if element.type == "node"])
+        return set([element.element for element in self.tf_outputs if element.type == "node"])
 
     @property
     def output_components(self):
         """The output components of the transfer functions computed in the analysis"""
-        return set([element.element for element in self.tf_sinks if element.type == "component"])
+        return set([element.element for element in self.tf_outputs if element.type == "component"])
 
     @property
     @abc.abstractmethod

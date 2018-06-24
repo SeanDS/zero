@@ -150,22 +150,22 @@ class LisoOutputParser(LisoParser):
         # column offset
         offset = 0
 
-        for tf_sink in self.tf_sinks:
+        for tf_output in self.tf_outputs:
             # get data
-            if tf_sink.has_real and tf_sink.has_imag:
-                real_index, real_scale = tf_sink.real_index
-                imag_index, imag_scale = tf_sink.imag_index
+            if tf_output.has_real and tf_output.has_imag:
+                real_index, real_scale = tf_output.real_index
+                imag_index, imag_scale = tf_output.imag_index
 
                 raise NotImplementedError("cannot handle real and imaginary data yet")
-            elif tf_sink.has_magnitude or tf_sink.has_phase:
-                if tf_sink.has_magnitude:
-                    mag_index, mag_scale = tf_sink.magnitude_index
+            elif tf_output.has_magnitude or tf_output.has_phase:
+                if tf_output.has_magnitude:
+                    mag_index, mag_scale = tf_output.magnitude_index
 
                     # get magnitude data
                     mag_data = self._data[:, offset + mag_index]
 
-                if tf_sink.has_phase:
-                    phase_index, phase_scale = tf_sink.phase_index
+                if tf_output.has_phase:
+                    phase_index, phase_scale = tf_output.phase_index
 
                     # get phase data
                     phase_data = self._data[:, offset + phase_index]
@@ -182,22 +182,22 @@ class LisoOutputParser(LisoParser):
             if self.input_type == "voltage":
                 source = self.input_node_p
 
-                if tf_sink.output_type == "voltage":
-                    sink = self.circuit.get_node(tf_sink.node)
+                if tf_output.output_type == "voltage":
+                    sink = self.circuit.get_node(tf_output.node)
                     function = VoltageVoltageTF(series=series, source=source, sink=sink)
-                elif tf_sink.output_type == "current":
-                    sink = self.circuit.get_component(tf_sink.component)
+                elif tf_output.output_type == "current":
+                    sink = self.circuit.get_component(tf_output.component)
                     function = VoltageCurrentTF(series=series, source=source, sink=sink)
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self.circuit.get_component("input")
 
-                if tf_sink.output_type == "voltage":
-                    sink = self.circuit.get_node(tf_sink.node)
+                if tf_output.output_type == "voltage":
+                    sink = self.circuit.get_node(tf_output.node)
                     function = CurrentVoltageTF(series=series, source=source, sink=sink)
-                elif tf_sink.output_type == "current":
-                    sink = self.circuit.get_component(tf_sink.component)
+                elif tf_output.output_type == "current":
+                    sink = self.circuit.get_component(tf_output.component)
                     function = CurrentCurrentTF(series=series, source=source, sink=sink)
                 else:
                     raise ValueError("invalid output type")
@@ -207,7 +207,7 @@ class LisoOutputParser(LisoParser):
             self._solution.add_tf(function)
 
             # increment offset
-            offset += tf_sink.n_scales
+            offset += tf_output.n_scales
 
     def _build_noise(self):
         """Build noise outputs"""
@@ -752,7 +752,7 @@ class LisoOutputParser(LisoParser):
         sink = LisoOutputVoltage(node=node, scales=scales, index=index)
 
         try:
-            self.add_tf_sink(sink)
+            self.add_tf_output(sink)
         except ValueError:
             self.p_error("voltage output '{sink}' already specified".format(sink=sink))
 
@@ -772,7 +772,7 @@ class LisoOutputParser(LisoParser):
         sink = LisoOutputCurrent(component=component, scales=scales, index=index)
 
         try:
-            self.add_tf_sink(sink)
+            self.add_tf_output(sink)
         except ValueError:
             self.p_error("current output '{sink}' already specified".format(sink=sink))
 

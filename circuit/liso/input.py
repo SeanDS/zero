@@ -416,7 +416,7 @@ class LisoInputParser(LisoParser):
             self._output_all_opamp_nodes = True
         else:
             # add output
-            self.add_tf_sink(LisoOutputVoltage(node=node_name, scales=scales))
+            self.add_tf_output(LisoOutputVoltage(node=node_name, scales=scales))
 
     def _parse_current_output(self, output_str):
         # transfer function output
@@ -439,7 +439,7 @@ class LisoInputParser(LisoParser):
             self._output_all_opamps = True
         else:
             # add output
-            self.add_tf_sink(LisoOutputCurrent(component=component_name, scales=scales))
+            self.add_tf_output(LisoOutputCurrent(component=component_name, scales=scales))
 
     def _parse_noise_output(self, noise_str):
         # split by whitespace

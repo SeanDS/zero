@@ -194,7 +194,9 @@ class LisoCompare(SubCommand):
 
             # compare
             liso_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
-            native_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
+            # override line style for native solution
+            with native_solution.plot_style_context({'lines.linestyle': "--"}):
+                native_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
         elif liso_solution.has_noise:
             # compare noise
             # get noise sources used in sum
