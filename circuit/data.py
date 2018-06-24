@@ -252,7 +252,7 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
 
 class MultiNoiseSpectrum(SingleSinkDataSet):
     """Set of noise data series from multiple sources to a single sink"""
-    def __init__(self, spectra, *args, **kwargs):
+    def __init__(self, spectra, label="incoherent sum", *args, **kwargs):
         # use first spectrum to get sink and frequencies
         sink = spectra[0].sink
         frequencies = spectra[0].series.x
@@ -273,6 +273,7 @@ class MultiNoiseSpectrum(SingleSinkDataSet):
         super().__init__(sources=sources, sink=sink, series_list=series, *args, **kwargs)
 
         self.noise_names = [spectrum.noise_name for spectrum in spectra]
+        self._label = label
 
     def draw(self, *axes):
         if len(axes) != 1:
@@ -294,7 +295,7 @@ class MultiNoiseSpectrum(SingleSinkDataSet):
         return self.series_list[0].x
 
     def label(self, *args, **kwargs):
-        return "incoherent sum"
+        return self._label
 
 class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
     """Single sum noise data series from multiple sources to a single sink"""
