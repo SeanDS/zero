@@ -1,9 +1,10 @@
-import numpy as np
-import logging
+"""LISO input file parser"""
 
-from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
+import logging
+import numpy as np
+
 from ..format import Quantity
-from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource, LisoParserError
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
 LOGGER = logging.getLogger("liso")
 
@@ -13,7 +14,6 @@ class LisoInputParser(LisoParser):
     This implements a lexer to identify appropriate definitions in a LISO input file,
     and a parser to build a circuit from what is found.
     """
-
     # dict mapping LISO op-amp parameter overrides to `circuit.components.OpAmp` arguments
     OP_OVERRIDE_MAP = {
         "a0": "a0",
@@ -84,9 +84,6 @@ class LisoInputParser(LisoParser):
 
         super().__init__(*args, **kwargs)
 
-    def _do_build(self, *args, **kwargs):
-        super()._do_build(*args, **kwargs)
-
     @LisoParser.output_nodes.getter
     def output_nodes(self):
         nodes = set(super().output_nodes)
@@ -110,7 +107,7 @@ class LisoInputParser(LisoParser):
         elif self._output_all_opamps:
             # show all op-amps
             components.update(self.circuit.opamps)
-        
+
         return components
 
     @LisoParser.displayed_noise_sources.getter
@@ -167,7 +164,7 @@ class LisoInputParser(LisoParser):
             # EOF token already thrown
             # finish
             return None
-        
+
         self._eof = True
 
         # EOF acts like a newline
@@ -175,14 +172,13 @@ class LisoInputParser(LisoParser):
 
         # throw one more EOF token
         t.type = "EOF"
+
         return t
 
     def t_CHUNK(self, t):
         r'[a-zA-Z0-9_=.:]+'
-
         # check if chunk is a keyword
         t.type = self.reserved.get(t.value.lower(), 'CHUNK')
-        
         return t
 
     # error handling
@@ -199,7 +195,7 @@ class LisoInputParser(LisoParser):
     def p_empty_instruction(self, p):
         '''instruction : end'''
         pass
-    
+
     def p_end(self, p):
         '''end : NEWLINE
                | EOF'''
@@ -207,73 +203,62 @@ class LisoInputParser(LisoParser):
 
     def p_resistor(self, p):
         '''instruction : R CHUNK CHUNK CHUNK CHUNK end'''
-        
         # parse as resistor
-        self.parse_passive("r", *p[2:-1])
+        self._parse_passive("r", *p[2:-1])
 
     def p_capacitor(self, p):
         '''instruction : C CHUNK CHUNK CHUNK CHUNK end'''
-        
         # parse as capacitor
-        self.parse_passive("c", *p[2:-1])
+        self._parse_passive("c", *p[2:-1])
 
     def p_inductor(self, p):
         '''instruction : L CHUNK CHUNK CHUNK CHUNK end'''
-        
         # parse as inductor
-        self.parse_passive("l", *p[2:-1])
+        self._parse_passive("l", *p[2:-1])
 
     def p_opamp(self, p):
         '''instruction : OP CHUNK CHUNK CHUNK CHUNK CHUNK end
                        | OP CHUNK CHUNK CHUNK CHUNK CHUNK chunks end'''
-        
         # parse as op-amp
-        self.parse_library_opamp(*p[2:-1])
+        self._parse_library_opamp(*p[2:-1])
 
     def p_freq(self, p):
         '''instruction : FREQ CHUNK CHUNK CHUNK CHUNK end'''
-
         # parse frequencies
-        self.parse_frequencies(*p[2:-1])
+        self._parse_frequencies(*p[2:-1])
 
     def p_uinput(self, p):
         '''instruction : UINPUT CHUNK end
                        | UINPUT CHUNK CHUNK end
                        | UINPUT CHUNK CHUNK CHUNK end'''
-
         # parse voltage input
-        self.parse_voltage_input(*p[2:-1])
+        self._parse_voltage_input(*p[2:-1])
 
     def p_iinput(self, p):
         '''instruction : IINPUT CHUNK end
                        | IINPUT CHUNK CHUNK end'''
-
         # parse current input
-        self.parse_current_input(*p[2:-1])
+        self._parse_current_input(*p[2:-1])
 
     def p_uoutput(self, p):
         '''instruction : UOUTPUT chunks end'''
-
         # parse voltage outputs
-        self.parse_voltage_output(p[2])
+        self._parse_voltage_output(p[2])
 
     def p_ioutput(self, p):
         '''instruction : IOUTPUT chunks end'''
-
         # parse current outputs
-        self.parse_current_output(p[2])
+        self._parse_current_output(p[2])
 
     def p_noise(self, p):
         '''instruction : NOISE chunks end'''
-
         # parse noise node
-        self.parse_noise_output(p[2])
+        self._parse_noise_output(p[2])
 
     def p_noisy(self, p):
         '''instruction : NOISY chunks end'''
-
         # parse noisy node
-        self.parse_noisy_source(p[2])
+        self._parse_noisy_source(p[2])
 
     def p_chunks(self, p):
         '''chunks : CHUNK
@@ -289,7 +274,6 @@ class LisoInputParser(LisoParser):
         if p:
             if hasattr(p, 'value'):
                 # parser object
-                
                 # check for unexpected new line
                 if p.value == "\n":
                     message = "unexpected end of line"
@@ -301,14 +285,15 @@ class LisoInputParser(LisoParser):
                 # error message thrown by production
                 message = str(p)
 
-                # productions always end with newlines, so errors in productions are on previous lines
+                # productions always end with newlines, so errors in productions are on previous
+                # lines
                 lineno -= 1
         else:
             message = "unexpected end of file"
-        
+
         raise LisoParserError(message, lineno)
 
-    def parse_passive(self, passive_type, *params):
+    def _parse_passive(self, passive_type, *params):
         if len(params) != 4:
             self.p_error("unexpected parameter count (%d)" % len(params))
 
@@ -316,21 +301,21 @@ class LisoInputParser(LisoParser):
         kwargs = {name: value for name, value in zip(arg_names, params)}
 
         if passive_type == "r":
-            return self.circuit.add_resistor(**kwargs)
+            self.circuit.add_resistor(**kwargs)
         elif passive_type == "c":
-            return self.circuit.add_capacitor(**kwargs)
+            self.circuit.add_capacitor(**kwargs)
         elif passive_type == "l":
-            return self.circuit.add_inductor(**kwargs)
-        
-        self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+            self.circuit.add_inductor(**kwargs)
+        else:
+            self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
 
-    def parse_library_opamp(self, *params):
+    def _parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:
             self.p_error("unexpected parameter count (%d)" % len(params))
-        
+
         arg_names = ["name", "model", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
-        
+
         if len(params) == 6:
             # parse extra arguments, e.g. "sr=38e6", into dict params
             kwargs = {**kwargs, **self._parse_op_amp_overrides(params[5])}
@@ -339,11 +324,10 @@ class LisoInputParser(LisoParser):
 
     def _parse_op_amp_overrides(self, override_list):
         """Parses op-amp override strings from input file
-        
+
         In LISO, op-amp parameters can be overridden by specifying a library parameter
         after the standard op-amp definition, e.g. "op u1 ad829 gnd n1 n2 sr=38e6"
         """
-
         extra_args = {}
 
         for override in override_list.split():
@@ -351,18 +335,18 @@ class LisoInputParser(LisoParser):
                 key, value = override.split("=")
             except ValueError:
                 self.p_error("op-amp parameter override must be in the form 'param=value'")
-            
+
             if key not in self.OP_OVERRIDE_MAP.keys():
                 self.p_error("unknown op-amp override parameter '{key}'".format(key=key))
-            
+
             extra_args[self.OP_OVERRIDE_MAP[key]] = value
-        
+
         return extra_args
 
-    def parse_frequencies(self, *params):
+    def _parse_frequencies(self, *params):
         if len(params) != 4:
             self.p_error("unexpected parameter count (%d)" % len(params))
-        
+
         scale = params[0]
         start = Quantity(params[1], "Hz")
         stop = Quantity(params[2], "Hz")
@@ -377,10 +361,10 @@ class LisoInputParser(LisoParser):
         else:
             self.p_error("invalid frequency scale '{scale}'".format(scale=scale))
 
-    def parse_voltage_input(self, *params):
+    def _parse_voltage_input(self, *params):
         if len(params) < 1 or len(params) > 3:
             self.p_error("unexpected parameter count (%d)" % len(params))
-        
+
         self.input_type = "voltage"
 
         # we always have at least a positive node
@@ -396,10 +380,10 @@ class LisoInputParser(LisoParser):
             # default
             self.input_impedance = 50
 
-    def parse_current_input(self, *params):
+    def _parse_current_input(self, *params):
         if len(params) < 1 or len(params) > 2:
             self.p_error("unexpected parameter count (%d)" % len(params))
-        
+
         self.input_type = "current"
 
         # only a positive node
@@ -411,15 +395,15 @@ class LisoInputParser(LisoParser):
             # default
             self.input_impedance = 50
 
-    def parse_voltage_output(self, output_str):        
+    def _parse_voltage_output(self, output_str):
         # transfer function output
         self.output_type = "tf"
 
         for param in output_str.split():
             # split option by colon
-            self.add_voltage_output(param)
+            self._add_voltage_output(param)
 
-    def add_voltage_output(self, param_str):
+    def _add_voltage_output(self, param_str):
         params = param_str.split(":")
         node_name = params[0]
         scales = params[1:]
@@ -434,15 +418,15 @@ class LisoInputParser(LisoParser):
             # add output
             self.add_tf_sink(LisoOutputVoltage(node=node_name, scales=scales))
 
-    def parse_current_output(self, output_str):
+    def _parse_current_output(self, output_str):
         # transfer function output
         self.output_type = "tf"
 
         for param in output_str.split():
             # split option by colon
-            self.add_current_output(param)
+            self._add_current_output(param)
 
-    def add_current_output(self, param_str):
+    def _add_current_output(self, param_str):
         params = param_str.split(":")
         component_name = params[0]
         scales = params[1:]
@@ -457,7 +441,7 @@ class LisoInputParser(LisoParser):
             # add output
             self.add_tf_sink(LisoOutputCurrent(component=component_name, scales=scales))
 
-    def parse_noise_output(self, noise_str):
+    def _parse_noise_output(self, noise_str):
         # split by whitespace
         params = noise_str.split()
 
@@ -494,7 +478,7 @@ class LisoInputParser(LisoParser):
                     # individual component
                     self._noise_defs.append(source_pieces)
 
-    def parse_noisy_source(self, noisy_str):
+    def _parse_noisy_source(self, noisy_str):
         """Set contributions to "sum" noise curve"""
         # split by whitespace
         params = noisy_str.split()
@@ -518,5 +502,5 @@ class LisoInputParser(LisoParser):
                 # all resistor noises
                 self._noisy_all_resistors = True
             else:
-                # individual component                
+                # individual component
                 self._noisy_extra_defs.append(source_pieces)

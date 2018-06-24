@@ -1,19 +1,15 @@
-import numpy as np
-import logging
-import re
+"""LISO output file parser"""
 
-from ..components import CurrentNoise, VoltageNoise, JohnsonNoise
+import logging
+import numpy as np
+
 from ..solution import Solution
 from ..data import (Series, ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
                     CurrentCurrentTF, NoiseSpectrum, SumNoiseSpectrum)
 from ..format import Quantity
-from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource, LisoParserError
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
 LOGGER = logging.getLogger("liso")
-
-class LisoOutputFormatException(Exception):
-    pass
-
 
 class LisoOutputParser(LisoParser):
     """LISO output file parser
@@ -40,7 +36,6 @@ class LisoOutputParser(LisoParser):
     the particular combination of tokens used to create the line is used to create the
     circuit.
     """
-
     # text to ignore in op-amp list
     OPAMP_IGNORE_STRINGS = [
         "*OVR*", # overridden parameter flag
@@ -60,7 +55,8 @@ class LisoOutputParser(LisoParser):
         ('currentoutputcomponents', 'inclusive'),
         ('noiseoutputs', 'inclusive'),             # plotted noise
         ('noisysources', 'inclusive'),             # calculated noise
-        ('gnuplotoptions', 'inclusive'),           # used to prevent mis-parsing of gnuplot options as something else
+        ('gnuplotoptions', 'inclusive'),           # used to prevent mis-parsing of gnuplot options
+                                                   # as something else
     )
 
     # data lexer tokens
@@ -109,6 +105,8 @@ class LisoOutputParser(LisoParser):
         self.nvoutputs = None
         self.nioutputs = None
         self.nnoisesources = None
+        self.nnoise = None
+        self.nnoisy = None
 
         # index of noise source sum column
         self._source_sum_index = None
@@ -119,9 +117,9 @@ class LisoOutputParser(LisoParser):
 
         super().__init__(*args, **kwargs)
 
-    def _do_build(self, *args, **kwargs):
+    def _do_build(self):
         # call parent
-        super()._do_build(*args, **kwargs)
+        super()._do_build()
 
         # parse data
         data = np.array(self._raw_data)
@@ -133,12 +131,12 @@ class LisoOutputParser(LisoParser):
         self._data = data[:, 1:]
 
         # create solution
-        self.build_solution()
-        
+        self._build_solution()
+
         # clear data
         self._data = None
 
-    def build_solution(self):
+    def _build_solution(self):
         self._solution = Solution(self.circuit, self.frequencies)
 
         if self.output_type == "tf":
@@ -165,7 +163,7 @@ class LisoOutputParser(LisoParser):
 
                     # get magnitude data
                     mag_data = self._data[:, offset + mag_index]
-                
+
                 if tf_sink.has_phase:
                     phase_index, phase_scale = tf_sink.phase_index
 
@@ -241,7 +239,7 @@ class LisoOutputParser(LisoParser):
             else:
                 # must be a resistor
                 noise = component.johnson_noise
-        
+
             # noise should always be in the noise source list
             #assert noise in self.noise_sources
 
@@ -440,10 +438,8 @@ class LisoOutputParser(LisoParser):
         r'\n+'
         self.lineno += len(t.value)
         self._previous_newline_position = t.lexer.lexpos
-
         # generate newline token
         t.type = "NEWLINE"
-
         return t
 
     # error handling
@@ -451,7 +447,7 @@ class LisoOutputParser(LisoParser):
         # anything that gets past the other filters
         raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
                               t.lexer.lexpos - self._previous_newline_position)
-    
+
     def p_file_contents(self, p):
         '''file_contents : file_line
                          | file_contents file_line'''
@@ -500,7 +496,7 @@ class LisoOutputParser(LisoParser):
                          | current_output_component
                          | noise_outputs
                          | noisy_sources'''
-        
+
         instruction = p[1]
         p[0] = instruction
 
@@ -509,21 +505,21 @@ class LisoOutputParser(LisoParser):
         resistor_str = p[1]
         p[0] = resistor_str
 
-        self.parse_passive("r", resistor_str)
+        self._parse_passive("r", resistor_str)
 
     def p_capacitor(self, p):
         '''capacitor : CAPACITOR NEWLINE'''
         capacitor_str = p[1]
         p[0] = capacitor_str
 
-        self.parse_passive("c", capacitor_str)
+        self._parse_passive("c", capacitor_str)
 
     def p_inductor(self, p):
         '''inductor : INDUCTOR NEWLINE'''
         inductor_str = p[1]
         p[0] = inductor_str
 
-        self.parse_passive("l", inductor_str)
+        self._parse_passive("l", inductor_str)
 
     def p_opamp(self, p):
         # join lines of op-amp definition together
@@ -533,7 +529,7 @@ class LisoOutputParser(LisoParser):
         opamp_str = " ".join(p[1::2])
         p[0] = opamp_str
 
-        self.parse_opamp(opamp_str)
+        self._parse_opamp(opamp_str)
 
     def p_node(self, p):
         '''node : NODE NEWLINE'''
@@ -544,28 +540,28 @@ class LisoOutputParser(LisoParser):
         output = p[1]
         p[0] = output
 
-        self.parse_voltage_output(output)
+        self._parse_voltage_output(output)
 
     def p_current_output_component(self, p):
         '''current_output_component : CURRENT_OUTPUT_COMPONENT NEWLINE'''
         output_str = p[1]
         p[0] = output_str
 
-        self.parse_current_output(output_str)
+        self._parse_current_output(output_str)
 
     def p_noise_outputs(self, p):
         '''noise_outputs : NOISE_OUTPUTS NEWLINE'''
         source_str = p[1]
         p[0] = source_str
 
-        self.parse_noise_outputs(source_str)
+        self._parse_noise_outputs(source_str)
 
     def p_noisy_sources(self, p):
         '''noisy_sources : NOISY_SOURCES NEWLINE'''
         source_str = p[1]
         p[0] = source_str
 
-        self.parse_noisy_sources(source_str)
+        self._parse_noisy_sources(source_str)
 
     def p_error(self, p):
         lineno = self.lineno
@@ -573,7 +569,6 @@ class LisoOutputParser(LisoParser):
         if p:
             if hasattr(p, 'value'):
                 # parser object
-                
                 # check for unexpected new line
                 if p.value == "\n":
                     message = "unexpected end of line"
@@ -587,14 +582,15 @@ class LisoOutputParser(LisoParser):
 
                 if lineno is not None:
                     # error while parsing
-                    # productions always end with newlines, so errors in productions are on previous lines
+                    # productions always end with newlines, so errors in productions are on previous
+                    # lines
                     lineno -= 1
         else:
             message = "unexpected end of file"
-        
+
         raise LisoParserError(message, lineno)
 
-    def parse_passive(self, passive_type, component_str):
+    def _parse_passive(self, passive_type, component_str):
         # split by whitespace
         tokens = component_str.split()
 
@@ -608,15 +604,15 @@ class LisoOutputParser(LisoParser):
         kwargs = {name: value for name, value in zip(arg_names, tokens)}
 
         if passive_type == "r":
-            return self.circuit.add_resistor(**kwargs)
+            self.circuit.add_resistor(**kwargs)
         elif passive_type == "c":
-            return self.circuit.add_capacitor(**kwargs)
+            self.circuit.add_capacitor(**kwargs)
         elif passive_type == "l":
-            return self.circuit.add_inductor(**kwargs)
-        
-        self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+            self.circuit.add_inductor(**kwargs)
+        else:
+            self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
 
-    def parse_opamp(self, opamp_str):
+    def _parse_opamp(self, opamp_str):
         # remove ignored strings
         opamp_str = self._remove_ignored_opamp_strings(opamp_str)
 
@@ -682,7 +678,6 @@ class LisoOutputParser(LisoParser):
                     unit = next(params)
                 else:
                     unit = ""
-                
                 kwargs["delay"] = value + unit
             elif prop.startswith("pole"):
                 # skip "at"
@@ -693,7 +688,7 @@ class LisoOutputParser(LisoParser):
 
                 # plane is next
                 plane = next(params)
-                
+
                 kwargs["poles"].extend(self._parse_opamp_root(frequency, plane))
             elif prop.startswith("zero"):
                 # skip "at"
@@ -704,7 +699,7 @@ class LisoOutputParser(LisoParser):
 
                 # plane is next
                 plane = next(params)
-                
+
                 kwargs["zeros"].extend(self._parse_opamp_root(frequency, plane))
             else:
                 self.p_error("unknown op-amp override parameter '{key}'".format(key=prop))
@@ -716,7 +711,7 @@ class LisoOutputParser(LisoParser):
     def _remove_ignored_opamp_strings(cls, opamp_str):
         for ignore in cls.OPAMP_IGNORE_STRINGS:
             opamp_str = opamp_str.replace(ignore, "")
-        
+
         return opamp_str
 
     def _parse_opamp_root(self, frequency, plane):
@@ -742,10 +737,10 @@ class LisoOutputParser(LisoParser):
 
         return sorted(roots)
 
-    def parse_voltage_output(self, output):
-        self.add_voltage_output(output)
+    def _parse_voltage_output(self, output):
+        self._add_voltage_output(output)
 
-    def add_voltage_output(self, output):
+    def _add_voltage_output(self, output):
         index, output_str = output
 
         # split by colon
@@ -761,10 +756,10 @@ class LisoOutputParser(LisoParser):
         except ValueError:
             self.p_error("voltage output '{sink}' already specified".format(sink=sink))
 
-    def parse_current_output(self, output):
-        self.add_current_output(output)
+    def _parse_current_output(self, output):
+        self._add_current_output(output)
 
-    def add_current_output(self, output):
+    def _add_current_output(self, output):
         index, output_str = output
 
         # split by colon
@@ -772,9 +767,8 @@ class LisoOutputParser(LisoParser):
 
         # get rid of component type in first param
         component = params[0].split(":")[1]
-        
-        scales = params[1:]
 
+        scales = params[1:]
         sink = LisoOutputCurrent(component=component, scales=scales, index=index)
 
         try:
@@ -782,7 +776,7 @@ class LisoOutputParser(LisoParser):
         except ValueError:
             self.p_error("current output '{sink}' already specified".format(sink=sink))
 
-    def parse_noise_outputs(self, outputs_line):
+    def _parse_noise_outputs(self, outputs_line):
         """Parse noise outputs representing columns of the data file"""
         # split by whitespace
         noise_output_strs = outputs_line.split()
@@ -807,17 +801,17 @@ class LisoOutputParser(LisoParser):
         else:
             # individual component
             definition = [component_name]
-            
+
             if len(output_pieces) > 1:
                 # remove trailing bracket
                 noise_type_id = output_pieces[1].rstrip(")")
 
                 # add op-amp noise type
                 definition.append(noise_type_id)
-            
+
             self._noise_defs.append(definition)
 
-    def parse_noisy_sources(self, sources_line):
+    def _parse_noisy_sources(self, sources_line):
         """Parse noise sources used to calculate the noise outputs."""
         # split by whitespace
         noise_source_strs = sources_line.split()
@@ -838,12 +832,12 @@ class LisoOutputParser(LisoParser):
 
         # individual component
         definition = [component_name]
-        
+
         if len(source_pieces) > 1:
             # remove trailing bracket
             type_str = source_pieces[1].rstrip(")")
 
             # add op-amp noise type
             definition.append(type_str)
-        
+
         self._noisy_defs.append(definition)
