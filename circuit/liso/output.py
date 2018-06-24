@@ -7,7 +7,7 @@ from ..solution import Solution
 from ..data import (Series, ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
                     CurrentCurrentTF, NoiseSpectrum, SumNoiseSpectrum)
 from ..format import Quantity
-from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource
+from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoNoiseSource, LisoParserError
 
 LOGGER = logging.getLogger("liso")
 
@@ -240,7 +240,7 @@ class LisoOutputParser(LisoParser):
                         # inverting input current noise
                         noise = component.inv_current_noise
                     else:
-                        raise SyntaxError("unrecognised op-amp noise id '%s'" % noise_type_id)
+                        self.p_error("unrecognised op-amp noise type '%s'" % noise_type_id)
                 else:
                     # must be a resistor
                     noise = component.johnson_noise
@@ -436,8 +436,8 @@ class LisoOutputParser(LisoParser):
     # error handling
     def t_error(self, t):
         # anything that gets past the other filters
-        raise SyntaxError("Illegal character '%s' on line %i at position %i" %
-                          (t.value[0], self.lineno, t.lexer.lexpos - self._previous_newline_position))
+        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
+                              t.lexer.lexpos - self._previous_newline_position)
     
     def p_file_contents(self, p):
         '''file_contents : file_line
@@ -555,20 +555,36 @@ class LisoOutputParser(LisoParser):
         self.parse_noisy_sources(source_str)
 
     def p_error(self, p):
+        lineno = self.lineno
+
         if p:
-            error_msg = "LISO syntax error '%s' at line %i" % (p.value, self.lineno)
+            if hasattr(p, 'value'):
+                # parser object
+                
+                # check for unexpected new line
+                if p.value == "\n":
+                    message = "unexpected end of line"
+                    # compensate for mistaken newline
+                    lineno -= 1
+                else:
+                    message = "'%s'" % p.value
+            else:
+                # error message thrown by production
+                message = str(p)
+
+                # productions always end with newlines, so errors in productions are on previous lines
+                lineno -= 1
         else:
-            error_msg = "LISO syntax error at end of file"
+            message = "unexpected end of file"
         
-        raise SyntaxError(error_msg)
+        raise LisoParserError(message, lineno)
 
     def parse_passive(self, passive_type, component_str):
         # split by whitespace
         tokens = component_str.split()
 
         if len(tokens) != 5:
-            # TODO: add the error
-            raise SyntaxError("LISO syntax error")
+            self.p_error("unexpected parameter count (%d)" % len(tokens))
 
         # splice together value and unit
         tokens[1:3] = [''.join(tokens[1:3])]
@@ -583,7 +599,7 @@ class LisoOutputParser(LisoParser):
         elif passive_type == "l":
             return self.circuit.add_inductor(**kwargs)
         
-        raise SyntaxError
+        self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
 
     def parse_opamp(self, opamp_str):
         # remove ignored strings
@@ -676,7 +692,7 @@ class LisoOutputParser(LisoParser):
                 
                 kwargs["zeros"].extend(self._parse_opamp_root(frequency, plane))
             else:
-                raise SyntaxError("unrecognised op-amp parameter")
+                self.p_error("unknown op-amp override parameter '{key}'".format(key=prop))
 
         self.circuit.add_opamp(name=name, model=model, node1=node1, node2=node2, node3=node3,
                                **kwargs)
@@ -723,11 +739,10 @@ class LisoOutputParser(LisoParser):
         node = params[0]
         scales = params[1:]
 
-        # TODO: can "all" be set here?
         output = LisoOutputVoltage(node=node, scales=scales, index=index)
 
         if output in self.tf_outputs:
-            raise SyntaxError("output already specified")
+            self.p_error("voltage output '{output}' already specified".format(output=output))
             
         self.tf_outputs.append(output)
 
@@ -749,7 +764,7 @@ class LisoOutputParser(LisoParser):
         output = LisoOutputCurrent(component=component, scales=scales, index=index)
 
         if output in self.tf_outputs:
-            raise SyntaxError("output component '%s' already specified" % output)
+            self.p_error("current output '{output}' already specified".format(output=output))
         
         self.tf_outputs.append(output)
 
