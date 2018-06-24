@@ -185,14 +185,39 @@ class LisoCompare(SubCommand):
         # compare
         if liso_solution.has_tfs:
             # compare transfer functions
+            # get identified sources and sinks
+            sources = liso_parser.default_tf_sources()
+            sinks = liso_parser.default_tf_sinks()
+
+            # create figure
             figure = liso_solution.bode_figure()
-            liso_solution.plot_tfs(figure=figure)
-            native_solution.plot_tfs(figure=figure)
+
+            # compare
+            liso_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
+            native_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
         elif liso_solution.has_noise:
-            # noise
+            # compare noise
+            # get noise sources used in sum
+            sources = liso_parser.displayed_noise_sources
+
+            # the native solution does not compute the "sum" column automatically, so we must
+            # ask it to if necessary
+            if liso_parser._noise_sum_present:
+                sums = liso_parser.summed_noise_sources
+            else:
+                sums = None
+
+            # create figure
             figure = liso_solution.noise_figure()
-            liso_solution.plot_noise(figure=figure)
-            native_solution.plot_noise(figure=figure)
+
+            # compare (including sums)
+            liso_solution.plot_noise(figure=figure, sources=sources)
+            # override line style for native solution
+            with native_solution.plot_style_context({'lines.linestyle': "--"}):
+                native_solution.plot_noise(figure=figure, sources=sources,
+                                           compute_sum_sources=sums)
+        else:
+            raise Exception("no results were computed")
 
         liso_solution.show()
 
