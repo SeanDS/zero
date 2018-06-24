@@ -238,7 +238,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
     def default_tf_sinks(self):
         """Default transfer function sinks.
-        
+
         Returns
         -------
         :class:`list` of :class:`Component` or :class:`Node`
