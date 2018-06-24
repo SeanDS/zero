@@ -312,4 +312,4 @@ class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
         return self.series_list[0].x
 
     def label(self, *args, **kwargs):
-        return "sum"
+        return "incoherent sum"
