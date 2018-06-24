@@ -61,8 +61,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # noise sources to calculate
         self._noise_sources = None
 
-        # noise sum flag
-        self._source_sum = False
+        # noise sum flags
+        self._noise_sum_requested = False # a noise sum should be computed
+        self._noise_sum_present = False   # a noise sum is present in the data
 
         # circuit solution
         self._solution = None
@@ -188,12 +189,13 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         elif self.output_type == "noise":
             sum_kwargs = {}
             
-            if self._source_sum:
-                # plot noise sum
-                sum_kwargs["show_sum"] = True
-                sum_kwargs["sum_sources"] = self.noise_sum_sources
+            if self._noise_sum_requested:
+                # calculate and plot noise sum
+                sum_kwargs["compute_sum"] = True
+                sum_kwargs["compute_sum_sources"] = self.summed_noise_sources
             
-            solution.plot_noise(sources=self.noise_sources, sinks=[self.noise_output_node], **sum_kwargs)
+            solution.plot_noise(sources=self.displayed_noise_sources, sinks=[self.noise_output_node],
+                                show_sums=self._noise_sum_present, **sum_kwargs)
         else:
             raise Exception("unrecognised output type")
 
@@ -297,12 +299,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def noise_sources(self):
+    def displayed_noise_sources(self):
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def noise_sum_sources(self):
+    def summed_noise_sources(self):
         raise NotImplementedError
 
     @property
@@ -390,12 +392,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                 # op-amp noise type specified
                 type_str = definition[1].lower()
 
-                if type_str in ["u", 0]:
+                if type_str in ["u", "0"]:
                     noise = component.voltage_noise
-                elif type_str in ["+", "i+", 1]:
+                elif type_str in ["+", "i+", "1"]:
                     # non-inverting input current noise
                     noise = component.non_inv_current_noise
-                elif type_str in ["-", "i-", 2]:
+                elif type_str in ["-", "i-", "2"]:
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:

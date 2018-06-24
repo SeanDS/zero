@@ -110,6 +110,9 @@ class LisoOutputParser(LisoParser):
         self.nioutputs = None
         self.nnoisesources = None
 
+        # index of noise source sum column
+        self._source_sum_index = None
+
         # raw noise source lists
         self._noise_defs = [] # displayed noise
         self._noisy_defs = [] # computed noise, including extra sources included in "sum"
@@ -210,60 +213,66 @@ class LisoOutputParser(LisoParser):
 
     def _build_noise(self):
         """Build noise outputs"""
+        # the data sink is always the noise output node
+        sink = self.noise_output_node
+
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):
+            # get component
+            component = self.circuit.get_component(definition[0])
+
             # get data
             series = Series(x=self.frequencies, y=self._data[:, index])
 
-            # data sink is the noise output node
-            sink = self.noise_output_node
+            if len(definition) > 1:
+                # op-amp noise type specified
+                noise_type_id = int(definition[1])
 
-            if definition[0] == "sum":
-                # set sum flag
-                self._source_sum = True
-
-                # get source spectra
-                sources = self.noise_sources
-
-                # create sum noise
-                spectrum = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
-            else:
-                # this is a component name
-                component = self.circuit.get_component(definition[0])
-
-                if len(definition) > 1:
-                    # op-amp noise type specified
-                    noise_type_id = int(definition[1])
-
-                    if noise_type_id == 0:
-                        noise = component.voltage_noise
-                    elif noise_type_id == 1:
-                        # non-inverting input current noise
-                        noise = component.non_inv_current_noise
-                    elif noise_type_id == 2:
-                        # inverting input current noise
-                        noise = component.inv_current_noise
-                    else:
-                        self.p_error("unrecognised op-amp noise type '%s'" % noise_type_id)
+                if noise_type_id == 0:
+                    noise = component.voltage_noise
+                elif noise_type_id == 1:
+                    # non-inverting input current noise
+                    noise = component.non_inv_current_noise
+                elif noise_type_id == 2:
+                    # inverting input current noise
+                    noise = component.inv_current_noise
                 else:
-                    # must be a resistor
-                    noise = component.johnson_noise
-            
-                # noise should always be in the noise source list
-                #assert noise in self.noise_sources
+                    self.p_error("unrecognised op-amp noise type '%s'" % noise_type_id)
+            else:
+                # must be a resistor
+                noise = component.johnson_noise
+        
+            # noise should always be in the noise source list
+            #assert noise in self.noise_sources
 
-                # create noise spectrum
-                spectrum = NoiseSpectrum(source=noise, sink=sink, series=series)
+            # create noise spectrum
+            spectrum = NoiseSpectrum(source=noise, sink=sink, series=series)
 
             self._solution.add_noise(spectrum)
 
-    @LisoParser.noise_sources.getter
-    def noise_sources(self):
+        # add sum column if present
+        if self._source_sum_index is not None:
+            # set flag
+            self._noise_sum_present = True
+
+            # get sources contributing to sum
+            sources = self.summed_noise_sources
+
+            # get data
+            series = Series(x=self.frequencies, y=self._data[:, self._source_sum_index])
+
+            # create sum noise
+            spectrum = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
+
+            self._solution.add_noise(spectrum)
+
+    @LisoParser.displayed_noise_sources.getter
+    def displayed_noise_sources(self):
         """Noise sources to be plotted"""
         return set(self._get_noise_sources(self._noise_defs))
 
-    @LisoParser.noise_sum_sources.getter
-    def noise_sum_sources(self):
+    @LisoParser.summed_noise_sources.getter
+    def summed_noise_sources(self):
         """Noise sources included in the sum column"""
         return set(self._get_noise_sources(self._noisy_defs))
 
@@ -576,8 +585,10 @@ class LisoOutputParser(LisoParser):
                 # error message thrown by production
                 message = str(p)
 
-                # productions always end with newlines, so errors in productions are on previous lines
-                lineno -= 1
+                if lineno is not None:
+                    # error while parsing
+                    # productions always end with newlines, so errors in productions are on previous lines
+                    lineno -= 1
         else:
             message = "unexpected end of file"
         
@@ -776,10 +787,10 @@ class LisoOutputParser(LisoParser):
         # split by whitespace
         noise_output_strs = outputs_line.split()
 
-        for noise_output_str in noise_output_strs:
-            self._parse_noise_output(noise_output_str)
+        for data_index, noise_output_str in enumerate(noise_output_strs):
+            self._parse_noise_output(noise_output_str, data_index)
 
-    def _parse_noise_output(self, output):
+    def _parse_noise_output(self, output, data_index):
         # strip any remaining whitespace
         output = output.strip()
 
@@ -789,17 +800,22 @@ class LisoOutputParser(LisoParser):
         # component name is first piece
         component_name = output_pieces[0]
 
-        # individual component
-        definition = [component_name]
-        
-        if len(output_pieces) > 1:
-            # remove trailing bracket
-            noise_type_id = output_pieces[1].rstrip(")")
+        if component_name == "sum":
+            # this is a sum column
+            # (don't set self._source_sum = True as this regenerates the sum)
+            self._source_sum_index = int(data_index)
+        else:
+            # individual component
+            definition = [component_name]
+            
+            if len(output_pieces) > 1:
+                # remove trailing bracket
+                noise_type_id = output_pieces[1].rstrip(")")
 
-            # add op-amp noise type
-            definition.append(noise_type_id)
-        
-        self._noise_defs.append(definition)
+                # add op-amp noise type
+                definition.append(noise_type_id)
+            
+            self._noise_defs.append(definition)
 
     def parse_noisy_sources(self, sources_line):
         """Parse noise sources used to calculate the noise outputs."""

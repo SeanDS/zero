@@ -113,8 +113,8 @@ class LisoInputParser(LisoParser):
         
         return components
 
-    @LisoParser.noise_sources.getter
-    def noise_sources(self):
+    @LisoParser.displayed_noise_sources.getter
+    def displayed_noise_sources(self):
         """Noise sources to be plotted"""
         sources = set(self._get_noise_sources(self._noise_defs))
 
@@ -130,13 +130,13 @@ class LisoInputParser(LisoParser):
 
         return sources
 
-    @LisoParser.noise_sum_sources.getter
-    def noise_sum_sources(self):
+    @LisoParser.summed_noise_sources.getter
+    def summed_noise_sources(self):
         """Noise sources included in the sum column"""
         sum_sources = set(self._get_noise_sources(self._noisy_extra_defs))
 
-        # add outputs if not already present
-        sum_sources.update(self.noise_sources)
+        # add displayed noise sources if not already present
+        sum_sources.update(self.displayed_noise_sources)
 
         if self._noisy_all_components:
             # show all noise sources
@@ -489,7 +489,7 @@ class LisoInputParser(LisoParser):
                     self._source_all_resistors = True
                 elif component_name == "sum":
                     # sum of circuit noises
-                    self._source_sum = True
+                    self._noise_sum_requested = True
                 else:
                     # individual component
                     self._noise_defs.append(source_pieces)

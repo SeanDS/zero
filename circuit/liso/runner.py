@@ -6,6 +6,7 @@ import logging
 from tempfile import NamedTemporaryFile
 import subprocess
 
+from .base import LisoParserError
 from .output import LisoOutputParser
 
 LOGGER = logging.getLogger("liso")
@@ -126,7 +127,7 @@ class LisoError(Exception):
                     parser.parse(path=script_path)
 
                     is_output = True
-                except IOError:
+                except (IOError, LisoParserError):
                     is_output = False
                 
                 if is_output:
