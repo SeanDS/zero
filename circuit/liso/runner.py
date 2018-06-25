@@ -104,9 +104,10 @@ class LisoRunner(object):
                     break
 
         if liso_path is None:
-            raise Exception("environment variable \"LISO_DIR\" must point to the "
-                            "directory containing the LISO binary, or the LISO "
-                            "binary must be available on the system PATH")
+            raise FileNotFoundError("environment variable \"LISO_DIR\" must point to "
+                                    "the directory containing the LISO binary, or the "
+                                    "LISO binary must be available on the system PATH "
+                                    "(and executable)")
 
         return liso_path
 
