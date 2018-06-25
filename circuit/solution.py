@@ -492,6 +492,7 @@ class Solution(object):
     @staticmethod
     def show():
         """Show plots"""
+        plt.tight_layout()
         plt.show()
 
     def __eq__(self, other):
