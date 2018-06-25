@@ -8,7 +8,7 @@ It also (somewhat) understands LISO input and output files, and can plot or
 re-simulate their contents.
 
 ## Documentation
-See the [documentation](https://docs.ligo.org/sean-leavey/circuit/).
+See the [online documentation](https://docs.ligo.org/sean-leavey/circuit/).
 
 ## Program and library
 The simulator tries to replicate LISO's operation: a small signal ac analysis.
@@ -27,8 +27,8 @@ structure, support for current transfer functions, much more comprehensive plott
 tools to make direct comparisons to LISO, displaying of circuit equations and more.
 
 ## Installation
-This library requires that Python 3 is installed. It has been tested on version 3.5, but
-may work on earlier versions of Python 3. Python 2 is not supported.
+This library requires that Python 3 is installed. It has been tested on version 3.6,
+but may work on earlier versions of Python 3. Python 2 is not supported.
 
 If you don't have Python 3 installed, have a look at [this](https://www.python.org/downloads/).
 
@@ -48,12 +48,12 @@ pip install git+https://git.ligo.org/sean-leavey/circuit.git --upgrade
 ```
 
 ## Basic usage
-There is a very basic CLI provided by the program. Open up a terminal and type:
+There is a basic CLI provided by the program. Open up a terminal and type:
 ```bash
 circuit --help
 ```
-for a list of available commands. Run `circuit command --help` for more detailed
-help for a particular `command`.
+for a list of available commands. Run `circuit [command] --help` for more detailed
+help for a particular `[command]`.
 
 ### Run LISO files
 ```bash
@@ -89,35 +89,10 @@ There are various tests which compare the results of simulations to LISO; these
 can be run with `runner.py validation`. To run all tests, call `runner.py` with
 the `all` argument.
 
-## Current limitations
-
-### LISO parsing
-  - Coordinates for output signals (e.g. `im`, `deg+`, etc.) are ignored in
-    favour of `db` and `deg` in all cases
-  - Output parser assumes all outputs are in dB and degrees (noise columns are
-    handled appropriately, however)
-  - LISO's op-amp library format is not supported, but the full library bundled
-    with LISO is implemented in a different format (see `Op-amp library` below)
-  - Some LISO commands not yet supported. Here are some that might be supported
-    in the future, in rough order of priority (first highest):
-    - `factor` (input multiplicative factor)
-    - `m` (mutual inductance)
-    - `noisy` (switch on/off noise from specific components)
-    - `inputnoise` (circuit noise referred to input node)
-    - `zin` (input impedance)
-    - `opdiff` (plot op-amp input differential voltage)
-    - `margin` (compute op-amp phase margin; replaces `opstab` in LISO v1.78)
-    - `sens` (print table of component sensitivities)
-  - And here are some commands which will probably not be implemented:
-    - commands associated with root mode and fitting (tools such as `vectfit`
-      may be suitable replacements)
-    - other `max` or `min` based commands, e.g. `maxinput` (need fitting?)
-    - `eagle` (produce EAGLE file)    
-    - `gnuterm`
-    - component `C0805` (0805 capacitor with parasitic properties; not
-      implemented in favour of grouped components feature idea below)
-  - `noise` command's plot options are ignored (all noise sources are plotted
-    including incoherent sum)
+## Limitations
+See the documentation for LISO [input](https://docs.ligo.org/sean-leavey/circuit/liso/input.html#known-incompatibilities)
+and [output](https://docs.ligo.org/sean-leavey/circuit/liso/output.html#known-incompatibilities)
+parsing.
 
 ### Op-amp library
 The op-amp library is implemented in a different format to that of LISO,

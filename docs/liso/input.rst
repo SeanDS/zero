@@ -4,6 +4,46 @@ LISO input file parsing
 Known incompatibilities
 -----------------------
 
+Root mode
+~~~~~~~~~
+
+`circuit` does not support LISO's root mode, meaning that fitting of transfer
+functions is not available. It is suggested to instead use `circuit` with a Python
+optimisation library such as `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/optimize.html>`_.
+
+Commands
+~~~~~~~~
+
+The following commands are not yet supported:
+
+- `factor` (input multiplicative factor)
+- `m` (mutual inductance)
+- `inputnoise` (circuit noise referred to input node)
+- `zin` (input impedance)
+- `opdiff` (plot op-amp input differential voltage)
+- `margin` (compute op-amp phase margin; replaced `opstab` in LISO v1.78)
+- `sens` (print table of component sensitivities)
+
+Here are some commands which will probably not be supported:
+
+- other `max` or `min` based commands, e.g. `maxinput`
+- `eagle` (produce EAGLE file)    
+- `gnuterm`
+- component `C0805` (0805 capacitor with parasitic properties; not implemented in
+  favour of grouping components together with macros)
+
+Output coordinates
+~~~~~~~~~~~~~~~~~~
+
+Coordinates for output signals (e.g. `im`, `deg+`, etc.) are ignored in favour of
+`db` and `deg` in all cases. This is easily fixed, but not yet implemented.
+
+Op-amp library
+~~~~~~~~~~~~~~
+
+LISO's op-amp library format is not supported, but the full LISO library is bundled
+in `circuit`'s native format.
+
 LISO Perl commands
 ~~~~~~~~~~~~~~~~~~
 
@@ -11,8 +51,8 @@ Commands used for running LISO in a loop with `pfil` are not supported. Instead 
 can use `circuit` as part of a Python script to run either LISO or native `circuit`
 simulations in a loop.
 
-Known differences
------------------
+Differences in behaviour
+------------------------
 
 `Noisy` command
 ~~~~~~~~~~~~~~~
