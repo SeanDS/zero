@@ -73,14 +73,8 @@ class LisoRunner(object):
         result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
                                 stderr=subprocess.PIPE)
         
-        if result.returncode != 0:
-            # parse LISO error message
-            output = result.stderr.decode("utf-8")
-
-            # LISO reports its error on the final line
-            error_msg = output.splitlines()[-1].strip()
-            
-            raise LisoError(error_msg, script_path=script_path)
+        if result.returncode != 0:            
+            raise LisoError(result.stderr, script_path=script_path)
         
         return result
 
@@ -135,6 +129,19 @@ class LisoRunner(object):
 
 class LisoError(Exception):
     def __init__(self, message, script_path=None, *args, **kwargs):
+        """LISO error
+
+        Parameters
+        ----------
+        message : :class:`str` or :class:`bytes`
+            The error message, or `sys.stderr` bytes buffer.
+        script_path : :class:`str`, optional
+            The path to the script that caused the error (used to check for common mistakes).
+        """
+        if isinstance(message, bytes):
+            # decode stderr bytes
+            message = self._parse_liso_error(message.decode("utf-8"))
+
         if script_path is not None:
             if os.path.isfile(script_path):
                 parser = LisoOutputParser()
@@ -152,3 +159,18 @@ class LisoError(Exception):
                     message = "{message} (this appears to be a LISO output file)".format(message=message)
 
         super().__init__(message, *args, **kwargs)
+<<<<<<< Updated upstream
+=======
+    
+    def _parse_liso_error(self, error_msg):
+        # split into lines
+        lines = error_msg.splitlines()
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith("*** Error:"):
+                # return error
+                return line.lstrip("*** Error:")
+        
+        return "[error message not detected in LISO output]"
+>>>>>>> Stashed changes
