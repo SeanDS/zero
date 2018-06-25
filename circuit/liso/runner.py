@@ -5,6 +5,7 @@ import os
 import logging
 from tempfile import NamedTemporaryFile
 import subprocess
+import shutil
 
 from .output import LisoOutputParser
 
@@ -12,6 +13,10 @@ LOGGER = logging.getLogger("liso")
 
 class LisoRunner(object):
     """LISO runner"""
+
+    # LISO binary names, in order of preference
+    LISO_BINARY_NAMES = {"nix": ["fil_static", "fil"], # Linux / OSX
+                         "win": ["fil.exe"]}           # Windows
 
     def __init__(self, script_path=None):
         self.script_path = script_path
@@ -84,30 +89,42 @@ class LisoRunner(object):
         if self._liso_path is not None:
             return self._liso_path
 
-        # use environment variable
-        try:
-            liso_dir = os.environ["LISO_DIR"]
-        except KeyError:
-            raise Exception("environment variable \"LISO_DIR\" must point to the "
-                            "directory containing the LISO binary")
+        liso_path = None
 
-        return self.find_liso(liso_dir)
+        # try environment variable
+        try:
+            liso_path = self.find_liso(os.environ["LISO_DIR"])
+        except (KeyError, FileNotFoundError):
+            # no environment variable set or LISO not found in specified directory
+            # try searching path
+            for command in self.LISO_BINARY_NAMES[self.platform_key]:
+                path = shutil.which(command)
+                if path is not None:
+                    liso_path = path
+                    break
+
+        if liso_path is None:
+            raise Exception("environment variable \"LISO_DIR\" must point to the "
+                            "directory containing the LISO binary, or the LISO "
+                            "binary must be available on the system PATH")
+
+        return liso_path
+
+    @property
+    def platform_key(self):
+        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+            return "nix"
+        elif sys.platform.startswith("win32"):
+            return "win"
+        
+        raise EnvironmentError("unrecognised operating system")
 
     @liso_path.setter
     def liso_path(self, path):
         self._liso_path = path
 
-    @staticmethod
-    def find_liso(directory):
-        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
-            # in order of preference
-            filenames = ["fil_static", "fil"]
-        elif sys.platform.startswith("win32"):
-            filenames = ["fil.exe"]
-        else:
-            raise EnvironmentError("unrecognised operating system")
-
-        for filename in filenames:
+    def find_liso(self, directory):
+        for filename in self.LISO_BINARY_NAMES[self.platform_key]:
             path = os.path.join(directory, filename)
 
             if os.path.isfile(path):
