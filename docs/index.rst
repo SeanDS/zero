@@ -25,6 +25,7 @@ Contents
    :maxdepth: 2
 
    introduction/index
+   liso/index
    api/index
    examples/index
    contributing/index
