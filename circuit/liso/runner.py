@@ -159,8 +159,6 @@ class LisoError(Exception):
                     message = "{message} (this appears to be a LISO output file)".format(message=message)
 
         super().__init__(message, *args, **kwargs)
-<<<<<<< Updated upstream
-=======
     
     def _parse_liso_error(self, error_msg):
         # split into lines
@@ -173,4 +171,3 @@ class LisoError(Exception):
                 return line.lstrip("*** Error:")
         
         return "[error message not detected in LISO output]"
->>>>>>> Stashed changes
