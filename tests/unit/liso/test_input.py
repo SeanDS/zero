@@ -89,6 +89,11 @@ class FrequencyTestCase(LisoInputParserTestCase):
         self.parser.parse("freq log 0.1 100k 1000")
         self.assertTrue(np.allclose(self.parser.frequencies, np.logspace(np.log10(1e-1), np.log10(1e5), 1001)))
 
+        self.reset()
+
+        self.parser.parse("freq lin 1e-3 1e5 1000")
+        self.assertTrue(np.allclose(self.parser.frequencies, np.linspace(1e-3, 1e5, 1001)))
+
     def test_invalid_scale(self):
         # invalid scale
         text = """
@@ -130,6 +135,11 @@ class VoltageInputTestCase(LisoInputParserTestCase):
         self.parser.parse("uinput nin 10M")
         self.assertAlmostEqual(self.parser.input_impedance, 10e6)
 
+        self.reset()
+
+        self.parser.parse("uinput nin 1e3")
+        self.assertAlmostEqual(self.parser.input_impedance, 1e3)
+
 class CurrentInputTestCase(LisoInputParserTestCase):
     def test_input(self):
         self.parser.parse("iinput nin")
@@ -154,6 +164,11 @@ class CurrentInputTestCase(LisoInputParserTestCase):
         # unit parsing
         self.parser.parse("iinput nin 10k")
         self.assertAlmostEqual(self.parser.input_impedance, 10e3)
+        
+        self.reset()
+
+        self.parser.parse("iinput nin 1e3")
+        self.assertAlmostEqual(self.parser.input_impedance, 1e3)
 
 class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):

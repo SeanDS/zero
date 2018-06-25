@@ -126,8 +126,9 @@ class LisoInputParser(LisoParser):
         return t
 
     def t_CHUNK(self, t):
-        r'[a-zA-Z0-9_=.:]+'
-
+        # allow "-" only after first character, for parsing e.g. frequencies but not
+        # negative numbers
+        r'[a-zA-Z0-9_=.:][a-zA-Z0-9_=.:\-]*'
         # check if chunk is a keyword
         t.type = self.reserved.get(t.value.lower(), 'CHUNK')
         
