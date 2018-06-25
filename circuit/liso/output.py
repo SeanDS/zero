@@ -264,12 +264,12 @@ class LisoOutputParser(LisoParser):
 
             self._solution.add_noise(spectrum)
 
-    @LisoParser.displayed_noise_sources.getter
+    @property
     def displayed_noise_sources(self):
         """Noise sources to be plotted"""
         return set(self._get_noise_sources(self._noise_defs))
 
-    @LisoParser.summed_noise_sources.getter
+    @property
     def summed_noise_sources(self):
         """Noise sources included in the sum column"""
         return set(self._get_noise_sources(self._noisy_defs))

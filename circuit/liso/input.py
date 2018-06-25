@@ -84,7 +84,7 @@ class LisoInputParser(LisoParser):
 
         super().__init__(*args, **kwargs)
 
-    @LisoParser.output_nodes.getter
+    @property
     def output_nodes(self):
         nodes = set(super().output_nodes)
 
@@ -97,7 +97,7 @@ class LisoInputParser(LisoParser):
 
         return nodes
 
-    @LisoParser.output_components.getter
+    @property
     def output_components(self):
         components = set(super().output_components)
 
@@ -110,7 +110,7 @@ class LisoInputParser(LisoParser):
 
         return components
 
-    @LisoParser.displayed_noise_sources.getter
+    @property
     def displayed_noise_sources(self):
         """Noise sources to be plotted"""
         sources = set(self._get_noise_sources(self._noise_defs))
@@ -127,7 +127,7 @@ class LisoInputParser(LisoParser):
 
         return sources
 
-    @LisoParser.summed_noise_sources.getter
+    @property
     def summed_noise_sources(self):
         """Noise sources included in the sum column"""
         sum_sources = set(self._get_noise_sources(self._noisy_extra_defs))
