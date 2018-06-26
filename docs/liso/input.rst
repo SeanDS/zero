@@ -54,6 +54,12 @@ simulations in a loop.
 Differences in behaviour
 ------------------------
 
+Command order
+~~~~~~~~~~~~~
+
+In LISO, the output must be specified *after* the components. In `circuit`, order is
+irrelevant.
+
 `Noisy` command
 ~~~~~~~~~~~~~~~
 
@@ -83,3 +89,9 @@ to the `sum` that are not explicitly plotted.
 As the lack of presence of a `noisy` command in this case does not yield *different*
 results to LISO, only an error in one case and a reasonable output in the other, this
 behaviour is not considered a bug.
+
+String lengths
+~~~~~~~~~~~~~~
+
+LISO has a limit of 16 for most strings (component names, op-amp types, node names, etc.). In `circuit` the
+limit is effectively arbitrary.
