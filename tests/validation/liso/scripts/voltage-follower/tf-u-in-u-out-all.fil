@@ -1,0 +1,9 @@
+# Voltage follower
+
+op op1 op27 n2 n3 n3     # output node == inverting input node
+r r2 1k n3 gnd
+
+freq log .003 10000 1000
+
+uinput n2 0
+uoutput all
