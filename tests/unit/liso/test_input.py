@@ -196,13 +196,25 @@ r r1 430 n1 nm
 
     def test_missing_component_name(self):
         # no component name given
-        text = """
+        text_1 = """
 c 10u gnd n1
 r r1 430 n1 nm
 """
 
         self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)", self.parser.parse,
-                               text)
+                               text_1)
+
+        self.reset()
+
+        # no component name given, extra newline
+        text_2 = """
+c 10u gnd n1
+
+r r1 430 n1 nm
+"""
+
+        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)", self.parser.parse,
+                               text_2)
 
     def test_invalid_component_value(self):
         # invalid component value

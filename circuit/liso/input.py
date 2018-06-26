@@ -277,10 +277,10 @@ class LisoInputParser(LisoParser):
             if hasattr(p, 'value'):
                 # parser object
                 # check for unexpected new line
-                if p.value == "\n":
+                if p.value.startswith("\n"):
                     message = "unexpected end of line"
-                    # compensate for mistaken newline
-                    lineno -= 1
+                    # compensate for mistaken newlines
+                    lineno -= p.value.count("\n")
                 else:
                     message = "'%s'" % p.value
             else:
