@@ -3,6 +3,7 @@
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache"
+  LISO_PROJECT_ID: 2293
 
 cache:
   paths:
@@ -39,6 +40,18 @@ test integration:
     - apt install --assume-yes python3-pip
     - pip3 install .[dev]
     - python3 tests/runner.py integration
+
+test validation:
+  stage: test
+  image: ligo/software:stretch
+  script:
+    - wget -O liso.tar.gz https://git.ligo.org/api/v4/projects/${LISO_PROJECT_ID}/repository/archive?private_token=${LISO_ACCESS_KEY}
+    - tar -xvf liso.tar.gz -C . --wildcards liso-tests*/2.03/fil_static --strip-components=2
+    - export LISO_DIR=/
+    - apt update -qy
+    - apt install --assume-yes python3-pip
+    - pip3 install .[dev]
+    - python3 tests/runner.py validation
 
 # generate the documentation, only on creation of new tags or pushes to master branch
 # https://docs.gitlab.com/ee/ci/yaml/#pages
