@@ -322,6 +322,11 @@ class OpAmp(Component):
                 / np.prod(1 + 1j * frequency / self.params["poles"]))
 
     def inverse_gain(self, *args, **kwargs):
+        """Op-amp inverse gain.
+        
+        Note that the inverse gain may be modified by the analysis, e.g. in the
+        case of a voltage follower (see :meth:`circuit.analysis.ac.BaseAcAnalysis.component_equation`).
+        """
         return 1 / self.gain(*args, **kwargs)
 
     def _noise_voltage(self, component, frequencies):
