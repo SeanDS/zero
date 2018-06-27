@@ -255,15 +255,15 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
         return self._solution
 
-    def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout):
+    def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
         # build circuit if necessary
         self.build()
 
         if self.output_type == "tf":
-            analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies)
+            analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
         elif self.output_type == "noise":
             analysis = AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies,
-                                       node=self.noise_output_node)
+                                       node=self.noise_output_node, **kwargs)
         else:
             raise SyntaxError("no outputs requested")
 

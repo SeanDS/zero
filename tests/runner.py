@@ -22,9 +22,9 @@ def find_tests(suite_path):
     """Find tests at the specified location"""
     return LOADER.discover(suite_path)
 
-def run_and_exit(suite):
+def run_and_exit(suite, verbosity=1):
     """Run tests and exit with a status code representing the test result"""
-    runner = TextTestRunner(verbosity=3)
+    runner = TextTestRunner(verbosity=verbosity)
     result = runner.run(suite)
     sys.exit(not result.wasSuccessful())
 
@@ -37,9 +37,14 @@ if __name__ == "__main__":
     else:
         SUITE_NAME = sys.argv[1]
 
+        if len(sys.argv) > 2:
+            VERBOSITY = int(sys.argv[2])
+        else:
+            VERBOSITY = 2
+
         if SUITE_NAME == "all":
             print("Running all test suites")
-            run_and_exit(find_tests(os.path.join(THIS_DIR, '.')))
+            run_and_exit(find_tests(os.path.join(THIS_DIR, '.')), verbosity=VERBOSITY)
         else:
             print("Running %s test suite" % SUITE_NAME)
-            run_and_exit(find_tests(os.path.join(THIS_DIR, SUITES[SUITE_NAME])))
+            run_and_exit(find_tests(os.path.join(THIS_DIR, SUITES[SUITE_NAME])), verbosity=VERBOSITY)

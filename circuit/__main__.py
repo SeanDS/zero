@@ -130,7 +130,8 @@ class Liso(SubCommand):
             # turn on logging
             logging_on()
 
-        kwargs = {"print_equations": namespace.print_equations,
+        kwargs = {"print_progress": namespace.verbose,
+                  "print_equations": namespace.print_equations,
                   "print_matrix": namespace.print_matrix}
 
         if namespace.force_output:
@@ -167,7 +168,8 @@ class LisoCompare(SubCommand):
             # turn on logging
             logging_on()
 
-        kwargs = {"print_equations": namespace.print_equations,
+        kwargs = {"print_progress": namespace.verbose,
+                  "print_equations": namespace.print_equations,
                   "print_matrix": namespace.print_matrix}
 
         # LISO runner
@@ -286,7 +288,8 @@ class LisoGraph(SubCommand):
             # turn on logging
             logging_on()
 
-        kwargs = {"print_equations": namespace.print_equations,
+        kwargs = {"print_progress": namespace.verbose,
+                  "print_equations": namespace.print_equations,
                   "print_matrix": namespace.print_matrix}
 
         if namespace.force_output:
