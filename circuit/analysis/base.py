@@ -21,7 +21,7 @@ class BaseAnalysis(object, metaclass=abc.ABCMeta):
         Stream to print analysis output to.
     """
 
-    def __init__(self, circuit, print_progress=True, stream=sys.stdout):
+    def __init__(self, circuit, print_progress=False, stream=sys.stdout):
         self.circuit = circuit
         self.print_progress = bool(print_progress)
         self.stream = stream
@@ -133,7 +133,7 @@ class BaseAnalysis(object, metaclass=abc.ABCMeta):
             stream = self.stream
         else:
             # null file
-            stream = os.devnull
+            stream = open(os.devnull, "w")
 
         # set up progress bar
         pbar = progressbar.ProgressBar(widgets=['Calculating: ',
