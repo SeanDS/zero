@@ -53,7 +53,7 @@ test validation:
     - apt update -qy
     - apt install --assume-yes python3-pip
     - pip3 install .[dev]
-    - python3 tests/runner.py validation
+    - python3 tests/runner.py validation 0
 
 # generate the documentation, only on creation of new tags or pushes to master branch
 # https://docs.gitlab.com/ee/ci/yaml/#pages
