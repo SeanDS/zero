@@ -49,6 +49,7 @@ test validation:
     - echo $LISO_DIR
     - wget -O liso.tar.gz https://git.ligo.org/api/v4/projects/${LISO_PROJECT_ID}/repository/archive?private_token=${LISO_ACCESS_KEY}
     - tar -xvf liso.tar.gz -C . --wildcards liso-tests*/2.03/fil_static --strip-components=2
+    - chmod +x fil_static
     - apt update -qy
     - apt install --assume-yes python3-pip
     - pip3 install .[dev]
