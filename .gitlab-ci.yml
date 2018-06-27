@@ -1,11 +1,37 @@
 # https://git.ligo.org/lscsoft/example-ci-project/wikis/automatically-produce-documentation
 # https://wiki.ligo.org/viewauth/DASWG/GitLigoOrg#Accessing_GitLab_Pages
-pages:
+
+stages:
+  - build
+  - test
+  - deploy
+
+build pip:
+  stage: build
   image: ligo/software:stretch
   script:
     - python3 --version
     - apt install --assume-yes python3-pip
     - pip3 install .[dev]
+
+test unit:
+  stage: test
+  image: ligo/software:stretch
+  script:
+    - python3 tests/runner.py unit
+
+test integration:
+  stage: test
+  image: ligo/software:stretch
+  script:
+    - python3 tests/runner.py integration
+
+# generate the documentation, only on creation of new tags or pushes to master branch
+# https://docs.gitlab.com/ee/ci/yaml/#pages
+pages:
+  stage: deploy
+  image: ligo/software:stretch
+  script:
     - cd docs
     - make html
     - mv _build/html ../public
