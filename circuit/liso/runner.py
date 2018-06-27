@@ -171,4 +171,4 @@ class LisoError(Exception):
                 # return error
                 return line.lstrip("*** Error:")
         
-        return "[error message not detected in LISO output]"
+        return "[error message not detected] LISO output:\n%s" % "\n".join(lines)
