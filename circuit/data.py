@@ -39,37 +39,106 @@ def argmax_difference(vector_a, vector_b):
 
 class Series(object):
     """Data series"""
-
-    SCALE_DB = 1
-    SCALE_DEG = 2
-
     def __init__(self, x, y):
+        if x.shape != y.shape:
+            raise ValueError("specified x and y vectors do not have the same shape")
+
         self.x = x
         self.y = y
 
-    def __mul__(self, factor):
-        return Series(self.x, self.y * factor)
+    @classmethod
+    def from_mag_phase(cls, x, magnitude, phase, mag_scale=None, phase_scale=None):
+        """Create :class:`Series` from magnitude and phase data.
 
-class ComplexSeries(Series):
-    """Complex data series"""
-    def __init__(self, x, magnitude, phase, magnitude_scale, phase_scale):
-        if magnitude_scale.lower() == "db":
+        Parameters
+        ----------
+        x : :class:`np.array`
+            The x vector.
+        magnitude : :class:`np.array`
+            The magnitude.
+        phase : :class:`np.array`
+            The phase.
+        mag_scale : :class:`str`, optional
+            The magnitude scale. Defaults to absolute.
+        phase_scale : :class:`str`, optional
+            The phase scale. Defaults to degrees.
+
+        Returns
+        -------
+        :class:`Series`
+            The series containing the data.
+
+        Raises
+        ------
+        :class:`ValueError`
+            If the specified magnitude or phase scale is unrecognised.
+        """
+        if mag_scale is None:
+            mag_scale = "abs"
+        if phase_scale is None:
+            phase_scale = "deg"
+
+        if mag_scale.lower() in ["db", "decibel", "decibels"]:
             magnitude = 10 ** (magnitude / 20)
-        elif magnitude_scale.lower() == "abs":
+        elif mag_scale.lower() in ["abs", "absolute"]:
             # don't need to scale
             pass
         else:
-            raise Exception("cannot handle scale %s" % magnitude_scale)
+            raise ValueError("cannot handle scale %s" % mag_scale)
 
-        if phase_scale.lower() == "degrees":
+        if phase_scale.lower() in ["deg", "degree", "degrees", "°"]:
             phase = np.radians(phase)
+        elif phase_scale.lower() in ["rad", "radian", "radians"]:
+            # don't need to scale
+            pass
         else:
-            raise Exception("cannot handle scale %s" % phase_scale)
+            raise ValueError("cannot handle scale %s" % phase_scale)
 
         # convert magnitude and phase to complex
-        complex_ = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
+        complex_ = magnitude * (np.cos(phase) + 1j * np.sin(phase))
 
-        super().__init__(x=x, y=complex_)
+        return cls(x=x, y=complex_)
+
+    @classmethod
+    def from_re_im(cls, x, re, im):
+        """Create :class:`Series` from real and imaginary parts.
+
+        Parameters
+        ----------
+        x : :class:`np.array`
+            The x vector.
+        magnitude : :class:`np.array`
+            The magnitude.
+        phase : :class:`np.array`
+            The phase.
+        magnitude_scale : :class:`str`, optional
+            The magnitude scale. Defaults to absolute.
+        phase_scale : :class:`str`, optional
+            The phase scale. Defaults to radians.
+
+        Returns
+        -------
+        :class:`Series`
+            The series containing the data.
+
+        Raises
+        ------
+        :class:`ValueError`
+            If either the real or imaginary part is complex.
+        """
+        if np.any(np.iscomplex(re)) or np.any(np.iscomplex(im)):
+            raise ValueError("specified real and imaginary parts must not be complex")
+
+        # combine into complex
+        complex_ = re + 1j * im
+
+        return cls(x=x, y=complex_)
+
+    def __mul__(self, factor):
+        return Series(self.x, self.y * factor)
+    
+    def __eq__(self, other):
+        return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
 class DataSet(object, metaclass=abc.ABCMeta):
     """Data set"""
