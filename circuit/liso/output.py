@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from ..solution import Solution
-from ..data import (Series, ComplexSeries, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
+from ..data import (Series, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
                     CurrentCurrentTF, NoiseSpectrum, SumNoiseSpectrum)
 from ..format import Quantity
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
@@ -153,30 +153,38 @@ class LisoOutputParser(LisoParser):
         for tf_output in self.tf_outputs:
             # get data
             if tf_output.has_real and tf_output.has_imag:
-                real_index, real_scale = tf_output.real_index
-                imag_index, imag_scale = tf_output.imag_index
+                real_index, _ = tf_output.real_index
+                imag_index, _ = tf_output.imag_index
 
-                raise NotImplementedError("cannot handle real and imaginary data yet")
+                # get data
+                real_data = self._data[:, offset + real_index]
+                imag_data = self._data[:, offset + imag_index]
+
+                # create data series
+                series = Series.from_re_im(x=self.frequencies, re=real_data, im=imag_data)
             elif tf_output.has_magnitude or tf_output.has_phase:
+                # dict to contain Series arguments
+                data = {}
+
                 if tf_output.has_magnitude:
                     mag_index, mag_scale = tf_output.magnitude_index
 
                     # get magnitude data
-                    mag_data = self._data[:, offset + mag_index]
+                    data["magnitude"] = self._data[:, offset + mag_index]
+                    data["mag_scale"] = mag_scale
 
                 if tf_output.has_phase:
                     phase_index, phase_scale = tf_output.phase_index
 
                     # get phase data
-                    phase_data = self._data[:, offset + phase_index]
+                    data["phase"] = self._data[:, offset + phase_index]
+                    data["phase_scale"] = phase_scale
+
+                # create data series
+                series = Series.from_mag_phase(x=self.frequencies, **data)
             else:
                 raise ValueError("cannot build solution without either magnitude or phase, or "
                                  "both real and imaginary data columns present")
-
-            # create data series
-            series = ComplexSeries(x=self.frequencies, magnitude=mag_data,
-                                   phase=phase_data, magnitude_scale=mag_scale,
-                                   phase_scale=phase_scale)
 
             # create appropriate transfer function depending on analysis
             if self.input_type == "voltage":
