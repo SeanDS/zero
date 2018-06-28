@@ -163,22 +163,25 @@ class LisoOutputParser(LisoParser):
                 # create data series
                 series = Series.from_re_im(x=self.frequencies, re=real_data, im=imag_data)
             elif tf_output.has_magnitude or tf_output.has_phase:
+                # dict to contain Series arguments
+                data = {}
+
                 if tf_output.has_magnitude:
                     mag_index, mag_scale = tf_output.magnitude_index
 
                     # get magnitude data
-                    mag_data = self._data[:, offset + mag_index]
+                    data["magnitude"] = self._data[:, offset + mag_index]
+                    data["mag_scale"] = mag_scale
 
                 if tf_output.has_phase:
                     phase_index, phase_scale = tf_output.phase_index
 
                     # get phase data
-                    phase_data = self._data[:, offset + phase_index]
+                    data["phase"] = self._data[:, offset + phase_index]
+                    data["phase_scale"] = phase_scale
 
                 # create data series
-                series = Series.from_mag_phase(x=self.frequencies, magnitude=mag_data,
-                                               phase=phase_data, mag_scale=mag_scale,
-                                               phase_scale=phase_scale)
+                series = Series.from_mag_phase(x=self.frequencies, **data)
             else:
                 raise ValueError("cannot build solution without either magnitude or phase, or "
                                  "both real and imaginary data columns present")
