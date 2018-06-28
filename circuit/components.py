@@ -93,7 +93,10 @@ class Component(object, metaclass=abc.ABCMeta):
         return self.label()
     
     def __eq__(self, other):
-        return self.name == other.name
+        if hasattr(other, 'name'):
+            return self.name == other.name
+        
+        return False
     
     def __hash__(self):
         """Components uniquely defined by their name"""

@@ -189,6 +189,21 @@ class Circuit(object):
 
         raise ValueError("component %s not found" % component_name)
 
+    def has_component(self, component_name):
+        """Check if component is present in circuit.
+
+        Parameters
+        ----------
+        component_name : str
+            The name of the component to check.
+
+        Returns
+        -------
+        :class:`bool`
+            True if component exists, False otherwise.
+        """
+        return component_name.lower() in [name.lower() for name in self.component_names]
+
     def get_node(self, node_name):
         """Get circuit node by name.
 
@@ -214,6 +229,21 @@ class Circuit(object):
                 return node
 
         raise ValueError("node %s not found" % node_name)
+
+    def has_node(self, node_name):
+        """Check if node is present in circuit.
+
+        Parameters
+        ----------
+        node_name : str
+            The name of the node to check.
+
+        Returns
+        -------
+        :class:`bool`
+            True if node exists, False otherwise.
+        """
+        return node_name.lower() in [name.lower() for name in self.node_names]
 
     def get_noise(self, noise_name):
         """Get noise by component or node name.
@@ -282,6 +312,17 @@ class Circuit(object):
             The component names.
         """
         return [component.name for component in self.components]
+
+    @property
+    def node_names(self):
+        """The names of the nodes in the circuit.
+
+        Returns
+        -------
+        :class:`list` of :class:`str`
+            The node names.
+        """
+        return [node.name for node in self.nodes]
 
     @property
     def n_components(self):
@@ -438,7 +479,7 @@ class Circuit(object):
             return False
 
         return True
-    
+
     def __repr__(self):
         """Circuit text representation"""
         if self.n_components > 1:

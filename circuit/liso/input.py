@@ -289,7 +289,8 @@ class LisoInputParser(LisoParser):
 
                 # productions always end with newlines, so errors in productions are on previous
                 # lines
-                lineno -= 1
+                if lineno is not None:
+                    lineno -= 1
         else:
             message = "unexpected end of file"
 
