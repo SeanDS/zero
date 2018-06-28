@@ -35,3 +35,16 @@ ioutput r2
         self.assertRaisesRegex(LisoParserError,
                                r"output element 'r2' is not present in the circuit",
                                self.parser.solution)
+
+class NoiseOutputTestCase(LisoInputParserTestCase):
+    def test_invalid_noise_output_node(self):
+        self.parser.parse("""
+r r1 1k n1 n2
+uinput n1
+freq log 1 1k 100
+# n3 doesn't exist
+noise n3 all
+""")
+        self.assertRaisesRegex(LisoParserError,
+                               r"noise output node 'n3' is not present in the circuit",
+                               self.parser.solution)

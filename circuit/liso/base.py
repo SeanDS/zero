@@ -317,6 +317,20 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             if not self.circuit.has_component(element) and not self.circuit.has_node(element):
                 self.p_error("output element '%s' is not present in the circuit" % element)
 
+        # check if noise output node exists
+        if self.noise_output_node is not None:
+            name = self.noise_output_node.name
+            if not self.circuit.has_node(name):
+                self.p_error("noise output node '%s' is not present in the circuit" % name)
+
+        # check for invalid noise nodes
+        for tf_output in self.tf_outputs:
+            # get element
+            element = tf_output.element
+
+            if not self.circuit.has_component(element) and not self.circuit.has_node(element):
+                self.p_error("output element '%s' is not present in the circuit" % element)
+
     @property
     def will_calc_tfs(self):
         """Whether the analysis will calculate transfer functions"""
