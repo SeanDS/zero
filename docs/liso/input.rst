@@ -4,6 +4,26 @@ LISO input file parsing
 Known incompatibilities
 -----------------------
 
+Outputs
+~~~~~~~
+
+`circuit` does not support the `deg+` or `deg-` output coordinates. Please use `deg` instead.
+It also throws an error when a LISO script's `ioutput` or `uoutput` commands contain only a
+phase coordinate, e.g.:
+
+.. code-block:: text
+
+    uoutput nout:deg
+
+Such outputs could in principle be handled by `circuit`, but it would add complexity to the
+:class:`Solution` and :class:`Series` classes that is not worth the effort given how rare
+this type of output is. In order to use such scripts with `circuit`, simply add a magnitude
+unit, e.g.
+
+.. code-block:: text
+
+    uoutput nout:db:deg
+
 Root mode
 ~~~~~~~~~
 
@@ -31,12 +51,6 @@ Here are some commands which will probably not be supported:
 - `gnuterm`
 - component `C0805` (0805 capacitor with parasitic properties; not implemented in
   favour of grouping components together with macros)
-
-Output coordinates
-~~~~~~~~~~~~~~~~~~
-
-Coordinates for output signals (e.g. `im`, `deg+`, etc.) are ignored in favour of
-`db` and `deg` in all cases. This is easily fixed, but not yet implemented.
 
 Op-amp library
 ~~~~~~~~~~~~~~
