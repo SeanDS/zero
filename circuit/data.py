@@ -47,7 +47,7 @@ class Series(object):
         self.y = y
 
     @classmethod
-    def from_mag_phase(cls, x, magnitude, phase, mag_scale=None, phase_scale=None):
+    def from_mag_phase(cls, x, magnitude, phase=None, mag_scale=None, phase_scale=None):
         """Create :class:`Series` from magnitude and phase data.
 
         Parameters
@@ -56,8 +56,8 @@ class Series(object):
             The x vector.
         magnitude : :class:`np.array`
             The magnitude.
-        phase : :class:`np.array`
-            The phase.
+        phase : :class:`np.array`, optional
+            The phase. If `None`, the magnitude is assumed to have zero phase.
         mag_scale : :class:`str`, optional
             The magnitude scale. Defaults to absolute.
         phase_scale : :class:`str`, optional
@@ -73,6 +73,8 @@ class Series(object):
         :class:`ValueError`
             If the specified magnitude or phase scale is unrecognised.
         """
+        if phase is None:
+            phase = np.zeros_like(magnitude)
         if mag_scale is None:
             mag_scale = "abs"
         if phase_scale is None:
