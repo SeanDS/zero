@@ -265,7 +265,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             analysis = AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies,
                                        node=self.noise_output_node, **kwargs)
         else:
-            raise SyntaxError("no outputs requested")
+            self.p_error("no outputs requested")
 
         if print_equations:
             print(analysis.circuit_equation_display(), file=stream)
@@ -301,13 +301,13 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def _validate(self):
         if self.frequencies is None:
             # no frequencies found
-            raise SyntaxError("no plot frequencies found")
+            self.p_error("no plot frequencies found")
         elif self.input_node_n is None and self.input_node_p is None:
             # no input nodes found
-            raise SyntaxError("no input nodes found")
+            self.p_error("no input nodes found")
         elif not self.tf_outputs and self.noise_output_node is None:
             # no output requested
-            raise SyntaxError("no output requested")
+            self.p_error("no output requested")
 
         # check for invalid output nodes
         for tf_output in self.tf_outputs:
@@ -412,9 +412,6 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             node_p = None
             node_n = None
             impedance = None
-
-            if self.input_node_p is None:
-                pass#raise SyntaxError("no input node specified")
 
             if self.input_node_n is None:
                 # fixed input
