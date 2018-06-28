@@ -7,7 +7,7 @@ import logging
 from ply import lex, yacc
 import numpy as np
 
-from ..circuit import Circuit
+from ..circuit import Circuit, ComponentNotFoundError, NoiseNotFoundError
 from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..format import Quantity
@@ -323,6 +323,13 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             if not self.circuit.has_node(name):
                 self.p_error("noise output node '%s' is not present in the circuit" % name)
 
+        # check if noise sources exist
+        try:
+            _ = self.displayed_noise_sources
+            _ = self.summed_noise_sources
+        except ComponentNotFoundError as e:
+            self.p_error("noise source '%s' is not present in the circuit" % e.name)
+
     @property
     def will_calc_tfs(self):
         """Whether the analysis will calculate transfer functions"""
@@ -411,7 +418,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # create input component if necessary
         try:
             self.circuit.get_component("input")
-        except ValueError:
+        except ComponentNotFoundError:
             # add input
             input_type = self.input_type
             node = None
