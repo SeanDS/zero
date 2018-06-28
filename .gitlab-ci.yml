@@ -3,7 +3,7 @@
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache"
-  LISO_PROJECT_ID: 2293
+  LISO_GIT_ARCHIVE_URL: "https://gitlab.aei.uni-hannover.de/api/v4/projects/143/repository/archive?private_token=${LISO_ACCESS_KEY}"
 
 cache:
   paths:
@@ -45,11 +45,13 @@ test validation:
   stage: test
   image: ligo/software:stretch
   script:
-    - export LISO_DIR=$(pwd)
-    - echo $LISO_DIR
-    - wget -O liso.tar.gz https://git.ligo.org/api/v4/projects/${LISO_PROJECT_ID}/repository/archive?private_token=${LISO_ACCESS_KEY}
-    - tar -xvf liso.tar.gz -C . --wildcards liso-tests*/2.03/ --strip-components=2
+    - mkdir liso
+    - cd liso
+    - wget -O liso.tar.gz ${LISO_GIT_ARCHIVE_URL}
+    - tar -xvf liso.tar.gz -C . --wildcards liso-linux*/ --strip-components=1
     - chmod +x fil_static
+    - cd ..
+    - export LISO_DIR=$(pwd)/liso
     - apt update -qy
     - apt install --assume-yes python3-pip
     - pip3 install .[dev]
