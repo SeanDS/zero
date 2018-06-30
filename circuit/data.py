@@ -74,23 +74,24 @@ class Series(object):
             If the specified magnitude or phase scale is unrecognised.
         """
         if phase is None:
+            # set phase to zero
             phase = np.zeros_like(magnitude)
         if mag_scale is None:
             mag_scale = "abs"
         if phase_scale is None:
             phase_scale = "deg"
 
-        if mag_scale.lower() in ["db", "decibel", "decibels"]:
+        if mag_scale.lower() == "db":
             magnitude = 10 ** (magnitude / 20)
-        elif mag_scale.lower() in ["abs", "absolute"]:
+        elif mag_scale.lower() == "abs":
             # don't need to scale
             pass
         else:
             raise ValueError("cannot handle scale %s" % mag_scale)
 
-        if phase_scale.lower() in ["deg", "degree", "degrees", "°"]:
+        if phase_scale.lower() == "deg":
             phase = np.radians(phase)
-        elif phase_scale.lower() in ["rad", "radian", "radians"]:
+        elif phase_scale.lower() == "rad":
             # don't need to scale
             pass
         else:

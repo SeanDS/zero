@@ -480,10 +480,12 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
 class LisoOutputElement(object, metaclass=abc.ABCMeta):
     """LISO output element"""
-    MAGNITUDE_SCALES = ["dB", "Abs"]
-    PHASE_SCALES = ["Degrees", "Degrees (>0)", "Degrees (<0)", "Degrees (continuous)"]
-    REAL_SCALES = ["Real"]
-    IMAG_SCALES = ["Imag"]
+    # supported scales
+    SUPPORTED_SCALES = {"magnitude": {"db": ["db"], "abs": ["abs"]},
+                        "phase": {"deg": ["degrees", "degrees (>0)", "degrees (<0)",
+                                          "degrees (continuous)"]},
+                        "real": {"real": ["real"]},
+                        "imaginary": {"imag": ["imag"]}}
 
     def __init__(self, type_, element=None, scales=None, index=None, output_type=None):
         if scales is None:
@@ -492,18 +494,42 @@ class LisoOutputElement(object, metaclass=abc.ABCMeta):
         if index is not None:
             index = int(index)
 
+        self._scales = None
+
         self.type = str(type_)
         self.element = element
-        self.scales = list(scales)
+        self.scales = scales
         self.index = index
         self.output_type = output_type
+
+    @property
+    def scales(self):
+        return self._scales
+
+    @scales.setter
+    def scales(self, scales):
+        scales_list = []
+        for scale in scales:
+            scales_list.append(self._parse_scale(scale))
+
+        self._scales = scales_list
+
+    def _parse_scale(self, raw_scale):
+        """Identify specified scale"""
+        candidate = raw_scale.lower()
+        for scale_class in self.SUPPORTED_SCALES:
+            for scale in self.SUPPORTED_SCALES[scale_class]:
+                if candidate in self.SUPPORTED_SCALES[scale_class][scale]:
+                    return scale
+
+        raise ValueError("unrecognised scale: '%s'" % raw_scale)
 
     def _get_scale(self, scale_names):
         for index, scale in enumerate(self.scales):
             if scale in scale_names:
                 return index, scale
 
-        raise ValueError("scale names not found")
+        raise ValueError("scale not found in scale list")
 
     @property
     def n_scales(self):
@@ -513,42 +539,58 @@ class LisoOutputElement(object, metaclass=abc.ABCMeta):
     @property
     def has_magnitude(self):
         """Whether the output has a magnitude scale"""
-        return any([scale in self.scales for scale in self.MAGNITUDE_SCALES])
+        return any([scale in self.scales for scale in self.magnitude_scales])
 
     @property
     def has_phase(self):
         """Whether the output has a phase scale"""
-        return any([scale in self.scales for scale in self.PHASE_SCALES])
+        return any([scale in self.scales for scale in self.phase_scales])
 
     @property
     def has_real(self):
         """Whether the output has a real scale"""
-        return any([scale in self.scales for scale in self.REAL_SCALES])
+        return any([scale in self.scales for scale in self.real_scales])
 
     @property
     def has_imag(self):
         """Whether the output has a imaginary scale"""
-        return any([scale in self.scales for scale in self.IMAG_SCALES])
+        return any([scale in self.scales for scale in self.imag_scales])
 
     @property
     def magnitude_index(self):
         """The index of the magnitude scale in the scale list"""
-        return self._get_scale(self.MAGNITUDE_SCALES)
+        return self._get_scale(self.magnitude_scales)
 
     @property
     def phase_index(self):
         """The index of the phase scale in the scale list"""
-        return self._get_scale(self.PHASE_SCALES)
+        return self._get_scale(self.phase_scales)
 
     @property
     def real_index(self):
         """The index of the real scale in the scale list"""
-        return self._get_scale(self.REAL_SCALES)
+        return self._get_scale(self.real_scales)
 
     @property
     def imag_index(self):
         """The index of the imaginary scale in the scale list"""
-        return self._get_scale(self.IMAG_SCALES)
+        return self._get_scale(self.imag_scales)
+
+    @property
+    def magnitude_scales(self):
+        return list(self.SUPPORTED_SCALES["magnitude"].keys())
+
+    @property
+    def phase_scales(self):
+        return list(self.SUPPORTED_SCALES["phase"].keys())
+
+    @property
+    def real_scales(self):
+        return list(self.SUPPORTED_SCALES["real"].keys())
+
+    @property
+    def imag_scales(self):
+        return list(self.SUPPORTED_SCALES["imaginary"].keys())
 
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
