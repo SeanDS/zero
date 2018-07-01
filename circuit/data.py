@@ -25,7 +25,7 @@ def spectra_match(vector_a, vector_b):
 
 def argmax_difference(vector_a, vector_b):
     """Finds the maximum relative difference in percent between `vector_a` and `vector_b`
-    
+
     Returns index of maximum relative difference as well as its value.
     """
 
@@ -139,7 +139,7 @@ class Series(object):
 
     def __mul__(self, factor):
         return Series(self.x, self.y * factor)
-    
+
     def __eq__(self, other):
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
@@ -231,7 +231,7 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
 
     def label(self, tex=False):
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$ \(%s\)"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)"
         else:
             format_str = "%s to %s (%s)"
 
