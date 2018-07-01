@@ -604,6 +604,12 @@ class LisoOutputElement(object, metaclass=abc.ABCMeta):
     def imag_scales(self):
         return list(self.SUPPORTED_SCALES["imaginary"].keys())
 
+    def __repr__(self):
+        element_str = "%s" % self.element
+        if self.scales is not None:
+            element_str += ":".join(self.scales)
+        return "Output[%s]" % element_str
+
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
     def __init__(self, *args, node=None, **kwargs):

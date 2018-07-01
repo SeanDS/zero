@@ -95,11 +95,19 @@ class LisoInputParser(LisoParser):
         if self._output_all_nodes:
             # show all nodes
             for node in self.circuit.non_gnd_nodes:
+                if node.name in self.output_nodes:
+                    # already present
+                    continue
+
                 sink = LisoOutputVoltage(node=node.name, scales=self._output_all_nodes_scales)
                 self.add_tf_output(sink)
         elif self._output_all_opamp_nodes:
             # show all op-amp nodes
             for node in self.circuit.opamp_output_nodes:
+                if node.name in self.output_nodes:
+                    # already present
+                    continue
+
                 sink = LisoOutputVoltage(node=node.name, scales=self._output_all_opamp_nodes_scales)
                 self.add_tf_output(sink)
 
@@ -107,12 +115,20 @@ class LisoInputParser(LisoParser):
         if self._output_all_components:
             # show all components
             for component in self.circuit.components:
+                if component.name in self.output_components:
+                    # already present
+                    continue
+
                 sink = LisoOutputCurrent(component=component.name,
                                          scales=self._output_all_components_scales)
                 self.add_tf_output(sink)
         elif self._output_all_opamps:
             # show all op-amps
             for component in self.circuit.opamps:
+                if component.name in self.output_components:
+                    # already present
+                    continue
+
                 sink = LisoOutputCurrent(component=component.name,
                                          scales=self._output_all_opamps_scales)
                 self.add_tf_output(sink)

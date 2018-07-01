@@ -24,7 +24,7 @@ uoutput n3
                                r"output element 'n3' is not present in the circuit",
                                self.parser.solution)
 
-    def test_allop(self):
+    def test_output_all(self):
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -43,10 +43,35 @@ r load 1k no gnd
 r rin 50 nii ni
 freq log 1 100 10
 uinput nii 0
-uoutput no allop
+uoutput no all
 """)
         self.parser.build()
         # there should be 1 explicit output and 3 op-amp outputs
+        self.assertEqual(8, self.parser.n_tf_outputs)
+
+    def test_output_allop(self):
+        self.parser.parse("""
+c c1 270.88486n nm2 no
+c c2 7.516u no3 np1
+c ca 1.484u nm2 ni
+op n1a OP27 np1 gnd no1
+op n2a OP27 gnd nm2 no
+op n3a OP27 gnd nm3 no3
+r ri2 2.6924361k nm3 no1
+r ri1 1k no3 nm3
+r r1 40.246121k no1 nm2
+r r2 2.0651912k np1 no
+r ra 115.16129k nm2 ni
+r rb 2.0154407k np1 ni
+r rq 22.9111k nm2 no
+r load 1k no gnd
+r rin 50 nii ni
+freq log 1 100 10
+uinput nii 0
+uoutput no ni allop
+""")
+        self.parser.build()
+        # 3 op-amp outputs, one of which is no, plus ni
         self.assertEqual(4, self.parser.n_tf_outputs)
 
 class CurrentOutputTestCase(LisoInputParserTestCase):
@@ -63,7 +88,7 @@ ioutput r2
                                r"output element 'r2' is not present in the circuit",
                                self.parser.solution)
 
-    def test_allop(self):
+    def test_output_allop(self):
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -82,11 +107,11 @@ r load 1k no gnd
 r rin 50 nii ni
 freq log 1 100 10
 uinput nii 0
-ioutput load allop
+ioutput load ri1 allop
 """)
         self.parser.build()
-        # there should be 1 explicit output and 3 op-amp outputs
-        self.assertEqual(4, self.parser.n_tf_outputs)
+        # 3 op-amp outputs, plus two independent
+        self.assertEqual(5, self.parser.n_tf_outputs)
 
 class NoiseOutputTestCase(LisoInputParserTestCase):
     """Noise output command tests"""
@@ -128,7 +153,7 @@ noisy r2
                                r"noise source 'r2' is not present in the circuit",
                                self.parser.solution)
 
-    def test_allop(self):
+    def test_output_allop(self):
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
