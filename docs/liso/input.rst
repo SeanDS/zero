@@ -50,7 +50,7 @@ The following commands are not yet supported:
 Here are some commands which will probably not be supported:
 
 - other `max` or `min` based commands, e.g. :code:`maxinput`
-- :code:`eagle` (produce EAGLE file)    
+- :code:`eagle` (produce EAGLE file)
 - :code:`gnuterm`
 - component :code:`C0805` (0805 capacitor with parasitic properties; not implemented in
   favour of grouping components together with macros)

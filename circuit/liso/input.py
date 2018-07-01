@@ -64,9 +64,13 @@ class LisoInputParser(LisoParser):
 
         # output flags
         self._output_all_nodes = False
+        self._output_all_nodes_scales = None
         self._output_all_opamp_nodes = False
+        self._output_all_opamp_nodes_scales = None
         self._output_all_components = False
+        self._output_all_components_scales = None
         self._output_all_opamps = False
+        self._output_all_opamps_scales = None
 
         # noise source flags
         self._source_all_components = False
@@ -84,31 +88,34 @@ class LisoInputParser(LisoParser):
 
         super().__init__(*args, **kwargs)
 
-    @property
-    def output_nodes(self):
-        nodes = set(super().output_nodes)
+    def _do_build(self):
+        super()._do_build()
 
+        # add extra node outputs
         if self._output_all_nodes:
             # show all nodes
-            nodes.update(self.circuit.non_gnd_nodes)
+            for node in self.circuit.non_gnd_nodes:
+                sink = LisoOutputVoltage(node=node.name, scales=self._output_all_nodes_scales)
+                self.add_tf_output(sink)
         elif self._output_all_opamp_nodes:
             # show all op-amp nodes
-            nodes.update(self.circuit.opamp_output_nodes)
+            for node in self.circuit.opamp_output_nodes:
+                sink = LisoOutputVoltage(node=node.name, scales=self._output_all_opamp_nodes_scales)
+                self.add_tf_output(sink)
 
-        return nodes
-
-    @property
-    def output_components(self):
-        components = set(super().output_components)
-
+        # add extra component outputs
         if self._output_all_components:
             # show all components
-            components.update(self.circuit.components)
+            for component in self.circuit.components:
+                sink = LisoOutputCurrent(component=component.name,
+                                         scales=self._output_all_components_scales)
+                self.add_tf_output(sink)
         elif self._output_all_opamps:
             # show all op-amps
-            components.update(self.circuit.opamps)
-
-        return components
+            for component in self.circuit.opamps:
+                sink = LisoOutputCurrent(component=component.name,
+                                         scales=self._output_all_opamps_scales)
+                self.add_tf_output(sink)
 
     @property
     def displayed_noise_sources(self):
@@ -414,9 +421,11 @@ class LisoInputParser(LisoParser):
         if node_name.lower() == "all":
             # all node voltages
             self._output_all_nodes = True
+            self._output_all_nodes_scales = scales
         elif node_name.lower() == "allop":
             # op-amp outputs voltages
             self._output_all_opamp_nodes = True
+            self._output_all_opamp_nodes_scales = scales
         else:
             # add output
             self.add_tf_output(LisoOutputVoltage(node=node_name, scales=scales))
@@ -437,9 +446,11 @@ class LisoInputParser(LisoParser):
         if component_name.lower() == "all":
             # all component currents
             self._output_all_components = True
+            self._output_all_components_scales = scales
         elif component_name.lower() == "allop":
             # op-amp output currents
             self._output_all_opamps = True
+            self._output_all_opamps_scales = scales
         else:
             # add output
             self.add_tf_output(LisoOutputCurrent(component=component_name, scales=scales))

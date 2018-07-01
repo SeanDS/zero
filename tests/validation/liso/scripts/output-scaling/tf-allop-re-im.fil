@@ -1,0 +1,14 @@
+# example circuit from LISO manual
+
+r r1 100 nin nsum
+r r3 1.075k no nsum
+r r4 42.2 nsum nm
+r r6 65 nin gnd
+c c2 4.7n nsum gnd
+c c5 122p no nm
+op op1 op27 gnd nm no
+
+freq log 1 100k 100
+
+uinput nin 50
+uoutput no allop:re:im
