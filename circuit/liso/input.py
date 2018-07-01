@@ -6,7 +6,7 @@ import numpy as np
 from ..format import Quantity
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
-LOGGER = logging.getLogger("liso")
+LOGGER = logging.getLogger(__name__)
 
 class LisoInputParser(LisoParser):
     """LISO input file parser

@@ -9,7 +9,7 @@ from ..data import (Series, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF
 from ..format import Quantity
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
-LOGGER = logging.getLogger("liso")
+LOGGER = logging.getLogger(__name__)
 
 class LisoOutputParser(LisoParser):
     """LISO output file parser

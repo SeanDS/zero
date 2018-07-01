@@ -11,7 +11,7 @@ from ...components import Component, Node
 from ...solution import Solution
 from ...display import MatrixDisplay, EquationDisplay
 
-LOGGER = logging.getLogger("ac-analysis")
+LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""

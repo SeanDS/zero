@@ -10,7 +10,7 @@ from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
                          Input, Node)
 from .display import NodeGraph
 
-LOGGER = logging.getLogger("circuit")
+LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
 

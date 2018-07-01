@@ -12,7 +12,7 @@ from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..format import Quantity
 
-LOGGER = logging.getLogger("liso")
+LOGGER = logging.getLogger(__name__)
 
 class LisoParserError(ValueError):
     """LISO parser error"""

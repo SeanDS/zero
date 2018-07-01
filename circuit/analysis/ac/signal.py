@@ -6,7 +6,7 @@ from ...data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
                      CurrentVoltageTF, Series)
 from ...components import Component, Node
 
-LOGGER = logging.getLogger("ac-analysis")
+LOGGER = logging.getLogger(__name__)
 
 class AcSignalAnalysis(BaseAcAnalysis):
     """AC signal analysis"""    

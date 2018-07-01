@@ -13,7 +13,7 @@ from .data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
                    MultiNoiseSpectrum, SumNoiseSpectrum, Series)
 from .components import Component, Node, Noise
 
-LOGGER = logging.getLogger("solution")
+LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 
 class Solution(object):

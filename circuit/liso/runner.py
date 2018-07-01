@@ -10,7 +10,7 @@ import shutil
 from .base import LisoParserError
 from .output import LisoOutputParser
 
-LOGGER = logging.getLogger("liso")
+LOGGER = logging.getLogger(__name__)
 
 class LisoRunner(object):
     """LISO runner"""

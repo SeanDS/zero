@@ -7,7 +7,7 @@ import logging
 from .config import CircuitConfig
 from .misc import db
 
-LOGGER = logging.getLogger("data")
+LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 
 def frequencies_match(vector_a, vector_b):

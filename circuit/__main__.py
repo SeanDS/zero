@@ -11,7 +11,7 @@ from circuit import __version__, PROGRAM, DESCRIPTION, logging_on
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .display import NodeGraph
 
-LOGGER = logging.getLogger()
+LOGGER = logging.getLogger(__name__)
 
 class Parser(object):
     def __init__(self, program, version, subcommands=None, err_stream=sys.stderr):
