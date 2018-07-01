@@ -482,10 +482,10 @@ class LisoOutputElement(object, metaclass=abc.ABCMeta):
     """LISO output element"""
     # supported scales
     SUPPORTED_SCALES = {"magnitude": {"db": ["db"], "abs": ["abs"]},
-                        "phase": {"deg": ["degrees", "degrees (>0)", "degrees (<0)",
+                        "phase": {"deg": ["deg", "degrees", "degrees (>0)", "degrees (<0)",
                                           "degrees (continuous)"]},
-                        "real": {"real": ["real"]},
-                        "imaginary": {"imag": ["imag"]}}
+                        "real": {"real": ["re", "real"]},
+                        "imaginary": {"imag": ["im", "imag"]}}
 
     def __init__(self, type_, element=None, scales=None, index=None, output_type=None):
         if scales is None:
