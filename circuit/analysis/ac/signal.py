@@ -2,8 +2,7 @@ import logging
 import numpy as np
 
 from .base import BaseAcAnalysis
-from ...data import (VoltageVoltageTF, VoltageCurrentTF, CurrentCurrentTF,
-                     CurrentVoltageTF, Series)
+from ...data import TransferFunction, Series
 from ...components import Component, Node
 
 LOGGER = logging.getLogger(__name__)
@@ -96,13 +95,16 @@ class AcSignalAnalysis(BaseAcAnalysis):
 
             # create appropriate transfer function depending on input type
             if self.has_voltage_input:
-                function = VoltageCurrentTF(source=self.circuit.input_component.node_p,
-                                            sink=component, series=series)
+                source = self.circuit.input_component.node_p
+                source_unit = "V"
             elif self.has_current_input:
-                function = CurrentCurrentTF(source=self.circuit.input_component,
-                                            sink=component, series=series)
+                source = self.circuit.input_component
+                source_unit = "A"
             else:
                 raise ValueError("specify either a current or voltage input")
+
+            function = TransferFunction(source=source, source_unit=source_unit, sink=component,
+                                        sink_unit="A", series=series)
 
             # add transfer function to solution
             self.solution.add_tf(function)
@@ -121,13 +123,16 @@ class AcSignalAnalysis(BaseAcAnalysis):
 
             # create appropriate transfer function depending on input type
             if self.has_voltage_input:
-                function = VoltageVoltageTF(source=self.circuit.input_component.node_p,
-                                            sink=node, series=series)
+                source = self.circuit.input_component.node_p
+                source_unit = "V"
             elif self.has_current_input:
-                function = CurrentVoltageTF(source=self.circuit.input_component,
-                                            sink=node, series=series)
+                source = self.circuit.input_component
+                source_unit = "A"
             else:
                 raise ValueError("specify either a current or voltage input")
+
+            function = TransferFunction(source=source, source_unit=source_unit, sink=node,
+                                        sink_unit="V", series=series)
 
             # add transfer function to solution
             self.solution.add_tf(function)

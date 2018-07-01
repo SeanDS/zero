@@ -169,6 +169,18 @@ class LisoParser(object, metaclass=abc.ABCMeta):
 
         self.tf_outputs.append(output)
 
+    @property
+    def n_tf_outputs(self):
+        return len(self.tf_outputs)
+
+    @property
+    def n_displayed_noise(self):
+        return len(self.displayed_noise_sources)
+
+    @property
+    def n_summed_noise(self):
+        return len(self.summed_noise_sources)
+
     def parse(self, text=None, path=None):
         if text is None and path is None:
             raise ValueError("must provide either text or a path")

@@ -73,10 +73,10 @@ class LisoRunner(object):
         # run LISO
         result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
                                 stderr=subprocess.PIPE)
-        
-        if result.returncode != 0:            
+
+        if result.returncode != 0:
             raise LisoError(result.stderr, script_path=script_path)
-        
+
         return result
 
     @property
@@ -112,7 +112,7 @@ class LisoRunner(object):
             return "nix"
         elif sys.platform.startswith("win32"):
             return "win"
-        
+
         raise EnvironmentError("unrecognised operating system")
 
     @liso_path.setter
@@ -154,13 +154,13 @@ class LisoError(Exception):
                     is_output = True
                 except (IOError, LisoParserError):
                     is_output = False
-                
+
                 if is_output:
                     # add message
                     message = "{message} (this appears to be a LISO output file)".format(message=message)
 
         super().__init__(message, *args, **kwargs)
-    
+
     def _parse_liso_error(self, error_msg):
         # split into lines
         lines = error_msg.splitlines()
@@ -170,5 +170,5 @@ class LisoError(Exception):
             if line.startswith("*** Error:"):
                 # return error
                 return line.lstrip("*** Error:")
-        
+
         return "[error message not detected] LISO output:\n%s" % "\n".join(lines)
