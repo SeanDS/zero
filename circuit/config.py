@@ -11,7 +11,7 @@ import appdirs
 
 from .format import Quantity
 
-LOGGER = logging.getLogger("config")
+LOGGER = logging.getLogger(__name__)
 
 class SingletonAbstractMeta(abc.ABCMeta):
     """Abstract singleton class"""

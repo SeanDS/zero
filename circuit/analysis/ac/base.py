@@ -1,8 +1,9 @@
+"""Base AC analysis tools"""
+
 import abc
-import sys
 import logging
-import numpy as np
 from collections import defaultdict
+import numpy as np
 
 from ..base import BaseAnalysis
 from ...solve import DefaultSolver
@@ -10,7 +11,7 @@ from ...components import Component, Node
 from ...solution import Solution
 from ...display import MatrixDisplay, EquationDisplay
 
-LOGGER = logging.getLogger("ac-analysis")
+LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
@@ -241,6 +242,9 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         :class:`impedance <ImpedanceCoefficient>` and
         :class:`voltage <VoltageCoefficient>` coefficients.
 
+        Note that special behaviour is applied to op-amp voltage outputs if they are
+        configured as voltage followers.
+
         Returns
         -------
         :class:`~ComponentEquation`
@@ -257,7 +261,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                 # set source impedance
                 coefficients.append(ImpedanceCoefficient(component=component,
                                                          value=component.impedance))
-            
+
             if component.input_type in ["noise", "voltage"]:
                 # set sink node coefficient
                 if component.node_n is not Node("gnd"):
@@ -285,9 +289,15 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
             if hasattr(component, "gain"):
                 # this is an op-amp
-                # add voltage gain V[n3] = H(s) (V[n1] - V[n2])
+                if component.node3 == component.node2:
+                    # this is a voltage follower
+                    inverse_gain = lambda f: 1 + component.inverse_gain(f)
+                else:
+                    # add voltage gain V[n3] = H(s) (V[n1] - V[n2])
+                    inverse_gain = component.inverse_gain
+
                 coefficients.append(VoltageCoefficient(node=component.node3,
-                                                       value=component.inverse_gain))
+                                                       value=inverse_gain))
             else:
                 # this is a passive component
                 # add impedance
@@ -299,8 +309,8 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
     def node_equation(self, node):
         """Equation representing circuit node
-        
-        This should be called after :method:`set_up_sources_and_sinks`.
+
+        This should be called after :meth:`set_up_sources_and_sinks`.
         """
 
         # nodal current equation coefficients

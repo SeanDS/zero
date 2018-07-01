@@ -6,7 +6,7 @@ import logging
 
 from circuit.liso import LisoRunner
 
-LOGGER = logging.getLogger("test")
+LOGGER = logging.getLogger(__name__)
 
 # directory containing tests relative to this script
 REL_FIL_DIR = "scripts"

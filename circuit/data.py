@@ -7,7 +7,7 @@ import logging
 from .config import CircuitConfig
 from .misc import db
 
-LOGGER = logging.getLogger("data")
+LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 
 def frequencies_match(vector_a, vector_b):
@@ -39,42 +39,112 @@ def argmax_difference(vector_a, vector_b):
 
 class Series(object):
     """Data series"""
-
-    SCALE_DB = 1
-    SCALE_DEG = 2
-
     def __init__(self, x, y):
+        if x.shape != y.shape:
+            raise ValueError("specified x and y vectors do not have the same shape")
+
         self.x = x
         self.y = y
 
-    def __mul__(self, factor):
-        return Series(self.x, self.y * factor)
+    @classmethod
+    def from_mag_phase(cls, x, magnitude, phase=None, mag_scale=None, phase_scale=None):
+        """Create :class:`Series` from magnitude and phase data.
 
-class ComplexSeries(Series):
-    """Complex data series"""
+        Parameters
+        ----------
+        x : :class:`np.array`
+            The x vector.
+        magnitude : :class:`np.array`
+            The magnitude.
+        phase : :class:`np.array`, optional
+            The phase. If `None`, the magnitude is assumed to have zero phase.
+        mag_scale : :class:`str`, optional
+            The magnitude scale. Defaults to absolute.
+        phase_scale : :class:`str`, optional
+            The phase scale. Defaults to degrees.
 
-    def __init__(self, x, magnitude, phase, magnitude_scale, phase_scale):
-        if magnitude_scale.lower() == "db":
+        Returns
+        -------
+        :class:`Series`
+            The series containing the data.
+
+        Raises
+        ------
+        :class:`ValueError`
+            If the specified magnitude or phase scale is unrecognised.
+        """
+        if phase is None:
+            # set phase to zero
+            phase = np.zeros_like(magnitude)
+        if mag_scale is None:
+            mag_scale = "abs"
+        if phase_scale is None:
+            phase_scale = "deg"
+
+        if mag_scale.lower() == "db":
             magnitude = 10 ** (magnitude / 20)
-        elif magnitude_scale.lower() == "abs":
+        elif mag_scale.lower() == "abs":
             # don't need to scale
             pass
         else:
-            raise Exception("cannot handle scale %s" % magnitude_scale)
+            raise ValueError("cannot handle scale %s" % mag_scale)
 
-        if phase_scale.lower() == "degrees":
+        if phase_scale.lower() == "deg":
             phase = np.radians(phase)
+        elif phase_scale.lower() == "rad":
+            # don't need to scale
+            pass
         else:
-            raise Exception("cannot handle scale %s" % phase_scale)
+            raise ValueError("cannot handle scale %s" % phase_scale)
 
         # convert magnitude and phase to complex
-        complex_ = magnitude * (np.cos(phase) + np.sin(phase) * 1j)
+        complex_ = magnitude * (np.cos(phase) + 1j * np.sin(phase))
 
-        super().__init__(x=x, y=complex_)
+        return cls(x=x, y=complex_)
+
+    @classmethod
+    def from_re_im(cls, x, re, im):
+        """Create :class:`Series` from real and imaginary parts.
+
+        Parameters
+        ----------
+        x : :class:`np.array`
+            The x vector.
+        magnitude : :class:`np.array`
+            The magnitude.
+        phase : :class:`np.array`
+            The phase.
+        magnitude_scale : :class:`str`, optional
+            The magnitude scale. Defaults to absolute.
+        phase_scale : :class:`str`, optional
+            The phase scale. Defaults to radians.
+
+        Returns
+        -------
+        :class:`Series`
+            The series containing the data.
+
+        Raises
+        ------
+        :class:`ValueError`
+            If either the real or imaginary part is complex.
+        """
+        if np.any(np.iscomplex(re)) or np.any(np.iscomplex(im)):
+            raise ValueError("specified real and imaginary parts must not be complex")
+
+        # combine into complex
+        complex_ = re + 1j * im
+
+        return cls(x=x, y=complex_)
+
+    def __mul__(self, factor):
+        return Series(self.x, self.y * factor)
+    
+    def __eq__(self, other):
+        return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
 class DataSet(object, metaclass=abc.ABCMeta):
     """Data set"""
-
     def __init__(self, sources, sinks, series_list):
         self.sources = list(sources)
         self.sinks = list(sinks)
@@ -91,20 +161,11 @@ class DataSet(object, metaclass=abc.ABCMeta):
     def __str__(self):
         return self.label()
 
-class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
-    """Data set containing data from a single source to a single sink"""
-
-    def __init__(self, source, sink, series):
+class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
+    """Data set containing a single data series"""
+    def __init__(self, series, *args, **kwargs):
         # call parent constructor
-        super().__init__(sources=[source], sinks=[sink], series_list=[series])
-
-    @property
-    def source(self):
-        return self.sources[0]
-
-    @property
-    def sink(self):
-        return self.sinks[0]
+        super().__init__(series_list=[series], *args, **kwargs)
 
     @property
     def series(self):
@@ -114,9 +175,28 @@ class SingleDataSet(DataSet, metaclass=abc.ABCMeta):
     def series(self, data):
         self.series_list = [data]
 
-class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
-    """Transfer function data series"""
+class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
+    """Data set containing data for a single source"""
+    def __init__(self, source, *args, **kwargs):
+        # call parent constructor
+        super().__init__(sources=[source], *args, **kwargs)
 
+    @property
+    def source(self):
+        return self.sources[0]
+
+class SingleSinkDataSet(DataSet, metaclass=abc.ABCMeta):
+    """Data set containing data for a single sink"""
+    def __init__(self, sink, *args, **kwargs):
+        # call parent constructor
+        super().__init__(sinks=[sink], *args, **kwargs)
+
+    @property
+    def sink(self):
+        return self.sinks[0]
+
+class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet, metaclass=abc.ABCMeta):
+    """Transfer function data series"""
     @property
     def frequencies(self):
         return self.series.x
@@ -131,13 +211,11 @@ class TransferFunction(SingleDataSet, metaclass=abc.ABCMeta):
 
     def _draw_magnitude(self, axes):
         """Add magnitude plot to axes"""
-
         axes.semilogx(self.frequencies, self.magnitude,
                       label=self.label(tex=True))
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
-
         axes.semilogx(self.frequencies, self.phase)
 
     def draw(self, *axes):
@@ -205,9 +283,8 @@ class CurrentVoltageTF(TransferFunction):
     def unit_str(self):
         return "(V/A)"
 
-class NoiseSpectrum(SingleDataSet):
+class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Noise data series"""
-
     @property
     def frequencies(self):
         return self.series.x
@@ -245,10 +322,9 @@ class NoiseSpectrum(SingleDataSet):
             return False
         return True
 
-class MultiNoiseSpectrum(DataSet):
-    """Noise data series from multiple sources to a single sink"""
-
-    def __init__(self, spectra, *args, **kwargs):
+class MultiNoiseSpectrum(SingleSinkDataSet):
+    """Set of noise data series from multiple sources to a single sink"""
+    def __init__(self, spectra, label="incoherent sum", *args, **kwargs):
         # use first spectrum to get sink and frequencies
         sink = spectra[0].sink
         frequencies = spectra[0].series.x
@@ -266,16 +342,16 @@ class MultiNoiseSpectrum(DataSet):
         series = [spectrum.series for spectrum in spectra]
 
         # call parent constructor
-        super().__init__(sources=sources, sinks=[sink], series_list=series, *args, **kwargs)
+        super().__init__(sources=sources, sink=sink, series_list=series, *args, **kwargs)
 
         self.noise_names = [spectrum.noise_name for spectrum in spectra]
+        self._label = label
 
     def draw(self, *axes):
         if len(axes) != 1:
             raise ValueError("only one axis supported")
 
         axes = axes[0]
-
         axes.loglog(self.series.x, self.series.y, label=self.label(tex=True))
 
     @property
@@ -290,9 +366,22 @@ class MultiNoiseSpectrum(DataSet):
         # use first series
         return self.series_list[0].x
 
+    def label(self, *args, **kwargs):
+        return self._label
+
+class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
+    """Single sum noise data series from multiple sources to a single sink"""
+    def draw(self, *axes):
+        if len(axes) != 1:
+            raise ValueError("only one axis supported")
+
+        axes = axes[0]
+        axes.loglog(self.series.x, self.series.y, label=self.label(tex=True))
+
     @property
-    def sink(self):
-        return self.sinks[0]
+    def frequencies(self):
+        # use first series
+        return self.series_list[0].x
 
     def label(self, *args, **kwargs):
         return "incoherent sum"

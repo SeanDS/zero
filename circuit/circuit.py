@@ -10,9 +10,31 @@ from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
                          Input, Node)
 from .display import NodeGraph
 
-LOGGER = logging.getLogger("circuit")
+LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
+
+class ElementNotFoundError(Exception):
+    def __init__(self, name, message, *args, **kwargs):
+        # apply name to message
+        message = message % name
+
+        # call parent constructor
+        super().__init__(message, *args, **kwargs)
+
+        self.name = name
+
+class ComponentNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
+
+class NodeNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
+
+class NoiseNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="noise '%s' not found", *args, **kwargs)
 
 class Circuit(object):
     """Represents an electronic circuit containing components.
@@ -154,11 +176,6 @@ class Circuit(object):
         ----------
         component : :class:`str` or :class:`.Component`
             The component to remove.
-        
-        Raises
-        ------
-        ValueError
-            If the component is not in the circuit.
         """
         # remove
         self.components.remove(component)
@@ -178,16 +195,31 @@ class Circuit(object):
 
         Raises
         ------
-        ValueError
+        :class:`ComponentNotFoundError`
             If the component is not found.
         """
-        component_name = component_name.lower()
+        name = component_name.lower()
 
         for component in self.components:
-            if component.name.lower() == component_name:
+            if name == component.name.lower():
                 return component
 
-        raise ValueError("component %s not found" % component_name)
+        raise ComponentNotFoundError(component_name)
+
+    def has_component(self, component_name):
+        """Check if component is present in circuit.
+
+        Parameters
+        ----------
+        component_name : str
+            The name of the component to check.
+
+        Returns
+        -------
+        :class:`bool`
+            True if component exists, False otherwise.
+        """
+        return component_name.lower() in [name.lower() for name in self.component_names]
 
     def get_node(self, node_name):
         """Get circuit node by name.
@@ -204,16 +236,31 @@ class Circuit(object):
 
         Raises
         ------
-        ValueError
+        :class:`NodeNotFoundError`
             If the node is not found.
         """
-        node_name = node_name.lower()
+        name = node_name.lower()
 
         for node in self.nodes:
-            if node.name.lower() == node_name:
+            if name == node.name.lower():
                 return node
 
-        raise ValueError("node %s not found" % node_name)
+        raise NodeNotFoundError(name)
+
+    def has_node(self, node_name):
+        """Check if node is present in circuit.
+
+        Parameters
+        ----------
+        node_name : str
+            The name of the node to check.
+
+        Returns
+        -------
+        :class:`bool`
+            True if node exists, False otherwise.
+        """
+        return node_name.lower() in [name.lower() for name in self.node_names]
 
     def get_noise(self, noise_name):
         """Get noise by component or node name.
@@ -230,16 +277,16 @@ class Circuit(object):
         
         Raises
         ------
-        ValueError
+        :class:`NoiseNotFoundError`
             If the noise is not found.
         """
-        noise_name = noise_name.lower()
+        name = noise_name.lower()
 
         for noise in self.noise_sources:
-            if noise_name == noise.label().lower():
+            if name == noise.label().lower():
                 return noise
         
-        raise ValueError("noise not found")
+        raise NoiseNotFoundError(name)
 
     def _set_default_name(self, component):
         """Set a default name unique to this circuit for the specified component
@@ -282,6 +329,17 @@ class Circuit(object):
             The component names.
         """
         return [component.name for component in self.components]
+
+    @property
+    def node_names(self):
+        """The names of the nodes in the circuit.
+
+        Returns
+        -------
+        :class:`list` of :class:`str`
+            The node names.
+        """
+        return [node.name for node in self.nodes]
 
     @property
     def n_components(self):
@@ -378,6 +436,30 @@ class Circuit(object):
         return [noise for component in self.components for noise in component.noise]
 
     @property
+    def resistor_noise_sources(self):
+        """The resistor noise sources in the circuit.
+
+        Yields
+        ------
+        :class:`.Noise`
+            The resistor noise source.
+        """
+        for resistor in self.resistors:
+            yield from resistor.noise
+
+    @property
+    def opamp_noise_sources(self):
+        """The op-amp noise sources in the circuit.
+
+        Yields
+        ------
+        :class:`.Noise`
+            The op-amp noise source.
+        """
+        for opamp in self.opamps:
+            yield from opamp.noise
+
+    @property
     def input_component(self):
         """The circuit input component.
         
@@ -414,7 +496,7 @@ class Circuit(object):
             return False
 
         return True
-    
+
     def __repr__(self):
         """Circuit text representation"""
         if self.n_components > 1:

@@ -5,13 +5,19 @@ import os
 import logging
 from tempfile import NamedTemporaryFile
 import subprocess
+import shutil
 
+from .base import LisoParserError
 from .output import LisoOutputParser
 
-LOGGER = logging.getLogger("liso")
+LOGGER = logging.getLogger(__name__)
 
 class LisoRunner(object):
     """LISO runner"""
+
+    # LISO binary names, in order of preference
+    LISO_BINARY_NAMES = {"nix": ["fil_static", "fil"], # Linux / OSX
+                         "win": ["fil.exe"]}           # Windows
 
     def __init__(self, script_path=None):
         self.script_path = script_path
@@ -68,14 +74,8 @@ class LisoRunner(object):
         result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
                                 stderr=subprocess.PIPE)
         
-        if result.returncode != 0:
-            # parse LISO error message
-            output = result.stderr.decode("utf-8")
-
-            # LISO reports its error on the final line
-            error_msg = output.splitlines()[-1].strip()
-            
-            raise LisoError(error_msg, script_path=script_path)
+        if result.returncode != 0:            
+            raise LisoError(result.stderr, script_path=script_path)
         
         return result
 
@@ -84,30 +84,43 @@ class LisoRunner(object):
         if self._liso_path is not None:
             return self._liso_path
 
-        # use environment variable
-        try:
-            liso_dir = os.environ["LISO_DIR"]
-        except KeyError:
-            raise Exception("environment variable \"LISO_DIR\" must point to the "
-                            "directory containing the LISO binary")
+        liso_path = None
 
-        return self.find_liso(liso_dir)
+        # try environment variable
+        try:
+            liso_path = self.find_liso(os.environ["LISO_DIR"])
+        except (KeyError, FileNotFoundError):
+            # no environment variable set or LISO not found in specified directory
+            # try searching path
+            for command in self.LISO_BINARY_NAMES[self.platform_key]:
+                path = shutil.which(command)
+                if path is not None:
+                    liso_path = path
+                    break
+
+        if liso_path is None:
+            raise FileNotFoundError("environment variable \"LISO_DIR\" must point to "
+                                    "the directory containing the LISO binary, or the "
+                                    "LISO binary must be available on the system PATH "
+                                    "(and executable)")
+
+        return liso_path
+
+    @property
+    def platform_key(self):
+        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+            return "nix"
+        elif sys.platform.startswith("win32"):
+            return "win"
+        
+        raise EnvironmentError("unrecognised operating system")
 
     @liso_path.setter
     def liso_path(self, path):
         self._liso_path = path
 
-    @staticmethod
-    def find_liso(directory):
-        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
-            # in order of preference
-            filenames = ["fil_static", "fil"]
-        elif sys.platform.startswith("win32"):
-            filenames = ["fil.exe"]
-        else:
-            raise EnvironmentError("unrecognised operating system")
-
-        for filename in filenames:
+    def find_liso(self, directory):
+        for filename in self.LISO_BINARY_NAMES[self.platform_key]:
             path = os.path.join(directory, filename)
 
             if os.path.isfile(path):
@@ -117,6 +130,19 @@ class LisoRunner(object):
 
 class LisoError(Exception):
     def __init__(self, message, script_path=None, *args, **kwargs):
+        """LISO error
+
+        Parameters
+        ----------
+        message : :class:`str` or :class:`bytes`
+            The error message, or `sys.stderr` bytes buffer.
+        script_path : :class:`str`, optional
+            The path to the script that caused the error (used to check for common mistakes).
+        """
+        if isinstance(message, bytes):
+            # decode stderr bytes
+            message = self._parse_liso_error(message.decode("utf-8"))
+
         if script_path is not None:
             if os.path.isfile(script_path):
                 parser = LisoOutputParser()
@@ -126,7 +152,7 @@ class LisoError(Exception):
                     parser.parse(path=script_path)
 
                     is_output = True
-                except IOError:
+                except (IOError, LisoParserError):
                     is_output = False
                 
                 if is_output:
@@ -134,3 +160,15 @@ class LisoError(Exception):
                     message = "{message} (this appears to be a LISO output file)".format(message=message)
 
         super().__init__(message, *args, **kwargs)
+    
+    def _parse_liso_error(self, error_msg):
+        # split into lines
+        lines = error_msg.splitlines()
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith("*** Error:"):
+                # return error
+                return line.lstrip("*** Error:")
+        
+        return "[error message not detected] LISO output:\n%s" % "\n".join(lines)

@@ -93,7 +93,10 @@ class Component(object, metaclass=abc.ABCMeta):
         return self.label()
     
     def __eq__(self, other):
-        return self.name == other.name
+        if hasattr(other, 'name'):
+            return self.name == other.name
+        
+        return False
     
     def __hash__(self):
         """Components uniquely defined by their name"""
@@ -322,6 +325,11 @@ class OpAmp(Component):
                 / np.prod(1 + 1j * frequency / self.params["poles"]))
 
     def inverse_gain(self, *args, **kwargs):
+        """Op-amp inverse gain.
+        
+        Note that the inverse gain may be modified by the analysis, e.g. in the
+        case of a voltage follower (see :meth:`circuit.analysis.ac.BaseAcAnalysis.component_equation`).
+        """
         return 1 / self.gain(*args, **kwargs)
 
     def _noise_voltage(self, component, frequencies):
@@ -474,7 +482,7 @@ class Resistor(PassiveComponent):
 
     @resistance.setter
     def resistance(self, resistance):
-        self.value = float(resistance)
+        self.value = resistance
 
     def impedance(self, *args):
         """The impedance.
@@ -511,7 +519,7 @@ class Capacitor(PassiveComponent):
 
     @capacitance.setter
     def capacitance(self, capacitance):
-        self.value = float(capacitance)
+        self.value = capacitance
 
     def impedance(self, frequency):
         """The impedance.
@@ -544,7 +552,7 @@ class Inductor(PassiveComponent):
 
     @inductance.setter
     def inductance(self, inductance):
-        self.value = float(inductance)
+        self.value = inductance
 
     def impedance(self, frequency):
         """The impedance.

@@ -1,17 +1,112 @@
 # https://git.ligo.org/lscsoft/example-ci-project/wikis/automatically-produce-documentation
 # https://wiki.ligo.org/viewauth/DASWG/GitLigoOrg#Accessing_GitLab_Pages
-pages:
-  image: ligo/software:stretch
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache"
+  LISO_GIT_ARCHIVE_URL: "https://gitlab.aei.uni-hannover.de/api/v4/projects/143/repository/archive?private_token=${LISO_ACCESS_TOKEN}"
+
+cache:
+  paths:
+    - .cache/
+
+stages:
+  - test
+  - deploy
+
+.template:test:unit: &template-test-unit
   script:
-    - python3 --version
-    - apt install --assume-yes python3-pip
-    - pip3 install .[dev]
+    - python --version
+    - apt update -qy
+    - apt install --assume-yes python-pip
+    - pip install .
+    - python tests/runner.py unit 0
+
+.template:test:integration: &template-test-integration
+  script:
+    - python --version
+    - apt update -qy
+    - apt install --assume-yes python-pip
+    - pip install .
+    - python tests/runner.py integration 0
+
+.template:test:validation: &template-test-validation
+  script:
+    - mkdir liso
+    - cd liso
+    - wget -O liso.tar.gz ${LISO_GIT_ARCHIVE_URL}
+    - tar -xvf liso.tar.gz -C . --wildcards liso-linux*/ --strip-components=1
+    - chmod +x fil_static
+    - cd ..
+    - export LISO_DIR=$(pwd)/liso
+    - python --version
+    - apt update -qy
+    - apt install --assume-yes python-pip
+    - pip install .
+    - python tests/runner.py validation 0
+
+.template:deploy:docs: &template-deploy-docs
+  script:
+    - python --version
+    - apt update -qy
+    - apt install --assume-yes python-pip
+    - pip install .[dev]
     - cd docs
     - make html
     - mv _build/html ../public
   artifacts:
     paths:
     - public
+
+test unit:latest:
+  image: python:latest
+  stage: test
+  <<: *template-test-unit
+
+test unit:3.6:
+  image: python:3.6
+  stage: test
+  <<: *template-test-unit
+
+test unit:3.5:
+  image: python:3.5
+  stage: test
+  <<: *template-test-unit
+
+test integration:latest:
+  image: python:latest
+  stage: test
+  <<: *template-test-integration
+
+test integration:3.6:
+  image: python:3.6
+  stage: test
+  <<: *template-test-integration
+
+test integration:3.5:
+  image: python:3.5
+  stage: test
+  <<: *template-test-integration
+
+test validation:latest:
+  image: python:latest
+  stage: test
+  <<: *template-test-validation
+
+test validation:3.6:
+  image: python:3.6
+  stage: test
+  <<: *template-test-validation
+
+test validation:3.5:
+  image: python:3.5
+  stage: test
+  <<: *template-test-validation
+
+# generate the documentation only on creation of new tags or pushes to master branch
+pages:
+  image: python:3.6
+  stage: deploy
   only:
     - tag
     - master
+  <<: *template-deploy-docs

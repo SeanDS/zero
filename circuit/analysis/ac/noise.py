@@ -5,7 +5,7 @@ from .base import BaseAcAnalysis
 from ...components import Node
 from ...data import NoiseSpectrum, Series
 
-LOGGER = logging.getLogger("ac-analysis")
+LOGGER = logging.getLogger(__name__)
 
 class AcNoiseAnalysis(BaseAcAnalysis):
     """Small signal circuit analysis"""

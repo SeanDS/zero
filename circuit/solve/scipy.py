@@ -10,6 +10,12 @@ class ScipySolver(BaseSolver):
     # solver name
     NAME = "scipy-default"
 
+    # default data type
+    # complex64 gives real and imaginary parts each represented as 32-bit floats
+    # with 8 bits exponent and 23 bits mantissa, giving between 6 and 7 digits
+    # of precision; not good enough for comparison to LISO
+    DTYPE = "complex128"
+
     def full(self, dimensions):
         """Create new complex-valued full matrix
 
@@ -25,8 +31,7 @@ class ScipySolver(BaseSolver):
         :class:`~np.ndmatrix`
             full matrix
         """
-
-        return np.zeros(dimensions, dtype="complex64")
+        return np.zeros(dimensions, dtype=self.DTYPE)
 
     def sparse(self, dimensions):
         """Create new complex-valued sparse matrix
@@ -43,11 +48,10 @@ class ScipySolver(BaseSolver):
         :class:`~lil_matrix`
             sparse matrix
         """
-
         # complex64 gives real and imaginary parts each represented as 32-bit floats
         # with 8 bits exponent and 23 bits mantissa, giving between 6 and 7 digits
-        # of precision; good enough for most purposes
-        return lil_matrix(dimensions, dtype="complex128")
+        # of precision; not good enough for comparison to LISO
+        return lil_matrix(dimensions, dtype=self.DTYPE)
 
     def solve(self, A, b):
         """Solve linear system
@@ -64,6 +68,4 @@ class ScipySolver(BaseSolver):
         solution : :class:`~np.ndarray`, :class:`~scipy.sparse.spmatrix`
             x in the equation Ax = b
         """
-
-        # permute specification chosen to minimise error with LISO
-        return spsolve(A, b, permc_spec="MMD_AT_PLUS_A")
+        return spsolve(A, b)

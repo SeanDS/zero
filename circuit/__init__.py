@@ -34,11 +34,10 @@ except ImportError:
     # matplotlib and/or numpy not installed
     pass
 
-def logging_on(level=logging.DEBUG,
-               format_str="%(name)-8s - %(levelname)-8s - %(message)s"):
-    # enable logging to stdout
+def logging_on(level=logging.DEBUG, format_str="%(name)-25s - %(levelname)-8s - %(message)s"):
+    """Enable logging to stdout"""
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(format_str))
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
     logger.addHandler(handler)
     logger.setLevel(level)
