@@ -10,40 +10,26 @@ cache:
     - .cache/
 
 stages:
-  - build
   - test
   - deploy
 
-build pip:
-  stage: build
-  image: ligo/software:stretch
+.template:test:unit: &template-test-unit
   script:
-    - python3 --version
+    - python --version
     - apt update -qy
-    - apt install --assume-yes python3-pip
-    - pip3 install .[dev]
+    - apt install --assume-yes python-pip
+    - pip install .
+    - python tests/runner.py unit 0
 
-test unit:
-  stage: test
-  image: ligo/software:stretch
+.template:test:integration: &template-test-integration
   script:
+    - python --version
     - apt update -qy
-    - apt install --assume-yes python3-pip
-    - pip3 install .[dev]
-    - python3 tests/runner.py unit
+    - apt install --assume-yes python-pip
+    - pip install .
+    - python tests/runner.py integration 0
 
-test integration:
-  stage: test
-  image: ligo/software:stretch
-  script:
-    - apt update -qy
-    - apt install --assume-yes python3-pip
-    - pip3 install .[dev]
-    - python3 tests/runner.py integration
-
-test validation:
-  stage: test
-  image: ligo/software:stretch
+.template:test:validation: &template-test-validation
   script:
     - mkdir liso
     - cd liso
@@ -52,26 +38,75 @@ test validation:
     - chmod +x fil_static
     - cd ..
     - export LISO_DIR=$(pwd)/liso
+    - python --version
     - apt update -qy
-    - apt install --assume-yes python3-pip
-    - pip3 install .[dev]
-    - python3 tests/runner.py validation 0
+    - apt install --assume-yes python-pip
+    - pip install .
+    - python tests/runner.py validation 0
 
-# generate the documentation, only on creation of new tags or pushes to master branch
-# https://docs.gitlab.com/ee/ci/yaml/#pages
-pages:
-  stage: deploy
-  image: ligo/software:stretch
+.template:deploy:docs: &template-deploy-docs
   script:
+    - python --version
     - apt update -qy
-    - apt install --assume-yes python3-pip
-    - pip3 install .[dev]
+    - apt install --assume-yes python-pip
+    - pip install .[dev]
     - cd docs
     - make html
     - mv _build/html ../public
   artifacts:
     paths:
     - public
+
+test unit:latest:
+  image: python:latest
+  stage: test
+  <<: *template-test-unit
+
+test unit:3.6:
+  image: python:3.6
+  stage: test
+  <<: *template-test-unit
+
+test unit:3.5:
+  image: python:3.5
+  stage: test
+  <<: *template-test-unit
+
+test integration:latest:
+  image: python:latest
+  stage: test
+  <<: *template-test-integration
+
+test integration:3.6:
+  image: python:3.6
+  stage: test
+  <<: *template-test-integration
+
+test integration:3.5:
+  image: python:3.5
+  stage: test
+  <<: *template-test-integration
+
+test validation:latest:
+  image: python:latest
+  stage: test
+  <<: *template-test-validation
+
+test validation:3.6:
+  image: python:3.6
+  stage: test
+  <<: *template-test-validation
+
+test validation:3.5:
+  image: python:3.5
+  stage: test
+  <<: *template-test-validation
+
+# generate the documentation only on creation of new tags or pushes to master branch
+pages:
+  image: python:3.6
+  stage: deploy
   only:
     - tag
     - master
+  <<: *template-deploy-docs
