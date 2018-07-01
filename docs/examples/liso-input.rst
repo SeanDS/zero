@@ -13,7 +13,7 @@ then create a parser object:
 
     parser = LisoInputParser()
 
-To parse a LISO circuit, either call the `parse` method with text:
+To parse a LISO circuit, either call the :meth:`~.LisoParser.parse` method with text:
 
 .. code:: python
 
@@ -30,13 +30,13 @@ To parse a LISO circuit, either call the `parse` method with text:
     uoutput nout:db:deg
     """)
 
-Or point it to a file using the `path` parameter:
+Or point it to a file using the :code:`path` parameter:
 
 .. code:: python
 
     parser.parse(path="/path/to/liso/script.fil")
 
-Plot the result with `show`:
+Plot the result with :meth:`~.LisoParser.show`:
 
 .. code:: python
 

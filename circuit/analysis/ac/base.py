@@ -310,7 +310,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     def node_equation(self, node):
         """Equation representing circuit node
 
-        This should be called after :method:`set_up_sources_and_sinks`.
+        This should be called after :meth:`set_up_sources_and_sinks`.
         """
 
         # nodal current equation coefficients

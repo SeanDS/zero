@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # circuit.py documentation build configuration file, created by
@@ -37,6 +36,7 @@ import circuit
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.autosectionlabel',
     'sphinx.ext.intersphinx',
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
@@ -126,6 +126,10 @@ pygments_style = 'sphinx'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# -- Options for auto section labelling -----------------------------------
+# Prefix each section label with the name the document is in.
+autosectionlabel_prefix_document = True
 
 
 # -- Options for HTML output ----------------------------------------------

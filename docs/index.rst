@@ -25,9 +25,13 @@ Contents
    :maxdepth: 2
 
    introduction/index
+   circuit/index
    components/index
    analyses/index
-   api/index
+   solution/index
+   data/index
+   format/index
    examples/index
    liso/index
+   API reference <api/modules>
    contributing/index
