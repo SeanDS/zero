@@ -2,16 +2,22 @@
 the results. If no file is specified, "liso1.out" is used."""
 
 import sys
+import os
+
 from circuit.liso import LisoOutputParser
 
-# parse liso filename, if present
-if len(sys.argv) > 1:
-    filename = sys.argv[1]
-else:
-    filename = "liso1.out"
+if __name__ == "__main__":
+    # parse liso filename, if present
+    if len(sys.argv) > 1:
+        filename = sys.argv[1]
+    else:
+        filename = "liso1.out"
 
-# parse output file
-parser = LisoOutputParser()
-parser.parse(path=filename)
-# show results
-parser.show()
+    # convert to file filename
+    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), filename)
+
+    # parse output file
+    parser = LisoOutputParser()
+    parser.parse(path=filename)
+    # show results
+    parser.show()
