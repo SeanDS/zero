@@ -4,8 +4,7 @@ import logging
 import numpy as np
 
 from ..solution import Solution
-from ..data import (Series, VoltageVoltageTF, VoltageCurrentTF, CurrentVoltageTF,
-                    CurrentCurrentTF, NoiseSpectrum, SumNoiseSpectrum)
+from ..data import (Series, TransferFunction, NoiseSpectrum, SumNoiseSpectrum)
 from ..format import Quantity
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
@@ -189,28 +188,33 @@ class LisoOutputParser(LisoParser):
             # create appropriate transfer function depending on analysis
             if self.input_type == "voltage":
                 source = self.input_node_p
+                source_unit = "V"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                    function = VoltageVoltageTF(series=series, source=source, sink=sink)
+                    sink_unit = "V"
                 elif tf_output.output_type == "current":
                     sink = self.circuit.get_component(tf_output.component)
-                    function = VoltageCurrentTF(series=series, source=source, sink=sink)
+                    sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self.circuit.get_component("input")
+                source_unit = "A"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                    function = CurrentVoltageTF(series=series, source=source, sink=sink)
+                    sink_unit = "V"
                 elif tf_output.output_type == "current":
                     sink = self.circuit.get_component(tf_output.component)
-                    function = CurrentCurrentTF(series=series, source=source, sink=sink)
+                    sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             else:
                 raise ValueError("invalid input type")
+
+            function = TransferFunction(series=series, source=source, source_unit=source_unit,
+                                        sink=sink, sink_unit=sink_unit)
 
             self._solution.add_tf(function)
 

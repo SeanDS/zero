@@ -177,9 +177,11 @@ class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
 
 class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing data for a single source"""
-    def __init__(self, source, *args, **kwargs):
+    def __init__(self, source, source_unit=None, *args, **kwargs):
         # call parent constructor
         super().__init__(sources=[source], *args, **kwargs)
+
+        self.source_unit = source_unit
 
     @property
     def source(self):
@@ -187,15 +189,17 @@ class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
 
 class SingleSinkDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing data for a single sink"""
-    def __init__(self, sink, *args, **kwargs):
+    def __init__(self, sink, sink_unit=None, *args, **kwargs):
         # call parent constructor
         super().__init__(sinks=[sink], *args, **kwargs)
+
+        self.sink_unit = sink_unit
 
     @property
     def sink(self):
         return self.sinks[0]
 
-class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet, metaclass=abc.ABCMeta):
+class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Transfer function data series"""
     @property
     def frequencies(self):
@@ -227,16 +231,25 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
 
     def label(self, tex=False):
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$ %s"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$ \(%s\)"
         else:
-            format_str = "%s to %s %s"
+            format_str = "%s to %s (%s)"
 
         return format_str % (self.source.label(), self.sink.label(), self.unit_str)
 
     @property
-    @abc.abstractmethod
     def unit_str(self):
-        return NotImplemented
+        if self.sink_unit is None and self.source_unit is None:
+            return "dimensionless"
+        elif self.sink_unit is None:
+            # only source has unit
+            return "1/%s" % self.source_unit
+        elif self.source_unit is None:
+            # only sink has unit
+            return self.sink_unit
+
+        # both have units
+        return "%s/%s" % (self.sink_unit, self.source_unit)
 
     def __eq__(self, other):
         if self.label() != other.label():
@@ -254,34 +267,6 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
                          other.magnitude[worst_i])
             return False
         return True
-
-class VoltageVoltageTF(TransferFunction):
-    """Voltage to voltage transfer function data series"""
-
-    @property
-    def unit_str(self):
-        return "(V/V)"
-
-class VoltageCurrentTF(TransferFunction):
-    """Voltage to current transfer function data series"""
-
-    @property
-    def unit_str(self):
-        return "(A/V)"
-
-class CurrentCurrentTF(TransferFunction):
-    """Current to current transfer function data series"""
-
-    @property
-    def unit_str(self):
-        return "(A/A)"
-
-class CurrentVoltageTF(TransferFunction):
-    """Current to voltage transfer function data series"""
-
-    @property
-    def unit_str(self):
-        return "(V/A)"
 
 class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Noise data series"""

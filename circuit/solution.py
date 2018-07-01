@@ -1,16 +1,13 @@
 """Plotting functions for solutions to simulations"""
 
 import logging
+import collections
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
-import abc
-import collections
 
 from .config import CircuitConfig
-from .data import (TransferFunction, VoltageVoltageTF, VoltageCurrentTF,
-                   CurrentCurrentTF, CurrentVoltageTF, NoiseSpectrum,
-                   MultiNoiseSpectrum, SumNoiseSpectrum, Series)
+from .data import TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, SumNoiseSpectrum
 from .components import Component, Node, Noise
 
 LOGGER = logging.getLogger(__name__)
@@ -116,7 +113,7 @@ class Solution(object):
         for source in self.tf_sources:
             if source_name == source.name.lower():
                 return source
-        
+
         raise ValueError("signal source '%s' not found" % source_name)
 
     @property
@@ -147,7 +144,7 @@ class Solution(object):
         for sink in self.tf_sinks:
             if sink_name == sink.name.lower():
                 return sink
-        
+
         raise ValueError("signal sink '%s' not found" % sink_name)
 
     @property
@@ -164,7 +161,7 @@ class Solution(object):
         for source in self.noise_sources:
             if source_name == source.label().lower():
                 return source
-        
+
         raise ValueError("noise source '%s' not found" % source_name)
 
     @property
@@ -195,7 +192,7 @@ class Solution(object):
         for sink in self.noise_sinks:
             if sink_name == sink.name.lower():
                 return sink
-        
+
         raise ValueError("noise sink '%s' not found" % sink_name)
 
     @property
@@ -238,7 +235,7 @@ class Solution(object):
                 else:
                     if not isinstance(source, (Component, Node)):
                         raise ValueError("signal source '%s' is not a component or node" % source)
-                    
+
                     source_elements.append(source)
 
         if isinstance(sinks, str):
@@ -257,7 +254,7 @@ class Solution(object):
                 else:
                     if not isinstance(sink, (Component, Node)):
                         raise ValueError("signal sink '%s' is not a component or node" % sink)
-                    
+
                     sink_elements.append(sink)
 
         # filter transfer functions
@@ -283,7 +280,7 @@ class Solution(object):
                 else:
                     if not isinstance(source, Noise):
                         raise ValueError("noise source '%s' is not a noise source" % source)
-                    
+
                     source_elements.append(source)
 
         if isinstance(sinks, str):
@@ -302,7 +299,7 @@ class Solution(object):
                 else:
                     if not isinstance(sink, Node):
                         raise ValueError("noise sink '%s' is not a node" % sink)
-                    
+
                     sink_elements.append(sink)
 
         # filter noise spectra
@@ -414,7 +411,7 @@ class Solution(object):
             by :class:`MultiNoiseSpectrum`.
         title : :class:`str`, optional
             Plot title.
-        
+
         Returns
         -------
         :class:`plt.figure`
