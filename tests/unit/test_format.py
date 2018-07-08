@@ -4,21 +4,22 @@ from unittest import TestCase
 
 from circuit.format import Quantity
 
-class QuantityInitTestCase(TestCase):
-    def setUp(self):
-        pass
-
-    def test_float(self):
+class QuantityParserTestCase(TestCase):
+    """Quantity parsing tests"""
+    def test_float_values(self):
+        """Test parsing of float quantities"""
         self.assertAlmostEqual(Quantity(1.23), 1.23)
         self.assertAlmostEqual(Quantity(5.3e6), 5.3e6)
         self.assertAlmostEqual(Quantity(-765e3), -765e3)
-    
-    def test_str(self):
+
+    def test_string_values(self):
+        """Test parsing of string quantities"""
         self.assertAlmostEqual(Quantity("1.23"), 1.23)
         self.assertAlmostEqual(Quantity("-765e3"), -765e3)
         self.assertAlmostEqual(Quantity("6.3e-2.3"), 6.3 * 10 ** -2.3)
-        
-        # SI scales
+
+    def test_string_values_with_si_scales(self):
+        """Test parsing of string quantities with SI scales"""
         self.assertAlmostEqual(Quantity("1.23y"), 1.23e-24)
         self.assertAlmostEqual(Quantity("1.23z"), 1.23e-21)
         self.assertAlmostEqual(Quantity("1.23a"), 1.23e-18)
@@ -37,7 +38,8 @@ class QuantityInitTestCase(TestCase):
         self.assertAlmostEqual(Quantity("1.23Z"), 1.23e21)
         self.assertAlmostEqual(Quantity("1.23Y"), 1.23e24)
 
-        # units
+    def test_string_values_with_units_and_si_scales(self):
+        """Test parsing of string quantities with units and SI scales"""
         q = Quantity("1.23")
         self.assertAlmostEqual(q, 1.23)
         self.assertEqual(q.unit, None)
@@ -53,9 +55,9 @@ class QuantityInitTestCase(TestCase):
         q = Quantity("4.88MΩ")
         self.assertAlmostEqual(q, 4.88e6)
         self.assertEqual(q.unit, "Ω")
-    
+
     def test_copy(self):
-        """Copy constructor"""
+        """Test quantity copy constructor"""
         q = Quantity("1.23MHz")
         # objects (floats) equal
         self.assertEqual(q, Quantity(q))
@@ -64,22 +66,22 @@ class QuantityInitTestCase(TestCase):
         # strings equal
         self.assertEqual(str(q), str(Quantity(q)))
 
-class QuantityFormatTestCase(TestCase):
-    def setUp(self):
-        pass
-
+class QuantityFormatterTestCase(TestCase):
+    """Quantity formatting tests"""
     def test_default_format(self):
+        """Test default quantities format"""
         # default precision is 4
         self.assertEqual(Quantity(1.23).format(), "1.2300")
         self.assertEqual(Quantity("4.56k").format(), "4.5600k")
         self.assertEqual(Quantity("7.89 M").format(), "7.8900M")
         self.assertEqual(Quantity("1.01 GHz").format(), "1.0100 GHz")
-    
+
     def test_unit_format(self):
+        """Test quantities with units format"""
         # SI scale and unit, default precision
         self.assertEqual(Quantity("1.01 GHz").format(show_unit=True, show_si=True), "1.0100 GHz")
         self.assertEqual(Quantity("1.01 nHz").format(show_unit=True, show_si=True), "1.0100 nHz")
-        
+
         # SI scale, but no unit, default precision
         self.assertEqual(Quantity("1.01 MHz").format(show_unit=False, show_si=True), "1.0100M")
         self.assertEqual(Quantity("1.01 uHz").format(show_unit=False, show_si=True), "1.0100µ")
@@ -91,7 +93,7 @@ class QuantityFormatTestCase(TestCase):
         # no unit nor SI scale, default precision
         self.assertEqual(Quantity("1.01 THz").format(show_unit=False, show_si=False), "1.0100e12")
         self.assertEqual(Quantity("1.01 pHz").format(show_unit=False, show_si=False), "1.0100e-12")
-    
+
         # SI scale and unit, 0 decimal places
         self.assertEqual(Quantity("1.01 GHz").format(show_unit=True, show_si=True, precision=0), "1 GHz")
         self.assertEqual(Quantity("1.01 nHz").format(show_unit=True, show_si=True, precision=0), "1 nHz")
@@ -103,7 +105,7 @@ class QuantityFormatTestCase(TestCase):
         # unit, but no SI scale, 2 decimal places
         self.assertEqual(Quantity("1.01 GHz").format(show_unit=True, show_si=False, precision=2), "1.01e9 Hz")
         self.assertEqual(Quantity("1.01 nHz").format(show_unit=True, show_si=False, precision=2), "1.01e-9 Hz")
-        
+
         # no unit nor SI scale, 3 decimal places
         self.assertEqual(Quantity("1.01 GHz").format(show_unit=False, show_si=False, precision=3), "1.010e9")
         self.assertEqual(Quantity("1.01 nHz").format(show_unit=False, show_si=False, precision=3), "1.010e-9")
@@ -124,7 +126,7 @@ class QuantityFormatTestCase(TestCase):
         # SI scale, but no unit, full precision
         self.assertEqual(Quantity("12.3456 GHz").format(show_unit=False, show_si=True, precision="full"), "12.3456G")
         self.assertEqual(Quantity("12.3456 nHz").format(show_unit=False, show_si=True, precision="full"), "12.3456n")
-        
+
         # unit, but no SI scale, full precision
         self.assertEqual(Quantity("123.456789 GHz").format(show_unit=True, show_si=False, precision="full"), "123.456789e9 Hz")
         self.assertEqual(Quantity("123.456789 nHz").format(show_unit=True, show_si=False, precision="full"), "123.456789e-9 Hz")
@@ -133,7 +135,7 @@ class QuantityFormatTestCase(TestCase):
         self.assertEqual(Quantity("123456.789 GHz").format(show_unit=True, show_si=False, precision="full"), "123.456789e12 Hz")
         self.assertEqual(Quantity("123456.789 nHz").format(show_unit=True, show_si=False, precision="full"), "123.456789e-6 Hz")
         self.assertEqual(Quantity("0.00123456789 nHz").format(show_unit=True, show_si=False, precision="full"), "1.23456789e-12 Hz")
-        
+
         # no unit nor SI scale, full precision
         self.assertEqual(Quantity("123.4567890123 GHz").format(show_unit=False, show_si=False, precision="full"), "123.4567890123e9")
         self.assertEqual(Quantity("123.4567890123 nHz").format(show_unit=False, show_si=False, precision="full"), "123.4567890123e-9")

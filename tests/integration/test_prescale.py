@@ -7,10 +7,12 @@ from circuit import Circuit
 from circuit.analysis import AcSignalAnalysis, AcNoiseAnalysis
 
 class PrescaleTestCase(TestCase):
+    """Matrix prescaling tests"""
     def setUp(self):
         self.f = np.logspace(0, 5, 300)
 
     def test_ac_signal_analysis(self):
+        """Test prescaled AC signal analysis results equal non-prescaled results"""
         circuit = Circuit()
         circuit.add_input(input_type="voltage", node="n1")
         circuit.add_resistor(value="10k", node1="n1", node2="n2")
@@ -28,6 +30,7 @@ class PrescaleTestCase(TestCase):
         self.assertEqual(analysis_unscaled.solution, analysis_scaled.solution)
 
     def test_ac_noise_analysis(self):
+        """Test prescaled AC noise analysis results equal non-prescaled results"""
         circuit = Circuit()
         circuit.add_input(input_type="noise", impedance="50", node="n1")
         circuit.add_resistor(value="10k", node1="n1", node2="n2")

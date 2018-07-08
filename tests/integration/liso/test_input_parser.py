@@ -1,18 +1,22 @@
+"""LISO input parser tests"""
+
 import unittest
-import numpy as np
 
 from circuit.liso import LisoInputParser, LisoParserError
 
 class LisoInputParserTestCase(unittest.TestCase):
+    """Base test case class for input parser"""
     def setUp(self):
         self.reset()
 
     def reset(self):
+        """Reset input parser"""
         self.parser = LisoInputParser()
 
 class VoltageOutputTestCase(LisoInputParserTestCase):
     """Voltage output command tests"""
     def test_invalid_output_node(self):
+        """Test nonexistent output node"""
         self.parser.parse("""
 r r1 1k n1 n2
 uinput n1
@@ -25,6 +29,7 @@ uoutput n3
                                self.parser.solution)
 
     def test_output_all(self):
+        """Test output all node and component voltages"""
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -50,6 +55,7 @@ uoutput no all
         self.assertEqual(8, self.parser.n_tf_outputs)
 
     def test_output_allop(self):
+        """Test output all op-amp node and component voltages"""
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -77,6 +83,7 @@ uoutput no ni allop
 class CurrentOutputTestCase(LisoInputParserTestCase):
     """Current output command tests"""
     def test_invalid_output_node(self):
+        """Test nonexistent output component"""
         self.parser.parse("""
 r r1 1k n1 n2
 uinput n1
@@ -89,6 +96,7 @@ ioutput r2
                                self.parser.solution)
 
     def test_output_all(self):
+        """Test output all component currents"""
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -114,6 +122,7 @@ ioutput load all
         self.assertEqual(16, self.parser.n_tf_outputs)
 
     def test_output_allop(self):
+        """Test output all op-amp currents"""
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -141,6 +150,7 @@ ioutput load ri1 allop
 class NoiseOutputTestCase(LisoInputParserTestCase):
     """Noise output command tests"""
     def test_invalid_noise_output_node(self):
+        """Test nonexistent noise output node"""
         self.parser.parse("""
 r r1 1k n1 n2
 uinput n1
@@ -153,6 +163,7 @@ noise n3 all
                                self.parser.solution)
 
     def test_invalid_noisy_node(self):
+        """Test nonexistent noisy node"""
         self.parser.parse("""
 r r1 1k n1 n2
 uinput n1
@@ -179,6 +190,7 @@ noisy r2
                                self.parser.solution)
 
     def test_output_all(self):
+        """Test output all node and component noise"""
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1
@@ -205,6 +217,7 @@ noise no r1 r2 all
 
 
     def test_output_allop(self):
+        """Test output all op-amp node and component noise"""
         self.parser.parse("""
 c c1 270.88486n nm2 no
 c c2 7.516u no3 np1

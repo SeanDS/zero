@@ -1,4 +1,4 @@
-"""Circuit tests"""
+"""AC noise analysis tests"""
 
 from unittest import TestCase
 import numpy as np
@@ -8,6 +8,7 @@ from circuit import Circuit
 from circuit.components import Node
 
 class AcNoiseAnalysisTestCase(TestCase):
+    """AC noise analysis tests"""
     def setUp(self):
         self.circuit = Circuit()
         self.default_f = np.logspace(0, 5, 1000)
@@ -19,14 +20,17 @@ class AcNoiseAnalysisTestCase(TestCase):
         return {"circuit": self.circuit, "frequencies": self.default_f, "node": self.default_node}
 
     def default_analysis(self):
+        """Default analysis"""
         return AcNoiseAnalysis(**self.default_params)
 
     def test_input(self):
+        """Test set noise input"""
         self.circuit.add_input(input_type="noise", node="nin", impedance=152.6)
         analysis = self.default_analysis()
         self.assertEqual(analysis.node, self.default_node)
 
     def test_invalid_input(self):
-        """When noise analysis made, input type must be noise"""
+        """Test input type must be 'noise' for noise analysis"""
         self.circuit.add_input(input_type="voltage", node="nin")
-        self.assertRaisesRegex(ValueError, r"circuit input type must be 'noise'", self.default_analysis)
+        self.assertRaisesRegex(ValueError, r"circuit input type must be 'noise'",
+                               self.default_analysis)
