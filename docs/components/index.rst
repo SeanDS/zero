@@ -34,18 +34,38 @@ produce noise, whereas :class:`resistors <.Resistor>` do (:class:`Johnson noise 
 Setting a component's value
 ---------------------------
 
-A passive component's :attr:`~.PassiveComponent.value`
-may be altered. The type may be :class:`int` or :class:`float` to directly
-specify the numerical value, or alternatively an SI formatted string may be
-provided, e.g.:
+A passive component's :attr:`~.PassiveComponent.value` may be altered. First, you must have a
+reference to the component object:
 
-* :code:`1.1k`
-* :code:`2.2nF`
-* :code:`1e-9 Hz`
-* :code:`6.4 kHz`
+.. code:: python
 
-The provided string will be parsed by :class:`.Quantity` into an appropriate :class:`float`
-representation.
+    c1 = circuit.get_component("c1")
+
+You can then set the value using the object's :attr:`~.PassiveComponent.value` attribute:
+
+.. code:: python
+
+    # string
+    c1.value = "1u"
+
+In the above example, the string is parsed parsed by :class:`.Quantity` into an appropriate
+:class:`float` representation. You may also specify a :class:`float` or :class:`int` directly:
+
+.. code:: python
+
+    # float
+    c1.value = 1e-6
+
+You may also provide a string with units or scales:
+
+.. code:: python
+
+    # string with scale factor and unit
+    c1.value = "2.2nF"
+
+The above value is parsed as ``2.2e-9``, with unit ``F``. The unit is stored alongside the numeric
+part within the object, and the unit will be printed alongside the component's value when it is
+displayed.
 
 .. toctree::
     :maxdepth: 2
