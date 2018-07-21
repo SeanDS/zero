@@ -51,7 +51,7 @@ class Circuit(object):
     """
 
     # disallowed component names
-    RESERVED_NAMES = ["all", "sum"]
+    RESERVED_NAMES = ["all", "allop", "allr", "sum"]
 
     def __init__(self):
         # empty lists of components and nodes
@@ -60,7 +60,7 @@ class Circuit(object):
     @property
     def nodes(self):
         """Circuit nodes, including ground if present.
-        
+
         Returns
         -------
         :class:`set` of :class:`.Node`
@@ -82,7 +82,7 @@ class Circuit(object):
     @property
     def elements(self):
         """Circuit nodes and components.
-        
+
         Yields
         ------
         :class:`.Node`
@@ -153,7 +153,7 @@ class Circuit(object):
 
     def add_library_opamp(self, model, **kwargs):
         """Add library op-amp to circuit.
-        
+
         Keyword arguments can be used to override individual library parameters.
 
         Parameters
@@ -269,12 +269,12 @@ class Circuit(object):
         ----------
         noise_name : :class:`str`
             The name of the noise to fetch.
-        
+
         Returns
         -------
         :class:`Noise`
             The noise.
-        
+
         Raises
         ------
         :class:`NoiseNotFoundError`
@@ -285,12 +285,12 @@ class Circuit(object):
         for noise in self.noise_sources:
             if name == noise.label().lower():
                 return noise
-        
+
         raise NoiseNotFoundError(name)
 
     def _set_default_name(self, component):
         """Set a default name unique to this circuit for the specified component
-        
+
         Parameters
         ----------
         component : :class:`Component`
@@ -309,7 +309,7 @@ class Circuit(object):
             # next attempt
             count += 1
             new_name = "{base}{count}".format(base=base, count=count)
-    
+
         # set new name
         component.name = new_name
 
@@ -399,7 +399,7 @@ class Circuit(object):
     @property
     def passive_components(self):
         """The circuit passive components.
-        
+
         Yields
         ------
         :class:`.Resistor`
@@ -462,7 +462,7 @@ class Circuit(object):
     @property
     def input_component(self):
         """The circuit input component.
-        
+
         Returns
         -------
         :class:`.Input`
@@ -473,7 +473,7 @@ class Circuit(object):
     @property
     def input_impedance(self):
         """The circuit input impedance.
-        
+
         Returns
         -------
         :class:`float`
@@ -484,7 +484,7 @@ class Circuit(object):
     @property
     def has_input(self):
         """Whether the circuit has an input.
-        
+
         Returns
         -------
         :class:`bool`
@@ -511,7 +511,7 @@ class Circuit(object):
 
         text = "Circuit with {n_cmps} {cmp_str} and {n_nodes} {node_str}".format(
             n_cmps=self.n_components, cmp_str=cmp_str, n_nodes=self.n_nodes, node_str=node_str)
-        
+
         if self.n_components > 0:
             text += "\n"
 

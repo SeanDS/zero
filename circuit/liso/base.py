@@ -7,7 +7,7 @@ import logging
 from ply import lex, yacc
 import numpy as np
 
-from ..circuit import Circuit, ComponentNotFoundError, NoiseNotFoundError
+from ..circuit import Circuit, ComponentNotFoundError
 from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..format import Quantity
@@ -459,36 +459,6 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                                    node_p=node_p, node_n=node_n,
                                    impedance=impedance)
 
-    def _get_noise_sources(self, definitions):
-        """Get noise objects for the specified raw noise defintions"""
-        sources = []
-
-        # create noise source objects
-        for definition in definitions:
-            component = self.circuit.get_component(definition[0])
-
-            if len(definition) > 1:
-                # op-amp noise type specified
-                type_str = definition[1].lower()
-
-                if type_str in ["u", "0"]:
-                    noise = component.voltage_noise
-                elif type_str in ["+", "i+", "1"]:
-                    # non-inverting input current noise
-                    noise = component.non_inv_current_noise
-                elif type_str in ["-", "i-", "2"]:
-                    # inverting input current noise
-                    noise = component.inv_current_noise
-                else:
-                    self.p_error("unrecognised op-amp noise source '%s'" % definition[1])
-
-                # add noise source
-                sources.append(noise)
-            else:
-                # get all of the component's noise sources
-                sources.extend(component.noise)
-
-        return sources
 
 class LisoOutputElement(object, metaclass=abc.ABCMeta):
     """LISO output element"""

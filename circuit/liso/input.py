@@ -4,6 +4,7 @@ import logging
 import numpy as np
 
 from ..format import Quantity
+from ..components import OpAmp, NoiseNotFoundError
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
 LOGGER = logging.getLogger(__name__)
@@ -72,16 +73,6 @@ class LisoInputParser(LisoParser):
         self._output_all_opamps = False
         self._output_all_opamps_scales = None
 
-        # noise source flags
-        self._source_all_components = False
-        self._source_all_opamps = False
-        self._source_all_resistors = False
-
-        # noisy source flags
-        self._noisy_all_components = False
-        self._noisy_all_opamps = False
-        self._noisy_all_resistors = False
-
         # raw noise source lists
         self._noise_defs = [] # displayed noise
         self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
@@ -133,40 +124,106 @@ class LisoInputParser(LisoParser):
                                          scales=self._output_all_opamps_scales)
                 self.add_tf_output(sink)
 
+    def _get_noise_sources(self, definitions):
+        """Get noise objects for the specified raw noise defintions"""
+        sources = set()
+
+        for definition in definitions:
+            if len(definition) > 2:
+                self.p_error("unexpected extra ':'")
+
+            component_name = definition[0].lower()
+
+            if len(definition) > 1:
+                suffix = definition[1]
+            else:
+                # no suffices specified
+                suffix = None
+
+            if component_name == "all":
+                # show all noise sources
+                for component in self.circuit.components:
+                    if isinstance(component, OpAmp):
+                        sources.update(self._get_component_noise(component, suffix))
+                    else:
+                        sources.update(self._get_component_noise(component))
+            elif component_name == "allop":
+                # show all op-amp noise sources
+                for opamp in self.circuit.opamps:
+                    sources.update(self._get_component_noise(opamp, suffix))
+            elif component_name == "allr":
+                # show all resistor noise sources
+                if suffix is not None:
+                    self.p_error("cannot specify suffix '%s' for 'allr'" % suffix)
+
+                for resistor in self.circuit.resistors:
+                    sources.update(self._get_component_noise(resistor))
+            elif component_name == "sum":
+                # show sum of circuit noises
+                self._noise_sum_requested = True
+            else:
+                # individual component
+                component = self.circuit.get_component(component_name)
+                sources.update(self._get_component_noise(component, suffix))
+
+        return sources
+
+    def _get_component_noise(self, component, suffix=None):
+        """Get noise list from specified component given the optionally specified suffix"""
+        if suffix is not None:
+            if not isinstance(component, OpAmp):
+                self.p_error("noise suffices cannot be specified on non-op-amps")
+
+            noise = []
+
+            for character in suffix:
+                lchar = character.lower()
+
+                if lchar == "u":
+                    # voltage noise source
+                    try:
+                        noise.append(component.voltage_noise)
+                    except NoiseNotFoundError:
+                        # noise not found
+                        pass
+                elif lchar == "+":
+                    # non-inverting input current noise
+                    try:
+                        noise.append(component.non_inv_current_noise)
+                    except NoiseNotFoundError:
+                        # noise not found
+                        pass
+                elif lchar == "-":
+                    # inverting input current noise
+                    try:
+                        noise.append(component.inv_current_noise)
+                    except NoiseNotFoundError:
+                        # noise not found
+                        pass
+                else:
+                    self.p_error("unrecognised op-amp noise suffix '%s'" % character)
+        else:
+            # all noise sources
+            noise = component.noise
+
+        return noise
+
     @property
     def displayed_noise_sources(self):
         """Noise sources to be plotted"""
-        sources = set(self._get_noise_sources(self._noise_defs))
-
-        if self._source_all_components:
-            # show all noise sources
-            sources.update(self.circuit.noise_sources)
-        elif self._source_all_opamps:
-            # show all op-amp noise sources
-            sources.update(self.circuit.opamp_noise_sources)
-        elif self._source_all_resistors:
-            # show all resistor noise sources
-            sources.update(self.circuit.resistor_noise_sources)
-
-        return sources
+        return self._get_noise_sources(self._noise_defs)
 
     @property
     def summed_noise_sources(self):
         """Noise sources included in the sum column"""
-        sum_sources = set(self._get_noise_sources(self._noisy_extra_defs))
+        # check "sum" is not present in noisy definitions
+        if "sum" in [definition[0].split(":")[0] for definition in self._noisy_extra_defs]:
+            self.p_error("cannot specify 'sum' as noisy source")
+
+        sum_sources = self._get_noise_sources(self._noisy_extra_defs)
 
         # add displayed noise sources if not already present
         sum_sources.update(self.displayed_noise_sources)
-
-        if self._noisy_all_components:
-            # show all noise sources
-            sum_sources.update(self.circuit.noise_sources)
-        elif self._noisy_all_opamps:
-            # show all op-amp noise sources
-            sum_sources.update(self.circuit.opamp_noise_sources)
-        elif self._noisy_all_resistors:
-            # show all resistor noise sources
-            sum_sources.update(self.circuit.resistor_noise_sources)
 
         return sum_sources
 
@@ -201,7 +258,7 @@ class LisoInputParser(LisoParser):
     def t_CHUNK(self, t):
         # allow "-" only after first character, for parsing e.g. frequencies but not
         # negative numbers
-        r'[a-zA-Z0-9_=.:][a-zA-Z0-9_=.:\-]*'
+        r'[a-zA-Z0-9_=.:][a-zA-Z0-9_=.:+\-]*'
         # check if chunk is a keyword
         t.type = self.reserved.get(t.value.lower(), 'CHUNK')
         return t
@@ -276,9 +333,11 @@ class LisoInputParser(LisoParser):
         self._parse_current_output(p[2])
 
     def p_noise(self, p):
-        '''instruction : NOISE chunks end'''
+        '''instruction : NOISE CHUNK chunks end'''
+        noise_str = p[2] + " " + p[3]
+
         # parse noise node
-        self._parse_noise_output(p[2])
+        self._parse_noise_output(noise_str)
 
     def p_noisy(self, p):
         '''instruction : NOISY chunks end'''
@@ -299,8 +358,12 @@ class LisoInputParser(LisoParser):
         if p:
             if hasattr(p, 'value'):
                 # parser object
-                # check for unexpected new line
-                if p.value.startswith("\n"):
+                # check for unexpected new line or end of file
+                if p.type == "EOF":
+                    message = "unexpected end of file"
+                    # compensate for mistaken newline
+                    lineno -= 1
+                elif p.value.startswith("\n"):
                     message = "unexpected end of line"
                     # compensate for mistaken newlines
                     lineno -= p.value.count("\n")
@@ -481,32 +544,20 @@ class LisoInputParser(LisoParser):
         # noise output
         self.noise_output_node = params[0]
 
-        if len(params) > 1:
-            # parse noise sources
-            for source_str in params[1:]:
-                # strip any remaining whitespace
-                source_str = source_str.strip()
+        # parse noise sources
+        for source_str in params[1:]:
+            # strip any remaining whitespace
+            source_str = source_str.strip()
 
-                # split off op-amp port settings
-                source_pieces = source_str.split(":")
+            # split off op-amp port settings
+            source_pieces = source_str.split(":")
 
-                component_name = source_pieces[0].lower()
+            if len(source_pieces) > 2:
+                # too many colons
+                self.p_error("unexpected extra ':'")
 
-                if component_name == "all":
-                    # all component noises
-                    self._source_all_components = True
-                elif component_name == "allop":
-                    # all op-amp noises
-                    self._source_all_opamps = True
-                elif component_name == "allr":
-                    # all resistor noises
-                    self._source_all_resistors = True
-                elif component_name == "sum":
-                    # sum of circuit noises
-                    self._noise_sum_requested = True
-                else:
-                    # individual component
-                    self._noise_defs.append(source_pieces)
+            # add raw noise definition and any suffices
+            self._noise_defs.append(source_pieces)
 
     def _parse_noisy_source(self, noisy_str):
         """Set contributions to "sum" noise curve"""
@@ -521,16 +572,5 @@ class LisoInputParser(LisoParser):
             # split off op-amp port settings
             source_pieces = source_str.split(":")
 
-            component_name = source_pieces[0].lower()
-
-            if component_name == "all":
-                # all components noisy
-                self._noisy_all_components = True
-            elif component_name == "allop":
-                self._noisy_all_opamps = True
-            elif component_name == "allr":
-                # all resistor noises
-                self._noisy_all_resistors = True
-            else:
-                # individual component
-                self._noisy_extra_defs.append(source_pieces)
+            # add raw noise definition and any suffices
+            self._noisy_extra_defs.append(source_pieces)

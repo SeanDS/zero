@@ -6,6 +6,7 @@ import numpy as np
 from ..solution import Solution
 from ..data import (Series, TransferFunction, NoiseSpectrum, SumNoiseSpectrum)
 from ..format import Quantity
+from ..components import OpAmp
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
 LOGGER = logging.getLogger(__name__)
@@ -276,15 +277,50 @@ class LisoOutputParser(LisoParser):
 
             self._solution.add_noise(spectrum)
 
+    def _get_noise_sources(self, definitions):
+        """Get noise objects for the specified raw noise defintions"""
+        sources = set()
+
+        # create noise source objects
+        for definition in definitions:
+            component = self.circuit.get_component(definition[0])
+
+            if len(definition) > 1:
+                # op-amp noise type specified
+                if not isinstance(component, OpAmp):
+                    self.p_error("op-amp noise suffix '%s' specified on a non-op-amp"
+                                 % definition[1])
+
+                type_str = definition[1].lower()
+
+                if type_str in ["u", "0"]:
+                    noise = component.voltage_noise
+                elif type_str in ["i+", "1"]:
+                    # non-inverting input current noise
+                    noise = component.non_inv_current_noise
+                elif type_str in ["i-", "2"]:
+                    # inverting input current noise
+                    noise = component.inv_current_noise
+                else:
+                    self.p_error("unrecognised op-amp noise suffix '%s'" % definition[1])
+
+                # add noise source
+                sources.add(noise)
+            else:
+                # get all of the component's noise sources
+                sources.update(component.noise)
+
+        return sources
+
     @property
     def displayed_noise_sources(self):
         """Noise sources to be plotted"""
-        return set(self._get_noise_sources(self._noise_defs))
+        return self._get_noise_sources(self._noise_defs)
 
     @property
     def summed_noise_sources(self):
         """Noise sources included in the sum column"""
-        return set(self._get_noise_sources(self._noisy_defs))
+        return self._get_noise_sources(self._noisy_defs)
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
