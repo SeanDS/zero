@@ -19,6 +19,8 @@ REQUIREMENTS = [
 # extra dependencies
 EXTRAS = {
     "dev": [
+        "pylint",
+        "bandit",
         "sphinx",
         "sphinx_rtd_theme",
         "numpydoc",

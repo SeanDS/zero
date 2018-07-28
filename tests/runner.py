@@ -40,7 +40,7 @@ if __name__ == "__main__":
         if len(sys.argv) > 2:
             VERBOSITY = int(sys.argv[2])
         else:
-            VERBOSITY = 2
+            VERBOSITY = 0
 
         if SUITE_NAME == "all":
             print("Running all test suites")
