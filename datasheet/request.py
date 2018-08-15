@@ -132,6 +132,12 @@ class Downloadable:
                     else:
                         fraction = 100 * data_length / total_data_length
 
+                    # check in case lengths are misreported
+                    if fraction > 100:
+                        fraction = 100
+                    elif fraction < 0:
+                        fraction = 0
+
                     pbar.update(fraction)
 
         return tmp.name
