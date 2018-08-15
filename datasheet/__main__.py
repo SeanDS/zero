@@ -60,7 +60,7 @@ class Parser(object):
         if namespace.verbose:
             # turn on logging
             logging_on()
-        
+
         datasheets = DatasheetRequest(namespace.term, exact=namespace.exact)
 
         self._handle_parts(datasheets, first=namespace.first, display=namespace.display)
@@ -70,7 +70,7 @@ class Parser(object):
             self.error("No parts found")
         elif datasheets.n_parts == 1 or first:
             # one datasheet
-            datasheet = datasheets.parts[0]
+            datasheet = datasheets.latest_datasheet
 
             # show results directly
             self.info(datasheet)
@@ -79,7 +79,7 @@ class Parser(object):
             self.info("Found multiple parts:")
             for index, part in enumerate(datasheets.parts, 1):
                 self.info("%d: %s" % (index, part))
-            
+
             chosen_part_idx = 0
             while chosen_part_idx <= 0 or chosen_part_idx > datasheets.n_parts:
                 try:
@@ -98,18 +98,18 @@ class Parser(object):
         elif part.n_datasheets == 1 or first:
             # show results directly
             self.info(part)
-            self._handle_datasheet(part.datasheets[0], display=display)
+            self._handle_datasheet(part.latest_datasheet, display=display)
         else:
             self.info("Found multiple datasheets:")
-            for index, datasheet in enumerate(part.datasheets, 1):
+            for index, datasheet in enumerate(part.sorted_datasheets, 1):
                 self.info("%d: %s" % (index, datasheet))
-            
+
             chosen_datasheet_idx = 0
-            while chosen_datasheet_idx <= 0 or chosen_datasheet_idx > datasheet.n_datasheets:
+            while chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
                 try:
                     chosen_datasheet_idx = int(input("Enter datasheet number: "))
 
-                    if chosen_datasheet_idx <= 0 or chosen_datasheet_idx > datasheet.n_datasheets:
+                    if chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
                         raise ValueError
                 except ValueError:
                     self.error("invalid, try again", exit=False)
@@ -134,7 +134,7 @@ class Parser(object):
 
     def info(self, msg, exit=False):
         print(msg, file=self.info_stream)
-    
+
         if exit:
             sys.exit(0)
 
