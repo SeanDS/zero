@@ -117,9 +117,12 @@ class Parser(object):
             self._handle_datasheet(part.datasheets[chosen_datasheet_idx - 1])
 
     def _handle_datasheet(self, datasheet, display=True):
-        self.info("Created: %s" % datasheet.created)
-        self.info("Pages: %d" % datasheet.n_pages)
-        self.info("URL: %s" % datasheet.url)
+        if datasheet.created is not None:
+            self.info("Created: %s" % datasheet.created)
+        if datasheet.n_pages is not None:
+            self.info("Pages: %d" % datasheet.n_pages)
+        if datasheet.url is not None:
+            self.info("URL: %s" % datasheet.url)
 
         if display:
             # download and display
