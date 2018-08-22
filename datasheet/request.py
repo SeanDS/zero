@@ -287,7 +287,7 @@ class Datasheet(Downloadable):
             os.startfile(filename)
         else:
             opener = "open" if sys.platform == "darwin" else "xdg-open"
-            subprocess.call([opener, filename])
+            subprocess.run([opener, filename])
 
     def __str__(self):
         if self.created is not None:

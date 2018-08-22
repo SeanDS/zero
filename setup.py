@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
+import sys
 from setuptools import setup, find_packages
+
+if sys.version_info < (3, 5):
+    sys.exit('Sorry, Python < 3.5 is not supported')
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
@@ -12,6 +16,7 @@ REQUIREMENTS = [
 
 setup(
     name="datasheet",
+    version="0.3.0",
     use_scm_version=True,
     description="Datasheet grabber",
     long_description=readme,
