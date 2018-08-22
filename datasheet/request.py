@@ -1,6 +1,8 @@
 import os
 import sys
 import subprocess
+import re
+import unicodedata
 import requests
 import json
 import logging
@@ -15,9 +17,10 @@ class DatasheetRequest:
     """Datasheet request handler"""
     API_ENDPOINT = "https://octopart.com/api/v3/parts/match"
     API_KEY = "ebdc07fc"
-    def __init__(self, keyword, exact=False):
+    def __init__(self, keyword, exact=False, path=None):
         self.keyword = keyword
         self.exact = exact
+        self.path = path
         self.parts = None
 
         self._request()
@@ -64,7 +67,7 @@ class DatasheetRequest:
         """Parse parts"""
         parts = []
         for part in raw_parts:
-            parts.append(Part(part))
+            parts.append(Part(part, path=self.path))
 
         self.parts = parts
 
@@ -99,7 +102,7 @@ class Downloadable:
     def __init__(self, info_stream=sys.stdout):
         self.info_stream = info_stream
 
-    def download(self, url, progress=True):
+    def fetch(self, url, progress=True):
         if progress:
             stream = self.info_stream
         else:
@@ -118,6 +121,7 @@ class Downloadable:
 
         data_length = 0
 
+        # create temporary file
         tmp = tempfile.NamedTemporaryFile(delete=False)
 
         with open(tmp.name, "wb") as f:
@@ -140,10 +144,13 @@ class Downloadable:
 
                     pbar.update(fraction)
 
+        pbar.finish()
+
         return tmp.name
 
 class Part:
-    def __init__(self, part_info):
+    def __init__(self, part_info, path=None):
+        self.path = path
         self.brand = None
         self.brand_url = None
         self.manufacturer = None
@@ -170,7 +177,8 @@ class Part:
         if "octopart_url" in part_info:
             self.url = part_info["octopart_url"]
         if "datasheets" in part_info and part_info["datasheets"] is not None:
-            self.datasheets = [Datasheet(datasheet) for datasheet in part_info["datasheets"]]
+            self.datasheets = [Datasheet(datasheet, part_name=self.mpn, path=self.path)
+                               for datasheet in part_info["datasheets"]]
 
     @property
     def n_datasheets(self):
@@ -198,10 +206,15 @@ class Part:
         return "{brand} / {manufacturer} {mpn}".format(**self.__dict__)
 
 class Datasheet(Downloadable):
-    def __init__(self, datasheet_data):
+    def __init__(self, datasheet_data, part_name=None, path=None):
+        self.part_name = part_name
+        self.path = path
         self.created = None
         self.n_pages = None
         self.url = None
+
+        # flag for whether datasheet PDF has been downloaded
+        self._downloaded = False
 
         self._parse(datasheet_data)
 
@@ -215,8 +228,59 @@ class Datasheet(Downloadable):
                 self.n_pages = int(datasheet_data["metadata"]["num_pages"])
         self.url = datasheet_data["url"]
 
+    @property
+    def full_path(self):
+        """Get path to store datasheet including filename, or None if no path is set"""
+        path = self.path
+
+        if path is not None:
+            # add filename
+            path = os.path.join(path, self.safe_filename)
+
+        return path
+
+    @property
+    def safe_part_name(self):
+        """Sanitise part name, generating one if one doesn't exist"""
+        part_name = self.part_name
+        
+        if self.part_name is None:
+            part_name = "unknown"
+        
+        return part_name
+
+    @property
+    def safe_filename(self):
+        """Sanitise filename for storing on the file system"""
+        filename = self.safe_part_name
+        filename = str(filename).strip().replace(' ', '_')
+        filename = re.sub(r'(?u)[^-\w.]', '', filename)
+
+        # add extension
+        filename = filename + os.path.extsep + "pdf"
+
+        return filename
+
+    def download(self, force=False):
+        if self._downloaded and not force:
+            # already downloaded
+            return
+
+        tmp_path = self.fetch(url=self.url)
+
+        if self.full_path is not None:
+            # move to specified path
+            os.rename(tmp_path, self.full_path)
+
+            self.path = os.path.normpath(self.full_path)
+        else:
+            self.path = tmp_path
+        
+        self._downloaded = True
+
     def display(self):
-        self._open_pdf(self.download(url=self.url))
+        self.download()
+        self._open_pdf(self.path)
 
     def _open_pdf(self, filename):
         if sys.platform == "win32":

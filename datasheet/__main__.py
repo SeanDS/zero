@@ -3,6 +3,7 @@
 """Datasheet utility"""
 
 import sys
+import os
 import logging
 import argparse
 
@@ -38,9 +39,13 @@ class Parser(object):
         self.parser.add_argument("-f", "--first", action="store_true",
                                  help="display first part without prompt")
 
-        # download and display
-        self.parser.add_argument("-d", "--display", action="store_true",
-                                 help="download and display datasheet")
+        # directory to store
+        self.parser.add_argument("-p", "--path", action="store",
+                                 help="directory in which to save the datasheet")
+
+        # download only
+        self.parser.add_argument("-d", "--download-only", action="store_true",
+                                 help="download only")
 
         # no wildcards
         self.parser.add_argument("-e", "--exact", action="store_true",
@@ -61,11 +66,19 @@ class Parser(object):
             # turn on logging
             logging_on()
 
-        datasheets = DatasheetRequest(namespace.term, exact=namespace.exact)
+        if namespace.path is not None:
+            if not os.path.isdir(namespace.path):
+                self.error("Specified path, '%s', is not a directory" % namespace.path)
+            if not os.access(namespace.path, os.W_OK):
+                self.error("Specified path, '%s', does not exist or is not writable by the "
+                           "current user" % namespace.path)
 
-        self._handle_parts(datasheets, first=namespace.first, display=namespace.display)
+        datasheets = DatasheetRequest(namespace.term, exact=namespace.exact, path=namespace.path)
 
-    def _handle_parts(self, datasheets, first=False, display=True):
+        self._handle_parts(datasheets, first=namespace.first,
+                           download_only=namespace.download_only)
+
+    def _handle_parts(self, datasheets, first=False, download_only=True):
         if datasheets.n_parts == 0:
             self.error("No parts found")
         elif datasheets.n_parts == 1 or first:
@@ -74,7 +87,7 @@ class Parser(object):
 
             # show results directly
             self.info(datasheet)
-            self._handle_part(datasheet, first=first, display=display)
+            self._handle_part(datasheet, first=first, download_only=download_only)
         else:
             self.info("Found multiple parts:")
             for index, part in enumerate(datasheets.parts, 1):
@@ -88,17 +101,17 @@ class Parser(object):
                     if chosen_part_idx <= 0 or chosen_part_idx > datasheets.n_parts:
                         raise ValueError
                 except ValueError:
-                    self.error("invalid, try again", exit=False)
+                    self.error("Invalid, try again", exit=False)
 
-            self._handle_part(datasheets.parts[chosen_part_idx - 1])
+            self._handle_part(datasheets.parts[chosen_part_idx - 1], download_only=download_only)
 
-    def _handle_part(self, part, first=False, display=True):
+    def _handle_part(self, part, first=False, download_only=False):
         if part.n_datasheets == 0:
             self.error("No datasheets found for '%s'" % part.mpn)
         elif part.n_datasheets == 1 or first:
             # show results directly
             self.info(part)
-            self._handle_datasheet(part.latest_datasheet, display=display)
+            self._handle_datasheet(part.latest_datasheet, download_only=download_only)
         else:
             self.info("Found multiple datasheets:")
             for index, datasheet in enumerate(part.sorted_datasheets, 1):
@@ -112,19 +125,23 @@ class Parser(object):
                     if chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
                         raise ValueError
                 except ValueError:
-                    self.error("invalid, try again", exit=False)
+                    self.error("Invalid, try again", exit=False)
 
-            self._handle_datasheet(part.datasheets[chosen_datasheet_idx - 1])
+            self._handle_datasheet(part.datasheets[chosen_datasheet_idx - 1],
+                                   download_only=download_only)
 
-    def _handle_datasheet(self, datasheet, display=True):
+    def _handle_datasheet(self, datasheet, download_only=False):
         if datasheet.created is not None:
-            self.info("Created: %s" % datasheet.created)
+            LOGGER.debug("Created: %s" % datasheet.created)
         if datasheet.n_pages is not None:
-            self.info("Pages: %d" % datasheet.n_pages)
+            LOGGER.debug("Pages: %d" % datasheet.n_pages)
         if datasheet.url is not None:
-            self.info("URL: %s" % datasheet.url)
+            LOGGER.debug("URL: %s" % datasheet.url)
 
-        if display:
+        datasheet.download()
+        LOGGER.debug("Saved to: %s" % datasheet.path)
+
+        if not download_only:
             # download and display
             datasheet.display()
 
