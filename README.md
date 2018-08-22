@@ -1,5 +1,5 @@
 # Datasheet grabber
-View datasheets from the command line:
+View datasheets using the command line:
 ```bash
 datasheet AD829
 ```
@@ -26,11 +26,32 @@ To download and view a datasheet, type e.g.:
 datasheet AD797
 ```
 
-By default, wildcard characters are added to the search string. To disable
-this and instead search for an exact part name, use the `--exact` flag:
+If there are multiple datasheets available, a list sorted by date
+is shown so you can select which to download. To force the utility
+to show only the first result, use the `--first` or `-f` flag:
 ```bash
-datasheet --exact TL074
+datasheet --first AD797
 ```
+
+By default, wildcard characters are added to the search string. To disable
+this and instead search for an exact part name, use the `--exact` or `-e` flag:
+```bash
+datasheet --exact TL074CN
+```
+
+By default, the datasheet will be downloaded to a temporary location. To specify
+a directory to save the PDF in, use the `--path` or `-p` flag:
+```bash
+datasheet --path datasheets OP27
+```
+
+To download but not display the datasheet, specify `--download-only` or `-d`. This
+is useful in combination with `--path` to archive datasheets:
+```bash
+datasheet --path datasheets --download-only OP27
+```
+
+Verbose output can be enabled with `--verbose` or `-v`.
 
 ## Contributing
 Bug reports and feature requests are always welcome, as are contributions to 
