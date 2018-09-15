@@ -9,6 +9,20 @@ Circuit documentation
 perform small signal AC analysis on collections of components such as resistors, capacitors,
 inductors and op-amps to predict transfer functions and noise.
 
+==============
+Why `circuit`?
+==============
+
+Given that tools such as `LTspice <http://www.analog.com/en/design-center/design-tools-and-calculators/ltspice-simulator.html>`_
+and `Qucs <http://qucs.sourceforge.net/>`_ exist, why use this tool?
+
+The answer is: it depends. For simple circuits where precision is not critical, or where you must
+model non-linear or time-variant effects, then the above tools are potentially useful; however,
+whilst manufacturers often provide SPICE models to represent their parts, these often do not
+correctly model noise, open loop gain and output impedance. :ref:`LISO <index:LISO>`, upon which
+`circuit` is based, was motivated in part by this reason, and instead provided *measured* op-amp
+data as part of its library, which became incredibly useful to its users.
+
 ===================
 What `circuit` does
 ===================
@@ -22,9 +36,11 @@ current (except noise, which, for the time being can only be computed as a volta
 What `circuit` does not do
 ==========================
 
-As `circuit` can only perform a linear analysis, it assumes that the circuit's components' operating
-points are around zero. Non-linear components such as transistors, diodes and saturated transformers
-cannot be simulated. One exception is the :class:`op-amp <.OpAmp>`, which is available in `circuit`
+`circuit` linearises the circuit before performing an analysis, and as such distorsion, saturation
+or intermodulation that would occur in the real circuit is not considered. It also assumes that the
+circuit's components' operating points are around zero, and so non-linear components which can be
+operated in a linear regime such as transistors cannot be simulated, nor the effect of dc offsets
+on op-amps. One exception to this is the :class:`op-amp <.OpAmp>`, which is available in `circuit`
 but only as a linearised component; as such, limits to the op-amp's input or output swing are
 not able to be simulated in the standard analysis.
 
