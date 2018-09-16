@@ -1,9 +1,10 @@
 Circuit documentation
 =====================
 
-.. note:: `Circuit` is still under construction, with the program structure and behaviour
-        **not at all** stable. The program, as with this documentation, may be altered in
-        ways that break existing scripts at any time without notice.
+.. note::
+   `Circuit` is still under construction, with the program structure and behaviour **not at all**
+   stable, including the name. The program, as with this documentation, may be altered in ways that
+   break existing scripts at any time without notice.
 
 `Circuit` is a linear circuit simulation library and command line tool. It is able to
 perform small signal AC analysis on collections of components such as resistors, capacitors,

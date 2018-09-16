@@ -40,7 +40,6 @@ Commands
 The following commands are not yet supported:
 
 - :code:`factor` (input multiplicative factor)
-- :code:`m` (mutual inductance)
 - :code:`inputnoise` (circuit noise referred to input node)
 - :code:`zin` (input impedance)
 - :code:`opdiff` (plot op-amp input differential voltage)
@@ -141,5 +140,9 @@ behaviour is not considered a bug.
 String lengths
 ~~~~~~~~~~~~~~
 
-LISO has a limit of 16 for most strings (component names, op-amp types, node names, etc.). In `circuit` the
-limit is effectively arbitrary.
+LISO has a limit of 16 for most strings (component names, op-amp types, node names, etc.). In
+`circuit` the limit is effectively arbitrary.
+
+.. hint::
+    In the case of *mutual inductance* commands, the name is entirely ignored. This is used in
+    LISO only for fitting routines, which are not part of `circuit`.
