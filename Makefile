@@ -1,3 +1,6 @@
+docs-html:
+	$(MAKE) -C docs html
+
 test: test-all
 
 test-all:

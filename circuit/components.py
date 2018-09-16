@@ -2,6 +2,7 @@
 
 import abc
 import logging
+from collections.abc import MutableMapping
 import numpy as np
 
 from .misc import NamedInstance
@@ -9,6 +10,7 @@ from .format import Quantity
 from .config import CircuitConfig
 
 CONF = CircuitConfig()
+
 
 class Component(object, metaclass=abc.ABCMeta):
     """Represents a circuit component.
@@ -92,7 +94,13 @@ class Component(object, metaclass=abc.ABCMeta):
         :class:`str`
             The component label.
         """
-        return self.name
+        name = self.name
+
+        if name is None:
+            # name not set
+            name = "%s (no name)" % self.__class__.__name__
+
+        return name
 
     def __repr__(self):
         return str(self)
@@ -109,6 +117,7 @@ class Component(object, metaclass=abc.ABCMeta):
     def __hash__(self):
         """Components uniquely defined by their name"""
         return hash((self.name))
+
 
 class PassiveComponent(Component, metaclass=abc.ABCMeta):
     """Represents a passive component.
@@ -191,6 +200,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     def impedance(self, frequency):
         """The passive impedance."""
         return NotImplemented
+
 
 class OpAmp(Component):
     """Represents an (almost) ideal op-amp.
@@ -328,7 +338,7 @@ class OpAmp(Component):
 
         return (self.params["a0"]
                 / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
-                * np.exp(-1j * 2 * np.pi * self.params["delay"] * frequency)
+                * np.exp(-2j * np.pi * self.params["delay"] * frequency)
                 * np.prod(1 + 1j * frequency / self.params["zeros"])
                 / np.prod(1 + 1j * frequency / self.params["poles"]))
 
@@ -375,6 +385,7 @@ class OpAmp(Component):
 
     def __str__(self):
         return super().__str__() + " [in+={cmp.node1}, in-={cmp.node2}, out={cmp.node3}, model={cmp.model}]".format(cmp=self)
+
 
 class Input(Component):
     """Represents the circuit's voltage input"""
@@ -470,6 +481,7 @@ class Input(Component):
 
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, Z={z}]".format(cmp=self, z=z)
 
+
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
 
@@ -513,6 +525,7 @@ class Resistor(PassiveComponent):
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, R={cmp.resistance}]".format(cmp=self)
 
+
 class Capacitor(PassiveComponent):
     """Represents a capacitor or set of series or parallel capacitors"""
 
@@ -541,10 +554,11 @@ class Capacitor(PassiveComponent):
         :class:`complex`
             The impedance.
         """
-        return 1 / (2 * np.pi * 1j * frequency * self.capacitance)
+        return 1 / (2j * np.pi * frequency * self.capacitance)
 
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, C={cmp.capacitance}]".format(cmp=self)
+
 
 class Inductor(PassiveComponent):
     """Represents an inductor or set of series or parallel inductors"""
@@ -552,6 +566,12 @@ class Inductor(PassiveComponent):
     UNIT = "H"
     TYPE = "inductor"
     BASE_NAME = "l"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # default inductor coupling factor map
+        self.coupling_factors = CouplingFactorDict(self)
 
     @property
     def inductance(self):
@@ -568,16 +588,66 @@ class Inductor(PassiveComponent):
         Parameters
         ----------
         frequency : :class:`float` or array_like
+            The frequency.
 
         Returns
         -------
         :class:`complex`
             The impedance.
         """
-        return 2 * np.pi * 1j * frequency * self.inductance
+        return 2j * np.pi * frequency * self.inductance
+
+    def inductance_from(self, other):
+        """Calculate the mutual inductance this inductor has with the specified inductor
+
+        Parameters
+        ----------
+        other : :class:`Inductor`
+            The other inductor.
+
+        Returns
+        -------
+        :class:`.Quantity`
+            The mutual inductance between this inductor and the specified one.
+
+        Raises
+        ------
+        :class:`TypeError`
+            If the specified inductor is not of type :class:`Inductor`
+        """
+        if not isinstance(other, self.__class__):
+            raise TypeError("specified component '%s' is not an inductor" % other)
+
+        coupling_factor = self.coupling_factors[other]
+        mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
+
+        return Quantity(mutual_inductance, unit=self.UNIT)
+
+    def impedance_from(self, other, frequency):
+        """Calculate the impedance this inductor has due to the specified coupled inductor
+
+        Parameters
+        ----------
+        other : :class:`Inductor`
+            The other inductor.
+        frequency : :class:`float` or array_like
+            The frequency.
+
+        Returns
+        -------
+        :class:`complex`
+            The impedance.
+        """
+        return 2j * np.pi * frequency * self.inductance_from(other)
+
+    @property
+    def coupled_inductors(self):
+        """Inductors coupled to this one"""
+        return self.coupling_factors.keys()
 
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
+
 
 class Node(object, metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
@@ -613,6 +683,7 @@ class Node(object, metaclass=NamedInstance):
     def __repr__(self):
         return str(self)
 
+
 class Noise(object, metaclass=abc.ABCMeta):
     """Noise spectral density.
 
@@ -642,6 +713,7 @@ class Noise(object, metaclass=abc.ABCMeta):
     def __repr__(self):
         return str(self)
 
+
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
     """Component noise spectral density.
 
@@ -660,6 +732,7 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
 
     def spectral_density(self, frequencies):
         return self.function(component=self.component, frequencies=frequencies)
+
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
     """Node noise spectral density.
@@ -683,11 +756,13 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
     def spectral_density(self, *args, **kwargs):
         return self.function(node=self.node, *args, **kwargs)
 
+
 class VoltageNoise(ComponentNoise):
     SUBTYPE = "voltage"
 
     def label(self):
         return "V(%s)" % self.component.name
+
 
 class JohnsonNoise(VoltageNoise):
     SUBTYPE = "johnson"
@@ -707,13 +782,92 @@ class JohnsonNoise(VoltageNoise):
     def label(self):
         return "R(%s)" % self.component.name
 
+
 class CurrentNoise(NodeNoise):
     SUBTYPE = "current"
 
     def label(self):
         return "I(%s, %s)" % (self.component.name, self.node.name)
 
+
 class NoiseNotFoundError(ValueError):
     def __init__(self, noise_description, *args, **kwargs):
         message = "%s not found" % noise_description
         super().__init__(message, *args, **kwargs)
+
+
+class CouplingFactorDict(MutableMapping):
+    """Collection to get and set coupling factors between inductors"""
+    def __init__(self, inductor, *args, **kwargs):
+        self.inductor = inductor
+
+        # create dict to store things
+        self._couplings = dict()
+
+        # initialise data
+        self.update(dict(*args, **kwargs))
+
+    def __getitem__(self, inductor):
+        """Get coupling factor for specified inductor
+
+        If there is no coupling factor defined between the inductors, it is assumed to be zero.
+
+        Parameters
+        ----------
+        inductor : :class:`.Inductor`
+            The inductor to get the coupling for.
+
+        Returns
+        -------
+        :class:`.Quantity`
+            The coupling factor.
+
+        Raises
+        ------
+        :class:`TypeError`
+            If the specified component is not an inductor.
+        """
+        if not isinstance(inductor, Inductor):
+            raise TypeError("specified component, '%s', is not an inductor" % inductor)
+
+        return self._couplings.get(inductor, 0)
+
+    def __setitem__(self, inductor, coupling_factor):
+        """Set coupling factor for specified inductor
+
+        Parameters
+        ----------
+        inductor : :class:`.Inductor`
+            The inductor to couple to the inductor contained within this.
+        coupling_factor : any
+            The coupling factor to use.
+
+        Raises
+        ------
+        :class:`TypeError`
+            If the specified component is not an inductor.
+        :class:`ValueError`
+            If the specified coupling factor is outside the range [0, 1].
+        """
+        if not isinstance(inductor, Inductor):
+            raise TypeError("specified component, '%s', is not an inductor" % inductor)
+
+        # parse value
+        coupling_factor = Quantity(coupling_factor)
+
+        if coupling_factor < 0 or coupling_factor > 1:
+            raise ValueError("specified coupling factor must be between 0 and 1")
+
+        self._couplings[inductor] = coupling_factor
+
+    def __delitem__(self, key):
+        del self._couplings[key]
+
+    def __iter__(self):
+        return iter(self._couplings)
+
+    def __len__(self):
+        return len(self._couplings)
+
+    def __contains__(self, key):
+        return key in self._couplings

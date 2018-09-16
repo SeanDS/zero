@@ -49,6 +49,7 @@ class LisoOutputParser(LisoParser):
         ('resistors', 'inclusive'),
         ('capacitors', 'inclusive'),
         ('inductors', 'inclusive'),
+        ('mutualinductances', 'inclusive'),
         ('opamps', 'inclusive'),
         ('nodes', 'inclusive'),
         ('voltageoutputnodes', 'inclusive'),
@@ -67,6 +68,7 @@ class LisoOutputParser(LisoParser):
         'RESISTOR',
         'CAPACITOR',
         'INDUCTOR',
+        'MUTUAL_INDUCTANCE',
         'OPAMP_CHUNK_1', # op-amps are split across up to 4 lines
         'OPAMP_CHUNK_2',
         'OPAMP_CHUNK_3',
@@ -100,6 +102,7 @@ class LisoOutputParser(LisoParser):
         self.nresistors = None
         self.ncapacitors = None
         self.ninductors = None
+        self.nmutualindutances = None
         self.nopamps = None
         self.nnodes = None
         self.nvoutputs = None
@@ -340,6 +343,12 @@ class LisoOutputParser(LisoParser):
         self.ninductors = t.lexer.lexmatch.group('n')
         t.lexer.begin('inductors')
 
+    def t_ANY_mutualinductances(self, t):
+        # match start of mutual inductance section
+        r'\#(?P<n>\d+)\smutual\sinductances?:'
+        self.nmutualindutances = t.lexer.lexmatch.groups('n')
+        t.lexer.begin('mutualinductances')
+
     def t_ANY_opamps(self, t):
         # match start of op-amp section
         r'\#(?P<n>\d+)\sop-amps?:'
@@ -421,6 +430,12 @@ class LisoOutputParser(LisoParser):
         r'\#\s+\d+\s+(?P<inductor>.*)'
         t.type = "INDUCTOR"
         t.value = t.lexer.lexmatch.group('inductor')
+        return t
+
+    def t_mutualinductances_MUTUAL_INDUCTANCE(self, t):
+        r'\#\s+\d+\s+(?P<mutual_inductance>.*)'
+        t.type = "MUTUAL_INDUCTANCE"
+        t.value = t.lexer.lexmatch.group('mutual_inductance')
         return t
 
     def t_opamps_OPAMP_CHUNK_1(self, t):
@@ -538,6 +553,7 @@ class LisoOutputParser(LisoParser):
         '''metadata_line : resistor
                          | capacitor
                          | inductor
+                         | mutual_inductance
                          | opamp
                          | node
                          | voltage_output_node
@@ -568,6 +584,13 @@ class LisoOutputParser(LisoParser):
         p[0] = inductor_str
 
         self._parse_passive("l", inductor_str)
+
+    def p_mutual_inductance(self, p):
+        '''mutual_inductance : MUTUAL_INDUCTANCE NEWLINE'''
+        mutual_inductance_str = p[1]
+        p[0] = mutual_inductance_str
+
+        self._parse_mutual_inductance(mutual_inductance_str)
 
     def p_opamp(self, p):
         # join lines of op-amp definition together
@@ -659,6 +682,18 @@ class LisoOutputParser(LisoParser):
             self.circuit.add_inductor(**kwargs)
         else:
             self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+
+    def _parse_mutual_inductance(self, mutual_indutance_str):
+        # split by whitespace
+        tokens = mutual_indutance_str.split()
+
+        if len(tokens) != 4:
+            self.p_error("unexpected parameter count (%d)" % len(tokens))
+
+        # unpack tokens
+        name, coupling_factor, inductor_1, inductor_2 = tokens
+
+        self._inductor_couplings.append((name, coupling_factor, inductor_1, inductor_2))
 
     def _parse_opamp(self, opamp_str):
         # remove ignored strings

@@ -59,6 +59,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._output_type = None
         self.tf_outputs = []
 
+        # list of (name, coupling, l1, l2) inductor coupling tuples
+        self._inductor_couplings = []
+
         # the node noise is projected to
         self._noise_output_node = None
 
@@ -312,6 +315,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # add input component, if not yet present
         self._set_circuit_input()
 
+        # coupling between inductors
+        self._set_inductor_couplings()
+
     def _validate(self):
         if self.frequencies is None:
             # no frequencies found
@@ -460,6 +466,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.circuit.add_input(input_type=input_type, node=node,
                                    node_p=node_p, node_n=node_n,
                                    impedance=impedance)
+
+    def _set_inductor_couplings(self):
+        # discard name (not used in circuit mode)
+        for _, value, inductor_1, inductor_2 in self._inductor_couplings:
+            self.circuit.set_inductor_coupling(value, inductor_1, inductor_2)
 
 
 class LisoOutputElement(object, metaclass=abc.ABCMeta):

@@ -13,6 +13,7 @@ from ...display import MatrixDisplay, EquationDisplay
 
 LOGGER = logging.getLogger(__name__)
 
+
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
     def __init__(self, frequencies, *args, prescale=True, **kwargs):
@@ -125,9 +126,8 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         # Kirchoff's voltage law / op-amp voltage gain equations
         for equation in self.component_equations:
             for coefficient in equation.coefficients:
-                # default indices
+                # default row index
                 row = self.component_matrix_index(equation.component)
-                column = self.component_matrix_index(equation.component)
 
                 if callable(coefficient.value):
                     value = coefficient.value(frequency)
@@ -135,8 +135,11 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                     value = coefficient.value
 
                 if coefficient.TYPE == "impedance":
-                    # don't change indices, but scale impedance
+                    # scale impedance
                     value *= scale
+
+                    # use target component column
+                    column = self.component_matrix_index(coefficient.component)
                 elif coefficient.TYPE == "voltage":
                     # includes extra I[in] column (at index == self.n_components)
                     column = self.node_matrix_index(coefficient.node)
@@ -304,6 +307,16 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                 coefficients.append(ImpedanceCoefficient(component=component,
                                                          value=component.impedance))
 
+                # add mutual inductances, if present
+                if hasattr(component, "coupled_inductors"):
+                    for inductor in component.coupled_inductors:
+                        # impedance created by the coupled inductor
+                        coupled_impedance = lambda f, i=inductor: component.impedance_from(i, f)
+
+                        # create coefficient containing impedance from other inductor
+                        coefficients.append(ImpedanceCoefficient(component=inductor,
+                                                                 value=coupled_impedance))
+
         # create and return equation
         return ComponentEquation(component, coefficients=coefficients)
 
@@ -467,7 +480,8 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         return MatrixDisplay(lhs, matrix, self.right_hand_side(), headers)
 
-class BaseEquation(object, metaclass=abc.ABCMeta):
+
+class BaseEquation(metaclass=abc.ABCMeta):
     """Represents an equation.
 
     Parameters
@@ -495,6 +509,7 @@ class BaseEquation(object, metaclass=abc.ABCMeta):
 
         self.coefficients.append(coefficient)
 
+
 class ComponentEquation(BaseEquation):
     """Represents a component equation.
 
@@ -504,13 +519,14 @@ class ComponentEquation(BaseEquation):
         Component associated with the equation.
     """
 
-    def __init__(self, component, *args, **kwargs):
+    def __init__(self, component, **kwargs):
         """Instantiate a new component equation."""
 
         # call parent constructor
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         self.component = component
+
 
 class NodeEquation(BaseEquation):
     """Represents a node equation.
@@ -521,15 +537,16 @@ class NodeEquation(BaseEquation):
         Node associated with the equation.
     """
 
-    def __init__(self, node, *args, **kwargs):
+    def __init__(self, node, **kwargs):
         """Instantiate a new node equation."""
 
         # call parent constructor
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         self.node = node
 
-class BaseCoefficient(object, metaclass=abc.ABCMeta):
+
+class BaseCoefficient(metaclass=abc.ABCMeta):
     """Represents a coefficient.
 
     Parameters
@@ -542,42 +559,31 @@ class BaseCoefficient(object, metaclass=abc.ABCMeta):
 
     def __init__(self, value):
         """Instantiate a new coefficient."""
-
         self.value = value
 
-class ImpedanceCoefficient(BaseCoefficient):
-    """Represents an impedance coefficient.
+
+class ComponentCoefficient(BaseCoefficient):
+    """Represents a component coefficient.
 
     Parameters
     ----------
     component : :class:`Component`
-        Component this impedance coefficient represents.
+        Component this coefficient represents.
     """
+    def __init__(self, component, **kwargs):
+        super().__init__(**kwargs)
+        self.component = component
 
+
+class ImpedanceCoefficient(ComponentCoefficient):
+    """Represents an impedance coefficient."""
     TYPE = "impedance"
 
-    def __init__(self, component, *args, **kwargs):
-        self.component = component
 
-        # call parent constructor
-        super().__init__(*args, **kwargs)
-
-class CurrentCoefficient(BaseCoefficient):
-    """Represents an current coefficient.
-
-    Parameters
-    ----------
-    component : :class:`Component`
-        Component this current coefficient represents.
-    """
-
+class CurrentCoefficient(ComponentCoefficient):
+    """Represents an current coefficient."""
     TYPE = "current"
 
-    def __init__(self, component, *args, **kwargs):
-        self.component = component
-
-        # call parent constructor
-        super().__init__(*args, **kwargs)
 
 class VoltageCoefficient(BaseCoefficient):
     """Represents a voltage coefficient.
@@ -590,8 +596,8 @@ class VoltageCoefficient(BaseCoefficient):
 
     TYPE = "voltage"
 
-    def __init__(self, node, *args, **kwargs):
+    def __init__(self, node, **kwargs):
         self.node = node
 
         # call parent constructor
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
