@@ -1,5 +1,4 @@
 from ..config import CircuitConfig
-from .scipy import ScipySolver
 
 # solvers
 from .scipy import ScipySolver

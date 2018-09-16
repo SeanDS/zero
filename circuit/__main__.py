@@ -13,6 +13,7 @@ from .display import NodeGraph
 
 LOGGER = logging.getLogger(__name__)
 
+
 class Parser(object):
     def __init__(self, program, version, subcommands=None, err_stream=sys.stderr):
         # defaults
@@ -70,6 +71,7 @@ class Parser(object):
     def version(self):
         return "{prog} {version}".format(prog=self.program, version=self._version)
 
+
 class SubCommand(object):
     CMD = None
 
@@ -84,7 +86,15 @@ class SubCommand(object):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-v", "--verbose", action="store_true",
                             help="enable verbose output")
-        
+
+        return parser
+
+    @property
+    def solver_parser(self):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("--no-prescale", action="store_false",
+                            help="disable matrix prescaling")
+
         return parser
 
     @property
@@ -93,7 +103,7 @@ class SubCommand(object):
         parser.add_argument("path", help="file path")
 
         return parser
-    
+
     @property
     def liso_io_parser(self):
         parser = argparse.ArgumentParser(add_help=False)
@@ -103,7 +113,7 @@ class SubCommand(object):
                             help="force parsing as LISO output file")
 
         return parser
-    
+
     @property
     def liso_analysisdata_parser(self):
         parser = argparse.ArgumentParser(add_help=False)
@@ -121,16 +131,17 @@ class Liso(SubCommand):
     def add(self, subparser):
         return subparser.add_parser(self.CMD, help="parse and run a LISO input or output "
                                                    "file",
-                                    parents=[self.base_parser, self.liso_path_parser,
-                                             self.liso_io_parser,
+                                    parents=[self.base_parser, self.solver_parser,
+                                             self.liso_path_parser, self.liso_io_parser,
                                              self.liso_analysisdata_parser])
-    
+
     def action(self, namespace):
         if namespace.verbose:
             # turn on logging
             logging_on()
 
-        kwargs = {"print_progress": namespace.verbose,
+        kwargs = {"prescale": namespace.no_prescale,
+                  "print_progress": namespace.verbose,
                   "print_equations": namespace.print_equations,
                   "print_matrix": namespace.print_matrix}
 
@@ -150,7 +161,7 @@ class Liso(SubCommand):
                 # try as output
                 liso_parser = LisoOutputParser()
                 liso_parser.parse(path=namespace.path)
-        
+
         liso_parser.show(**kwargs)
 
 
@@ -160,15 +171,16 @@ class LisoCompare(SubCommand):
     def add(self, subparser):
         return subparser.add_parser(self.CMD, help="parse and run a LISO input file, and "
                                                    "show a comparison to LISO's own results",
-                                    parents=[self.base_parser, self.liso_path_parser,
-                                             self.liso_analysisdata_parser])
+                                    parents=[self.base_parser, self.solver_parser,
+                                             self.liso_path_parser, self.liso_analysisdata_parser])
 
     def action(self, namespace):
         if namespace.verbose:
             # turn on logging
             logging_on()
 
-        kwargs = {"print_progress": namespace.verbose,
+        kwargs = {"prescale": namespace.no_prescale,
+                  "print_progress": namespace.verbose,
                   "print_equations": namespace.print_equations,
                   "print_matrix": namespace.print_matrix}
 
@@ -233,7 +245,7 @@ class LisoExternal(SubCommand):
         parser = subparser.add_parser(self.CMD, help="run an input file with a local LISO "
                                                      "binary and show its results",
                                       parents=[self.base_parser, self.liso_path_parser])
-        parser.add_argument("--liso-plot", action="store_true", 
+        parser.add_argument("--liso-plot", action="store_true",
                             help="allow LISO to plot its results")
 
         return parser
@@ -242,9 +254,9 @@ class LisoExternal(SubCommand):
         if namespace.verbose:
             # turn on logging
             logging_on()
-    
+
         runner = LisoRunner(namespace.path)
-        
+
         # run
         solution = runner.run(namespace.liso_plot)
 
@@ -261,7 +273,7 @@ class LisoPath(SubCommand):
         parser.add_argument("--set-path", action="store", help="set path to LISO binary")
 
         return parser
-    
+
     def action(self, namespace):
         if namespace.verbose:
             # turn on logging
@@ -282,7 +294,7 @@ class LisoGraph(SubCommand):
                                     parents=[self.base_parser, self.liso_path_parser,
                                              self.liso_io_parser,
                                              self.liso_analysisdata_parser])
-    
+
     def action(self, namespace):
         if namespace.verbose:
             # turn on logging
@@ -308,12 +320,12 @@ class LisoGraph(SubCommand):
                 # try as output
                 liso_parser = LisoOutputParser()
                 liso_parser.parse(path=namespace.path)
-        
+
         solution = liso_parser.solution(**kwargs)
-        
+
         # create node graph
         graph = NodeGraph(solution.circuit)
-        
+
         # open PDF
         graph.view_pdf()
 

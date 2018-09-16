@@ -6,13 +6,16 @@ from circuit import Circuit
 from circuit.components import Resistor, Capacitor, Inductor, OpAmp, Node
 
 class CircuitTestCase(TestCase):
+    """Circuit tests"""
     def setUp(self):
         self.reset()
 
     def reset(self):
+        """Reset circuit"""
         self.circuit = Circuit()
 
     def test_add_component(self):
+        """Test add component to circuit"""
         r = Resistor(name="r1", value=10e3, node1="n1", node2="n2")
         c = Capacitor(name="c1", value="10u", node1="n1", node2="n2")
         l = Inductor(name="l1", value="1u", node1="n1", node2="n2")
@@ -34,6 +37,7 @@ class CircuitTestCase(TestCase):
         self.assertEqual(self.circuit.n_nodes, 2)
 
     def test_add_component_without_name(self):
+        """Test add component without name to circuit"""
         r = Resistor(value=10e3, node1="n1", node2="n2")
         c = Capacitor(value="10u", node1="n1", node2="n2")
         l = Inductor(value="1u", node1="n1", node2="n2")
@@ -56,6 +60,7 @@ class CircuitTestCase(TestCase):
         self.assertEqual(op.name, "op1")
 
     def test_remove_component(self):
+        """Test remove component from circuit"""
         r = Resistor(name="r1", value=10e3, node1="n1", node2="n2")
         c = Capacitor(name="c1", value="10u", node1="n1", node2="n2")
 
@@ -81,7 +86,8 @@ class CircuitTestCase(TestCase):
         self.assertEqual(self.circuit.n_components, 0)
         self.assertEqual(self.circuit.n_nodes, 0)
 
-    def test_add_invalid_component(self):
+    def test_cannot_add_component_with_invalid_name(self):
+        """Test components with invalid names cannot be added to circuit"""
         # name "all" is invalid
         r = Resistor(name="all", value=1e3, node1="n1", node2="n2")
         self.assertRaisesRegex(ValueError, r"component name 'all' is reserved", self.circuit.add_component, r)
@@ -90,7 +96,8 @@ class CircuitTestCase(TestCase):
         c = Capacitor(name="sum", value=1e3, node1="n1", node2="n2")
         self.assertRaisesRegex(ValueError, r"component name 'sum' is reserved", self.circuit.add_component, c)
 
-    def test_duplicate_component(self):
+    def test_cannot_add_duplicate_component(self):
+        """Test component already present in circuit cannot be added again"""
         # duplicate component
         r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
         r2 = Resistor(name="r1", value=2e5, node1="n3", node2="n4")

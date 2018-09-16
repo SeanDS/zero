@@ -7,12 +7,13 @@ import logging
 from ply import lex, yacc
 import numpy as np
 
-from ..circuit import Circuit, ComponentNotFoundError, NoiseNotFoundError
+from ..circuit import Circuit, ComponentNotFoundError
 from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..format import Quantity
 
 LOGGER = logging.getLogger(__name__)
+
 
 class LisoParserError(ValueError):
     """LISO parser error"""
@@ -35,6 +36,7 @@ class LisoParserError(ValueError):
 
         super().__init__(message, **kwargs)
 
+
 class LisoParser(object, metaclass=abc.ABCMeta):
     """Base LISO parser"""
     def __init__(self):
@@ -56,6 +58,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._input_impedance = None
         self._output_type = None
         self.tf_outputs = []
+
+        # list of (name, coupling, l1, l2) inductor coupling tuples
+        self._inductor_couplings = []
 
         # the node noise is projected to
         self._noise_output_node = None
@@ -310,6 +315,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # add input component, if not yet present
         self._set_circuit_input()
 
+        # coupling between inductors
+        self._set_inductor_couplings()
+
     def _validate(self):
         if self.frequencies is None:
             # no frequencies found
@@ -459,36 +467,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
                                    node_p=node_p, node_n=node_n,
                                    impedance=impedance)
 
-    def _get_noise_sources(self, definitions):
-        """Get noise objects for the specified raw noise defintions"""
-        sources = []
+    def _set_inductor_couplings(self):
+        # discard name (not used in circuit mode)
+        for _, value, inductor_1, inductor_2 in self._inductor_couplings:
+            self.circuit.set_inductor_coupling(value, inductor_1, inductor_2)
 
-        # create noise source objects
-        for definition in definitions:
-            component = self.circuit.get_component(definition[0])
-
-            if len(definition) > 1:
-                # op-amp noise type specified
-                type_str = definition[1].lower()
-
-                if type_str in ["u", "0"]:
-                    noise = component.voltage_noise
-                elif type_str in ["+", "i+", "1"]:
-                    # non-inverting input current noise
-                    noise = component.non_inv_current_noise
-                elif type_str in ["-", "i-", "2"]:
-                    # inverting input current noise
-                    noise = component.inv_current_noise
-                else:
-                    self.p_error("unrecognised op-amp noise source '%s'" % definition[1])
-
-                # add noise source
-                sources.append(noise)
-            else:
-                # get all of the component's noise sources
-                sources.extend(component.noise)
-
-        return sources
 
 class LisoOutputElement(object, metaclass=abc.ABCMeta):
     """LISO output element"""
@@ -604,6 +587,13 @@ class LisoOutputElement(object, metaclass=abc.ABCMeta):
     def imag_scales(self):
         return list(self.SUPPORTED_SCALES["imaginary"].keys())
 
+    def __repr__(self):
+        element_str = "%s" % self.element
+        if self.scales is not None:
+            element_str += ":".join(self.scales)
+        return "Output[%s]" % element_str
+
+
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
     def __init__(self, *args, node=None, **kwargs):
@@ -613,6 +603,7 @@ class LisoOutputVoltage(LisoOutputElement):
     def node(self):
         """The output voltage node"""
         return self.element
+
 
 class LisoOutputCurrent(LisoOutputElement):
     """LISO output current"""
@@ -624,6 +615,7 @@ class LisoOutputCurrent(LisoOutputElement):
     def component(self):
         """The output current component"""
         return self.element
+
 
 class LisoNoiseSource(object):
     """LISO noise source"""

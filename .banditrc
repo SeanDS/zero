@@ -1,0 +1,2 @@
+# skipped tests
+skips: ['B404'] # avoid flagging blacklisted subprocess module

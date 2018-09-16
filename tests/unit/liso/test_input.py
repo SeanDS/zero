@@ -1,8 +1,10 @@
+"""LISO input parser tests"""
+
 import unittest
 import numpy as np
 
 from circuit.liso import LisoInputParser, LisoParserError
-from circuit.components import Node
+from circuit.components import Node, NoiseNotFoundError
 
 class LisoInputParserTestCase(unittest.TestCase):
     def setUp(self):
@@ -76,7 +78,8 @@ op op1 op27 np nm nout a1=123e6
 c c1 10u gnd n1
 """
 
-        self.assertRaisesRegex(LisoParserError, r"unknown op-amp override parameter 'a1' \(line 3\)",
+        self.assertRaisesRegex(LisoParserError,
+                               r"unknown op-amp override parameter 'a1' \(line 3\)",
                                self.parser.parse, text=text)
 
 class FrequencyTestCase(LisoInputParserTestCase):
@@ -87,7 +90,8 @@ class FrequencyTestCase(LisoInputParserTestCase):
         self.reset()
 
         self.parser.parse("freq log 0.1 100k 1000")
-        self.assertTrue(np.allclose(self.parser.frequencies, np.logspace(np.log10(1e-1), np.log10(1e5), 1001)))
+        self.assertTrue(np.allclose(self.parser.frequencies, np.logspace(np.log10(1e-1),
+                                    np.log10(1e5), 1001)))
 
         self.reset()
 
@@ -102,14 +106,14 @@ freq dec 1 1M 1234
 c c1 10u gnd n1
 """
 
-        self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' \(line 3\)", self.parser.parse,
-                               text)
-    
+        self.assertRaisesRegex(LisoParserError, r"invalid frequency scale 'dec' \(line 3\)",
+                               self.parser.parse, text)
+
     def test_cannot_redefine_frequencies(self):
         self.parser.parse("freq lin 0.1 100k 1000")
         # try to set frequencies again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)", self.parser.parse,
-                               "freq lin 0.1 100k 1000")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)",
+                               self.parser.parse, "freq lin 0.1 100k 1000")
 
 class VoltageInputTestCase(LisoInputParserTestCase):
     def test_input(self):
@@ -121,14 +125,14 @@ class VoltageInputTestCase(LisoInputParserTestCase):
     def test_cannot_redefine_input_type(self):
         self.parser.parse("uinput nin")
         # try to set input again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse,
-                               "uinput nin")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)",
+                               self.parser.parse, "uinput nin")
 
     def test_impedance(self):
         # defaults to 50 ohm
         self.parser.parse("uinput nin")
         self.assertEqual(self.parser.input_impedance, 50)
-        
+
         self.reset()
 
         # unit parsing
@@ -151,8 +155,8 @@ class CurrentInputTestCase(LisoInputParserTestCase):
     def test_cannot_redefine_input_type(self):
         self.parser.parse("iinput nin")
         # try to set input again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)", self.parser.parse,
-                               "iinput nin")
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine input type \(line 2\)",
+                               self.parser.parse, "iinput nin")
 
     def test_impedance(self):
         # defaults to 50 ohm
@@ -164,7 +168,7 @@ class CurrentInputTestCase(LisoInputParserTestCase):
         # unit parsing
         self.parser.parse("iinput nin 10k")
         self.assertAlmostEqual(self.parser.input_impedance, 10e3)
-        
+
         self.reset()
 
         self.parser.parse("iinput nin 1e3")
@@ -172,15 +176,89 @@ class CurrentInputTestCase(LisoInputParserTestCase):
 
 class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):
-        self.parser.parse("noise nout")
+        self.parser.parse("noise nout n1")
         self.assertEqual(self.parser.output_type, "noise")
         self.assertEqual(self.parser.noise_output_node, Node("nout"))
 
+    def test_noise_suffices(self):
+        text = """
+r r1 1k n1 n3
+r r2 10k n3 n4
+r r3 10k n2 gnd
+op op1 op00 n2 n3 n4
+"""
+
+        self.parser.parse(text)
+        self.parser.parse("noise nout op1:u")
+        self.assertEqual(len(self.parser.displayed_noise_sources), 1)
+
+        self.reset()
+
+        self.parser.parse(text)
+        self.parser.parse("noise nout op1:u+-")
+        self.assertEqual(len(self.parser.displayed_noise_sources), 3)
+
+        self.reset()
+
+        self.parser.parse(text)
+        self.parser.parse("noise nout op1:-u+")
+        self.assertEqual(len(self.parser.displayed_noise_sources), 3)
+
     def test_cannot_redefine_noise_node(self):
-        self.parser.parse("noise nout")
+        self.parser.parse("noise nout n1")
         # try to set noise node again
         self.assertRaisesRegex(LisoParserError, r"cannot redefine noise output node \(line 2\)",
-                               self.parser.parse, "noise nin")
+                               self.parser.parse, "noise nin n1")
+
+    def test_must_set_noise_output_node(self):
+        # sink node defined, but no sources
+        self.assertRaisesRegex(LisoParserError, r"unexpected end of file \(line 1\)",
+                               self.parser.parse, "noise nout")
+
+    def test_cannot_set_scaling_for_non_opamp(self):
+        text = """
+r r1 1k n1 n2
+r r2 10k n2 n3
+op op1 op00 gnd n2 n3
+"""
+
+        # try to set resistor voltage noise
+        self.parser.parse(text)
+        self.parser.parse("noise n3 r2:u")
+        self.assertRaisesRegex(LisoParserError,
+                               r"noise suffices cannot be specified on non-op-amps \(line 6\)",
+                               getattr, self.parser, "displayed_noise_sources")
+
+        self.reset()
+
+        # try to set resistor non-inverting current noise
+        self.parser.parse(text)
+        self.parser.parse("noise n3 r2:+")
+        self.assertRaisesRegex(LisoParserError,
+                               r"noise suffices cannot be specified on non-op-amps \(line 6\)",
+                               getattr, self.parser, "displayed_noise_sources")
+
+        self.reset()
+
+        # try to set resistor inverting current noise
+        self.parser.parse(text)
+        self.parser.parse("noise n3 r2:-")
+        self.assertRaisesRegex(LisoParserError,
+                               r"noise suffices cannot be specified on non-op-amps \(line 6\)",
+                               getattr, self.parser, "displayed_noise_sources")
+
+    def test_cannot_set_noisy_sum(self):
+        text = """
+r r1 1k n1 n2
+r r2 10k n2 n3
+op op1 op00 gnd n2 n3
+"""
+
+        self.parser.parse(text)
+        self.parser.parse("noisy sum")
+        self.assertRaisesRegex(LisoParserError,
+                               r"cannot specify 'sum' as noisy source \(line 6\)",
+                               getattr, self.parser, "summed_noise_sources")
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""
@@ -201,8 +279,8 @@ c 10u gnd n1
 r r1 430 n1 nm
 """
 
-        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)", self.parser.parse,
-                               text_1)
+        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)",
+                               self.parser.parse, text_1)
 
         self.reset()
 
@@ -213,8 +291,8 @@ c 10u gnd n1
 r r1 430 n1 nm
 """
 
-        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)", self.parser.parse,
-                               text_2)
+        self.assertRaisesRegex(LisoParserError, r"unexpected end of line \(line 2\)",
+                               self.parser.parse, text_2)
 
     def test_invalid_component_value(self):
         # invalid component value

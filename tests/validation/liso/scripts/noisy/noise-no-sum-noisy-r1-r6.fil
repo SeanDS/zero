@@ -11,4 +11,5 @@ op op1 op27 gnd nm no
 freq log 1 100k 100
 
 uinput nin 50
-uoutput nsum:re:im no:db:deg
+noise no sum
+noisy r1 r6

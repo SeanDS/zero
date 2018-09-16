@@ -1,3 +1,5 @@
+"""LISO vs native solver tests"""
+
 import os.path
 import glob
 import numpy as np
@@ -18,7 +20,10 @@ class LisoTester(unittest.TestCase):
         self.fil_path = fil_path
 
     def test_liso_vs_native(self):
-        with self.subTest(msg=self.fil_path):
+        # test message
+        message = "Test %s against LISO".format(path=self.fil_path)
+
+        with self.subTest(msg=message):
             self.compare(self._liso_output())
 
     def compare(self, liso_output):

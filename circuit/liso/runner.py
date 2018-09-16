@@ -12,6 +12,7 @@ from .output import LisoOutputParser
 
 LOGGER = logging.getLogger(__name__)
 
+
 class LisoRunner(object):
     """LISO runner"""
 
@@ -127,6 +128,7 @@ class LisoRunner(object):
                 return path
 
         raise FileNotFoundError("no appropriate LISO binary found")
+
 
 class LisoError(Exception):
     def __init__(self, message, script_path=None, *args, **kwargs):

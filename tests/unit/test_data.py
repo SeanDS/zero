@@ -6,6 +6,7 @@ import numpy as np
 from circuit.data import Series
 
 class SeriesTestCase(TestCase):
+    """Data series tests"""
     def setUp(self):
         # x-axis
         self.x = np.linspace(1, 10, 10)
@@ -36,32 +37,37 @@ class SeriesTestCase(TestCase):
         self.data_phase_deg = np.degrees(self.data_phase_rad)
 
     def test_from_mag_phase_default(self):
-        """Magnitude/phase series default scale"""
+        """Test magnitude/phase series factory using default scale"""
         self.assertEqual(Series.from_mag_phase(self.x, self.data_mag_abs, self.data_phase_deg),
                          Series.from_mag_phase(self.x, self.data_mag_abs, self.data_phase_deg,
                                                mag_scale="abs", phase_scale="deg"))
 
     def test_from_mag_phase_abs_deg(self):
+        """Test magnitude/phase series factory using abs/deg scale"""
         self.assertEqual(Series(self.x, self.data_cplx),
                          Series.from_mag_phase(self.x, self.data_mag_abs, self.data_phase_deg,
                                                mag_scale="abs", phase_scale="deg"))
 
     def test_from_mag_phase_abs_rad(self):
+        """Test magnitude/phase series factory using abs/rad scale"""
         self.assertEqual(Series(self.x, self.data_cplx),
                          Series.from_mag_phase(self.x, self.data_mag_abs, self.data_phase_rad,
                                                mag_scale="abs", phase_scale="rad"))
 
     def test_from_mag_phase_db_deg(self):
+        """Test magnitude/phase series factory using db/deg scale"""
         self.assertEqual(Series(self.x, self.data_cplx),
                          Series.from_mag_phase(self.x, self.data_mag_db, self.data_phase_rad,
                                                mag_scale="db", phase_scale="rad"))
 
     def test_from_mag_phase_db_rad(self):
+        """Test magnitude/phase series factory using db/rad scale"""
         self.assertEqual(Series(self.x, self.data_cplx),
                          Series.from_mag_phase(self.x, self.data_mag_db, self.data_phase_deg,
                                                mag_scale="db", phase_scale="deg"))
 
     def test_from_mag_phase_invalid_scale(self):
+        """Test magnitude/phase series factory invalid scales"""
         # "ab" and "minute" invalid
         self.assertRaises(ValueError, Series.from_mag_phase, self.x, self.data_mag_db,
                           self.data_phase_rad, mag_scale="ab", phase_scale="rad")
@@ -69,10 +75,12 @@ class SeriesTestCase(TestCase):
                           self.data_phase_rad, mag_scale="db", phase_scale="minute")
 
     def test_from_re_im(self):
+        """Test real/imaginary series factory using default scale"""
         self.assertEqual(Series(self.x, self.data_cplx),
                          Series.from_re_im(self.x, re=self.data_re, im=self.data_im))
 
     def test_from_re_im_invalid_parts(self):
+        """Test real/imaginary series factory invalid scales"""
         # real part cannot have imaginary element
         self.assertRaises(ValueError, Series.from_re_im, self.x, np.array([1, 2, 3+1j]),
                           np.array([1, 2, 3]))
@@ -81,6 +89,7 @@ class SeriesTestCase(TestCase):
                           np.array([1, 2, 3+1j]))
 
     def test_invalid_shape(self):
+        """Test series constructor with invalid data shape"""
         self.assertRaises(ValueError, Series, x=np.array([1, 2, 3]), y=np.array([1, 2, 3, 4]))
         self.assertRaises(ValueError, Series, x=np.array([[1, 2, 3], [4, 5, 6]]),
                           y=np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))

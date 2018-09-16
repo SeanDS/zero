@@ -19,7 +19,7 @@ stages:
     - apt update -qy
     - apt install --assume-yes python-pip
     - pip install .
-    - python tests/runner.py unit 0
+    - make test-unit
 
 .template:test:integration: &template-test-integration
   script:
@@ -27,7 +27,7 @@ stages:
     - apt update -qy
     - apt install --assume-yes python-pip
     - pip install .
-    - python tests/runner.py integration 0
+    - make test-integration
 
 .template:test:validation: &template-test-validation
   script:
@@ -42,7 +42,7 @@ stages:
     - apt update -qy
     - apt install --assume-yes python-pip
     - pip install .
-    - python tests/runner.py validation 0
+    - make test-validation
 
 .template:deploy:docs: &template-deploy-docs
   script:

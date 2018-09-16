@@ -1,18 +1,16 @@
 """Electronic circuit class to which linear components can be added and
 on which simulations can be performed."""
 
-import sys
-import numpy as np
 import logging
+import numpy as np
 
 from .config import CircuitConfig, OpAmpLibrary
-from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
-                         Input, Node)
-from .display import NodeGraph
+from .components import (Resistor, Capacitor, Inductor, OpAmp, Input, Node)
 
 LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
+
 
 class ElementNotFoundError(Exception):
     def __init__(self, name, message, *args, **kwargs):
@@ -24,17 +22,21 @@ class ElementNotFoundError(Exception):
 
         self.name = name
 
+
 class ComponentNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
+
 
 class NodeNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
 
+
 class NoiseNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="noise '%s' not found", *args, **kwargs)
+
 
 class Circuit(object):
     """Represents an electronic circuit containing components.
@@ -51,7 +53,7 @@ class Circuit(object):
     """
 
     # disallowed component names
-    RESERVED_NAMES = ["all", "sum"]
+    RESERVED_NAMES = ["all", "allop", "allr", "sum"]
 
     def __init__(self):
         # empty lists of components and nodes
@@ -60,7 +62,7 @@ class Circuit(object):
     @property
     def nodes(self):
         """Circuit nodes, including ground if present.
-        
+
         Returns
         -------
         :class:`set` of :class:`.Node`
@@ -82,7 +84,7 @@ class Circuit(object):
     @property
     def elements(self):
         """Circuit nodes and components.
-        
+
         Yields
         ------
         :class:`.Node`
@@ -153,7 +155,7 @@ class Circuit(object):
 
     def add_library_opamp(self, model, **kwargs):
         """Add library op-amp to circuit.
-        
+
         Keyword arguments can be used to override individual library parameters.
 
         Parameters
@@ -269,12 +271,12 @@ class Circuit(object):
         ----------
         noise_name : :class:`str`
             The name of the noise to fetch.
-        
+
         Returns
         -------
         :class:`Noise`
             The noise.
-        
+
         Raises
         ------
         :class:`NoiseNotFoundError`
@@ -285,12 +287,45 @@ class Circuit(object):
         for noise in self.noise_sources:
             if name == noise.label().lower():
                 return noise
-        
+
         raise NoiseNotFoundError(name)
+
+    def set_inductor_coupling(self, coupling_factor, inductor_1, inductor_2):
+        """Set the coupling factor between the specified inductors
+
+        Parameters
+        ----------
+        coupling_factor : any
+            The coupling factor between the specified inductors.
+        inductor_1, inductor_2 : :class:`str` or :class:`.components.Inductor`
+            The inductors to couple.
+
+        Raises
+        ------
+        :class:`ValueError`
+            If a specified inductor is not an inductor.
+        """
+        # get inductors by name
+        inductor_1 = self.get_component(inductor_1)
+        inductor_2 = self.get_component(inductor_2)
+
+        if not isinstance(inductor_1, Inductor):
+            raise TypeError("component '%s' is not an inductor" % inductor_1)
+        if not isinstance(inductor_2, Inductor):
+            raise TypeError("component '%s' is not an inductor" % inductor_2)
+
+        # check if we are overwriting something
+        if inductor_1 in inductor_2.coupled_inductors or inductor_2 in inductor_1.coupled_inductors:
+            LOGGER.warning("overwriting coupling factor between '%s' and '%s'",
+                           inductor_1, inductor_2)
+
+        # set coupling factors
+        inductor_1.coupling_factors[inductor_2] = coupling_factor
+        inductor_2.coupling_factors[inductor_1] = coupling_factor
 
     def _set_default_name(self, component):
         """Set a default name unique to this circuit for the specified component
-        
+
         Parameters
         ----------
         component : :class:`Component`
@@ -309,7 +344,7 @@ class Circuit(object):
             # next attempt
             count += 1
             new_name = "{base}{count}".format(base=base, count=count)
-    
+
         # set new name
         component.name = new_name
 
@@ -399,7 +434,7 @@ class Circuit(object):
     @property
     def passive_components(self):
         """The circuit passive components.
-        
+
         Yields
         ------
         :class:`.Resistor`
@@ -462,7 +497,7 @@ class Circuit(object):
     @property
     def input_component(self):
         """The circuit input component.
-        
+
         Returns
         -------
         :class:`.Input`
@@ -473,7 +508,7 @@ class Circuit(object):
     @property
     def input_impedance(self):
         """The circuit input impedance.
-        
+
         Returns
         -------
         :class:`float`
@@ -484,7 +519,7 @@ class Circuit(object):
     @property
     def has_input(self):
         """Whether the circuit has an input.
-        
+
         Returns
         -------
         :class:`bool`
@@ -511,7 +546,7 @@ class Circuit(object):
 
         text = "Circuit with {n_cmps} {cmp_str} and {n_nodes} {node_str}".format(
             n_cmps=self.n_components, cmp_str=cmp_str, n_nodes=self.n_nodes, node_str=node_str)
-        
+
         if self.n_components > 0:
             text += "\n"
 
