@@ -590,6 +590,32 @@ class Inductor(PassiveComponent):
         """
         return 2 * np.pi * 1j * frequency * self.inductance
 
+    def mutual_inductance_with(self, other):
+        """Calculate the mutual inductance this inductor has with the specified inductor
+
+        Parameters
+        ----------
+        other : :class:`Inductor`
+            The other inductor.
+
+        Returns
+        -------
+        :class:`.Quantity`
+            The mutual inductance between this inductor and the specified one.
+
+        Raises
+        ------
+        :class:`TypeError`
+            If the specified inductor is not of type :class:`Inductor`
+        """
+        if not isinstance(other, self.__class__):
+            raise TypeError("specified component '%s' is not an inductor" % other)
+
+        coupling_factor = self.coupling_factors.get(other, default=0)
+        mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
+
+        return Quantity(mutual_inductance, unit="H")
+
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
 
@@ -767,9 +793,14 @@ class CouplingFactorDict(MutableMapping):
 
         Raises
         ------
+        :class:`TypeError`
+            If the specified component is not an inductor.
         :class:`ValueError`
-            If the specified coupling factor is outside the range [0, 1]
+            If the specified coupling factor is outside the range [0, 1].
         """
+        if not isinstance(inductor, Inductor):
+            raise TypeError("specified component, '%s', is not an inductor" % inductor)
+
         # parse value
         coupling_factor = Quantity(coupling_factor)
 

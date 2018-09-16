@@ -405,7 +405,7 @@ class LisoInputParser(LisoParser):
             self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
 
     def _parse_mutual_inductance(self, name, coupling_factor, inductor_1, inductor_2):
-        self._mutual_inductances.append((name, coupling_factor, inductor_1, inductor_2))
+        self._inductor_couplings.append((name, coupling_factor, inductor_1, inductor_2))
 
     def _parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:

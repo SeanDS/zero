@@ -693,7 +693,7 @@ class LisoOutputParser(LisoParser):
         # unpack tokens
         name, coupling_factor, inductor_1, inductor_2 = tokens
 
-        self._mutual_inductances.append((name, coupling_factor, inductor_1, inductor_2))
+        self._inductor_couplings.append((name, coupling_factor, inductor_1, inductor_2))
 
     def _parse_opamp(self, opamp_str):
         # remove ignored strings
