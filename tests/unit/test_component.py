@@ -88,8 +88,15 @@ class InductorTestCase(TestCase):
 
         # valid
         l1.coupling_factors[l2] = 0
+        l2.coupling_factors[l1] = 0
         l1.coupling_factors[l2] = 0.5
+        l2.coupling_factors[l1] = 0.5
         l1.coupling_factors[l2] = 1
+        l2.coupling_factors[l1] = 1
+
+        # coupled inductors list should contain other inductor
+        self.assertCountEqual(l1.coupled_inductors, [l2])
+        self.assertCountEqual(l2.coupled_inductors, [l1])
 
         # cannot set coupling factors out of range
         self.assertRaises(ValueError, l1.coupling_factors.__setitem__, l2, -0.5)

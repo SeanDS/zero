@@ -94,7 +94,13 @@ class Component(object, metaclass=abc.ABCMeta):
         :class:`str`
             The component label.
         """
-        return self.name
+        name = self.name
+
+        if name is None:
+            # name not set
+            name = "%s (no name)" % self.__class__.__name__
+
+        return name
 
     def __repr__(self):
         return str(self)
@@ -582,6 +588,7 @@ class Inductor(PassiveComponent):
         Parameters
         ----------
         frequency : :class:`float` or array_like
+            The frequency.
 
         Returns
         -------
@@ -615,6 +622,28 @@ class Inductor(PassiveComponent):
         mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
 
         return Quantity(mutual_inductance, unit="H")
+
+    def impedance_from(self, other, frequency):
+        """Calculate the impedance this inductor has due to the specified coupled inductor
+
+        Parameters
+        ----------
+        other : :class:`Inductor`
+            The other inductor.
+        frequency : :class:`float` or array_like
+            The frequency.
+
+        Returns
+        -------
+        :class:`complex`
+            The impedance due to the specified soupled inductor.
+        """
+        return 2 * np.pi * 1j * frequency * self.mutual_inductance_with(other)
+
+    @property
+    def coupled_inductors(self):
+        """Inductors coupled to this one"""
+        return self.coupling_factors.keys()
 
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
