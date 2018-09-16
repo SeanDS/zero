@@ -1,14 +1,11 @@
 """Electronic circuit class to which linear components can be added and
 on which simulations can be performed."""
 
-import sys
-import numpy as np
 import logging
+import numpy as np
 
 from .config import CircuitConfig, OpAmpLibrary
-from .components import (Component, Resistor, Capacitor, Inductor, OpAmp,
-                         Input, Node)
-from .display import NodeGraph
+from .components import (Resistor, Capacitor, Inductor, OpAmp, Input, Node)
 
 LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
