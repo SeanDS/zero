@@ -468,7 +468,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
     def _set_mutual_inductances(self):
         # discard name (not used in circuit mode)
         for _, value, inductor_1, inductor_2 in self._mutual_inductances:
-            self.circuit.set_mutual_inductance(value, inductor_1, inductor_2)
+            self.circuit.set_inductor_coupling(value, inductor_1, inductor_2)
 
 
 class LisoOutputElement(object, metaclass=abc.ABCMeta):

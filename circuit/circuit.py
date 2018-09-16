@@ -290,8 +290,8 @@ class Circuit(object):
 
         raise NoiseNotFoundError(name)
 
-    def set_mutual_inductance(self, coupling_factor, inductor_1, inductor_2):
-        """Set the mutual inductance between the specified inductors
+    def set_inductor_coupling(self, coupling_factor, inductor_1, inductor_2):
+        """Set the coupling factor between the specified inductors
 
         Parameters
         ----------
