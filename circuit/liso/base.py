@@ -14,6 +14,7 @@ from ..format import Quantity
 
 LOGGER = logging.getLogger(__name__)
 
+
 class LisoParserError(ValueError):
     """LISO parser error"""
     def __init__(self, message, line=None, pos=None, **kwargs):
@@ -34,6 +35,7 @@ class LisoParserError(ValueError):
         message = "LISO syntax error: {message}".format(message=message)
 
         super().__init__(message, **kwargs)
+
 
 class LisoParser(object, metaclass=abc.ABCMeta):
     """Base LISO parser"""
@@ -591,6 +593,7 @@ class LisoOutputElement(object, metaclass=abc.ABCMeta):
             element_str += ":".join(self.scales)
         return "Output[%s]" % element_str
 
+
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
     def __init__(self, *args, node=None, **kwargs):
@@ -600,6 +603,7 @@ class LisoOutputVoltage(LisoOutputElement):
     def node(self):
         """The output voltage node"""
         return self.element
+
 
 class LisoOutputCurrent(LisoOutputElement):
     """LISO output current"""
@@ -611,6 +615,7 @@ class LisoOutputCurrent(LisoOutputElement):
     def component(self):
         """The output current component"""
         return self.element
+
 
 class LisoNoiseSource(object):
     """LISO noise source"""
