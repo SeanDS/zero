@@ -1,0 +1,16 @@
+# Mutual inductance example 3 from manual (modified)
+
+r r1 1k n1 n2
+l l1 1m n2 gnd
+l l2 9m n3 gnd
+l l3 9m n4 gnd # winding ratio 1:3:3
+r r2 1k n3 gnd
+r r3 1k n4 gnd
+m m1 .95 l1 l2
+m m2 .95 l1 l3
+m m3 .95 l2 l3
+
+freq log 1 1M 1000
+
+uinput n1
+uoutput n2 n4
