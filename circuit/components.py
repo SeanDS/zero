@@ -338,7 +338,7 @@ class OpAmp(Component):
 
         return (self.params["a0"]
                 / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
-                * np.exp(-1j * 2 * np.pi * self.params["delay"] * frequency)
+                * np.exp(-2j * np.pi * self.params["delay"] * frequency)
                 * np.prod(1 + 1j * frequency / self.params["zeros"])
                 / np.prod(1 + 1j * frequency / self.params["poles"]))
 
@@ -554,7 +554,7 @@ class Capacitor(PassiveComponent):
         :class:`complex`
             The impedance.
         """
-        return 1 / (2 * np.pi * 1j * frequency * self.capacitance)
+        return 1 / (2j * np.pi * frequency * self.capacitance)
 
     def __str__(self):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, C={cmp.capacitance}]".format(cmp=self)
@@ -595,9 +595,9 @@ class Inductor(PassiveComponent):
         :class:`complex`
             The impedance.
         """
-        return 2 * np.pi * 1j * frequency * self.inductance
+        return 2j * np.pi * frequency * self.inductance
 
-    def mutual_inductance_with(self, other):
+    def inductance_from(self, other):
         """Calculate the mutual inductance this inductor has with the specified inductor
 
         Parameters
@@ -618,10 +618,10 @@ class Inductor(PassiveComponent):
         if not isinstance(other, self.__class__):
             raise TypeError("specified component '%s' is not an inductor" % other)
 
-        coupling_factor = self.coupling_factors.get(other, default=0)
+        coupling_factor = self.coupling_factors[other]
         mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
 
-        return Quantity(mutual_inductance, unit="H")
+        return Quantity(mutual_inductance, unit=self.UNIT)
 
     def impedance_from(self, other, frequency):
         """Calculate the impedance this inductor has due to the specified coupled inductor
@@ -636,9 +636,9 @@ class Inductor(PassiveComponent):
         Returns
         -------
         :class:`complex`
-            The impedance due to the specified soupled inductor.
+            The impedance.
         """
-        return 2 * np.pi * 1j * frequency * self.mutual_inductance_with(other)
+        return 2j * np.pi * frequency * self.inductance_from(other)
 
     @property
     def coupled_inductors(self):
@@ -807,8 +807,30 @@ class CouplingFactorDict(MutableMapping):
         # initialise data
         self.update(dict(*args, **kwargs))
 
-    def __getitem__(self, key):
-        return self._couplings[key]
+    def __getitem__(self, inductor):
+        """Get coupling factor for specified inductor
+
+        If there is no coupling factor defined between the inductors, it is assumed to be zero.
+
+        Parameters
+        ----------
+        inductor : :class:`.Inductor`
+            The inductor to get the coupling for.
+
+        Returns
+        -------
+        :class:`.Quantity`
+            The coupling factor.
+
+        Raises
+        ------
+        :class:`TypeError`
+            If the specified component is not an inductor.
+        """
+        if not isinstance(inductor, Inductor):
+            raise TypeError("specified component, '%s', is not an inductor" % inductor)
+
+        return self._couplings.get(inductor, 0)
 
     def __setitem__(self, inductor, coupling_factor):
         """Set coupling factor for specified inductor
@@ -846,3 +868,6 @@ class CouplingFactorDict(MutableMapping):
 
     def __len__(self):
         return len(self._couplings)
+
+    def __contains__(self, key):
+        return key in self._couplings

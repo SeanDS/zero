@@ -119,21 +119,21 @@ class InductorTestCase(TestCase):
         l1.coupling_factors[l2] = 0.95
         l2.coupling_factors[l1] = 0.95
 
-        self.assertAlmostEqual(l1.mutual_inductance_with(l2), 0.000019)
-        self.assertAlmostEqual(l2.mutual_inductance_with(l1), 0.000019)
+        self.assertAlmostEqual(l1.inductance_from(l2), 0.000019)
+        self.assertAlmostEqual(l2.inductance_from(l1), 0.000019)
 
         l1.coupling_factors[l2] = 0.5
         l2.coupling_factors[l1] = 0.5
 
-        self.assertAlmostEqual(l1.mutual_inductance_with(l2), 0.00001)
-        self.assertAlmostEqual(l2.mutual_inductance_with(l1), 0.00001)
+        self.assertAlmostEqual(l1.inductance_from(l2), 0.00001)
+        self.assertAlmostEqual(l2.inductance_from(l1), 0.00001)
 
         l1.coupling_factors[l2] = 0
         l2.coupling_factors[l1] = 0
 
-        self.assertEqual(l1.mutual_inductance_with(l2), 0)
-        self.assertEqual(l2.mutual_inductance_with(l1), 0)
+        self.assertEqual(l1.inductance_from(l2), 0)
+        self.assertEqual(l2.inductance_from(l1), 0)
 
         # mutual inductance to inductor where coupling hasn't been set is still 0
-        self.assertEqual(l1.mutual_inductance_with(l3), 0)
-        self.assertEqual(l3.mutual_inductance_with(l1), 0)
+        self.assertEqual(l1.inductance_from(l3), 0)
+        self.assertEqual(l3.inductance_from(l1), 0)

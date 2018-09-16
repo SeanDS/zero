@@ -135,7 +135,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                     value = coefficient.value
 
                 if coefficient.TYPE == "impedance":
-                    # don't change indices, but scale impedance
+                    # scale impedance
                     value *= scale
 
                     # use target component column
@@ -308,10 +308,10 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                                                          value=component.impedance))
 
                 # add mutual inductances, if present
-                if hasattr(component, 'coupled_inductors'):
+                if hasattr(component, "coupled_inductors"):
                     for inductor in component.coupled_inductors:
                         # impedance created by the coupled inductor
-                        coupled_impedance = lambda f: component.impedance_from(inductor, f)
+                        coupled_impedance = lambda f, i=inductor: component.impedance_from(i, f)
 
                         # create coefficient containing impedance from other inductor
                         coefficients.append(ImpedanceCoefficient(component=inductor,
@@ -568,7 +568,7 @@ class ComponentCoefficient(BaseCoefficient):
     Parameters
     ----------
     component : :class:`Component`
-        Component this impedance coefficient represents.
+        Component this coefficient represents.
     """
     def __init__(self, component, **kwargs):
         super().__init__(**kwargs)

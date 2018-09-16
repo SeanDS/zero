@@ -315,7 +315,7 @@ class Circuit(object):
             raise TypeError("component '%s' is not an inductor" % inductor_2)
 
         # check if we are overwriting something
-        if inductor_1 in inductor_2.coupling_factors or inductor_2 in inductor_1.coupling_factors:
+        if inductor_1 in inductor_2.coupled_inductors or inductor_2 in inductor_1.coupled_inductors:
             LOGGER.warning("overwriting coupling factor between '%s' and '%s'",
                            inductor_1, inductor_2)
 
