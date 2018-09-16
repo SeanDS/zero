@@ -433,7 +433,7 @@ class LisoOutputParser(LisoParser):
         return t
 
     def t_mutualinductances_MUTUAL_INDUCTANCE(self, t):
-        '\#\s+\d+\s+(?P<mutual_inductance>.*)'
+        r'\#\s+\d+\s+(?P<mutual_inductance>.*)'
         t.type = "MUTUAL_INDUCTANCE"
         t.value = t.lexer.lexmatch.group('mutual_inductance')
         return t
