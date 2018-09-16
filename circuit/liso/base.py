@@ -57,6 +57,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         self._output_type = None
         self.tf_outputs = []
 
+        # list of (name, coupling, l1, l2) mutual inductance tuples
+        self._mutual_inductances = []
+
         # the node noise is projected to
         self._noise_output_node = None
 

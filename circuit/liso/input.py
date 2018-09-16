@@ -34,6 +34,7 @@ class LisoInputParser(LisoParser):
         "r": "R",
         "c": "C",
         "l": "L",
+        "m": "M",
         "op": "OP",
         "freq": "FREQ",
         "uinput": "UINPUT",
@@ -298,6 +299,11 @@ class LisoInputParser(LisoParser):
         # parse as inductor
         self._parse_passive("l", *p[2:-1])
 
+    def p_mutual_inductance(self, p):
+        '''instruction : M CHUNK CHUNK CHUNK CHUNK end'''
+        # parse as mutual inductance
+        self._parse_mutual_inductance(*p[2:-1])
+
     def p_opamp(self, p):
         '''instruction : OP CHUNK CHUNK CHUNK CHUNK CHUNK end
                        | OP CHUNK CHUNK CHUNK CHUNK CHUNK chunks end'''
@@ -397,6 +403,9 @@ class LisoInputParser(LisoParser):
             self.circuit.add_inductor(**kwargs)
         else:
             self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+
+    def _parse_mutual_inductance(self, name, coupling_factor, inductor_1, inductor_2):
+        self._mutual_inductances.append((name, coupling_factor, inductor_1, inductor_2))
 
     def _parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:
