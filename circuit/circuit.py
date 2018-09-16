@@ -14,6 +14,7 @@ LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 LIBRARY = OpAmpLibrary()
 
+
 class ElementNotFoundError(Exception):
     def __init__(self, name, message, *args, **kwargs):
         # apply name to message
@@ -24,17 +25,21 @@ class ElementNotFoundError(Exception):
 
         self.name = name
 
+
 class ComponentNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
+
 
 class NodeNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
 
+
 class NoiseNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="noise '%s' not found", *args, **kwargs)
+
 
 class Circuit(object):
     """Represents an electronic circuit containing components.
@@ -287,6 +292,39 @@ class Circuit(object):
                 return noise
 
         raise NoiseNotFoundError(name)
+
+    def set_mutual_inductance(self, coupling_factor, inductor_1, inductor_2):
+        """Set the mutual inductance between the specified inductors
+
+        Parameters
+        ----------
+        coupling_factor : any
+            The coupling factor between the specified inductors.
+        inductor_1, inductor_2 : :class:`str` or :class:`.components.Inductor`
+            The inductors to couple.
+
+        Raises
+        ------
+        :class:`ValueError`
+            If a specified inductor is not an inductor.
+        """
+        # get inductors by name
+        inductor_1 = self.get_component(inductor_1)
+        inductor_2 = self.get_component(inductor_2)
+
+        if not isinstance(inductor_1, Inductor):
+            raise TypeError("component '%s' is not an inductor" % inductor_1)
+        if not isinstance(inductor_2, Inductor):
+            raise TypeError("component '%s' is not an inductor" % inductor_2)
+
+        # check if we are overwriting something
+        if inductor_1 in inductor_2.coupling_factors or inductor_2 in inductor_1.coupling_factors:
+            LOGGER.warning("overwriting coupling factor between '%s' and '%s'",
+                           inductor_1, inductor_2)
+
+        # set coupling factors
+        inductor_1.coupling_factors[inductor_2] = coupling_factor
+        inductor_2.coupling_factors[inductor_1] = coupling_factor
 
     def _set_default_name(self, component):
         """Set a default name unique to this circuit for the specified component

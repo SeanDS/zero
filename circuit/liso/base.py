@@ -313,6 +313,9 @@ class LisoParser(object, metaclass=abc.ABCMeta):
         # add input component, if not yet present
         self._set_circuit_input()
 
+        # coupling between inductors
+        self._set_mutual_inductances()
+
     def _validate(self):
         if self.frequencies is None:
             # no frequencies found
@@ -461,6 +464,11 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.circuit.add_input(input_type=input_type, node=node,
                                    node_p=node_p, node_n=node_n,
                                    impedance=impedance)
+
+    def _set_mutual_inductances(self):
+        # discard name (not used in circuit mode)
+        for _, value, inductor_1, inductor_2 in self._mutual_inductances:
+            self.circuit.set_mutual_inductance(value, inductor_1, inductor_2)
 
 
 class LisoOutputElement(object, metaclass=abc.ABCMeta):
