@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
-    def __init__(self, frequencies, prescale=True, *args, **kwargs):
+    def __init__(self, frequencies, *args, prescale=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.frequencies = np.array(frequencies)
@@ -57,7 +57,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     def solution(self):
         if self._solution is None:
             self._solution = Solution(self.circuit, self.frequencies)
-        
+
         return self._solution
 
     def get_empty_results_matrix(self, *depth):
@@ -118,7 +118,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
             scale = 1 / self.mean_resistance
         else:
             scale = 1
-        
+
         # add sources and sinks
         self.set_up_sources_and_sinks()
 
@@ -165,7 +165,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
     def solve(self):
         """Solve the circuit.
-        
+
         Solves matrix equation Ax = b, where A is the circuit matrix and b is the right hand side.
 
         Returns
@@ -209,7 +209,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
     def set_up_sources_and_sinks(self):
         """Set up circuit's sources and sinks
-        
+
         This inspects the circuit's components and informs the circuit's nodes
         about current inputs and outputs. Nodes cannot generate their own
         equations unless they know about
@@ -227,7 +227,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                 self._node_sinks[component.node1].add(component) # current flows into here...
             if component.node2:
                 self._node_sources[component.node2].add(component) # ...and out of here
-        
+
         # op-amps source current from their third (output) node (their input nodes are
         # ideal and therefore don't source or sink current)
         for component in self.circuit.opamps:
