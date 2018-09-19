@@ -8,7 +8,7 @@ import progressbar
 from ..components import (Component, Resistor, Capacitor, Inductor, OpAmp,
                           Input, Node, ComponentNoise, NodeNoise)
 
-class BaseAnalysis(object, metaclass=abc.ABCMeta):
+class BaseAnalysis(metaclass=abc.ABCMeta):
     """Base class for circuit analysis.
 
     Parameters
@@ -152,7 +152,7 @@ class BaseAnalysis(object, metaclass=abc.ABCMeta):
                     fraction = 1
                 else:
                     fraction = 100 * count // total
-                
+
                 pbar.update(fraction)
 
             yield item

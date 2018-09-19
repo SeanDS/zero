@@ -16,8 +16,12 @@ LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
-    def __init__(self, frequencies, *args, prescale=True, **kwargs):
+    def __init__(self, *args, frequencies=None, prescale=True, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if frequencies is None:
+            # default to empty list
+            frequencies = []
 
         self.frequencies = np.array(frequencies)
         self.prescale = bool(prescale)
