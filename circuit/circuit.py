@@ -290,15 +290,16 @@ class Circuit(object):
 
         raise NoiseNotFoundError(name)
 
-    def set_inductor_coupling(self, coupling_factor, inductor_1, inductor_2):
+    def set_inductor_coupling(self, inductor_1, inductor_2, coupling_factor=1):
         """Set the coupling factor between the specified inductors
 
         Parameters
         ----------
-        coupling_factor : any
-            The coupling factor between the specified inductors.
         inductor_1, inductor_2 : :class:`str` or :class:`.components.Inductor`
             The inductors to couple.
+        coupling_factor : any, optional
+            The coupling factor between the specified inductors, specified between 0 and 1. A
+            coupling factor less than 1 represents loss.
 
         Raises
         ------
