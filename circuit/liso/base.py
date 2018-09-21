@@ -209,8 +209,10 @@ class LisoParser(metaclass=abc.ABCMeta):
     # error handling
     def t_error(self, t):
         # anything that gets past the other filters
+        pos = t.lexer.lexpos - self._previous_newline_position
+
         raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
-                              t.lexer.lexpos - self._previous_newline_position)
+                              pos)
 
     @abc.abstractmethod
     def p_error(self, p):

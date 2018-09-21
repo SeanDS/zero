@@ -380,7 +380,7 @@ class LisoInputParser(LisoParser):
         else:
             message = "unexpected end of file"
 
-        raise LisoParserError(message, lineno)
+        raise LisoParserError(message, line=lineno)
 
     def _parse_passive(self, passive_type, *params):
         if len(params) != 4:
