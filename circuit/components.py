@@ -12,7 +12,7 @@ from .config import CircuitConfig
 CONF = CircuitConfig()
 
 
-class Component(object, metaclass=abc.ABCMeta):
+class Component(metaclass=abc.ABCMeta):
     """Represents a circuit component.
 
     Parameters
@@ -649,7 +649,7 @@ class Inductor(PassiveComponent):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
 
 
-class Node(object, metaclass=NamedInstance):
+class Node(metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
 
     Nodes are considered equal if they have the same case-independent name.
@@ -684,7 +684,7 @@ class Node(object, metaclass=NamedInstance):
         return str(self)
 
 
-class Noise(object, metaclass=abc.ABCMeta):
+class Noise(metaclass=abc.ABCMeta):
     """Noise spectral density.
 
     Parameters

@@ -38,7 +38,7 @@ class NoiseNotFoundError(ElementNotFoundError):
         super().__init__(name=name, message="noise '%s' not found", *args, **kwargs)
 
 
-class Circuit(object):
+class Circuit:
     """Represents an electronic circuit containing components.
 
     A circuit can contain components like :class:`resistors <.components.Resistor>`,

@@ -37,7 +37,7 @@ def argmax_difference(vector_a, vector_b):
 
     return i, difference[i]
 
-class Series(object):
+class Series:
     """Data series"""
     def __init__(self, x, y):
         if x.shape != y.shape:
@@ -143,7 +143,7 @@ class Series(object):
     def __eq__(self, other):
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
-class DataSet(object, metaclass=abc.ABCMeta):
+class DataSet(metaclass=abc.ABCMeta):
     """Data set"""
     def __init__(self, sources, sinks, series_list):
         self.sources = list(sources)

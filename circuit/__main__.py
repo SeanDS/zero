@@ -14,7 +14,7 @@ from .display import NodeGraph
 LOGGER = logging.getLogger(__name__)
 
 
-class Parser(object):
+class Parser:
     def __init__(self, program, version, subcommands=None, err_stream=sys.stderr):
         # defaults
         self.parser = None
@@ -72,7 +72,7 @@ class Parser(object):
         return "{prog} {version}".format(prog=self.program, version=self._version)
 
 
-class SubCommand(object):
+class SubCommand:
     CMD = None
 
     def add(self, subparser):

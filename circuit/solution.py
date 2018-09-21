@@ -13,7 +13,7 @@ from .components import Component, Node, Noise
 LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
 
-class Solution(object):
+class Solution:
     """Represents a solution to the simulated circuit"""
 
     def __init__(self, circuit, frequencies):

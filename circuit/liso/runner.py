@@ -13,7 +13,7 @@ from .output import LisoOutputParser
 LOGGER = logging.getLogger(__name__)
 
 
-class LisoRunner(object):
+class LisoRunner:
     """LISO runner"""
 
     # LISO binary names, in order of preference

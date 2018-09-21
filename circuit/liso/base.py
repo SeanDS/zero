@@ -37,7 +37,7 @@ class LisoParserError(ValueError):
         super().__init__(message, **kwargs)
 
 
-class LisoParser(object, metaclass=abc.ABCMeta):
+class LisoParser(metaclass=abc.ABCMeta):
     """Base LISO parser"""
     def __init__(self):
         # initial line number
@@ -473,7 +473,7 @@ class LisoParser(object, metaclass=abc.ABCMeta):
             self.circuit.set_inductor_coupling(inductor_1, inductor_2, value)
 
 
-class LisoOutputElement(object, metaclass=abc.ABCMeta):
+class LisoOutputElement(metaclass=abc.ABCMeta):
     """LISO output element"""
     # supported scales
     SUPPORTED_SCALES = {"magnitude": {"db": ["db"], "abs": ["abs"]},
@@ -617,7 +617,7 @@ class LisoOutputCurrent(LisoOutputElement):
         return self.element
 
 
-class LisoNoiseSource(object):
+class LisoNoiseSource:
     """LISO noise source"""
     def __init__(self, noise, index=None):
         if index is not None:

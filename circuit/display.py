@@ -13,7 +13,7 @@ from .components import Resistor, Capacitor, Inductor, OpAmp, Input, Component, 
 
 CONF = CircuitConfig()
 
-class NodeGraph(object):
+class NodeGraph:
     # input shapes per input type
     input_shapes = {"noise": "ellipse", "voltage": "box", "current": "pentagon"}
 
@@ -90,9 +90,9 @@ class NodeGraph(object):
         """Graphviz rendering for Jupyter notebooks."""
         return self.node_graph()._repr_svg_()
 
-class TableFormatter(object, metaclass=abc.ABCMeta):
+class TableFormatter(metaclass=abc.ABCMeta):
     """Table formatter mixin
-    
+
     Children inheriting this class must implement the `row_cell_groups` method.
     """
 
@@ -100,7 +100,7 @@ class TableFormatter(object, metaclass=abc.ABCMeta):
         if isinstance(cell, (str, np.str)):
             # leave strings alone
             return str(cell)
-        
+
         if isinstance(cell, np.ndarray):
             if len(cell) == 1:
                 # this is a single-valued array
@@ -115,7 +115,7 @@ class TableFormatter(object, metaclass=abc.ABCMeta):
             else:
                 # get rid of imaginary part
                 cell = np.abs(cell).real
-        
+
         # convert to float
         return float(cell)
 
@@ -135,7 +135,7 @@ class TableFormatter(object, metaclass=abc.ABCMeta):
             if not isinstance(collection, collections.Iterable):
                 # convert to list
                 collection = [collection]
-            
+
             yield from collection
 
     @property
@@ -196,7 +196,7 @@ class MatrixDisplay(TableFormatter):
 
         if cell == 0:
             return "---"
-        
+
         return cell
 
     def format_cell_text(self, cell):
@@ -218,7 +218,7 @@ class MatrixDisplay(TableFormatter):
                     if power != 0:
                         # print non-zero power
                         cell += exponent
-        
+
         return cell
 
     def format_cell_html(self, cell):
@@ -238,12 +238,12 @@ class MatrixDisplay(TableFormatter):
                     if power != 0:
                         # print non-zero power
                         cell += "×10<sup>%i</sup>" % power
-        
+
         return "<td>%s</td>" % cell
 
     def __repr__(self):
         """Text representation of the table"""
-        
+
         # format table
         table = [[self.format_cell_text(cell) for cell in row] for row in self.formatted_table]
 
@@ -284,7 +284,7 @@ class EquationDisplay(TableFormatter):
     @property
     def row_cell_groups(self):
         return zip(self.lhs, self.rhs)
-    
+
     def format_coefficient_text(self, coefficient):
         """Format equation coefficient"""
 
@@ -405,7 +405,7 @@ class EquationDisplay(TableFormatter):
                 elif not first:
                     # add positive sign
                     clause += "+ "
-                
+
                 # flag that we're beyond the first column
                 first = False
 
@@ -426,7 +426,7 @@ class EquationDisplay(TableFormatter):
 
                 # write coefficient and element
                 clause += "%s%s" % (formatted_coefficient,  element_format % element.label())
-                
+
                 clauses.append(clause)
 
             # add right hand side, with alignment character
@@ -434,7 +434,7 @@ class EquationDisplay(TableFormatter):
 
             # make line from clauses
             lines.append(" ".join(clauses))
-        
+
         lines = self.align_to("=", lines)
 
         return "\n".join(lines)
@@ -460,7 +460,7 @@ class EquationDisplay(TableFormatter):
                 elif not first:
                     # add positive sign
                     expression += r"+"
-                
+
                 # flag that we're beyond the first column
                 first = False
 
@@ -484,5 +484,5 @@ class EquationDisplay(TableFormatter):
             expression += r"\\"
 
         expression += r"\end{align}"
-        
+
         return expression
