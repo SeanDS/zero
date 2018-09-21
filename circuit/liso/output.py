@@ -505,12 +505,6 @@ class LisoOutputParser(LisoParser):
         t.type = "NEWLINE"
         return t
 
-    # error handling
-    def t_error(self, t):
-        # anything that gets past the other filters
-        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
-                              t.lexer.lexpos - self._previous_newline_position)
-
     def p_file_contents(self, p):
         '''file_contents : file_line
                          | file_contents file_line'''

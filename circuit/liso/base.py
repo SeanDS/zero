@@ -206,6 +206,12 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         self.parser.parse(text, lexer=self.lexer)
 
+    # error handling
+    def t_error(self, t):
+        # anything that gets past the other filters
+        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
+                              t.lexer.lexpos - self._previous_newline_position)
+
     @abc.abstractmethod
     def p_error(self, p):
         """Child classes must implement error handler"""
