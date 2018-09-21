@@ -257,10 +257,19 @@ class LisoExternal(SubCommand):
 
         runner = LisoRunner(namespace.path)
 
-        # run
-        solution = runner.run(namespace.liso_plot)
+        if namespace.liso_plot:
+            # plot with LISO, and don't parse with this program
+            liso_plot = True
+            liso_parse = False
+        else:
+            # plot with this program, and parse
+            liso_plot = False
+            liso_parse = True
 
-        if not namespace.liso_plot:
+        # run
+        solution = runner.run(liso_plot=liso_plot, liso_parse=liso_parse)
+
+        if not liso_plot:
             solution.show()
 
 

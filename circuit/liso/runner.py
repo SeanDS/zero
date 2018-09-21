@@ -26,32 +26,60 @@ class LisoRunner(object):
         # defaults
         self._liso_path = None
 
-    def run(self, plot=False, liso_path=None, output_path=None):
+    def run(self, liso_plot=False, liso_parse=True, liso_path=None, output_path=None):
+        """Run LISO script using a local LISO binary and handle the results
+
+        Parameters
+        ----------
+        liso_plot : :class:`bool`, optional
+            Plot the results using LISO.
+        liso_parse : :class:`bool`, optional
+            Parse the output from LISO.
+        liso_path : :class:`str`, optional
+            Path to local LISO binary. If not specified, this program will attempt to find it
+            automatically.
+        output_path : :class:`str`, optional
+            Path to save LISO output file to. If not specified, LISO's default is used.
+
+        Returns
+        -------
+        :class:`.LisoOutputParser`
+            The parsed LISO output.
+        """
         self.liso_path = liso_path
 
         if not output_path:
             temp_file = NamedTemporaryFile()
             output_path = temp_file.name
 
-        return self._liso_result(self.script_path, output_path, plot)
+        return self._liso_result(self.script_path, output_path, liso_parse, liso_plot)
 
-    def _liso_result(self, script_path, output_path, plot):
+    def _liso_result(self, script_path, output_path, parse, plot):
         """Get LISO results
 
-        :param script_path: path to LISO ".fil" file
-        :type script_path: str
-        :param output_path: path to LISO ".out" file to be created
-        :type output_path: str
-        :param plot: whether to show result with gnuplot
-        :type plot: bool
-        :return: LISO output
-        :rtype: :class:`~OutputParser`
-        """
+        Parameters
+        ----------
+        script_path : :class:`str`
+            Path to the LISO ".fil" file.
+        output_path : :class:`str`
+            Path to LISO ".out" file to be created.
+        parse : :class:`bool`
+            Parse the output from LISO.
+        plot : :class:`bool`
+            Ask LISO to plot the result instead of this program.
 
+        Returns
+        -------
+        :class:`.OutputParser` or None
+            Parsed LISO output, if requested, otherwise None.
+        """
         self._run_liso_process(script_path, output_path, plot)
 
-        parser = LisoOutputParser()
-        parser.parse(path=output_path)
+        if parse:
+            parser = LisoOutputParser()
+            parser.parse(path=output_path)
+        else:
+            parser = None
 
         return parser
 
@@ -107,6 +135,10 @@ class LisoRunner(object):
 
         return liso_path
 
+    @liso_path.setter
+    def liso_path(self, path):
+        self._liso_path = path
+
     @property
     def platform_key(self):
         if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
@@ -115,10 +147,6 @@ class LisoRunner(object):
             return "win"
 
         raise EnvironmentError("unrecognised operating system")
-
-    @liso_path.setter
-    def liso_path(self, path):
-        self._liso_path = path
 
     def find_liso(self, directory):
         for filename in self.LISO_BINARY_NAMES[self.platform_key]:
