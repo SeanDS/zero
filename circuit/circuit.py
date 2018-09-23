@@ -179,6 +179,10 @@ class Circuit:
         component : :class:`str` or :class:`.Component`
             The component to remove.
         """
+        if isinstance(component, str):
+            # get component by name
+            component = self.get_component(component)
+
         # remove
         self.components.remove(component)
 
@@ -187,7 +191,7 @@ class Circuit:
 
         Parameters
         ----------
-        component_name : str
+        component_name : :class:`str`
             The name of the component to fetch.
 
         Returns
