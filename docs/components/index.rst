@@ -66,6 +66,10 @@ The above value is parsed as ``2.2e-9``, with unit ``F``. The unit is stored alo
 part within the object, and the unit will be printed alongside the component's value when it is
 displayed.
 
+.. note::
+    Units are just for display and are not used for any calculations. Be careful when specifying
+    units which differ from those used internally by `circuit`.
+
 .. toctree::
     :maxdepth: 2
 
