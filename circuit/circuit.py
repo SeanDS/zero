@@ -118,13 +118,14 @@ class Circuit:
         ValueError
             If component is None, or already present in the circuit.
         """
+        if component is None:
+            raise ValueError("component cannot be None")
+
         if component.name is None:
             # assign name
             self._set_default_name(component)
 
-        if component is None:
-            raise ValueError("component cannot be None")
-        elif component in self.components:
+        if component in self.components:
             raise ValueError("component with name '{name}' already in circuit".format(name=component.name))
         elif component.name in self.RESERVED_NAMES:
             raise ValueError("component name '{name}' is reserved".format(name=component.name))
