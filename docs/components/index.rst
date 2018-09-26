@@ -34,12 +34,11 @@ produce noise, whereas :class:`resistors <.Resistor>` do (:class:`Johnson noise 
 Setting a component's value
 ---------------------------
 
-A passive component's :attr:`~.PassiveComponent.value` may be altered. First, you must have a
-reference to the component object:
+A passive component's :attr:`~.PassiveComponent.value` may be altered. First, get the component:
 
 .. code:: python
 
-    c1 = circuit.get_component("c1")
+    c1 = circuit["c1"]
 
 You can then set the value using the object's :attr:`~.PassiveComponent.value` attribute:
 

@@ -445,7 +445,7 @@ class LisoParser(metaclass=abc.ABCMeta):
     def _set_circuit_input(self):
         # create input component if necessary
         try:
-            self.circuit.get_component("input")
+            self.circuit["input"]
         except ComponentNotFoundError:
             # add input
             input_type = self.input_type

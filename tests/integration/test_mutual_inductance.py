@@ -30,9 +30,9 @@ class MutualInductanceTestCase(TestCase):
         analysis = AcSignalAnalysis(circuit=self.circuit, prescale=False)
 
         # get inductors
-        l1 = self.circuit.get_component("l1")
-        l2 = self.circuit.get_component("l2")
-        l3 = self.circuit.get_component("l3")
+        l1 = self.circuit["l1"]
+        l2 = self.circuit["l2"]
+        l3 = self.circuit["l3"]
 
         # get inductor current indices
         l1_index = analysis.component_matrix_index(l1)

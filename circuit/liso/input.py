@@ -164,7 +164,7 @@ class LisoInputParser(LisoParser):
                 self._noise_sum_requested = True
             else:
                 # individual component
-                component = self.circuit.get_component(component_name)
+                component = self.circuit[component_name]
                 sources.update(self._get_component_noise(component, suffix))
 
         return sources

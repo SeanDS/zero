@@ -198,19 +198,19 @@ class LisoOutputParser(LisoParser):
                     sink = self.circuit.get_node(tf_output.node)
                     sink_unit = "V"
                 elif tf_output.output_type == "current":
-                    sink = self.circuit.get_component(tf_output.component)
+                    sink = self.circuit[tf_output.component]
                     sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
-                source = self.circuit.get_component("input")
+                source = self.circuit.input_component
                 source_unit = "A"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
                     sink_unit = "V"
                 elif tf_output.output_type == "current":
-                    sink = self.circuit.get_component(tf_output.component)
+                    sink = self.circuit[tf_output.component]
                     sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
@@ -233,7 +233,7 @@ class LisoOutputParser(LisoParser):
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):
             # get component
-            component = self.circuit.get_component(definition[0])
+            component = self.circuit[definition[0]]
 
             # get data
             series = Series(x=self.frequencies, y=self._data[:, index])
@@ -286,7 +286,7 @@ class LisoOutputParser(LisoParser):
 
         # create noise source objects
         for definition in definitions:
-            component = self.circuit.get_component(definition[0])
+            component = self.circuit[definition[0]]
 
             if len(definition) > 1:
                 # op-amp noise type specified
