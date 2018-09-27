@@ -162,21 +162,21 @@ class Part:
         self._parse(part_info)
 
     def _parse(self, part_info):
-        if "brand" in part_info and part_info["brand"] is not None:
-            if "name" in part_info["brand"]:
+        if part_info.get("brand"):
+            if part_info["brand"].get("name"):
                 self.brand = part_info["brand"]["name"]
-            if "homepage_url" in part_info["brand"]:
+            if part_info["brand"].get("homepage_url"):
                 self.brand_url = part_info["brand"]["homepage_url"]
-        if "manufacturer" in part_info and part_info["manufacturer"] is not None:
-            if "name" in part_info["manufacturer"]:
+        if part_info.get("manufacturer"):
+            if part_info["manufacturer"].get("name"):
                 self.manufacturer = part_info["manufacturer"]["name"]
-            if "homepage_url" in part_info["manufacturer"]:
+            if part_info["manufacturer"].get("homepage_url"):
                 self.manufacturer_url = part_info["manufacturer"]["homepage_url"]
-        if "mpn" in part_info:
+        if part_info.get("mpn"):
             self.mpn = part_info["mpn"]
-        if "octopart_url" in part_info:
+        if part_info.get("octopart_url"):
             self.url = part_info["octopart_url"]
-        if "datasheets" in part_info and part_info["datasheets"] is not None:
+        if part_info.get("datasheets"):
             self.datasheets = [Datasheet(datasheet, part_name=self.mpn, path=self.path)
                                for datasheet in part_info["datasheets"]]
 
@@ -221,10 +221,10 @@ class Datasheet(Downloadable):
         super().__init__()
 
     def _parse(self, datasheet_data):
-        if "metadata" in datasheet_data and datasheet_data["metadata"] is not None:
-            if "date_created" in datasheet_data["metadata"]:
+        if datasheet_data.get("metadata"):
+            if datasheet_data["metadata"].get("date_created"):
                 self.created = dateutil.parser.parse(datasheet_data["metadata"]["date_created"])
-            if "num_pages" in datasheet_data["metadata"]:
+            if datasheet_data["metadata"].get("num_pages"):
                 self.n_pages = int(datasheet_data["metadata"]["num_pages"])
         self.url = datasheet_data["url"]
 
@@ -243,10 +243,10 @@ class Datasheet(Downloadable):
     def safe_part_name(self):
         """Sanitise part name, generating one if one doesn't exist"""
         part_name = self.part_name
-        
+
         if self.part_name is None:
             part_name = "unknown"
-        
+
         return part_name
 
     @property
@@ -275,7 +275,7 @@ class Datasheet(Downloadable):
             self.path = os.path.normpath(self.full_path)
         else:
             self.path = tmp_path
-        
+
         self._downloaded = True
 
     def display(self):

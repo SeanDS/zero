@@ -16,7 +16,7 @@ REQUIREMENTS = [
 
 setup(
     name="datasheet",
-    version="0.3.0",
+    version="0.3.1",
     use_scm_version=True,
     description="Datasheet grabber",
     long_description=readme,
