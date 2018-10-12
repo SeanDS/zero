@@ -9,8 +9,8 @@ from .circuit import Circuit
 try:
     __version__ = get_distribution(__name__).version
 except DistributionNotFound:
-    # package is not installed
-    pass
+    # packaging resources are not installed
+    __version__ = '?'
 
 PROGRAM = "circuit"
 DESCRIPTION = "Linear circuit simulator"

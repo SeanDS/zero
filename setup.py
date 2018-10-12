@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-
 from setuptools import setup, find_packages
 
 with open("README.md") as readme_file:
-    readme = readme_file.read()
+    README = readme_file.read()
 
 REQUIREMENTS = [
     "numpy",
@@ -33,7 +31,7 @@ setup(
     name="circuit",
     use_scm_version=True,
     description="Linear circuit simulator",
-    long_description=readme,
+    long_description=README,
     author="Sean Leavey",
     author_email="sean.leavey@ligo.org",
     url="https://git.ligo.org/sean-leavey/circuit",

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Circuit simulator utility"""
 
 import os
@@ -7,7 +5,7 @@ import sys
 import logging
 import argparse
 
-from circuit import __version__, PROGRAM, DESCRIPTION, logging_on
+from . import __version__, PROGRAM, DESCRIPTION, logging_on
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .display import NodeGraph
 
