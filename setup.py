@@ -8,10 +8,10 @@ REQUIREMENTS = [
     "scipy",
     "matplotlib",
     "progressbar2",
-    "appdirs",
     "tabulate",
     "setuptools_scm",
-    "ply"
+    "ply",
+    "click"
 ]
 
 # extra dependencies

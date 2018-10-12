@@ -4,11 +4,12 @@ import os.path
 import abc
 import logging
 import re
-import numpy as np
 from configparser import ConfigParser
+import numpy as np
 import pkg_resources
-import appdirs
+import click
 
+from . import PROGRAM
 from .format import Quantity
 
 LOGGER = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class SingletonAbstractMeta(abc.ABCMeta):
         if cls not in cls._SINGLETON_REGISTRY:
             # create new instance
             cls._SINGLETON_REGISTRY[cls] = super().__call__(*args, **kwargs)
-        
+
         return cls._SINGLETON_REGISTRY[cls]
 
 class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
@@ -81,7 +82,7 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         :rtype: str
         """
 
-        config_dir = appdirs.user_config_dir("circuit.py")
+        config_dir = click.get_app_dir(PROGRAM)
         config_file = os.path.join(config_dir, cls.CONFIG_FILENAME)
 
         return config_file
@@ -296,7 +297,7 @@ class OpAmpLibrary(BaseConfig):
 
         # generate complex frequencies from the list and combine them into one list
         frequencies = []
-        
+
         for token in freq_tokens:
             frequencies.extend(self._parse_freq_str(token))
 
