@@ -186,19 +186,13 @@ class LisoParser(metaclass=abc.ABCMeta):
     def n_summed_noise(self):
         return len(self.summed_noise_sources)
 
-    def parse(self, text=None, path=None):
-        if text is None and path is None:
-            raise ValueError("must provide either text or a path")
-
-        if path is not None:
-            if text is not None:
-                raise ValueError("cannot specify both text and a file to parse")
-
-            if not os.path.isfile(path):
-                raise FileNotFoundError("cannot read '{path}'".format(path=path))
-
-            with open(path, "r") as obj:
-                text = obj.read()
+    def parse(self, file):
+        # first assume file
+        try:
+            text = file.read()
+        except AttributeError:
+            # assume text
+            text = str(file)
 
         if self._eof:
             # reset end of file
