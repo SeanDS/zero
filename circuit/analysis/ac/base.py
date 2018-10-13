@@ -61,7 +61,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     @property
     def solution(self):
         if self._solution is None:
-            self._solution = Solution(self.circuit, self.frequencies)
+            self._solution = Solution(self.frequencies)
 
         return self._solution
 

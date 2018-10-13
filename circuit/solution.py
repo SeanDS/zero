@@ -15,18 +15,13 @@ CONF = CircuitConfig()
 
 class Solution:
     """Represents a solution to the simulated circuit"""
-
-    def __init__(self, circuit, frequencies):
+    def __init__(self, frequencies):
         """Instantiate a new solution
 
-        :param circuit: circuit this solution represents
-        :type circuit: :class:`~Circuit`
         :param frequencies: sequence of frequencies this solution contains \
                             results for
         :type frequencies: :class:`~np.ndarray`
         """
-
-        self.circuit = circuit
         self.frequencies = frequencies
 
         # defaults
@@ -305,8 +300,12 @@ class Solution:
         # filter noise spectra
         return self._filter_function(NoiseSpectrum, sources=source_elements, sinks=sink_elements)
 
-    def _result_node_index(self, node):
-        return self.circuit.n_components + self.circuit.node_index(node)
+    def plot(self):
+        """Plot all functions contained in this solution using default settings"""
+        if self.has_tfs:
+            self.plot_tfs()
+        if self.has_noise:
+            self.plot_noise()
 
     def plot_tfs(self, figure=None, sources="all", sinks="all", **kwargs):
         if figure is None:
@@ -495,10 +494,6 @@ class Solution:
     def __eq__(self, other):
         # check frequencies match
         if np.all(self.frequencies != other.frequencies):
-            return False
-
-        # check circuits match
-        if self.circuit != other.circuit:
             return False
 
         LOGGER.info("comparing %i / %i functions" % (len(self.functions),
