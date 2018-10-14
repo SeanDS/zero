@@ -13,7 +13,7 @@ CONF = CircuitConfig()
 def frequencies_match(vector_a, vector_b):
     return np.all(vector_a == vector_b)
 
-def tfs_match(vector_a, vector_b):
+def vectors_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
                        rtol=float(CONF["data"]["tf_rel_tol"]),
                        atol=float(CONF["data"]["tf_abs_tol"]))
@@ -152,16 +152,54 @@ class DataSet(metaclass=abc.ABCMeta):
         self.sinks = list(sinks)
         self.series_list = list(series_list)
 
+        # text to add in brackets after label
+        self.label_suffix = ""
+
     @abc.abstractmethod
     def draw(self, *axes):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def label(self, tex=False):
-        return NotImplemented
+        label_str = self._label_base(tex)
+
+        if self.label_suffix:
+            label_str += " (%s)" % self.label_suffix
+
+        return label_str
+
+    @abc.abstractmethod
+    def _label_base(self, tex):
+        """Data set label, without suffix."""
+        raise NotImplementedError
+
+    def matches(self, other):
+        if self.label() != other.label():
+            return False
+
+        return True
 
     def __str__(self):
         return self.label()
+
+    def __eq__(self, other):
+        """Equality operator.
+
+        Note: DataSet objects are considered equal if they have equal sources, sinks, lists of
+        series, and labels.
+        """
+        if self.sources != other.sources:
+            return False
+        if self.sinks != other.sinks:
+            return False
+        if self.series_list != other.series_list:
+            return False
+        if self.label() != other.label():
+            return False
+
+        return True
+
+    def __hash__(self):
+        return hash((self.sources, self.sinks, self.series_list, self.label()))
 
 
 class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
@@ -177,6 +215,19 @@ class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
     @series.setter
     def series(self, data):
         self.series_list = [data]
+
+    @property
+    def frequencies(self):
+        return self.series.x
+
+    def matches(self, other):
+        if not super().matches(other):
+            return False
+
+        if not frequencies_match(self.frequencies, other.frequencies):
+            return False
+
+        return True
 
 
 class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
@@ -208,10 +259,6 @@ class SingleSinkDataSet(DataSet, metaclass=abc.ABCMeta):
 class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Transfer function data series"""
     @property
-    def frequencies(self):
-        return self.series.x
-
-    @property
     def magnitude(self):
         return db(np.abs(self.series.y))
 
@@ -235,7 +282,7 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
         self._draw_magnitude(axes[0])
         self._draw_phase(axes[1])
 
-    def label(self, tex=False):
+    def _label_base(self, tex=False):
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)"
         else:
@@ -257,14 +304,11 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
         # both have units
         return "%s/%s" % (self.sink_unit, self.source_unit)
 
-    def __eq__(self, other):
-        if self.label() != other.label():
+    def matches(self, other):
+        if not super().matches(other):
             return False
-        elif not frequencies_match(self.frequencies, other.frequencies):
-            LOGGER.error("%s frequencies don't match: %s != %s", self,
-                         self.frequencies, other.frequencies)
-            return False
-        elif not tfs_match(self.magnitude, other.magnitude):
+
+        if not vectors_match(self.magnitude, other.magnitude):
             # calculate worst relative difference between tfs
             worst_i, worst_diff = argmax_difference(self.magnitude, other.magnitude)
 
@@ -272,15 +316,12 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
                          self, worst_diff, self.frequencies[worst_i], self.magnitude[worst_i],
                          other.magnitude[worst_i])
             return False
+
         return True
 
 
 class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Noise data series"""
-    @property
-    def frequencies(self):
-        return self.series.x
-
     @property
     def spectrum(self):
         return self.series.y
@@ -305,7 +346,7 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
     def noise_subtype(self):
         return self.source.SUBTYPE
 
-    def label(self, tex=False):
+    def _label_base(self, tex=False):
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$"
         else:
@@ -313,13 +354,13 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
 
         return format_str % (self.noise_name, self.sink)
 
-    def __eq__(self, other):
-        if self.label() != other.label():
+    def matches(self, other):
+        if not super().matches(other):
             return False
-        elif not frequencies_match(self.frequencies, other.frequencies):
+
+        if not spectra_match(self.spectrum, other.spectrum):
             return False
-        elif not spectra_match(self.spectrum, other.spectrum):
-            return False
+
         return True
 
 
@@ -373,16 +414,16 @@ class MultiNoiseSpectrum(SingleSinkDataSet):
     def spectrum(self):
         return self.series.y
 
-    def label(self, *args, **kwargs):
+    def _label_base(self, *args, **kwargs):
         return self._label
 
-    def __eq__(self, other):
-        if self.label() != other.label():
+    def matches(self, other):
+        if not super().matches(other):
             return False
-        elif not frequencies_match(self.frequencies, other.frequencies):
+
+        if not spectra_match(self.spectrum, other.spectrum):
             return False
-        elif not spectra_match(self.spectrum, other.spectrum):
-            return False
+
         return True
 
 
@@ -404,14 +445,14 @@ class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
     def spectrum(self):
         return self.series.y
 
-    def label(self, *args, **kwargs):
+    def _label_base(self, *args, **kwargs):
         return "incoherent sum"
 
-    def __eq__(self, other):
-        if self.label() != other.label():
+    def matches(self, other):
+        if not super().matches(other):
             return False
-        elif not frequencies_match(self.frequencies, other.frequencies):
+
+        if not spectra_match(self.spectrum, other.spectrum):
             return False
-        elif not spectra_match(self.spectrum, other.spectrum):
-            return False
+
         return True

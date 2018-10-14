@@ -1,6 +1,8 @@
 """Plotting functions for solutions to simulations"""
 
 import logging
+from collections import defaultdict
+import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
@@ -22,7 +24,7 @@ class Solution:
     NOISE_SINKS_ALL = "all"
     NOISE_TYPES_ALL = "all"
 
-    def __init__(self, frequencies):
+    def __init__(self, frequencies, name=None):
         """Instantiate a new solution
 
         :param frequencies: sequence of frequencies this solution contains \
@@ -34,8 +36,32 @@ class Solution:
         self._default_tfs = []
         self._default_noise = []
         self._default_noise_sums = []
+        self._name = None
+
+        # creation date
+        self._creation_date = datetime.datetime.now()
+        # solution name
+        self.name = name
+
+        # plot styles
+        self.figure_plot_style = {}
+        self.function_plot_styles = defaultdict(dict)
 
         self.frequencies = frequencies
+
+    @property
+    def name(self):
+        name = self._name
+
+        if self._name is None:
+            # use creation date
+            name = str(self._creation_date)
+
+        return name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
 
     def add_tf(self, tf, default=False):
         """Add a transfer function to the solution.
@@ -61,12 +87,15 @@ class Solution:
         if default:
             self.set_tf_as_default(tf)
 
+    def is_default_tf(self, tf):
+        return tf in self._default_tfs
+
     def set_tf_as_default(self, tf):
         """Set the specified transfer function as a default"""
         if tf not in self.tfs:
             raise ValueError("transfer function '%s' is not in the solution" % tf)
 
-        if tf in self._default_tfs:
+        if self.is_default_tf(tf):
             raise ValueError("transfer function '%s' is already default" % tf)
 
         self._default_tfs.append(tf)
@@ -99,12 +128,15 @@ class Solution:
         if default:
             self.set_noise_as_default(spectrum)
 
+    def is_default_noise(self, noise):
+        return noise in self._default_noise
+
     def set_noise_as_default(self, spectrum):
         """Set the specified noise spectrum as a default"""
         if spectrum not in self.noise:
             raise ValueError("noise spectrum '%s' is not in the solution" % spectrum)
 
-        if spectrum in self._default_noise:
+        if self.is_default_noise(spectrum):
             raise ValueError("noise spectrum '%s' is already default" % spectrum)
 
         self._default_noise.append(spectrum)
@@ -136,12 +168,15 @@ class Solution:
         if default:
             self.set_noise_sum_as_default(noise_sum)
 
+    def is_default_noise_sum(self, noise_sum):
+        return noise_sum in self._default_noise_sums
+
     def set_noise_sum_as_default(self, noise_sum):
         """Set the specified noise sum as a default"""
         if noise_sum not in self.noise_sums:
             raise ValueError("noise sum '%s' is not in the solution" % noise_sum)
 
-        if noise_sum in self._default_noise_sums:
+        if self.is_default_noise_sum(noise_sum):
             raise ValueError("noise sum '%s' is already default" % noise_sum)
 
         self._default_noise_sums.append(noise_sum)
@@ -485,37 +520,39 @@ class Solution:
 
         ax1, ax2 = figure.axes
 
-        for tf in tfs:
-            tf.draw(ax1, ax2)
+        with self._figure_style_context():
+            for tf in tfs:
+                with self._function_style_context(tf):
+                    tf.draw(ax1, ax2)
 
-        # overall figure title
-        if title:
-            figure.suptitle(title)
+            # overall figure title
+            if title:
+                figure.suptitle(title)
 
-        # legend
-        if legend:
-            ax1.legend(loc=legend_loc)
+            # legend
+            if legend:
+                ax1.legend(loc=legend_loc)
 
-        # limits
-        if xlim:
-            ax1.set_xlim(xlim)
-            ax2.set_xlim(xlim)
-        if ylim:
-            ax1.set_ylim(ylim)
-            ax2.set_ylim(ylim)
+            # limits
+            if xlim:
+                ax1.set_xlim(xlim)
+                ax2.set_xlim(xlim)
+            if ylim:
+                ax1.set_ylim(ylim)
+                ax2.set_ylim(ylim)
 
-        # set other axis properties
-        ax2.set_xlabel(xlabel)
-        ax1.set_ylabel(ylabel_mag)
-        ax2.set_ylabel(ylabel_phase)
-        ax1.grid(True)
-        ax2.grid(True)
+            # set other axis properties
+            ax2.set_xlabel(xlabel)
+            ax1.set_ylabel(ylabel_mag)
+            ax2.set_ylabel(ylabel_phase)
+            ax1.grid(True)
+            ax2.grid(True)
 
-        # magnitude and phase tick locators
-        ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
-        ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
-        ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
-        ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
+            # magnitude and phase tick locators
+            ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
+            ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
+            ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
+            ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
 
         return figure
 
@@ -531,33 +568,45 @@ class Solution:
 
         ax = figure.axes[0]
 
-        for spectrum in noise:
-            spectrum.draw(ax)
+        with self._figure_style_context():
+            for spectrum in noise:
+                with self._function_style_context(spectrum):
+                    spectrum.draw(ax)
 
-        # overall figure title
-        if title:
-            figure.suptitle(title)
+            # overall figure title
+            if title:
+                figure.suptitle(title)
 
-        # legend
-        if legend:
-            ax.legend(loc=legend_loc)
+            # legend
+            if legend:
+                ax.legend(loc=legend_loc)
 
-        # limits
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_ylim(ylim)
+            # limits
+            if xlim:
+                ax.set_xlim(xlim)
+            if ylim:
+                ax.set_ylim(ylim)
 
-        # set other axis properties
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.grid(True)
+            # set other axis properties
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.grid(True)
 
         return figure
 
-    def plot_style_context(self, *args, **kwargs):
-        """Plot style context manager, used to override the default style"""
-        return plt.rc_context(*args, **kwargs)
+    def _figure_style_context(self):
+        """Figure style context manager.
+
+        Used to override the default style for a figure.
+        """
+        return plt.rc_context(self.figure_plot_style)
+
+    def _function_style_context(self, function):
+        """Function style context manager.
+
+        Used to override the default style for a plotted function.
+        """
+        return plt.rc_context(self.function_plot_styles[function])
 
     @staticmethod
     def save_figure(figure, path, **kwargs):
@@ -579,6 +628,64 @@ class Solution:
         plt.tight_layout()
         plt.show()
 
+    def __str__(self):
+        return "Solution(%s)" % self.name
+
+    def __add__(self, other):
+        return self.combine(other)
+
+    def combine(self, other):
+        """Combine this solution with the specified other solution.
+
+        To be able to be combined, the two solutions must:
+            - have equivalent frequency vectors
+            - have no equivalent functions
+
+        To combine solutions with potentially identical functions, use labels to disambiguate.
+        """
+        # check frequencies match
+        if self.frequencies != other.frequencies:
+            raise ValueError("specified other solution '%s' is incompatible with this one" % other)
+
+        # check no functions match
+        for function in self.functions:
+            if function in other.functions:
+                raise ValueError("function '%s' appears in both solutions" % function)
+
+        # resultant name
+        name = "%s + %s" % (self, other)
+        # resultant solution
+        result = self.__class__(self.frequencies, name)
+
+        flagged_tfs = []
+        flagged_noise = []
+        flagged_noise_sums = []
+
+        # get functions with their default statuses
+        for solution in (self, other):
+            for tf in solution.tfs:
+                flagged_tfs.append((tf, solution.is_default_tf(tf)))
+            for spectrum in solution.noise:
+                flagged_noise.append((spectrum. solution.is_default_noise(spectrum)))
+            for noise_sum in solution.noise_sums:
+                flagged_noise_sums.append((noise_sum. solution.is_default_noise_sum(noise_sum)))
+
+        # add functions and set plot styles
+        for tf, default in flagged_tfs:
+            result.add_tf(tf, default=default)
+        for spectrum, default in flagged_noise:
+            result.add_noise(spectrum, default=default)
+        for noise_sum, default in flagged_noise_sums:
+            result.add_noise_sum(noise_sum, default=default)
+
+        # combine function plot styles
+        result.function_plot_styles = {**self.function_plot_styles, **other.function_plot_styles}
+
+        # take other settings from LHS
+        result.figure_plot_style = self.figure_plot_style
+
+        return result
+
     def equivalent_defaults(self, other):
         """Checks if the specified other solution has equivalent, identical displayed plots"""
         # check frequencies match
@@ -598,9 +705,9 @@ class Solution:
 
         # check functions match
         for function in our_functions:
-            if function in their_functions:
-                # match
-                their_functions.remove(function)
+            for other_function in their_functions:
+                if function.matches(other_function):
+                    their_functions.remove(other_function)
 
         if their_functions:
             LOGGER.info("non-matches: %s", ", ".join([str(n) for n in their_functions]))
