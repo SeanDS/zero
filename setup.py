@@ -40,8 +40,8 @@ setup(
         "circuit": ["circuit.conf.dist", "library.conf.dist"]
     },
     entry_points={
-        'console_scripts': [
-            '%s = circuit.__main__:main' % "circuit"
+        "console_scripts": [
+            "%s = circuit.__main__:cli" % "circuit"
         ]
     },
     install_requires=REQUIREMENTS,
