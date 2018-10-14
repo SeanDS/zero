@@ -68,10 +68,6 @@ class LisoParser(metaclass=abc.ABCMeta):
         # noise sources to calculate
         self._noise_sources = None
 
-        # noise sum flags
-        self._noise_sum_requested = False # a noise sum should be computed
-        self._noise_sum_present = False   # a noise sum is present in the data
-
         # circuit solution
         self._solution = None
 
@@ -180,19 +176,25 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     @property
     def n_displayed_noise(self):
-        return len(self.displayed_noise_sources)
+        return len(self.displayed_noise_objects)
 
     @property
     def n_summed_noise(self):
-        return len(self.summed_noise_sources)
+        return len(self.summed_noise_objects)
 
-    def parse(self, file):
-        # first assume file
-        try:
-            text = file.read()
-        except AttributeError:
-            # assume text
-            text = str(file)
+    def parse(self, text=None, path=None):
+        if text is None and path is None:
+            raise ValueError("must provide either text or a path")
+
+        if path is not None:
+            if text is not None:
+                raise ValueError("cannot specify both text and a file to parse")
+
+            if not os.path.isfile(path):
+                raise FileNotFoundError("cannot read '{path}'".format(path=path))
+
+            with open(path, "r") as obj:
+                text = obj.read()
 
         if self._eof:
             # reset end of file
@@ -212,35 +214,6 @@ class LisoParser(metaclass=abc.ABCMeta):
     def p_error(self, p):
         """Child classes must implement error handler"""
         raise NotImplementedError
-
-    def show(self, *args, **kwargs):
-        """Show LISO results"""
-        # build circuit if necessary
-        self.build()
-
-        if not self.plottable:
-            LOGGER.warning("nothing to show")
-
-        # get solution
-        solution = self.solution(*args, **kwargs)
-
-        # draw plots
-        if self.output_type == "tf":
-            solution.plot_tfs(sources=self.default_tf_sources(), sinks=self.default_tf_sinks())
-        elif self.output_type == "noise":
-            sum_kwargs = {}
-
-            if self._noise_sum_requested:
-                # calculate and plot noise sum
-                sum_kwargs["compute_sum_sources"] = self.summed_noise_sources
-
-            solution.plot_noise(sources=self.displayed_noise_sources,
-                                show_sums=self._noise_sum_present, **sum_kwargs)
-        else:
-            raise Exception("unrecognised output type")
-
-        # display plots
-        solution.show()
 
     def default_tf_sources(self):
         """Default transfer function sources"""
@@ -264,7 +237,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         """
         return [element.element for element in self.tf_outputs]
 
-    def solution(self, force=False, **kwargs):
+    def solution(self, force=False, set_default_plots=True, **kwargs):
         """Get the solution to the analysis defined in the parsed file"""
         # build circuit if necessary
         self.build()
@@ -272,7 +245,24 @@ class LisoParser(metaclass=abc.ABCMeta):
         if not self._solution or force:
             self._solution = self._run(**kwargs)
 
+        if set_default_plots:
+            self._set_default_plots()
+
         return self._solution
+
+    def _set_default_plots(self):
+        # set default plots
+        if self.output_type == "tf":
+            default_tfs = self._solution.filter_tfs(sources=self.default_tf_sources(),
+                                                    sinks=self.default_tf_sinks())
+
+            for tf in default_tfs:
+                self._solution.set_tf_as_default(tf)
+        elif self.output_type == "noise":
+            default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
+
+            for spectrum in default_spectra:
+                self._solution.set_noise_as_default(spectrum)
 
     def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
         # build circuit if necessary
@@ -298,7 +288,6 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     def build(self):
         """Build circuit if not yet built"""
-
         if not self._circuit_built:
             self._do_build()
 
@@ -347,8 +336,8 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         # check if noise sources exist
         try:
-            _ = self.displayed_noise_sources
-            _ = self.summed_noise_sources
+            _ = self.displayed_noise_objects
+            _ = self.summed_noise_objects
         except ComponentNotFoundError as e:
             self.p_error("noise source '%s' is not present in the circuit" % e.name)
 
@@ -389,13 +378,13 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def displayed_noise_sources(self):
-        """Displayed noise sources, not including sums"""
+    def displayed_noise_objects(self):
+        """Displayed noise objects, not including sums"""
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def summed_noise_sources(self):
+    def summed_noise_objects(self):
         """Noise sources included in displayed noise sum outputs"""
         raise NotImplementedError
 

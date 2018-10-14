@@ -5,6 +5,7 @@ import numpy as np
 
 from ..format import Quantity
 from ..components import OpAmp, NoiseNotFoundError
+from ..data import MultiNoiseSpectrum
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
 LOGGER = logging.getLogger(__name__)
@@ -78,6 +79,9 @@ class LisoInputParser(LisoParser):
         self._noise_defs = [] # displayed noise
         self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
 
+        # noise sum request
+        self._noise_sum_requested = False
+
         super().__init__(*args, **kwargs)
 
     def _do_build(self):
@@ -125,7 +129,18 @@ class LisoInputParser(LisoParser):
                                          scales=self._output_all_opamps_scales)
                 self.add_tf_output(sink)
 
-    def _get_noise_sources(self, definitions):
+    def solution(self, **kwargs):
+        solution = super().solution(**kwargs)
+
+        if self._noise_sum_requested:
+            # find spectra in solution
+            sum_spectra = solution.filter_noise(sources=self.summed_noise_objects)
+            # build noise sum and show by default
+            solution.add_noise_sum(MultiNoiseSpectrum(spectra=sum_spectra), default=True)
+
+        return solution
+
+    def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""
         sources = set()
 
@@ -210,21 +225,21 @@ class LisoInputParser(LisoParser):
         return noise
 
     @property
-    def displayed_noise_sources(self):
+    def displayed_noise_objects(self):
         """Noise sources to be plotted"""
-        return self._get_noise_sources(self._noise_defs)
+        return self._get_noise_objects(self._noise_defs)
 
     @property
-    def summed_noise_sources(self):
+    def summed_noise_objects(self):
         """Noise sources included in the sum column"""
         # check "sum" is not present in noisy definitions
         if "sum" in [definition[0].split(":")[0] for definition in self._noisy_extra_defs]:
             self.p_error("cannot specify 'sum' as noisy source")
 
-        sum_sources = self._get_noise_sources(self._noisy_extra_defs)
+        sum_sources = self._get_noise_objects(self._noisy_extra_defs)
 
         # add displayed noise sources if not already present
-        sum_sources.update(self.displayed_noise_sources)
+        sum_sources.update(self.displayed_noise_objects)
 
         return sum_sources
 

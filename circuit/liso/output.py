@@ -140,7 +140,7 @@ class LisoOutputParser(LisoParser):
         self._data = None
 
     def _build_solution(self):
-        self._solution = Solution(self.circuit, self.frequencies)
+        self._solution = Solution(self.frequencies)
 
         if self.output_type == "tf":
             self._build_tfs()
@@ -256,31 +256,24 @@ class LisoOutputParser(LisoParser):
                 # must be a resistor
                 noise = component.johnson_noise
 
-            # noise should always be in the noise source list
-            #assert noise in self.noise_sources
-
             # create noise spectrum
             spectrum = NoiseSpectrum(source=noise, sink=sink, series=series)
 
             self._solution.add_noise(spectrum)
 
-        # add sum column if present
+        # generate sum if present
         if self._source_sum_index is not None:
-            # set flag
-            self._noise_sum_present = True
-
             # get sources contributing to sum
-            sources = self.summed_noise_sources
+            sources = self.summed_noise_objects
 
             # get data
             series = Series(x=self.frequencies, y=self._data[:, self._source_sum_index])
 
-            # create sum noise
-            spectrum = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
+            # create and store sum noise
+            sum_noise = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
+            self._solution.add_noise_sum(sum_noise)
 
-            self._solution.add_noise(spectrum)
-
-    def _get_noise_sources(self, definitions):
+    def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""
         sources = set()
 
@@ -316,14 +309,14 @@ class LisoOutputParser(LisoParser):
         return sources
 
     @property
-    def displayed_noise_sources(self):
-        """Noise sources to be plotted"""
-        return self._get_noise_sources(self._noise_defs)
+    def displayed_noise_objects(self):
+        """Noise objects to be plotted"""
+        return self._get_noise_objects(self._noise_defs)
 
     @property
-    def summed_noise_sources(self):
+    def summed_noise_objects(self):
         """Noise sources included in the sum column"""
-        return self._get_noise_sources(self._noisy_defs)
+        return self._get_noise_objects(self._noisy_defs)
 
     def t_ANY_resistors(self, t):
         # match start of resistor section

@@ -15,6 +15,14 @@ CONF = CircuitConfig()
 
 class Solution:
     """Represents a solution to the simulated circuit"""
+
+    # filter flags
+    TF_SOURCES_ALL = "all"
+    TF_SINKS_ALL = "all"
+    NOISE_SOURCES_ALL = "all"
+    NOISE_SINKS_ALL = "all"
+    NOISE_TYPES_ALL = "all"
+
     def __init__(self, frequencies):
         """Instantiate a new solution
 
@@ -22,36 +30,122 @@ class Solution:
                             results for
         :type frequencies: :class:`~np.ndarray`
         """
-        self.frequencies = frequencies
-
         # defaults
         self.functions = []
+        self._default_tfs = []
+        self._default_noise = []
+        self._default_noise_sums = []
 
-    def add_tf(self, tf):
-        """Add a transfer function to the solution
+        self.frequencies = frequencies
 
-        :param tf: transfer function
-        :type tf: :class:`~TransferFunction`
+    def add_tf(self, tf, default=False):
+        """Add a transfer function to the solution.
+
+        Parameters
+        ----------
+        tf : :class:`.TransferFunction`
+            The transfer function to add.
+        default : :class:`bool`, optional
+            Whether this transfer function is a default.
+
+        Raises
+        ------
+        ValueError
+            If the specified transfer function is incompatible with this solution.
         """
-
         # dimension sanity checks
         if not np.all(tf.frequencies == self.frequencies):
-            raise ValueError("tf doesn't fit this solution")
+            raise ValueError("transfer function '%s' doesn't fit this solution" % tf)
 
         self._add_function(tf)
 
-    def add_noise(self, noise_spectrum):
-        """Add noise spectrum to the solution
+        if default:
+            self.set_tf_as_default(tf)
 
-        :param noise_spectrum: noise spectrum
-        :type noise_spectrum: :class:`~NoiseSpectrum`
+    def set_tf_as_default(self, tf):
+        """Set the specified transfer function as a default"""
+        if tf not in self.tfs:
+            raise ValueError("transfer function '%s' is not in the solution" % tf)
+
+        if tf in self._default_tfs:
+            raise ValueError("transfer function '%s' is already default" % tf)
+
+        self._default_tfs.append(tf)
+
+    def add_noise(self, spectrum, default=False):
+        """Add a noise spectrum to the solution.
+
+        Parameters
+        ----------
+        spectrum : :class:`.NoiseSpectrum`
+            The noise spectrum to add.
+        default : :class:`bool`, optional
+            Whether this noise spectrum is a default.
+
+        Raises
+        ------
+        ValueError
+            If the specified noise spectrum is incompatible with this solution or not single-source
+            or single-sink.
         """
+        if not isinstance(spectrum, NoiseSpectrum):
+            raise ValueError("noise spectrum '%s' is not single-source and -sink type" % spectrum)
 
         # dimension sanity checks
-        if not np.all(noise_spectrum.frequencies == self.frequencies):
-            raise ValueError("noise spectrum doesn't fit this solution")
+        if not np.all(spectrum.frequencies == self.frequencies):
+            raise ValueError("noise spectrum '%s' doesn't fit this solution" % spectrum)
 
-        self._add_function(noise_spectrum)
+        self._add_function(spectrum)
+
+        if default:
+            self.set_noise_as_default(spectrum)
+
+    def set_noise_as_default(self, spectrum):
+        """Set the specified noise spectrum as a default"""
+        if spectrum not in self.noise:
+            raise ValueError("noise spectrum '%s' is not in the solution" % spectrum)
+
+        if spectrum in self._default_noise:
+            raise ValueError("noise spectrum '%s' is already default" % spectrum)
+
+        self._default_noise.append(spectrum)
+
+    def add_noise_sum(self, noise_sum, default=False):
+        """Add a noise sum to the solution.
+
+        Parameters
+        ----------
+        noise_sum : :class:`.MultiNoiseSpectrum` or :class:`.SumNoiseSpectrum`
+            The noise sum to add.
+        default : :class:`bool`, optional
+            Whether this noise sum is a default.
+
+        Raises
+        ------
+        ValueError
+            If the specified noise sum is incompatible with this solution or not multi-source.
+        """
+        if not isinstance(noise_sum, (MultiNoiseSpectrum, SumNoiseSpectrum)):
+            raise ValueError("noise sum '%s' is not multi-source type" % noise_sum)
+
+        # dimension sanity checks
+        if not np.all(noise_sum.frequencies == self.frequencies):
+            raise ValueError("noise sum '%s' doesn't fit this solution" % noise_sum)
+
+        self._add_function(noise_sum)
+
+        if default:
+            self.set_noise_sum_as_default(noise_sum)
+
+    def set_noise_sum_as_default(self, noise_sum):
+        """Set the specified noise sum as a default"""
+        if noise_sum not in self.noise_sums:
+            raise ValueError("noise sum '%s' is not in the solution" % noise_sum)
+
+        if noise_sum in self._default_noise_sums:
+            raise ValueError("noise sum '%s' is already default" % noise_sum)
+
+        self._default_noise_sums.append(noise_sum)
 
     def _add_function(self, function):
         if function in self.functions:
@@ -59,18 +153,131 @@ class Solution:
 
         self.functions.append(function)
 
+    def filter_tfs(self, **kwargs):
+        return self._apply_tf_filters(self.tfs, **kwargs)
+
+    def _apply_tf_filters(self, tfs, sources=None, sinks=None):
+        filter_sources = []
+        filter_sinks = []
+
+        if sources is None:
+            sources = self.TF_SOURCES_ALL
+        if sinks is None:
+            sinks = self.TF_SINKS_ALL
+
+        if sources != self.TF_SOURCES_ALL:
+            if isinstance(sources, str):
+                sources = [sources]
+
+            for source in sources:
+                if isinstance(source, str):
+                    source = self.get_tf_source(source)
+
+                if not isinstance(source, (Component, Node)):
+                    raise ValueError("signal source '%s' is not a component or node" % source)
+
+                filter_sources.append(source)
+
+            # filter by source
+            tfs = [tf for tf in tfs if tf.source in filter_sources]
+
+        if sinks != self.TF_SINKS_ALL:
+            if isinstance(sinks, str):
+                sinks = [sinks]
+
+            for sink in sinks:
+                if isinstance(sink, str):
+                    sink = self.get_tf_sink(sink)
+
+                if not isinstance(sink, (Component, Node)):
+                    raise ValueError("signal sink '%s' is not a component or node" % sink)
+
+                filter_sinks.append(sink)
+
+            # filter by sink
+            tfs = [tf for tf in tfs if tf.sink in filter_sinks]
+
+        return tfs
+
+    def filter_noise(self, **kwargs):
+        """Filter for noise spectra.
+
+        This does not include sums.
+        """
+        return self._apply_noise_filters(self.noise, **kwargs)
+
+    def _filter_default_noise(self, **kwargs):
+        """Special filter for default noise spectra.
+
+        This does not include default sums.
+        """
+        return self._apply_noise_filters(self._default_noise, **kwargs)
+
+    def _apply_noise_filters(self, spectra, sources=None, sinks=None, types=None):
+        filter_sources = []
+        filter_sinks = []
+
+        if sources is None:
+            sources = self.NOISE_SOURCES_ALL
+        if sinks is None:
+            sinks = self.NOISE_SINKS_ALL
+        if types is None:
+            types = self.NOISE_TYPES_ALL
+
+        if sources != self.NOISE_SOURCES_ALL:
+            if isinstance(sources, str):
+                sources = [sources]
+
+            for source in sources:
+                if isinstance(source, str):
+                    source = self.get_noise_source(source)
+
+                if not isinstance(source, Noise):
+                    raise ValueError("noise source '%s' is not a noise source" % source)
+
+                filter_sources.append(source)
+
+            # filter by source
+            spectra = [spectrum for spectrum in spectra if spectrum.source in filter_sources]
+
+        if sinks != self.NOISE_SINKS_ALL:
+            if isinstance(sinks, str):
+                sinks = [sinks]
+
+            for sink in sinks:
+                if isinstance(sink, str):
+                    sink = self.get_noise_sink(sink)
+
+                if not isinstance(sink, Node):
+                    raise ValueError("noise sink '%s' is not a node" % sink)
+
+                filter_sinks.append(sink)
+
+            # filter by sink
+            spectra = [spectrum for spectrum in spectra if spectrum.sink in filter_sinks]
+
+        if types != self.NOISE_TYPES_ALL:
+            # filter by noise type
+            for spectrum in spectra:
+                if spectrum.noise_type not in types and spectrum.noise_subtype not in types:
+                    # no match
+                    spectra.remove(spectrum)
+
+        return spectra
+
     @property
     def tfs(self):
         return [function for function in self.functions if isinstance(function, TransferFunction)]
 
     @property
     def noise(self):
-        return [function for function in self.functions if isinstance(function, NoiseSpectrum)
-                if not isinstance(function, SumNoiseSpectrum)]
+        return [spectrum for spectrum in self.functions
+                if not isinstance(spectrum, (SumNoiseSpectrum, MultiNoiseSpectrum))]
 
     @property
     def noise_sums(self):
-        return [function for function in self.functions if isinstance(function, SumNoiseSpectrum)]
+        return [spectrum for spectrum in self.functions
+                if isinstance(spectrum, (SumNoiseSpectrum, MultiNoiseSpectrum))]
 
     @property
     def has_tfs(self):
@@ -81,13 +288,20 @@ class Solution:
         return len(self.noise) > 0 or len(self.noise_sums) > 0
 
     @property
+    def default_functions(self):
+        """Default transfer functions and noise spectra"""
+        yield from self._default_tfs
+        yield from self._default_noise
+        yield from self._default_noise_sums
+
+    @property
     def tf_source_nodes(self):
         """Get transfer function input nodes.
 
         :return: input nodes
         :rtype: Set[:class:`Node`]
         """
-        return set([function.source for function in self.tfs if isinstance(function.source, Node)])
+        return set([tf.source for tf in self.tfs if isinstance(tf.source, Node)])
 
     @property
     def tf_source_components(self):
@@ -96,7 +310,7 @@ class Solution:
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
-        return set([function.source for function in self.tfs if isinstance(function.source, Component)])
+        return set([tf.source for tf in self.tfs if isinstance(tf.source, Component)])
 
     @property
     def tf_sources(self):
@@ -118,7 +332,7 @@ class Solution:
         :return: output nodes
         :rtype: Set[:class:`Node`]
         """
-        return set([function.sink for function in self.tfs if isinstance(function.sink, Node)])
+        return set([tf.sink for tf in self.tfs if isinstance(tf.sink, Node)])
 
     @property
     def tf_sink_components(self):
@@ -127,7 +341,7 @@ class Solution:
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
-        return set([function.sink for function in self.tfs if isinstance(function.sink, Component)])
+        return set([tf.sink for tf in self.tfs if isinstance(tf.sink, Component)])
 
     @property
     def tf_sinks(self):
@@ -148,7 +362,7 @@ class Solution:
 
         :return: noise sources
         """
-        return [function.source for function in self.noise]
+        return [spectrum.source for spectrum in self.noise]
 
     def get_noise_source(self, source_name):
         source_name = source_name.lower()
@@ -166,7 +380,7 @@ class Solution:
         :return: noise nodes
         :rtype: Set[:class:`Node`]
         """
-        return set([function.sink for function in self.noise if isinstance(function.sink, Node)])
+        return set([spectrum.sink for spectrum in self.noise if isinstance(spectrum.sink, Node)])
 
     @property
     def noise_sink_components(self):
@@ -175,7 +389,8 @@ class Solution:
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
-        return set([function.sink for function in self.noise if isinstance(function.sink, Component)])
+        return set([spectrum.sink for spectrum in self.noise
+                    if isinstance(spectrum.sink, Component)])
 
     @property
     def noise_sinks(self):
@@ -194,132 +409,58 @@ class Solution:
     def n_frequencies(self):
         return len(list(self.frequencies))
 
-    def _filter_function(self, _class, sources=None, sinks=None):
-        functions = [function for function in self.functions
-                     if isinstance(function, _class)]
-
-        # filter by source
-        if sources is not None:
-            functions = [function for function in functions
-                         if function.source in sources]
-
-        # filter by sink
-        if sinks is not None:
-            functions = [function for function in functions
-                         if function.sink in sinks]
-
-        return functions
-
-    def filter_tfs(self, sources=None, sinks=None):
-        source_elements = []
-        sink_elements = []
-
-        if isinstance(sources, str):
-            if sources.lower() == "all":
-                # all sources
-                source_elements = self.tf_sources
-            else:
-                # parse source name
-                source_elements.append(self.get_tf_source(sources))
-        else:
-            # assume list
-            for source in sources:
-                if isinstance(source, str):
-                    # parse source name
-                    source_elements.append(self.get_tf_source(source))
-                else:
-                    if not isinstance(source, (Component, Node)):
-                        raise ValueError("signal source '%s' is not a component or node" % source)
-
-                    source_elements.append(source)
-
-        if isinstance(sinks, str):
-            if sinks.lower() == "all":
-                # all sinks
-                sink_elements = self.tf_sinks
-            else:
-                # parse source name
-                sink_elements.append(self.get_tf_sink(sinks))
-        else:
-            # assume list
-            for sink in sinks:
-                if isinstance(sink, str):
-                    # parse source name
-                    sink_elements.append(self.get_tf_sink(sink))
-                else:
-                    if not isinstance(sink, (Component, Node)):
-                        raise ValueError("signal sink '%s' is not a component or node" % sink)
-
-                    sink_elements.append(sink)
-
-        # filter transfer functions
-        return self._filter_function(TransferFunction, sources=source_elements, sinks=sink_elements)
-
-    def filter_noise(self, sources=None, sinks=None):
-        source_elements = []
-        sink_elements = []
-
-        if isinstance(sources, str):
-            if sources.lower() == "all":
-                # all sources
-                source_elements.extend(self.noise_sources)
-            else:
-                # parse source name
-                source_elements.append(self.get_noise_source(sources))
-        else:
-            # assume list
-            for source in sources:
-                if isinstance(source, str):
-                    # parse source name
-                    source_elements.append(self.get_noise_source(source))
-                else:
-                    if not isinstance(source, Noise):
-                        raise ValueError("noise source '%s' is not a noise source" % source)
-
-                    source_elements.append(source)
-
-        if isinstance(sinks, str):
-            if sinks.lower() == "all":
-                # all sinks
-                sink_elements.extend(self.noise_sinks)
-            else:
-                # parse source name
-                sink_elements.append(self.get_noise_sink(sinks))
-        else:
-            # assume list
-            for sink in sinks:
-                if isinstance(sink, str):
-                    # parse source name
-                    sink_elements.append(self.get_noise_sink(sink))
-                else:
-                    if not isinstance(sink, Node):
-                        raise ValueError("noise sink '%s' is not a node" % sink)
-
-                    sink_elements.append(sink)
-
-        # filter noise spectra
-        return self._filter_function(NoiseSpectrum, sources=source_elements, sinks=sink_elements)
-
-    def plot(self):
+    def plot(self, tf_figure=None, noise_figure=None):
         """Plot all functions contained in this solution using default settings"""
         if self.has_tfs:
-            self.plot_tfs()
+            self.plot_tfs(figure=tf_figure)
+
         if self.has_noise:
-            self.plot_noise()
+            self.plot_noise(figure=noise_figure)
 
-    def plot_tfs(self, figure=None, sources="all", sinks="all", **kwargs):
-        if figure is None:
-            figure = self.bode_figure()
+    def plot_tfs(self, figure=None, sources=None, sinks=None, **kwargs):
+        """Plot transfer functions.
 
-        # transfer functions between the sources and sinks
-        tfs = self.filter_tfs(sources=sources, sinks=sinks)
+        Note: if only one of "sources" or "sinks" is specified, the other defaults to "all" as per
+        the behaviour of :meth:`.filter_tfs`.
+        """
+        if sources is None and sinks is None:
+            tfs = self._default_tfs
+        else:
+            tfs = self.filter_tfs(sources=sources, sinks=sinks)
 
         if not tfs:
-            raise NoDataException("no transfer functions found between specified sources and sinks")
+            raise NoDataException("no transfer functions found")
 
         # draw plot
-        figure = self._plot_bode(self.frequencies, tfs, figure=figure, **kwargs)
+        figure = self._plot_bode(tfs, figure=figure, **kwargs)
         LOGGER.info("tf(s) plotted on %s", figure.canvas.get_window_title())
+
+        return figure
+
+    def plot_noise(self, figure=None, sources=None, sinks=None, types=None, show_sums=True,
+                   title=None):
+        """Plot noise.
+
+        Note: if only some of "sources", "sinks" and "types" are specified, the others default to
+        "all" as per the behaviour of :meth:`.filter_noise`.
+        """
+        if sources is None and sinks is None and types is None:
+            # filter against sum flag
+            noise = self._filter_default_noise()
+
+            if show_sums:
+                noise.extend(self._default_noise_sums)
+        else:
+            noise = self.filter_noise(sources=sources, sinks=sinks, types=types)
+
+            if show_sums:
+                noise.extend(self.noise_sums)
+
+        if not noise:
+            raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
+
+        figure = self._plot_spectrum(noise, figure=figure, title=title)
+        LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
 
         return figure
 
@@ -330,17 +471,17 @@ class Solution:
     def bode_figure(self):
         figure = self.figure()
         ax1 = figure.add_subplot(211)
-        ax2 = figure.add_subplot(212, sharex=ax1)
+        _ = figure.add_subplot(212, sharex=ax1)
 
         return figure
 
     def noise_figure(self):
         figure = self.figure()
-        ax1 = figure.add_subplot(111)
+        _ = figure.add_subplot(111)
 
         return figure
 
-    def _plot_bode(self, frequencies, tfs, figure=None, legend=True, legend_loc="best",
+    def _plot_bode(self, tfs, figure=None, legend=True, legend_loc="best",
                    title=None, xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
                    ylabel_mag=r"$\bf{Magnitude}$ (dB)", ylabel_phase=r"$\bf{Phase}$ ($\degree$)",
                    mag_tick_major_step=20, mag_tick_minor_step=10, phase_tick_major_step=30,
@@ -388,66 +529,9 @@ class Solution:
 
         return figure
 
-    def plot_noise(self, figure=None, sources="all", show_sums=True, compute_sum_sources=None,
-                   title=None):
-        """Plot noise spectra.
-
-        Existing :class:`sum noise sources <SumNoiseSpectrum>` present in the solution are not
-        included in computed sums requested with `compute_sum_sources`.
-
-        Parameters
-        ----------
-        figure : :class:`plt.figure`, optional
-            The figure to plot to. If `None`, a new figure is generated.
-        sources : :class:`list` of :class`Node` or :class:`Component`, or "all", optional
-            Individual noise sources to plot spectra from.
-        show_sums : :class:`bool`, optional
-            Show sum noise spectra that have been added to this object, if present.
-        compute_sum_sources : :class:`dict` or :class:`list`, optional
-            Sources to include in the sum. If this is a :class:`dict`, a separate sum is
-            calculated for each entry, with each key as the label. If this is a :class:`list`,
-            the sources included in the list are used and the label is the default label used
-            by :class:`MultiNoiseSpectrum`.
-        title : :class:`str`, optional
-            Plot title.
-
-        Returns
-        -------
-        :class:`plt.figure`
-            The plot figure.
-        """
-        # get noise
-        noise = self.filter_noise(sources=sources, sinks="all")
-
-        if show_sums:
-            # add sum noises
-            noise.extend(self.noise_sums)
-
-        if compute_sum_sources is not None:
-            if isinstance(compute_sum_sources, collections.Mapping):
-                # dict-like mapping provided
-                for key in compute_sum_sources:
-                    # create combined noise spectrum
-                    noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources[key],
-                                                                      sinks="all"),
-                                                    label=key))
-            else:
-                # single list of nodes provided
-                noise.append(MultiNoiseSpectrum(self.filter_noise(sources=compute_sum_sources,
-                                                                  sinks="all")))
-
-        if not noise:
-            raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
-
-        figure = self._plot_noise(self.frequencies, noise, figure=figure, title=title)
-        LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
-
-        return figure
-
-    def _plot_noise(self, frequencies, noise, figure=None, legend=True,
-                    legend_loc="best", title=None, xlim=None, ylim=None,
-                    xlabel=r"$\bf{Frequency}$ (Hz)",
-                    ylabel=r"$\bf{Noise}$ ($\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$)"):
+    def _plot_spectrum(self, noise, figure=None, legend=True, legend_loc="best", title=None,
+                       xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
+                       ylabel=r"$\bf{Noise}$ ($\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$)"):
         if figure is None:
             # create figure
             figure = self.noise_figure()
@@ -491,39 +575,31 @@ class Solution:
         plt.tight_layout()
         plt.show()
 
-    def __eq__(self, other):
+    def equivalent_defaults(self, other):
+        """Checks if the specified other solution has equivalent, identical displayed plots"""
         # check frequencies match
         if np.all(self.frequencies != other.frequencies):
             return False
 
-        LOGGER.info("comparing %i / %i functions" % (len(self.functions),
-                                                     len(other.functions)))
-        LOGGER.info("first solution's functions:")
-        for f in self.functions:
-            LOGGER.info("%s (%s)", f, f.__class__)
-        LOGGER.info("second solution's functions:")
-        for f in other.functions:
-            LOGGER.info("%s (%s)", f, f.__class__)
+        our_functions = list(self.default_functions)
+        their_functions = list(other.default_functions)
+
+        LOGGER.debug("comparing %i / %i functions", len(our_functions), len(their_functions))
+        LOGGER.debug("this solution's functions:")
+        for function in our_functions:
+            LOGGER.debug("%s (%s)", function, function.__class__)
+        LOGGER.debug("other solution's functions:")
+        for function in their_functions:
+            LOGGER.debug("%s (%s)", function, function.__class__)
 
         # check functions match
-        other_tfs = other.tfs
-        other_noise = other.noise
+        for function in our_functions:
+            if function in their_functions:
+                # match
+                their_functions.remove(function)
 
-        for tf in self.tfs:
-            # with builtin list object, "in" uses __eq__
-            if tf in other_tfs:
-                # we have a match
-                other_tfs.remove(tf)
-
-        for noise in self.noise:
-            # with builtin list object, "in" uses __eq__
-            if noise in other_noise:
-                # we have a match
-                other_noise.remove(noise)
-
-        if len(other_tfs) > 0 or len(other_noise) > 0:
-            LOGGER.info("non-matches: %s",
-                        ", ".join([str(n) for n in other_tfs + other_noise]))
+        if their_functions:
+            LOGGER.info("non-matches: %s", ", ".join([str(n) for n in their_functions]))
             # some functions didn't match
             return False
 
