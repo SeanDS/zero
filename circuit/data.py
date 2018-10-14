@@ -1,8 +1,8 @@
 """Data representation and manipulation"""
 
 import abc
-import numpy as np
 import logging
+import numpy as np
 
 from .config import CircuitConfig
 from .misc import db
@@ -36,6 +36,7 @@ def argmax_difference(vector_a, vector_b):
     i = np.argmax(difference)
 
     return i, difference[i]
+
 
 class Series:
     """Data series"""
@@ -143,6 +144,7 @@ class Series:
     def __eq__(self, other):
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
+
 class DataSet(metaclass=abc.ABCMeta):
     """Data set"""
     def __init__(self, sources, sinks, series_list):
@@ -161,11 +163,12 @@ class DataSet(metaclass=abc.ABCMeta):
     def __str__(self):
         return self.label()
 
+
 class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing a single data series"""
-    def __init__(self, series, *args, **kwargs):
+    def __init__(self, series, **kwargs):
         # call parent constructor
-        super().__init__(series_list=[series], *args, **kwargs)
+        super().__init__(series_list=[series], **kwargs)
 
     @property
     def series(self):
@@ -175,11 +178,12 @@ class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
     def series(self, data):
         self.series_list = [data]
 
+
 class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing data for a single source"""
-    def __init__(self, source, source_unit=None, *args, **kwargs):
+    def __init__(self, source, source_unit=None, **kwargs):
         # call parent constructor
-        super().__init__(sources=[source], *args, **kwargs)
+        super().__init__(sources=[source], **kwargs)
 
         self.source_unit = source_unit
 
@@ -187,17 +191,19 @@ class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
     def source(self):
         return self.sources[0]
 
+
 class SingleSinkDataSet(DataSet, metaclass=abc.ABCMeta):
     """Data set containing data for a single sink"""
-    def __init__(self, sink, sink_unit=None, *args, **kwargs):
+    def __init__(self, sink, sink_unit=None, **kwargs):
         # call parent constructor
-        super().__init__(sinks=[sink], *args, **kwargs)
+        super().__init__(sinks=[sink], **kwargs)
 
         self.sink_unit = sink_unit
 
     @property
     def sink(self):
         return self.sinks[0]
+
 
 class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Transfer function data series"""
@@ -268,6 +274,7 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
             return False
         return True
 
+
 class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
     """Noise data series"""
     @property
@@ -290,6 +297,14 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
     def noise_name(self):
         return str(self.source)
 
+    @property
+    def noise_type(self):
+        return self.source.TYPE
+
+    @property
+    def noise_subtype(self):
+        return self.source.SUBTYPE
+
     def label(self, tex=False):
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$"
@@ -307,9 +322,12 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
             return False
         return True
 
+
 class MultiNoiseSpectrum(SingleSinkDataSet):
     """Set of noise data series from multiple sources to a single sink"""
-    def __init__(self, spectra, label="incoherent sum", *args, **kwargs):
+    def __init__(self, spectra, label="incoherent sum", **kwargs):
+        spectra = list(spectra)
+
         # use first spectrum to get sink and frequencies
         sink = spectra[0].sink
         frequencies = spectra[0].series.x
@@ -327,7 +345,7 @@ class MultiNoiseSpectrum(SingleSinkDataSet):
         series = [spectrum.series for spectrum in spectra]
 
         # call parent constructor
-        super().__init__(sources=sources, sink=sink, series_list=series, *args, **kwargs)
+        super().__init__(sources=sources, sink=sink, series_list=series, **kwargs)
 
         self.noise_names = [spectrum.noise_name for spectrum in spectra]
         self._label = label
@@ -351,8 +369,22 @@ class MultiNoiseSpectrum(SingleSinkDataSet):
         # use first series
         return self.series_list[0].x
 
+    @property
+    def spectrum(self):
+        return self.series.y
+
     def label(self, *args, **kwargs):
         return self._label
+
+    def __eq__(self, other):
+        if self.label() != other.label():
+            return False
+        elif not frequencies_match(self.frequencies, other.frequencies):
+            return False
+        elif not spectra_match(self.spectrum, other.spectrum):
+            return False
+        return True
+
 
 class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
     """Single sum noise data series from multiple sources to a single sink"""
@@ -366,7 +398,20 @@ class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
     @property
     def frequencies(self):
         # use first series
-        return self.series_list[0].x
+        return self.series.x
+
+    @property
+    def spectrum(self):
+        return self.series.y
 
     def label(self, *args, **kwargs):
         return "incoherent sum"
+
+    def __eq__(self, other):
+        if self.label() != other.label():
+            return False
+        elif not frequencies_match(self.frequencies, other.frequencies):
+            return False
+        elif not spectra_match(self.spectrum, other.spectrum):
+            return False
+        return True
