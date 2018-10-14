@@ -407,14 +407,6 @@ class Solution:
     def n_frequencies(self):
         return len(list(self.frequencies))
 
-    def plot(self, tf_figure=None, noise_figure=None):
-        """Plot all functions contained in this solution using default settings"""
-        if self.has_tfs:
-            self.plot_tfs(figure=tf_figure)
-
-        if self.has_noise:
-            self.plot_noise(figure=noise_figure)
-
     def plot_tfs(self, figure=None, sources=None, sinks=None, **kwargs):
         """Plot transfer functions.
 
@@ -566,6 +558,20 @@ class Solution:
     def plot_style_context(self, *args, **kwargs):
         """Plot style context manager, used to override the default style"""
         return plt.rc_context(*args, **kwargs)
+
+    @staticmethod
+    def save_figure(figure, path, **kwargs):
+        """Save specified figure to specified path.
+
+        (path can be file object or string path)
+        """
+        # set figure as current figure
+        plt.figure(figure.number)
+
+        # squeeze things together
+        figure.tight_layout()
+
+        plt.savefig(path, **kwargs)
 
     @staticmethod
     def show():
