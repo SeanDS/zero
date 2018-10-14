@@ -1,12 +1,11 @@
 """Tools for running LISO directly"""
 
-import sys
 import os
 import logging
 from tempfile import NamedTemporaryFile
 import subprocess
-import shutil
 
+from . import LISO_PATH_ENV_VAR
 from .base import LisoParserError
 from .output import LisoOutputParser
 
@@ -24,13 +23,14 @@ class LisoRunner:
     def __init__(self, script_path):
         self.script_path = script_path
 
-    def run(self, liso_path, output_path=None, plot=False, parse_output=True):
+    def run(self, liso_path=None, output_path=None, plot=False, parse_output=True):
         """Run LISO script using a local LISO binary and handle the results
 
         Parameters
         ----------
-        liso_path : :class:`str`
-            Path to local LISO binary.
+        liso_path : :class:`str`, optional
+            Path to local LISO binary. If not specified, the value of the environment variable
+            defined in .liso.LISO_PATH_ENV_VAR is used.
         output_path : :class:`str`, optional
             Path to save LISO output file to.
         plot : :class:`bool`, optional
@@ -42,7 +42,20 @@ class LisoRunner:
         -------
         :class:`.LisoOutputParser`
             The parsed LISO output.
+
+        Raises
+        ------
+        ValueError
+            If the LISO path cannot be determined.
         """
+        if liso_path is None:
+            # look for environment variable
+            liso_path = os.getenv(LISO_PATH_ENV_VAR)
+
+            if liso_path is None:
+                raise ValueError("LISO path cannot be determined. Set the environment variable "
+                                 "'%s' to the LISO binary path." % LISO_PATH_ENV_VAR)
+
         if output_path is None:
             # use temporary file
             temp_file = NamedTemporaryFile()
@@ -53,9 +66,12 @@ class LisoRunner:
 
         if parse_output:
             parser = LisoOutputParser()
-            parser.parse(output_path)
+            parser.parse(path=output_path)
         else:
             parser = None
+
+        if output_path is None:
+            temp_file.close()
 
         return parser
 
@@ -105,7 +121,7 @@ class LisoError(Exception):
 
                 # attempt to parse as input
                 try:
-                    parser.parse(path=script_path)
+                    parser.parse(script_path)
 
                     is_output = True
                 except (IOError, LisoParserError):
