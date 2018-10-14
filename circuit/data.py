@@ -141,9 +141,6 @@ class Series:
     def __mul__(self, factor):
         return Series(self.x, self.y * factor)
 
-    def __eq__(self, other):
-        return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
-
 
 class DataSet(metaclass=abc.ABCMeta):
     """Data set"""
@@ -199,7 +196,7 @@ class DataSet(metaclass=abc.ABCMeta):
         return True
 
     def __hash__(self):
-        return hash((self.sources, self.sinks, self.series_list, self.label()))
+        return hash((tuple(self.sources), tuple(self.sinks), tuple(self.series_list), self.label()))
 
 
 class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
