@@ -271,8 +271,7 @@ class Solution:
 
     @property
     def noise(self):
-        return [spectrum for spectrum in self.functions
-                if not isinstance(spectrum, (SumNoiseSpectrum, MultiNoiseSpectrum))]
+        return [spectrum for spectrum in self.functions if isinstance(spectrum, NoiseSpectrum)]
 
     @property
     def noise_sums(self):
