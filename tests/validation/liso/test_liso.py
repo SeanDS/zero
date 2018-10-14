@@ -2,7 +2,6 @@
 
 import os.path
 import glob
-import numpy as np
 import unittest
 import logging
 
@@ -13,6 +12,7 @@ LOGGER = logging.getLogger(__name__)
 # directory containing tests relative to this script
 REL_FIL_DIR = "scripts"
 
+
 class LisoTester(unittest.TestCase):
     def __init__(self, method_name, fil_path=None):
         super().__init__(method_name)
@@ -21,7 +21,7 @@ class LisoTester(unittest.TestCase):
 
     def test_liso_vs_native(self):
         # test message
-        message = "Test %s against LISO".format(path=self.fil_path)
+        message = "Test %s against LISO" % self.fil_path
 
         with self.subTest(msg=message):
             self.compare(self._liso_output())
@@ -34,9 +34,7 @@ class LisoTester(unittest.TestCase):
         native_solution = liso_output.solution(force=True)
 
         # check if they match
-        # IMPORTANT: native solution must be first, because it usually contains more noise/tf data
-        # than LISO
-        self.assertEqual(native_solution, liso_solution)
+        self.assertTrue(liso_solution.equivalent_defaults(native_solution))
 
     def _liso_output(self):
         # run LISO and parse output
