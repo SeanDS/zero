@@ -57,7 +57,7 @@ def cli():
 
 @cli.command()
 @argument("file", type=File())
-@option("--liso", "compute_liso", default=False, help="Simulate using LISO.")
+@option("--liso", default=False, help="Simulate using LISO.")
 @option("--liso-compare", is_flag=True, default=False,
         help="Simulate using both this tool and LISO binary, and overlay results.")
 @option("--liso-diff", is_flag=True, default=False,
@@ -71,13 +71,14 @@ def cli():
 @option("--print-equations", is_flag=True, help="Print circuit equations.")
 @option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @pass_context
-def liso(ctx, file, compute_liso, liso_compare, liso_diff, liso_path, plot, save_figure, prescale,
+def liso(ctx, file, liso, liso_compare, liso_diff, liso_path, plot, save_figure, prescale,
          print_equations, print_matrix):
     """Parse and simulate LISO input or output file"""
     state = ctx.ensure_object(State)
 
-    # check if native solution must be computed
-    compute_native = liso_compare or not compute_liso
+    # check which solutions must be computed
+    compute_liso = liso or liso_compare
+    compute_native = liso_compare or not liso
 
     if compute_liso:
         # run file with LISO and parse results
@@ -111,10 +112,16 @@ def liso(ctx, file, compute_liso, liso_compare, liso_diff, liso_path, plot, save
 
     # determine solution to show or save
     if liso_compare:
-        # combine results from LISO and native simulations
-        solution = liso_solution + native_solution
+        # make LISO solution plots dashed
+        for function in liso_solution.functions:
+            liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
 
-        #with native_solution.plot_style_context({'lines.linestyle': "--"}):
+        # apply suffix to LISO functions
+        for function in liso_solution.functions:
+            function.label_suffix = "LISO"
+
+        # combine results from LISO and native simulations
+        solution = native_solution + liso_solution
 
         if liso_diff:
             # TODO: show difference
