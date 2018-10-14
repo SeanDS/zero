@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
 from .config import CircuitConfig
-from .data import TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, SumNoiseSpectrum
+from .data import (TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, SumNoiseSpectrum,
+                   frequencies_match)
 from .components import Component, Node, Noise
 
 LOGGER = logging.getLogger(__name__)
@@ -318,7 +319,11 @@ class Solution:
 
     @property
     def has_noise(self):
-        return len(self.noise) > 0 or len(self.noise_sums) > 0
+        return len(self.noise) > 0
+
+    @property
+    def has_noise_sums(self):
+        return len(self.noise_sums) > 0
 
     @property
     def default_functions(self):
@@ -629,7 +634,36 @@ class Solution:
         plt.show()
 
     def __str__(self):
-        return "Solution(%s)" % self.name
+        return self.name
+
+    def __repr__(self):
+        data = "Solution '%s'" % str(self)
+
+        if self.has_tfs:
+            data += "\n\tTransfer functions:"
+            for tf in self.tfs:
+                data += "\n\t\t%s" % tf
+
+                if self.is_default_tf(tf):
+                    data += " (default)"
+
+        if self.has_noise:
+            data += "\n\tNoise spectra:"
+            for noise in self.noise:
+                data += "\n\t\t%s" % noise
+
+                if self.is_default_noise(noise):
+                    data += " (default)"
+
+        if self.has_noise_sums:
+            data += "\n\tNoise sums:"
+            for noise_sum in self.noise_sums:
+                data += "\n\t\t%s" % noise_sum
+
+                if self.is_default_noise_sum(noise_sum):
+                    data += " (default)"
+
+        return data
 
     def __add__(self, other):
         return self.combine(other)
@@ -644,7 +678,7 @@ class Solution:
         To combine solutions with potentially identical functions, use labels to disambiguate.
         """
         # check frequencies match
-        if self.frequencies != other.frequencies:
+        if not frequencies_match(self.frequencies, other.frequencies):
             raise ValueError("specified other solution '%s' is incompatible with this one" % other)
 
         # check no functions match
@@ -666,9 +700,9 @@ class Solution:
             for tf in solution.tfs:
                 flagged_tfs.append((tf, solution.is_default_tf(tf)))
             for spectrum in solution.noise:
-                flagged_noise.append((spectrum. solution.is_default_noise(spectrum)))
+                flagged_noise.append((spectrum, solution.is_default_noise(spectrum)))
             for noise_sum in solution.noise_sums:
-                flagged_noise_sums.append((noise_sum. solution.is_default_noise_sum(noise_sum)))
+                flagged_noise_sums.append((noise_sum, solution.is_default_noise_sum(noise_sum)))
 
         # add functions and set plot styles
         for tf, default in flagged_tfs:
@@ -679,7 +713,9 @@ class Solution:
             result.add_noise_sum(noise_sum, default=default)
 
         # combine function plot styles
-        result.function_plot_styles = {**self.function_plot_styles, **other.function_plot_styles}
+        styles = {**self.function_plot_styles, **other.function_plot_styles}
+        for function, style in styles.items():
+            result.function_plot_styles[function] = style
 
         # take other settings from LHS
         result.figure_plot_style = self.figure_plot_style
