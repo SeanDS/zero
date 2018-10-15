@@ -141,6 +141,9 @@ class Series:
     def __mul__(self, factor):
         return Series(self.x, self.y * factor)
 
+    def __eq__(self, other):
+        return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
+
 
 class DataSet(metaclass=abc.ABCMeta):
     """Data set"""
