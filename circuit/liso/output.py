@@ -726,7 +726,11 @@ class LisoOutputParser(LisoParser):
                 unit = next(params)
                 # split off "/sqrt(Hz)"
                 unit = unit.rstrip("/sqrt(Hz)")
-                kwargs["v_noise"] = value + unit
+                # parse as V
+                voltage_noise = Quantity(value + unit, "V")
+                # change unit back
+                voltage_noise.unit = "V/sqrt(Hz)"
+                kwargs["v_noise"] = voltage_noise
             elif prop.startswith("uc"):
                 unit = next(params)
                 kwargs["v_corner"] = value + unit
@@ -734,7 +738,11 @@ class LisoOutputParser(LisoParser):
                 unit = next(params)
                 # split off "/sqrt(Hz)"
                 unit = unit.rstrip("/sqrt(Hz)")
-                kwargs["i_noise"] = value + unit
+                # parse as A
+                current_noise = Quantity(value + unit, "A")
+                # change unit back
+                current_noise.unit = "A/sqrt(Hz)"
+                kwargs["i_noise"] = current_noise
             elif prop.startswith("ic"):
                 unit = next(params)
                 kwargs["i_corner"] = value + unit
@@ -746,8 +754,9 @@ class LisoOutputParser(LisoParser):
                 kwargs["i_max"] = value + unit
             elif prop.startswith("sr"):
                 unit = next(params)
-                # parse V/us and convert to V/s
-                slew_rate = Quantity(value + unit, "V/s")
+                # parse without unit to avoid warning
+                slew_rate = Quantity(value, "V/s")
+                # convert from V/us to V/s
                 slew_rate *= 1e6
                 kwargs["slew_rate"] = slew_rate
             elif prop.startswith("delay"):
