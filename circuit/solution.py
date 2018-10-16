@@ -722,14 +722,31 @@ class Solution:
 
         return result
 
-    def equivalent_defaults(self, other):
-        """Checks if the specified other solution has equivalent, identical displayed plots"""
+    def equivalent_to(self, other, defaults_only=False):
+        """Checks if the specified other solution has equivalent, identical functions to this one.
+
+        Parameters
+        ----------
+        other : :class:`.Solution`
+            The other solution to compare to.
+        defaults_only : :class:`bool`, optional
+            Whether to check only the default functions, or everything.
+
+        Returns
+        -------
+        :class:`bool`
+            True if equivalent, False otherwise.
+        """
         # check frequencies match
         if np.all(self.frequencies != other.frequencies):
             return False
 
-        our_functions = list(self.default_functions)
-        their_functions = list(other.default_functions)
+        if defaults_only:
+            our_functions = list(self.default_functions)
+            their_functions = list(other.default_functions)
+        else:
+            our_functions = list(self.functions)
+            their_functions = list(other.functions)
 
         LOGGER.debug("comparing %i / %i functions", len(our_functions), len(their_functions))
         LOGGER.debug("this solution's functions:")

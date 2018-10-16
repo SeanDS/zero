@@ -33,8 +33,8 @@ class LisoTester(unittest.TestCase):
         # run native
         native_solution = liso_output.solution(force=True)
 
-        # check if they match
-        self.assertTrue(liso_solution.equivalent_defaults(native_solution))
+        # check if they match (only check defaults as LISO only generates defaults)
+        self.assertTrue(liso_solution.equivalent_to(native_solution, defaults_only=True))
 
     def _liso_output(self):
         # run LISO and parse output
