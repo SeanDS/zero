@@ -10,6 +10,7 @@ import numpy as np
 from ..circuit import Circuit, ComponentNotFoundError
 from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
+from ..data import MultiNoiseSpectrum
 from ..format import Quantity
 
 LOGGER = logging.getLogger(__name__)
@@ -70,6 +71,9 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         # circuit solution
         self._solution = None
+
+        # flag for when noise sum must be computed when building solution
+        self._noise_sum_to_be_computed = False
 
         # create lexer and parser handlers
         self.lexer = lex.lex(module=self)
@@ -244,6 +248,12 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         if not self._solution or force:
             self._solution = self._run(**kwargs)
+
+            if self._noise_sum_to_be_computed:
+                # find spectra in solution
+                sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
+                # build noise sum and show by default
+                self._solution.add_noise_sum(MultiNoiseSpectrum(spectra=sum_spectra), default=True)
 
         if set_default_plots:
             self._set_default_plots()

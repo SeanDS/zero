@@ -271,7 +271,10 @@ class LisoOutputParser(LisoParser):
 
             # create and store sum noise
             sum_noise = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
-            self._solution.add_noise_sum(sum_noise)
+            self._solution.add_noise_sum(sum_noise, default=True)
+
+            # flag that noise sum must be generated for any future native runs of this circuit
+            self._noise_sum_to_be_computed = True
 
     def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""

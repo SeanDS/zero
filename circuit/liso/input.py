@@ -5,7 +5,6 @@ import numpy as np
 
 from ..format import Quantity
 from ..components import OpAmp, NoiseNotFoundError
-from ..data import MultiNoiseSpectrum
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
 
 LOGGER = logging.getLogger(__name__)
@@ -80,7 +79,7 @@ class LisoInputParser(LisoParser):
         self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
 
         # noise sum request
-        self._noise_sum_requested = False
+        self._noise_sum_to_be_computed = False
 
         super().__init__(*args, **kwargs)
 
@@ -129,17 +128,6 @@ class LisoInputParser(LisoParser):
                                          scales=self._output_all_opamps_scales)
                 self.add_tf_output(sink)
 
-    def solution(self, **kwargs):
-        solution = super().solution(**kwargs)
-
-        if self._noise_sum_requested:
-            # find spectra in solution
-            sum_spectra = solution.filter_noise(sources=self.summed_noise_objects)
-            # build noise sum and show by default
-            solution.add_noise_sum(MultiNoiseSpectrum(spectra=sum_spectra), default=True)
-
-        return solution
-
     def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""
         sources = set()
@@ -176,7 +164,7 @@ class LisoInputParser(LisoParser):
                     sources.update(self._get_component_noise(resistor))
             elif component_name == "sum":
                 # show sum of circuit noises
-                self._noise_sum_requested = True
+                self._noise_sum_to_be_computed = True
             else:
                 # individual component
                 component = self.circuit[component_name]
