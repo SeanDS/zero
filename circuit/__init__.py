@@ -35,13 +35,19 @@ logging.getLogger().addHandler(logging.NullHandler())
 # use default locale (required for number formatting in log warnings)
 locale.setlocale(locale.LC_ALL, "")
 
-# create logger
-LOG_FORMAT_STR = "%(name)-25s - %(levelname)-8s - %(message)s"
-LOG_HANDLER = logging.StreamHandler()
-LOG_HANDLER.setFormatter(logging.Formatter(LOG_FORMAT_STR))
-LOGGER = logging.getLogger(__name__)
-LOGGER.addHandler(LOG_HANDLER)
+def add_log_handler(logger, handler=None, format_str="%(name)-25s - %(levelname)-8s - %(message)s"):
+    if handler is None:
+        handler = logging.StreamHandler()
 
-def set_log_verbosity(level):
+    handler.setFormatter(logging.Formatter(format_str))
+    logger.addHandler(handler)
+
+# create base logger
+LOGGER = add_log_handler(logging.getLogger(__name__))
+
+def set_log_verbosity(level, logger=None):
     """Enable logging to stdout with a certain level"""
-    LOGGER.setLevel(level)
+    if logger is None:
+        logger = LOGGER
+
+    logger.setLevel(level)
