@@ -242,7 +242,15 @@ class LisoParser(metaclass=abc.ABCMeta):
         return [element.element for element in self.tf_outputs]
 
     def solution(self, force=False, set_default_plots=True, **kwargs):
-        """Get the solution to the analysis defined in the parsed file"""
+        """Get the solution to the analysis defined in the parsed file.
+
+        Parameters
+        ----------
+        force : :class:`bool`
+            Whether to force the solution to be recomputed if already generated.
+        set_default_plots : :class:`bool`
+            Set the plots defined in the LISO file as defaults.
+        """
         # build circuit if necessary
         self.build()
 
