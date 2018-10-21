@@ -142,18 +142,23 @@ class Series:
         return Series(self.x, self.y * factor)
 
     def __eq__(self, other):
+        """Checks if the specified series is identical to this one, within tolerance"""
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
 
-class DataSet(metaclass=abc.ABCMeta):
+class Function(metaclass=abc.ABCMeta):
     """Data set"""
-    def __init__(self, sources, sinks, series_list):
+    def __init__(self, sources, sinks, series):
         self.sources = list(sources)
         self.sinks = list(sinks)
-        self.series_list = list(series_list)
+        self.series = series
 
         # text to add in brackets after label
         self.label_suffix = ""
+
+    @property
+    def frequencies(self):
+        return self.series.x
 
     @abc.abstractmethod
     def draw(self, *axes):
@@ -172,65 +177,40 @@ class DataSet(metaclass=abc.ABCMeta):
         """Data set label, without suffix."""
         raise NotImplementedError
 
-    def matches(self, other):
-        if self.label() != other.label():
-            return False
-
-        return True
-
     def __str__(self):
         return self.label()
 
-    def __eq__(self, other):
-        """Equality operator.
+    def meta_data(self):
+        """Meta data used to provide a hash and check for meta equivalence."""
+        return frozenset(self.sources), frozenset(self.sinks), self.label()
 
-        Note: DataSet objects are considered equal if they have equal sources, sinks, lists of
-        series, and labels.
+    def equivalent(self, other):
+        """Checks if the specified function has equivalent sources, sinks, labels and data."""
+        return self.meta_equivalent(other) and self.series_equivalent(other)
+
+    def meta_equivalent(self, other):
+        """Checks if the specified function has equivalent sources, sinks, and labels.
+
+        This does not check for data equality.
         """
-        if self.sources != other.sources:
-            return False
-        if self.sinks != other.sinks:
-            return False
-        if self.series_list != other.series_list:
-            return False
-        if self.label() != other.label():
-            return False
+        return self.meta_data() == other.meta_data() \
+               and frequencies_match(self.frequencies, other.frequencies)
 
-        return True
+    @abc.abstractmethod
+    def series_equivalent(self, other):
+        """Checks if the specified function has an equivalent series to this one."""
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        """Checks if the specified data set is identical to this one, within tolerance."""
+        return self.equivalent(other)
 
     def __hash__(self):
-        return hash((tuple(self.sources), tuple(self.sinks), tuple(self.series_list), self.label()))
+        """Hash of the data set's meta data."""
+        return hash(self.meta_data())
 
 
-class SingleSeriesDataSet(DataSet, metaclass=abc.ABCMeta):
-    """Data set containing a single data series"""
-    def __init__(self, series, **kwargs):
-        # call parent constructor
-        super().__init__(series_list=[series], **kwargs)
-
-    @property
-    def series(self):
-        return self.series_list[0]
-
-    @series.setter
-    def series(self, data):
-        self.series_list = [data]
-
-    @property
-    def frequencies(self):
-        return self.series.x
-
-    def matches(self, other):
-        if not super().matches(other):
-            return False
-
-        if not frequencies_match(self.frequencies, other.frequencies):
-            return False
-
-        return True
-
-
-class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
+class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
     """Data set containing data for a single source"""
     def __init__(self, source, source_unit=None, **kwargs):
         # call parent constructor
@@ -243,7 +223,7 @@ class SingleSourceDataSet(DataSet, metaclass=abc.ABCMeta):
         return self.sources[0]
 
 
-class SingleSinkDataSet(DataSet, metaclass=abc.ABCMeta):
+class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
     """Data set containing data for a single sink"""
     def __init__(self, sink, sink_unit=None, **kwargs):
         # call parent constructor
@@ -256,7 +236,7 @@ class SingleSinkDataSet(DataSet, metaclass=abc.ABCMeta):
         return self.sinks[0]
 
 
-class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
+class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
     """Transfer function data series"""
     @property
     def magnitude(self):
@@ -266,10 +246,13 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
     def phase(self):
         return np.angle(self.series.y) * 180 / np.pi
 
+    def series_equivalent(self, other):
+        """Checks if the specified function has an equivalent series to this one."""
+        return vectors_match(self.magnitude, other.magnitude)
+
     def _draw_magnitude(self, axes):
         """Add magnitude plot to axes"""
-        axes.semilogx(self.frequencies, self.magnitude,
-                      label=self.label(tex=True))
+        axes.semilogx(self.frequencies, self.magnitude, label=self.label(tex=True))
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
@@ -304,27 +287,16 @@ class TransferFunction(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataS
         # both have units
         return "%s/%s" % (self.sink_unit, self.source_unit)
 
-    def matches(self, other):
-        if not super().matches(other):
-            return False
 
-        if not vectors_match(self.magnitude, other.magnitude):
-            # calculate worst relative difference between tfs
-            worst_i, worst_diff = argmax_difference(self.magnitude, other.magnitude)
-
-            LOGGER.error("%s tf magnitudes don't match (worst difference %f%% at %d (%f, %f))",
-                         self, worst_diff, self.frequencies[worst_i], self.magnitude[worst_i],
-                         other.magnitude[worst_i])
-            return False
-
-        return True
-
-
-class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet):
-    """Noise data series"""
+class NoiseSpectrumBase(Function, metaclass=abc.ABCMeta):
+    """Function with a single noise spectrum."""
     @property
     def spectrum(self):
         return self.series.y
+
+    def series_equivalent(self, other):
+        """Checks if the specified function has an equivalent series to this one."""
+        return spectra_match(self.spectrum, other.spectrum)
 
     def draw(self, *axes):
         if len(axes) != 1:
@@ -334,6 +306,9 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
 
         axes.loglog(self.frequencies, self.spectrum, label=self.label(tex=True))
 
+
+class NoiseSpectrum(SingleSourceFunction, SingleSinkFunction, NoiseSpectrumBase):
+    """Noise data series"""
     @property
     def noise_name(self):
         return str(self.source)
@@ -354,105 +329,57 @@ class NoiseSpectrum(SingleSeriesDataSet, SingleSourceDataSet, SingleSinkDataSet)
 
         return format_str % (self.noise_name, self.sink)
 
-    def matches(self, other):
-        if not super().matches(other):
-            return False
 
-        if not spectra_match(self.spectrum, other.spectrum):
-            return False
-
-        return True
-
-
-class MultiNoiseSpectrum(SingleSinkDataSet):
+class MultiNoiseSpectrum(SingleSinkFunction, NoiseSpectrumBase):
     """Set of noise data series from multiple sources to a single sink"""
-    def __init__(self, spectra, label="incoherent sum", **kwargs):
-        spectra = list(spectra)
+    def __init__(self, sources, series=None, constituents=None, label="incoherent sum", **kwargs):
+        if series is None and constituents is None:
+            raise ValueError("one of series or constituents must be specified")
+        elif series is not None and constituents is not None:
+            raise ValueError("only one of series and constituents can be specified")
 
-        # use first spectrum to get sink and frequencies
-        sink = spectra[0].sink
-        frequencies = spectra[0].series.x
+        if series is not None:
+            # only total noise is specified
+            self.constituent_noise = None
+        else:
+            # derive series from constituents
 
-        # check frequency axes are identical
-        if not np.all([frequencies == spectrum.series.x for spectrum in spectra]):
-            raise ValueError("specified spectra do not share same x-axis")
+            # use first spectrum to get sink and frequencies
+            frequencies = constituents[0].frequencies
 
-        # check sinks are identical
-        if not all([sink == spectrum.sink for spectrum in spectra]):
-            raise Exception("cannot plot total noise for functions with "
-                            "different sinks")
+            # sources are derived from constituents
+            if "sources" in kwargs:
+                raise ValueError("cannot specify constituents and sources together")
 
-        sources = [spectrum.source for spectrum in spectra]
-        series = [spectrum.series for spectrum in spectra]
+            # check frequency axes are identical
+            if not np.all([frequencies == spectrum.series.x for spectrum in constituents]):
+                raise ValueError("specified spectra do not share common x-axis")
 
-        # call parent constructor
-        super().__init__(sources=sources, sink=sink, series_list=series, **kwargs)
+            sources = [spectrum.source for spectrum in constituents]
 
-        self.noise_names = [spectrum.noise_name for spectrum in spectra]
+            # store constituent series
+            self.constituent_noise = [spectrum.series for spectrum in constituents]
+
+            # create series
+            noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
+            series = Series(frequencies, noise_sum)
+
         self._label = label
 
-    def draw(self, *axes):
-        if len(axes) != 1:
-            raise ValueError("only one axis supported")
+        # call parent constructor
+        super().__init__(sources=sources, series=series, **kwargs)
 
-        axes = axes[0]
-        axes.loglog(self.series.x, self.series.y, label=self.label(tex=True))
-
-    @property
-    def series(self):
-        x = self.frequencies
-        y = np.sqrt(sum([data.y ** 2 for data in self.series_list]))
-
-        return Series(x, y)
+        if constituents is not None:
+            # check sink agrees with those set in constituents
+            if not all([self.sink == spectrum.sink for spectrum in constituents]):
+                raise Exception("cannot handle noise for functions with different sinks")
 
     @property
-    def frequencies(self):
-        # use first series
-        return self.series_list[0].x
+    def noise_names(self):
+        if self.constituent_noise is None:
+            return "unknown"
 
-    @property
-    def spectrum(self):
-        return self.series.y
+        return [spectrum.noise_name for spectrum in self.constituent_noise]
 
     def _label_base(self, *args, **kwargs):
         return self._label
-
-    def matches(self, other):
-        if not super().matches(other):
-            return False
-
-        if not spectra_match(self.spectrum, other.spectrum):
-            return False
-
-        return True
-
-
-class SumNoiseSpectrum(SingleSeriesDataSet, SingleSinkDataSet):
-    """Single sum noise data series from multiple sources to a single sink"""
-    def draw(self, *axes):
-        if len(axes) != 1:
-            raise ValueError("only one axis supported")
-
-        axes = axes[0]
-        axes.loglog(self.series.x, self.series.y, label=self.label(tex=True))
-
-    @property
-    def frequencies(self):
-        # use first series
-        return self.series.x
-
-    @property
-    def spectrum(self):
-        return self.series.y
-
-    def _label_base(self, *args, **kwargs):
-        return "incoherent sum"
-
-    def matches(self, other):
-        if not super().matches(other):
-            return False
-
-        if not spectra_match(self.spectrum, other.spectrum):
-            return False
-
-        return True
