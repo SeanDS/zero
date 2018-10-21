@@ -260,8 +260,12 @@ class LisoParser(metaclass=abc.ABCMeta):
             if self._noise_sum_to_be_computed:
                 # find spectra in solution
                 sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
+                # create overall spectrum
+                sum_spectrum = MultiNoiseSpectrum(sources=self.summed_noise_objects,
+                                                  sink=self.noise_output_node,
+                                                  constituents=sum_spectra)
                 # build noise sum and show by default
-                self._solution.add_noise_sum(MultiNoiseSpectrum(spectra=sum_spectra), default=True)
+                self._solution.add_noise_sum(sum_spectrum, default=True)
 
         if set_default_plots:
             self._set_default_plots()

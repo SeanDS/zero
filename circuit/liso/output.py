@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from ..solution import Solution
-from ..data import (Series, TransferFunction, NoiseSpectrum, SumNoiseSpectrum)
+from ..data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
 from ..format import Quantity
 from ..components import OpAmp
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
@@ -270,7 +270,7 @@ class LisoOutputParser(LisoParser):
             series = Series(x=self.frequencies, y=self._data[:, self._source_sum_index])
 
             # create and store sum noise
-            sum_noise = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
+            sum_noise = MultiNoiseSpectrum(sources=sources, sink=sink, series=series)
             self._solution.add_noise_sum(sum_noise, default=True)
 
             # flag that noise sum must be generated for any future native runs of this circuit
