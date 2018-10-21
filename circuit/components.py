@@ -109,10 +109,7 @@ class Component(metaclass=abc.ABCMeta):
         return self.label()
 
     def __eq__(self, other):
-        if hasattr(other, 'name'):
-            return self.name == other.name
-
-        return False
+        return self.name == getattr(other, "name", None)
 
     def __hash__(self):
         """Components uniquely defined by their name"""
