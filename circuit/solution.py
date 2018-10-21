@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
 from .config import CircuitConfig
-from .data import (TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, SumNoiseSpectrum,
-                   frequencies_match)
+from .data import TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, frequencies_match
 from .components import Component, Node, Noise
 
 LOGGER = logging.getLogger(__name__)
@@ -147,7 +146,7 @@ class Solution:
 
         Parameters
         ----------
-        noise_sum : :class:`.MultiNoiseSpectrum` or :class:`.SumNoiseSpectrum`
+        noise_sum : :class:`.MultiNoiseSpectrum`
             The noise sum to add.
         default : :class:`bool`, optional
             Whether this noise sum is a default.
@@ -157,7 +156,7 @@ class Solution:
         ValueError
             If the specified noise sum is incompatible with this solution or not multi-source.
         """
-        if not isinstance(noise_sum, (MultiNoiseSpectrum, SumNoiseSpectrum)):
+        if not isinstance(noise_sum, MultiNoiseSpectrum):
             raise ValueError("noise sum '%s' is not multi-source type" % noise_sum)
 
         # dimension sanity checks
@@ -310,8 +309,7 @@ class Solution:
 
     @property
     def noise_sums(self):
-        return [spectrum for spectrum in self.functions
-                if isinstance(spectrum, (SumNoiseSpectrum, MultiNoiseSpectrum))]
+        return [spectrum for spectrum in self.functions if isinstance(spectrum, MultiNoiseSpectrum)]
 
     @property
     def has_tfs(self):
@@ -722,7 +720,7 @@ class Solution:
 
         return result
 
-    def equivalent_to(self, other, defaults_only=False):
+    def equivalent_to(self, other, defaults_only=False, meta_only=False):
         """Checks if the specified other solution has equivalent, identical functions to this one.
 
         Parameters
@@ -731,6 +729,8 @@ class Solution:
             The other solution to compare to.
         defaults_only : :class:`bool`, optional
             Whether to check only the default functions, or everything.
+        meta_only : :class:`bool`, optional
+            Whether to check only meta data when comparing.
 
         Returns
         -------
@@ -748,26 +748,39 @@ class Solution:
             our_functions = list(self.functions)
             their_functions = list(other.functions)
 
-        LOGGER.debug("comparing %i / %i functions", len(our_functions), len(their_functions))
-        LOGGER.debug("this solution's functions:")
-        for function in our_functions:
-            LOGGER.debug("%s (%s)", function, function.__class__)
-        LOGGER.debug("other solution's functions:")
-        for function in their_functions:
-            LOGGER.debug("%s (%s)", function, function.__class__)
+        if not our_functions and not their_functions:
+            # nothing else to check
+            return True
 
-        # check functions match
-        for function in our_functions:
-            for other_function in their_functions:
-                if function.matches(other_function):
-                    their_functions.remove(other_function)
+        # function to check for match depending on type of equivalence specified
+        def function_in_list(check_item, list_to_search):
+            for item in list_to_search:
+                if meta_only:
+                    match = check_item.meta_equivalent(item)
+                else:
+                    match = check_item.equivalent(item)
 
-        if their_functions:
-            LOGGER.info("non-matches: %s", ", ".join([str(n) for n in their_functions]))
+                if match:
+                    return True
+
+            return False
+
+        # Get difference between functions.
+        # Can't use sets here because Series is not hashable (because data can match not exactly
+        # but within tolerance).
+        difference = [function for function in our_functions + their_functions
+                      if not function_in_list(function, our_functions)
+                      or not function_in_list(function, their_functions)]
+
+        if difference:
             # some functions didn't match
+            LOGGER.info("%i function(s) not equal: %s", len(difference),
+                        ", ".join([str(n) for n in difference]))
+
             return False
 
         return True
+
 
 class NoDataException(Exception):
     pass
