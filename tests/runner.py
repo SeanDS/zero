@@ -32,10 +32,6 @@ def find_tests(suite_path):
     return LOADER.discover(suite_path)
 
 if __name__ == "__main__":
-    # tune in to circuit's logs
-    LOGGER = logging.getLogger("circuit")
-    set_log_verbosity(logging.DEBUG, LOGGER)
-
     if len(sys.argv) < 2:
         print("Enter the name of a test suite to run, or \"all\" to run all:")
 
@@ -48,6 +44,16 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 2:
         VERBOSITY = int(sys.argv[2])
+
+        if VERBOSITY < 0:
+            raise ValueError("verbosity must be > 0")
+        elif VERBOSITY > 2:
+            VERBOSITY = 2
+
+        # tune in to circuit's logs
+        LOGGER = logging.getLogger("circuit")
+        # show only warnings with no verbosity, or more if higher
+        set_log_verbosity(logging.WARNING - 10 * VERBOSITY, LOGGER)
     else:
         VERBOSITY = 0
 
