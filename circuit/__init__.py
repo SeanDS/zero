@@ -43,7 +43,8 @@ def add_log_handler(logger, handler=None, format_str="%(name)-25s - %(levelname)
     logger.addHandler(handler)
 
 # create base logger
-LOGGER = add_log_handler(logging.getLogger(__name__))
+LOGGER = logging.getLogger(__name__)
+add_log_handler(LOGGER)
 
 def set_log_verbosity(level, logger=None):
     """Enable logging to stdout with a certain level"""
