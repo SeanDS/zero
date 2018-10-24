@@ -10,6 +10,7 @@ from matplotlib.ticker import MultipleLocator
 from .config import CircuitConfig
 from .data import TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, frequencies_match
 from .components import Component, Node, Noise
+from .format import Quantity
 
 LOGGER = logging.getLogger(__name__)
 CONF = CircuitConfig()
@@ -720,17 +721,13 @@ class Solution:
 
         return result
 
-    def equivalent_to(self, other, defaults_only=False, meta_only=False):
+    def equivalent_to(self, other, **kwargs):
         """Checks if the specified other solution has equivalent, identical functions to this one.
 
         Parameters
         ----------
         other : :class:`.Solution`
             The other solution to compare to.
-        defaults_only : :class:`bool`, optional
-            Whether to check only the default functions, or everything.
-        meta_only : :class:`bool`, optional
-            Whether to check only meta data when comparing.
 
         Returns
         -------
@@ -741,46 +738,125 @@ class Solution:
         if np.all(self.frequencies != other.frequencies):
             return False
 
-        if defaults_only:
-            our_functions = list(self.default_functions)
-            their_functions = list(other.default_functions)
-        else:
-            our_functions = list(self.functions)
-            their_functions = list(other.functions)
+        # get unmatched functions
+        _, residuals_a, residuals_b = matches_between(self, other, **kwargs)
 
-        if not our_functions and not their_functions:
-            # nothing else to check
-            return True
+        if residuals_a or residuals_b:
+            if residuals_a:
+                LOGGER.info("function(s) in %s but not %s: %s", self, other,
+                            ", ".join([str(n) for n in residuals_a]))
 
-        # function to check for match depending on type of equivalence specified
-        def function_in_list(check_item, list_to_search):
-            for item in list_to_search:
-                if meta_only:
-                    match = check_item.meta_equivalent(item)
-                else:
-                    match = check_item.equivalent(item)
-
-                if match:
-                    return True
-
-            return False
-
-        # Get difference between functions.
-        # Can't use sets here because Series is not hashable (because data can match not exactly
-        # but within tolerance).
-        difference = [function for function in our_functions + their_functions
-                      if not function_in_list(function, our_functions)
-                      or not function_in_list(function, their_functions)]
-
-        if difference:
-            # some functions didn't match
-            LOGGER.info("%i function(s) not equal: %s", len(difference),
-                        ", ".join([str(n) for n in difference]))
+            if residuals_b:
+                LOGGER.info("function(s) in %s but not %s: %s", other, self,
+                            ", ".join([str(n) for n in residuals_b]))
 
             return False
 
         return True
 
+    def difference(self, other, **kwargs):
+        """Get table containing the difference between this solution and the specified one."""
+        # find matching functions
+        matches, residuals_a, residuals_b = matches_between(self, other, **kwargs)
+
+        header = ["", "Worst difference (absolute)", "Worst difference (relative)"]
+        rows = []
+
+        for func_a, func_b in matches:
+            # relevant data
+            frequencies = func_a.frequencies
+            data_a = func_a.series.y
+            data_b = func_b.series.y
+
+            # absolute and relative worst indices
+            iworst = np.argmax(np.abs(data_a - data_b))
+            worst = np.abs(data_a[iworst] - data_b[iworst])
+            fworst = Quantity(frequencies[iworst], unit="Hz")
+            irelworst = np.argmax(np.abs((data_a - data_b) / data_b))
+            relworst = np.abs((data_a[irelworst] - data_b[irelworst]) / data_b[irelworst])
+            frelworst = Quantity(frequencies[irelworst], unit="Hz")
+
+            if worst != 0:
+                # descriptions of worst
+                fmt = "%.2e (f = %s)"
+                strworst = fmt % (worst, fworst.format())
+                strrelworst = fmt % (relworst, frelworst.format())
+            else:
+                strworst = "n/a"
+                strrelworst = "n/a"
+
+            rows.append([str(func_a), strworst, strrelworst])
+
+        for residual in residuals_a + residuals_b:
+            data = residual.series.y[0]
+            rows.append([str(residual), "-", "-"])
+
+        return header, rows
 
 class NoDataException(Exception):
     pass
+
+
+def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
+    """Finds matching functions in the specified solutions.
+
+    Parameters
+    ----------
+    sol_a, sol_b : :class:`.Solution`
+        The solutions to compare.
+    defaults_only : :class:`bool`, optional
+        Whether to check only the default functions, or everything.
+    meta_only : :class:`bool`, optional
+        Whether to check only meta data when comparing.
+
+    Returns
+    -------
+    matches : :class:`list`
+        Matching pairs from each solution.
+    residuals_a, residuals_b : :class:`list`
+        Functions only present in the first or second solutions, respectively.
+    """
+    if defaults_only:
+        sol_a_functions = list(sol_a.default_functions)
+        sol_b_functions = list(sol_b.default_functions)
+    else:
+        sol_a_functions = list(sol_a.functions)
+        sol_b_functions = list(sol_b.functions)
+
+    # function to check for match depending on type of equivalence specified
+    def function_in_list(check_item, list_to_search):
+        for item in list_to_search:
+            if meta_only:
+                match = check_item.meta_equivalent(item)
+            else:
+                match = check_item.equivalent(item)
+
+            if match:
+                return item
+
+        return None
+
+    # lists to hold matching pairs and those remaining
+    matches = []
+    residuals_a = []
+    residuals_b = []
+
+    # functions in list b but not a (will be refined in next step)
+    residuals_b = sol_b_functions
+
+    # Get difference between functions.
+    # Can't use sets here because Series is not hashable (because data can match not exactly
+    # but within tolerance).
+    for item_a in sol_a_functions:
+        item_b = function_in_list(item_a, sol_b_functions)
+
+        if item_b is None:
+            # not matched in solution b
+            residuals_a.append(item_a)
+        else:
+            matches.append((item_a, item_b))
+
+            # remove from residuals
+            residuals_b.remove(item_b)
+
+    return matches, residuals_a, residuals_b

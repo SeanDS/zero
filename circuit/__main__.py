@@ -1,12 +1,14 @@
 """Circuit simulator command line interface"""
 
-import sys
 import logging
 from click import Path, File, group, argument, option, version_option, pass_context
+from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
+from .config import CircuitConfig
 
+CONF = CircuitConfig()
 LOGGER = logging.getLogger(__name__)
 
 # Shared arguments:
@@ -57,7 +59,7 @@ def cli():
 
 @cli.command()
 @argument("file", type=File())
-@option("--liso", default=False, help="Simulate using LISO.")
+@option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
 @option("--liso-compare", is_flag=True, default=False,
         help="Simulate using both this tool and LISO binary, and overlay results.")
 @option("--liso-diff", is_flag=True, default=False,
@@ -78,7 +80,7 @@ def liso(ctx, file, liso, liso_compare, liso_diff, liso_path, plot, save_figure,
 
     # check which solutions must be computed
     compute_liso = liso or liso_compare
-    compute_native = liso_compare or not liso
+    compute_native = not liso or liso_compare
 
     if compute_liso:
         # run file with LISO and parse results
@@ -116,16 +118,20 @@ def liso(ctx, file, liso, liso_compare, liso_diff, liso_path, plot, save_figure,
         for function in liso_solution.functions:
             liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
 
-        # apply suffix to LISO functions
+        # show difference before changing labels
+        if liso_diff:
+            # group by meta data
+            header, rows = native_solution.difference(liso_solution, defaults_only=True,
+                                                      meta_only=True)
+
+            print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+
+        # apply suffix to LISO function labels
         for function in liso_solution.functions:
             function.label_suffix = "LISO"
 
         # combine results from LISO and native simulations
         solution = native_solution + liso_solution
-
-        if liso_diff:
-            # TODO: show difference
-            pass
     else:
         # plot single result
         if compute_liso:
