@@ -20,6 +20,7 @@ EXTRAS = {
         "pylint",
         "bandit",
         "sphinx",
+        "sphinx-click",
         "sphinx_rtd_theme",
         "numpydoc",
         "nbsphinx",

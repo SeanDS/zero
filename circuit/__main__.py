@@ -52,7 +52,7 @@ def set_verbosity(ctx, _, value):
 @group(help=DESCRIPTION)
 @version_option(version=__version__, prog_name=PROGRAM)
 @option("-v", "--verbose", count=True, default=0, callback=set_verbosity, expose_value=False,
-        help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\"")
+        help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
 def cli():
     """Base CLI command group"""
     pass
@@ -60,12 +60,12 @@ def cli():
 @cli.command()
 @argument("file", type=File())
 @option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
-@option("--liso-compare", is_flag=True, default=False,
-        help="Simulate using both this tool and LISO binary, and overlay results.")
-@option("--liso-diff", is_flag=True, default=False,
-        help="Show difference between results of --liso-compare.")
 @option("--liso-path", type=Path(exists=True, dir_okay=False), envvar='LISO_PATH',
-        help="Path to LISO binary.")
+        help="Path to LISO binary. If not specified, the environment variable LISO_PATH is searched.")
+@option("--compare", is_flag=True, default=False,
+        help="Simulate using both this tool and LISO binary, and overlay results.")
+@option("--diff", is_flag=True, default=False,
+        help="Show difference between results of comparison.")
 @option("--plot/--no-plot", default=True, show_default=True, help="Display results as figure.")
 @option("--save-figure", type=File("wb", lazy=False), help="Save image of figure to file.")
 @option("--prescale/--no-prescale", default=True, show_default=True,
@@ -73,14 +73,14 @@ def cli():
 @option("--print-equations", is_flag=True, help="Print circuit equations.")
 @option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @pass_context
-def liso(ctx, file, liso, liso_compare, liso_diff, liso_path, plot, save_figure, prescale,
-         print_equations, print_matrix):
+def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale, print_equations,
+         print_matrix):
     """Parse and simulate LISO input or output file"""
     state = ctx.ensure_object(State)
 
     # check which solutions must be computed
-    compute_liso = liso or liso_compare
-    compute_native = not liso or liso_compare
+    compute_liso = liso or compare
+    compute_native = not liso or compare
 
     if compute_liso:
         # run file with LISO and parse results
@@ -113,13 +113,13 @@ def liso(ctx, file, liso, liso_compare, liso_diff, liso_path, plot, save_figure,
         native_solution = parser.solution(force=True, **kwargs)
 
     # determine solution to show or save
-    if liso_compare:
+    if compare:
         # make LISO solution plots dashed
         for function in liso_solution.functions:
             liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
 
         # show difference before changing labels
-        if liso_diff:
+        if diff:
             # group by meta data
             header, rows = native_solution.difference(liso_solution, defaults_only=True,
                                                       meta_only=True)
