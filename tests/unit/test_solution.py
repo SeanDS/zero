@@ -89,7 +89,7 @@ class SolutionTestCase(TestCase):
         sum_series = Series(self.frequencies1, noise_sum)
 
         # sum from constituents
-        noisesum1 = MultiNoiseSpectrum(sources=sources, sink=sink, constituents=constituents)
+        noisesum1 = MultiNoiseSpectrum(sink=sink, constituents=constituents)
         # sum from total
         noisesum2 = MultiNoiseSpectrum(sources=sources, sink=sink, series=sum_series)
 

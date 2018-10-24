@@ -332,7 +332,8 @@ class NoiseSpectrum(SingleSourceFunction, SingleSinkFunction, NoiseSpectrumBase)
 
 class MultiNoiseSpectrum(SingleSinkFunction, NoiseSpectrumBase):
     """Set of noise data series from multiple sources to a single sink"""
-    def __init__(self, sources, series=None, constituents=None, label="incoherent sum", **kwargs):
+    def __init__(self, sources=None, series=None, constituents=None, label="incoherent sum",
+                 **kwargs):
         if series is None and constituents is None:
             raise ValueError("one of series or constituents must be specified")
         elif series is not None and constituents is not None:
@@ -344,12 +345,12 @@ class MultiNoiseSpectrum(SingleSinkFunction, NoiseSpectrumBase):
         else:
             # derive series from constituents
 
+            # sources are derived from constituents
+            if sources is not None:
+                raise ValueError("cannot specify constituents and sources together")
+
             # use first spectrum to get sink and frequencies
             frequencies = constituents[0].frequencies
-
-            # sources are derived from constituents
-            if "sources" in kwargs:
-                raise ValueError("cannot specify constituents and sources together")
 
             # check frequency axes are identical
             if not np.all([frequencies == spectrum.series.x for spectrum in constituents]):
