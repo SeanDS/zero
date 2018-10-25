@@ -34,5 +34,5 @@ if __name__ == "__main__":
     solution = analysis.solution
 
     # plot
-    solution.plot_tfs()
+    solution.plot_tfs(sinks=["nout"])
     solution.show()

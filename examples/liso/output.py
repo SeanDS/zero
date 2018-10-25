@@ -19,5 +19,7 @@ if __name__ == "__main__":
     # parse output file
     parser = LisoOutputParser()
     parser.parse(path=filename)
-    # show results
-    parser.show()
+    # simulate and show results
+    solution = parser.solution()
+    solution.plot()
+    solution.show()

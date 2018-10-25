@@ -447,6 +447,12 @@ class Solution:
     def n_frequencies(self):
         return len(list(self.frequencies))
 
+    def plot(self):
+        if self.has_tfs:
+            self.plot_tfs()
+        if self.has_noise:
+            self.plot_noise()
+
     def plot_tfs(self, figure=None, sources=None, sinks=None, **kwargs):
         """Plot transfer functions.
 

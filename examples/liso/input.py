@@ -21,4 +21,6 @@ if __name__ == "__main__":
     parser = LisoInputParser()
     parser.parse(path=filename)
     # simulate and show results
-    parser.show(print_equations=True, print_matrix=True)
+    solution = parser.solution()
+    solution.plot()
+    solution.show()
