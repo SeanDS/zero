@@ -1,17 +1,17 @@
 """LISO vs native solver tests"""
 
+import sys
 import os.path
 import glob
-import numpy as np
 import unittest
 import logging
 
-from circuit.liso import LisoRunner
-
-LOGGER = logging.getLogger(__name__)
+from zero import set_log_verbosity, add_log_handler
+from zero.liso import LisoRunner
 
 # directory containing tests relative to this script
 REL_FIL_DIR = "scripts"
+
 
 class LisoTester(unittest.TestCase):
     def __init__(self, method_name, fil_path=None):
@@ -21,7 +21,7 @@ class LisoTester(unittest.TestCase):
 
     def test_liso_vs_native(self):
         # test message
-        message = "Test %s against LISO".format(path=self.fil_path)
+        message = "Test %s against LISO" % self.fil_path
 
         with self.subTest(msg=message):
             self.compare(self._liso_output())
@@ -33,14 +33,11 @@ class LisoTester(unittest.TestCase):
         # run native
         native_solution = liso_output.solution(force=True)
 
-        # check if they match
-        # IMPORTANT: native solution must be first, because it usually contains more noise/tf data
-        # than LISO
-        self.assertEqual(native_solution, liso_solution)
+        # check if they match (only check defaults as LISO only generates defaults)
+        self.assertTrue(liso_solution.equivalent_to(native_solution, defaults_only=True))
 
     def _liso_output(self):
         # run LISO and parse output
-        LOGGER.info("Testing %s (%s)", self.fil_path, self.description)
         return LisoRunner(self.fil_path).run()
 
     @property
@@ -84,4 +81,30 @@ def load_tests(loader, tests, pattern):
     return test_cases
 
 if __name__ == '__main__':
-    unittest.main()
+    # run individual test
+    if len(sys.argv) < 2:
+        print("Enter a LISO test path")
+        sys.exit(1)
+
+    if len(sys.argv) > 2:
+        VERBOSITY = int(sys.argv[2])
+
+        if VERBOSITY < 0:
+            raise ValueError("verbosity must be > 0")
+        elif VERBOSITY > 2:
+            VERBOSITY = 2
+
+        # tune in to zero's logs
+        LOGGER = logging.getLogger("zero")
+        # show only warnings with no verbosity, or more if higher
+        set_log_verbosity(logging.WARNING - 10 * VERBOSITY, LOGGER)
+    else:
+        VERBOSITY = 0
+
+    PATH = sys.argv[1]
+
+    SUITE = unittest.TestSuite()
+    SUITE.addTest(LisoTester("test_liso_vs_native", PATH))
+
+    RUNNER = unittest.TextTestRunner(verbosity=VERBOSITY, stream=sys.stdout)
+    sys.exit(not RUNNER.run(SUITE).wasSuccessful())

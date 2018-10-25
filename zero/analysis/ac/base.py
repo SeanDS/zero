@@ -16,8 +16,12 @@ LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
-    def __init__(self, frequencies, *args, prescale=True, **kwargs):
+    def __init__(self, *args, frequencies=None, prescale=True, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if frequencies is None:
+            # default to empty list
+            frequencies = []
 
         self.frequencies = np.array(frequencies)
         self.prescale = bool(prescale)
@@ -27,6 +31,8 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         # empty fields
         self._solution = None
+        self._node_sources = None
+        self._node_sinks = None
 
         # validate the circuit for the current analysis
         self.validate_circuit()
@@ -57,7 +63,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     @property
     def solution(self):
         if self._solution is None:
-            self._solution = Solution(self.circuit, self.frequencies)
+            self._solution = Solution(self.frequencies)
 
         return self._solution
 
@@ -192,6 +198,9 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         # right hand side to solve against
         rhs = self.right_hand_side()
+
+        # debug info
+        LOGGER.debug("Matrix prescaling: %s", self.prescale)
 
         # frequency loop
         for index, frequency in enumerate(freq_gen):

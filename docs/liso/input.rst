@@ -1,3 +1,5 @@
+.. include:: /defs.txt
+
 LISO input file parsing
 =======================
 
@@ -7,7 +9,7 @@ Known incompatibilities
 Outputs
 ~~~~~~~
 
-`circuit` does not support the `deg+` or `deg-` output coordinates. Please use `deg` instead.
+|Zero| does not support the `deg+` or `deg-` output coordinates. Please use `deg` instead.
 It also throws an error when a LISO script's `ioutput` or `uoutput` commands contain only a
 phase coordinate, e.g.:
 
@@ -15,9 +17,9 @@ phase coordinate, e.g.:
 
     uoutput nout:deg
 
-Such outputs could in principle be handled by `circuit`, but it would add complexity to the
+Such outputs could in principle be handled by |Zero|, but it would add complexity to the
 :class:`Solution` and :class:`Series` classes that is not worth the effort given how rare
-this type of output is. In order to use such scripts with `circuit`, simply add a magnitude
+this type of output is. In order to use such scripts with |Zero|, simply add a magnitude
 unit, e.g.
 
 .. code-block:: text
@@ -27,8 +29,8 @@ unit, e.g.
 Root mode
 ~~~~~~~~~
 
-`circuit` does not support LISO's root mode, meaning that the fitting tools provided in LISO for
-transfer functions and noise spectra are not replicated. It is suggested to instead use `circuit`
+|Zero| does not support LISO's root mode, meaning that the fitting tools provided in LISO for
+transfer functions and noise spectra are not replicated. It is suggested to instead use |Zero|
 with a Python optimisation library such as `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/optimize.html>`_.
 Note that it is very important for circuit transfer function and noise fitting to use a well-suited
 optimiser, particularly one that can fit in log space. LISO's fitting library performs very well for
@@ -58,7 +60,7 @@ Op-amp library
 ~~~~~~~~~~~~~~
 
 LISO's op-amp library format is not supported, but the full LISO library is bundled
-in `circuit`'s native format.
+in |Zero|'s native format.
 
 The op-amp library is implemented in a different format to that of LISO,
 primarily for logistical reasons: Python contains a convenient :class:`~configparser.ConfigParser`
@@ -95,7 +97,7 @@ LISO Perl commands
 ~~~~~~~~~~~~~~~~~~
 
 Commands used for running LISO in a loop with :code:`pfil` are not supported. Instead you
-can use `circuit` as part of a Python script to run either LISO or native `circuit`
+can use |Zero| as part of a Python script to run either LISO or native |Zero|
 simulations in a loop.
 
 Differences in behaviour
@@ -104,7 +106,7 @@ Differences in behaviour
 Command order
 ~~~~~~~~~~~~~
 
-In LISO, the output must be specified *after* the components. In `circuit`, order is
+In LISO, the output must be specified *after* the components. In |Zero|, order is
 irrelevant.
 
 `Noisy` command
@@ -128,7 +130,7 @@ error is displayed:
 
     *** Error: No noisy components! (Try 'noisy all')
 
-In `circuit`, the :code:`noisy` command does not need to be present as by default, even in LISO,
+In |Zero|, the :code:`noisy` command does not need to be present as by default, even in LISO,
 the noise sources that contribute to the :code:`sum` output always includes those specified in
 the output itself. The :code:`noisy` command is available merely to add additional noise sources
 to the :code:`sum` that are not explicitly plotted.
@@ -141,8 +143,8 @@ String lengths
 ~~~~~~~~~~~~~~
 
 LISO has a limit of 16 for most strings (component names, op-amp types, node names, etc.). In
-`circuit` the limit is effectively arbitrary.
+|Zero| the limit is effectively arbitrary.
 
 .. hint::
     In the case of *mutual inductance* commands, the name is entirely ignored. This is used in
-    LISO only for fitting routines, which are not part of `circuit`.
+    LISO only for fitting routines, which are not part of |Zero|.

@@ -15,7 +15,7 @@ class LisoInputParser(LisoParser):
     This implements a lexer to identify appropriate definitions in a LISO input file,
     and a parser to build a circuit from what is found.
     """
-    # dict mapping LISO op-amp parameter overrides to `circuit.components.OpAmp` arguments
+    # dict mapping LISO op-amp parameter overrides to `zero.components.OpAmp` arguments
     OP_OVERRIDE_MAP = {
         "a0": "a0",
         "gbw": "gbw",
@@ -78,6 +78,9 @@ class LisoInputParser(LisoParser):
         self._noise_defs = [] # displayed noise
         self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
 
+        # noise sum request
+        self._noise_sum_to_be_computed = False
+
         super().__init__(*args, **kwargs)
 
     def _do_build(self):
@@ -125,7 +128,7 @@ class LisoInputParser(LisoParser):
                                          scales=self._output_all_opamps_scales)
                 self.add_tf_output(sink)
 
-    def _get_noise_sources(self, definitions):
+    def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""
         sources = set()
 
@@ -161,10 +164,10 @@ class LisoInputParser(LisoParser):
                     sources.update(self._get_component_noise(resistor))
             elif component_name == "sum":
                 # show sum of circuit noises
-                self._noise_sum_requested = True
+                self._noise_sum_to_be_computed = True
             else:
                 # individual component
-                component = self.circuit.get_component(component_name)
+                component = self.circuit[component_name]
                 sources.update(self._get_component_noise(component, suffix))
 
         return sources
@@ -210,21 +213,21 @@ class LisoInputParser(LisoParser):
         return noise
 
     @property
-    def displayed_noise_sources(self):
+    def displayed_noise_objects(self):
         """Noise sources to be plotted"""
-        return self._get_noise_sources(self._noise_defs)
+        return self._get_noise_objects(self._noise_defs)
 
     @property
-    def summed_noise_sources(self):
+    def summed_noise_objects(self):
         """Noise sources included in the sum column"""
         # check "sum" is not present in noisy definitions
         if "sum" in [definition[0].split(":")[0] for definition in self._noisy_extra_defs]:
             self.p_error("cannot specify 'sum' as noisy source")
 
-        sum_sources = self._get_noise_sources(self._noisy_extra_defs)
+        sum_sources = self._get_noise_objects(self._noisy_extra_defs)
 
         # add displayed noise sources if not already present
-        sum_sources.update(self.displayed_noise_sources)
+        sum_sources.update(self.displayed_noise_objects)
 
         return sum_sources
 
@@ -263,12 +266,6 @@ class LisoInputParser(LisoParser):
         # check if chunk is a keyword
         t.type = self.reserved.get(t.value.lower(), 'CHUNK')
         return t
-
-    # error handling
-    def t_error(self, t):
-        # anything that gets past the other filters
-        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
-                              t.lexer.lexpos - self._previous_newline_position)
 
     def p_instruction_list(self, p):
         '''instruction_list : instruction
@@ -386,7 +383,7 @@ class LisoInputParser(LisoParser):
         else:
             message = "unexpected end of file"
 
-        raise LisoParserError(message, lineno)
+        raise LisoParserError(message, line=lineno)
 
     def _parse_passive(self, passive_type, *params):
         if len(params) != 4:

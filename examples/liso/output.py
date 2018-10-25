@@ -4,7 +4,7 @@ the results. If no file is specified, "liso1.out" is used."""
 import sys
 import os
 
-from circuit.liso import LisoOutputParser
+from zero.liso import LisoOutputParser
 
 if __name__ == "__main__":
     # parse liso filename, if present
@@ -19,5 +19,7 @@ if __name__ == "__main__":
     # parse output file
     parser = LisoOutputParser()
     parser.parse(path=filename)
-    # show results
-    parser.show()
+    # simulate and show results
+    solution = parser.solution()
+    solution.plot()
+    solution.show()

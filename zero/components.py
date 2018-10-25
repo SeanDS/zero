@@ -1,18 +1,17 @@
 """Electronic components"""
 
 import abc
-import logging
 from collections.abc import MutableMapping
 import numpy as np
 
 from .misc import NamedInstance
 from .format import Quantity
-from .config import CircuitConfig
+from .config import ZeroConfig
 
-CONF = CircuitConfig()
+CONF = ZeroConfig()
 
 
-class Component(object, metaclass=abc.ABCMeta):
+class Component(metaclass=abc.ABCMeta):
     """Represents a circuit component.
 
     Parameters
@@ -109,10 +108,7 @@ class Component(object, metaclass=abc.ABCMeta):
         return self.label()
 
     def __eq__(self, other):
-        if hasattr(other, 'name'):
-            return self.name == other.name
-
-        return False
+        return self.name == getattr(other, "name", None)
 
     def __hash__(self):
         """Components uniquely defined by their name"""
@@ -346,7 +342,7 @@ class OpAmp(Component):
         """Op-amp inverse gain.
 
         Note that the inverse gain may be modified by the analysis, e.g. in the
-        case of a voltage follower (see :meth:`circuit.analysis.ac.BaseAcAnalysis.component_equation`).
+        case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
         """
         return 1 / self.gain(*args, **kwargs)
 
@@ -649,7 +645,7 @@ class Inductor(PassiveComponent):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
 
 
-class Node(object, metaclass=NamedInstance):
+class Node(metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
 
     Nodes are considered equal if they have the same case-independent name.
@@ -684,7 +680,7 @@ class Node(object, metaclass=NamedInstance):
         return str(self)
 
 
-class Noise(object, metaclass=abc.ABCMeta):
+class Noise(metaclass=abc.ABCMeta):
     """Noise spectral density.
 
     Parameters
@@ -707,11 +703,21 @@ class Noise(object, metaclass=abc.ABCMeta):
     def label(self):
         return NotImplemented
 
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return tuple(self.label())
+
     def __str__(self):
         return self.label()
 
     def __repr__(self):
         return str(self)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return hash(self._meta_data())
 
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
@@ -732,6 +738,10 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
 
     def spectral_density(self, frequencies):
         return self.function(component=self.component, frequencies=frequencies)
+
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return super()._meta_data(), self.component
 
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
@@ -755,6 +765,10 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
 
     def spectral_density(self, *args, **kwargs):
         return self.function(node=self.node, *args, **kwargs)
+
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return super()._meta_data(), self.node, self.component
 
 
 class VoltageNoise(ComponentNoise):
@@ -781,6 +795,10 @@ class JohnsonNoise(VoltageNoise):
 
     def label(self):
         return "R(%s)" % self.component.name
+
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return super()._meta_data(), self.resistance
 
 
 class CurrentNoise(NodeNoise):

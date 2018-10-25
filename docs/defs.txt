@@ -1,0 +1,4 @@
+.. role:: raw-html(raw)
+   :format: html
+
+.. |Zero| replace:: :raw-html:`<strong><em>Zero</em></strong>`

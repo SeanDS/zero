@@ -3,8 +3,8 @@
 from unittest import TestCase
 import numpy as np
 
-from circuit import Circuit
-from circuit.analysis import AcSignalAnalysis, AcNoiseAnalysis
+from zero import Circuit
+from zero.analysis import AcSignalAnalysis, AcNoiseAnalysis
 
 class PrescaleTestCase(TestCase):
     """Matrix prescaling tests"""
@@ -27,7 +27,7 @@ class PrescaleTestCase(TestCase):
         analysis_unscaled.calculate()
         analysis_scaled.calculate()
 
-        self.assertEqual(analysis_unscaled.solution, analysis_scaled.solution)
+        self.assertTrue(analysis_unscaled.solution.equivalent_to(analysis_scaled.solution))
 
     def test_ac_noise_analysis(self):
         """Test prescaled AC noise analysis results equal non-prescaled results"""
@@ -49,4 +49,4 @@ class PrescaleTestCase(TestCase):
         analysis_unscaled.calculate()
         analysis_scaled.calculate()
 
-        self.assertEqual(analysis_unscaled.solution, analysis_scaled.solution)
+        self.assertTrue(analysis_unscaled.solution.equivalent_to(analysis_scaled.solution))

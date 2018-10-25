@@ -1,17 +1,16 @@
 """Formatting functionality for numbers with units"""
 
-import abc
-import math
 import re
 import logging
 
 LOGGER = logging.getLogger(__name__)
 
+
 class Quantity(float):
     """Container for numeric values and their associated units.
 
     Partially based on `QuantiPhy <https://github.com/KenKundert/quantiphy>`_.
-    
+
     Parameters
     ----------
     value : :class:`float`, :class:`str`, :class:`Quantity`
@@ -70,8 +69,9 @@ class Quantity(float):
         elif isinstance(value, str):
             number, mantissa, scale, parsed_unit = cls.parse(value, unit)
 
-            if unit is not None and parsed_unit is not None:
-                LOGGER.warning("overriding detected unit with specified unit")
+            if unit is not None and parsed_unit is not None and unit != parsed_unit:
+                LOGGER.warning("overriding detected unit '%s' with specified unit '%s'",
+                               parsed_unit, unit)
             else:
                 unit = parsed_unit
         else:
@@ -79,7 +79,7 @@ class Quantity(float):
             number = value
             mantissa = None
             scale = None
-    
+
         # create object from identified information
         self = float.__new__(cls, number)
         self._mantissa = mantissa
@@ -98,7 +98,7 @@ class Quantity(float):
             Value string to parse as a number.
         unit : :class:`str`, optional
             The quantity's unit.
-        
+
         Returns
         -------
         value : :class:`float`
@@ -123,8 +123,8 @@ class Quantity(float):
         # scale is the fourth match
         scale = results.group(4)
         # unit is fifth match
-        unit = results.group(5)        
-        
+        unit = results.group(5)
+
         # convert value to float
         value = float(mantissa)
 
@@ -140,14 +140,14 @@ class Quantity(float):
                 if results.group(3):
                     # exponent specified directly
                     exponent += float(results.group(3))
-                
+
                 if results.group(4):
                     # exponent specified as unit prefix
                     exponent += cls.MAPPINGS[results.group(4)]
             else:
                 # neither prefix nor exponent
                 exponent = 0
-        
+
         # raise value to the intended exponent
         value *= 10 ** exponent
 
@@ -167,7 +167,7 @@ class Quantity(float):
             Number of decimal places to display quantity with. If "full", uses the precision
             of the number as originally specified. When "full" is used, but `show_unit` and
             `show_si` are both `False`, then the decimal point may be moved.
-        
+
         Returns
         -------
         :class:`str`

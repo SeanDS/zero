@@ -1,10 +1,12 @@
-.. currentmodule:: circuit.components
+.. include:: /defs.txt
+
+.. currentmodule:: zero.components
 
 #######
 Op-amps
 #######
 
-:class:`Op-amps <OpAmp>` in `circuit` take differential inputs and provide a
+:class:`Op-amps <OpAmp>` in |Zero| take differential inputs and provide a
 single output.
 
 Voltage gain

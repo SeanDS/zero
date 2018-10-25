@@ -1,9 +1,11 @@
+.. include:: /defs.txt
+
 Components
 ==========
 
 .. code-block:: python
 
-   >>> from circuit.components import Resistor, Capacitor, Inductor, OpAmp
+   >>> from zero.components import Resistor, Capacitor, Inductor, OpAmp
 
 ======================
 What is a 'component'?
@@ -34,12 +36,11 @@ produce noise, whereas :class:`resistors <.Resistor>` do (:class:`Johnson noise 
 Setting a component's value
 ---------------------------
 
-A passive component's :attr:`~.PassiveComponent.value` may be altered. First, you must have a
-reference to the component object:
+A passive component's :attr:`~.PassiveComponent.value` may be altered. First, get the component:
 
 .. code:: python
 
-    c1 = circuit.get_component("c1")
+    c1 = circuit["c1"]
 
 You can then set the value using the object's :attr:`~.PassiveComponent.value` attribute:
 
@@ -66,6 +67,10 @@ You may also provide a string with units or scales:
 The above value is parsed as ``2.2e-9``, with unit ``F``. The unit is stored alongside the numeric
 part within the object, and the unit will be printed alongside the component's value when it is
 displayed.
+
+.. note::
+    Units are just for display and are not used for any calculations. Be careful when specifying
+    units which differ from those used internally by |Zero|.
 
 .. toctree::
     :maxdepth: 2

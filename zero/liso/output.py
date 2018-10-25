@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from ..solution import Solution
-from ..data import (Series, TransferFunction, NoiseSpectrum, SumNoiseSpectrum)
+from ..data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
 from ..format import Quantity
 from ..components import OpAmp
 from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
@@ -140,7 +140,7 @@ class LisoOutputParser(LisoParser):
         self._data = None
 
     def _build_solution(self):
-        self._solution = Solution(self.circuit, self.frequencies)
+        self._solution = Solution(self.frequencies)
 
         if self.output_type == "tf":
             self._build_tfs()
@@ -198,19 +198,19 @@ class LisoOutputParser(LisoParser):
                     sink = self.circuit.get_node(tf_output.node)
                     sink_unit = "V"
                 elif tf_output.output_type == "current":
-                    sink = self.circuit.get_component(tf_output.component)
+                    sink = self.circuit[tf_output.component]
                     sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
-                source = self.circuit.get_component("input")
+                source = self.circuit.input_component
                 source_unit = "A"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
                     sink_unit = "V"
                 elif tf_output.output_type == "current":
-                    sink = self.circuit.get_component(tf_output.component)
+                    sink = self.circuit[tf_output.component]
                     sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
@@ -233,7 +233,7 @@ class LisoOutputParser(LisoParser):
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):
             # get component
-            component = self.circuit.get_component(definition[0])
+            component = self.circuit[definition[0]]
 
             # get data
             series = Series(x=self.frequencies, y=self._data[:, index])
@@ -256,37 +256,33 @@ class LisoOutputParser(LisoParser):
                 # must be a resistor
                 noise = component.johnson_noise
 
-            # noise should always be in the noise source list
-            #assert noise in self.noise_sources
-
             # create noise spectrum
             spectrum = NoiseSpectrum(source=noise, sink=sink, series=series)
 
             self._solution.add_noise(spectrum)
 
-        # add sum column if present
+        # generate sum if present
         if self._source_sum_index is not None:
-            # set flag
-            self._noise_sum_present = True
-
             # get sources contributing to sum
-            sources = self.summed_noise_sources
+            sources = self.summed_noise_objects
 
             # get data
             series = Series(x=self.frequencies, y=self._data[:, self._source_sum_index])
 
-            # create sum noise
-            spectrum = SumNoiseSpectrum(sources=sources, sink=sink, series=series)
+            # create and store sum noise
+            sum_noise = MultiNoiseSpectrum(sources=sources, sink=sink, series=series)
+            self._solution.add_noise_sum(sum_noise, default=True)
 
-            self._solution.add_noise(spectrum)
+            # flag that noise sum must be generated for any future native runs of this circuit
+            self._noise_sum_to_be_computed = True
 
-    def _get_noise_sources(self, definitions):
+    def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""
         sources = set()
 
         # create noise source objects
         for definition in definitions:
-            component = self.circuit.get_component(definition[0])
+            component = self.circuit[definition[0]]
 
             if len(definition) > 1:
                 # op-amp noise type specified
@@ -316,14 +312,14 @@ class LisoOutputParser(LisoParser):
         return sources
 
     @property
-    def displayed_noise_sources(self):
-        """Noise sources to be plotted"""
-        return self._get_noise_sources(self._noise_defs)
+    def displayed_noise_objects(self):
+        """Noise objects to be plotted"""
+        return self._get_noise_objects(self._noise_defs)
 
     @property
-    def summed_noise_sources(self):
+    def summed_noise_objects(self):
         """Noise sources included in the sum column"""
-        return self._get_noise_sources(self._noisy_defs)
+        return self._get_noise_objects(self._noisy_defs)
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
@@ -505,12 +501,6 @@ class LisoOutputParser(LisoParser):
         t.type = "NEWLINE"
         return t
 
-    # error handling
-    def t_error(self, t):
-        # anything that gets past the other filters
-        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
-                              t.lexer.lexpos - self._previous_newline_position)
-
     def p_file_contents(self, p):
         '''file_contents : file_line
                          | file_contents file_line'''
@@ -659,7 +649,7 @@ class LisoOutputParser(LisoParser):
         else:
             message = "unexpected end of file"
 
-        raise LisoParserError(message, lineno)
+        raise LisoParserError(message, line=lineno)
 
     def _parse_passive(self, passive_type, component_str):
         # split by whitespace
@@ -732,7 +722,11 @@ class LisoOutputParser(LisoParser):
                 unit = next(params)
                 # split off "/sqrt(Hz)"
                 unit = unit.rstrip("/sqrt(Hz)")
-                kwargs["v_noise"] = value + unit
+                # parse as V
+                voltage_noise = Quantity(value + unit, "V")
+                # change unit back
+                voltage_noise.unit = "V/sqrt(Hz)"
+                kwargs["v_noise"] = voltage_noise
             elif prop.startswith("uc"):
                 unit = next(params)
                 kwargs["v_corner"] = value + unit
@@ -740,7 +734,11 @@ class LisoOutputParser(LisoParser):
                 unit = next(params)
                 # split off "/sqrt(Hz)"
                 unit = unit.rstrip("/sqrt(Hz)")
-                kwargs["i_noise"] = value + unit
+                # parse as A
+                current_noise = Quantity(value + unit, "A")
+                # change unit back
+                current_noise.unit = "A/sqrt(Hz)"
+                kwargs["i_noise"] = current_noise
             elif prop.startswith("ic"):
                 unit = next(params)
                 kwargs["i_corner"] = value + unit
@@ -752,8 +750,9 @@ class LisoOutputParser(LisoParser):
                 kwargs["i_max"] = value + unit
             elif prop.startswith("sr"):
                 unit = next(params)
-                # parse V/us and convert to V/s
-                slew_rate = Quantity(value + unit, "V/s")
+                # parse without unit to avoid warning
+                slew_rate = Quantity(value, "V/s")
+                # convert from V/us to V/s
                 slew_rate *= 1e6
                 kwargs["slew_rate"] = slew_rate
             elif prop.startswith("delay"):

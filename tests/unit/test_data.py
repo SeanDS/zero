@@ -3,7 +3,8 @@
 from unittest import TestCase
 import numpy as np
 
-from circuit.data import Series
+from zero.data import Series
+
 
 class SeriesTestCase(TestCase):
     """Data series tests"""

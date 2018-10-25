@@ -8,4 +8,4 @@ op op1 op00 gnd nin nout
 freq log 1k 1G 1000
 
 uinput nin 50
-uoutput no nsum
+uoutput nout nsum

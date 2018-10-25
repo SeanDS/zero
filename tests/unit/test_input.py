@@ -2,7 +2,8 @@
 
 from unittest import TestCase
 
-from circuit.components import Input, Node
+from zero.components import Input, Node
+
 
 class InputTestCase(TestCase):
     """Test circuit input component"""

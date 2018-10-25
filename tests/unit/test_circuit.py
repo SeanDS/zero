@@ -2,8 +2,9 @@
 
 from unittest import TestCase
 
-from circuit import Circuit
-from circuit.components import Resistor, Capacitor, Inductor, OpAmp, Node
+from zero import Circuit
+from zero.components import Resistor, Capacitor, Inductor, OpAmp, Node
+
 
 class CircuitTestCase(TestCase):
     """Circuit tests"""
@@ -83,6 +84,22 @@ class CircuitTestCase(TestCase):
 
         self.assertEqual(self.circuit.components, [])
         self.assertEqual(self.circuit.non_gnd_nodes, [])
+        self.assertEqual(self.circuit.n_components, 0)
+        self.assertEqual(self.circuit.n_nodes, 0)
+
+    def test_remove_component_by_name(self):
+        """Test remove component from circuit by name"""
+        r = Resistor(name="r1", value=10e3, node1="n1", node2="n2")
+        c = Capacitor(name="c1", value="10u", node1="n1", node2="n2")
+
+        self.circuit.add_component(r)
+        self.circuit.add_component(c)
+
+        self.circuit.remove_component("r1")
+        self.circuit.remove_component("c1")
+
+        self.assertEqual(self.circuit.components, [])
+        self.assertCountEqual(self.circuit.non_gnd_nodes, [])
         self.assertEqual(self.circuit.n_components, 0)
         self.assertEqual(self.circuit.n_nodes, 0)
 

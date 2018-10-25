@@ -9,8 +9,8 @@ Sean Leavey
 """
 
 import numpy as np
-from circuit import Circuit
-from circuit.analysis import AcSignalAnalysis
+from zero import Circuit
+from zero.analysis import AcSignalAnalysis
 
 if __name__ == "__main__":
     # 1000 frequencies between 1 Hz to 1 MHz
@@ -34,5 +34,5 @@ if __name__ == "__main__":
     solution = analysis.solution
 
     # plot
-    solution.plot_tfs()
+    solution.plot_tfs(sinks=["nout"])
     solution.show()

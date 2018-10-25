@@ -16,7 +16,7 @@ test-validation:
 	python tests/runner.py validation
 
 lint:
-	pylint --rcfile=.pylintrc circuit
+	pylint --rcfile=.pylintrc zero
 
 security:
-	bandit -c=.banditrc -r circuit
+	bandit -c=.banditrc -r zero

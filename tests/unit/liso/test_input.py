@@ -3,8 +3,8 @@
 import unittest
 import numpy as np
 
-from circuit.liso import LisoInputParser, LisoParserError
-from circuit.components import Node, NoiseNotFoundError
+from zero.liso import LisoInputParser, LisoParserError
+from zero.components import Node, NoiseNotFoundError
 
 class LisoInputParserTestCase(unittest.TestCase):
     def setUp(self):
@@ -16,7 +16,7 @@ class LisoInputParserTestCase(unittest.TestCase):
 class ResistorTestCase(LisoInputParserTestCase):
     def test_resistor(self):
         self.parser.parse("r r1 10k n1 n2")
-        r = self.parser.circuit.get_component("r1")
+        r = self.parser.circuit["r1"]
         self.assertEqual(r.name, "r1")
         self.assertAlmostEqual(r.resistance, 10e3)
         self.assertEqual(r.node1, Node("n1"))
@@ -25,7 +25,7 @@ class ResistorTestCase(LisoInputParserTestCase):
 class CapacitorTestCase(LisoInputParserTestCase):
     def test_capacitor(self):
         self.parser.parse("c c1 10n n1 n2")
-        c = self.parser.circuit.get_component("c1")
+        c = self.parser.circuit["c1"]
         self.assertEqual(c.name, "c1")
         self.assertAlmostEqual(c.capacitance, 10e-9)
         self.assertEqual(c.node1, Node("n1"))
@@ -34,7 +34,7 @@ class CapacitorTestCase(LisoInputParserTestCase):
 class InductorTestCase(LisoInputParserTestCase):
     def test_inductor(self):
         self.parser.parse("l l1 10u n1 n2")
-        l = self.parser.circuit.get_component("l1")
+        l = self.parser.circuit["l1"]
         self.assertEqual(l.name, "l1")
         self.assertAlmostEqual(l.inductance, 10e-6)
         self.assertEqual(l.node1, Node("n1"))
@@ -43,7 +43,7 @@ class InductorTestCase(LisoInputParserTestCase):
 class OpAmpTestCase(LisoInputParserTestCase):
     def test_opamp(self):
         self.parser.parse("op op1 OP00 n1 n2 n3")
-        op = self.parser.circuit.get_component("op1")
+        op = self.parser.circuit["op1"]
         self.assertEqual(op.name, "op1")
         self.assertEqual(op.model.lower(), "op00")
         self.assertEqual(op.node1, Node("n1"))
@@ -56,16 +56,16 @@ class OpAmpTestCase(LisoInputParserTestCase):
 
     def test_opamp_override(self):
         self.parser.parse("op op1 op27 n1 n2 n3 a0=123M")
-        op = self.parser.circuit.get_component("op1")
+        op = self.parser.circuit["op1"]
         self.assertAlmostEqual(op.params["a0"], 123e6)
 
         self.parser.parse("op op2 ad797 n4 n5 n6 a0=123M gbw=456k")
-        op = self.parser.circuit.get_component("op2")
+        op = self.parser.circuit["op2"]
         self.assertAlmostEqual(op.params["a0"], 123e6)
         self.assertAlmostEqual(op.params["gbw"], 456e3)
 
         self.parser.parse("op op3 lt1124 n4 n5 n6 a0=123M gbw=456k sr=1G")
-        op = self.parser.circuit.get_component("op3")
+        op = self.parser.circuit["op3"]
         self.assertAlmostEqual(op.params["a0"], 123e6)
         self.assertAlmostEqual(op.params["gbw"], 456e3)
         self.assertAlmostEqual(op.params["sr"], 1e9)
@@ -190,19 +190,19 @@ op op1 op00 n2 n3 n4
 
         self.parser.parse(text)
         self.parser.parse("noise nout op1:u")
-        self.assertEqual(len(self.parser.displayed_noise_sources), 1)
+        self.assertEqual(len(self.parser.displayed_noise_objects), 1)
 
         self.reset()
 
         self.parser.parse(text)
         self.parser.parse("noise nout op1:u+-")
-        self.assertEqual(len(self.parser.displayed_noise_sources), 3)
+        self.assertEqual(len(self.parser.displayed_noise_objects), 3)
 
         self.reset()
 
         self.parser.parse(text)
         self.parser.parse("noise nout op1:-u+")
-        self.assertEqual(len(self.parser.displayed_noise_sources), 3)
+        self.assertEqual(len(self.parser.displayed_noise_objects), 3)
 
     def test_cannot_redefine_noise_node(self):
         self.parser.parse("noise nout n1")
@@ -227,7 +227,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noise n3 r2:u")
         self.assertRaisesRegex(LisoParserError,
                                r"noise suffices cannot be specified on non-op-amps \(line 6\)",
-                               getattr, self.parser, "displayed_noise_sources")
+                               getattr, self.parser, "displayed_noise_objects")
 
         self.reset()
 
@@ -236,7 +236,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noise n3 r2:+")
         self.assertRaisesRegex(LisoParserError,
                                r"noise suffices cannot be specified on non-op-amps \(line 6\)",
-                               getattr, self.parser, "displayed_noise_sources")
+                               getattr, self.parser, "displayed_noise_objects")
 
         self.reset()
 
@@ -245,7 +245,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noise n3 r2:-")
         self.assertRaisesRegex(LisoParserError,
                                r"noise suffices cannot be specified on non-op-amps \(line 6\)",
-                               getattr, self.parser, "displayed_noise_sources")
+                               getattr, self.parser, "displayed_noise_objects")
 
     def test_cannot_set_noisy_sum(self):
         text = """
@@ -258,7 +258,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noisy sum")
         self.assertRaisesRegex(LisoParserError,
                                r"cannot specify 'sum' as noisy source \(line 6\)",
-                               getattr, self.parser, "summed_noise_sources")
+                               getattr, self.parser, "summed_noise_objects")
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""

@@ -1,6 +1,6 @@
 import abc
 
-class BaseSolver(object, metaclass=abc.ABCMeta):
+class BaseSolver(metaclass=abc.ABCMeta):
     """Base class for matrix solvers"""
 
     # solver name
@@ -20,7 +20,7 @@ class BaseSolver(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def sparse(self, dimensions):
         """Create new complex-valued sparse matrix
-        
+
         Parameters
         ----------
         dimensions : :class:`tuple`

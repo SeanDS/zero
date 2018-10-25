@@ -38,6 +38,7 @@ stages:
     - chmod +x fil_static
     - cd ..
     - export LISO_DIR=$(pwd)/liso
+    - export LISO_PATH=$LISO_DIR/fil_static
     - python --version
     - apt update -qy
     - apt install --assume-yes python-pip

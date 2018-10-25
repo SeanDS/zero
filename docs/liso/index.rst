@@ -1,7 +1,9 @@
-LISO compatibility module
-=========================
+.. include:: /defs.txt
 
-`circuit` somewhat understands `LISO <https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso>`_
+LISO compatibility
+==================
+
+|Zero| somewhat understands `LISO <https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso>`_
 input and output files. It is also capable of running a locally available LISO binary
 and then plotting its results.
 

@@ -1,9 +1,9 @@
-from ..config import CircuitConfig
+from ..config import ZeroConfig
 
 # solvers
 from .scipy import ScipySolver
 
-CONF = CircuitConfig()
+CONF = ZeroConfig()
 
 # available solver classes
 solver_classes = [ScipySolver]

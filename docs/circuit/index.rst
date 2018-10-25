@@ -4,7 +4,7 @@ The circuit
 
 .. code-block:: python
 
-   >>> from circuit import Circuit
+   >>> from zero import Circuit
 
 ====================
 What is a 'circuit'?
