@@ -1,347 +1,158 @@
-"""Circuit simulator utility"""
+"""Circuit simulator command line interface"""
 
-import os
-import sys
 import logging
-import argparse
+from click import Path, File, group, argument, option, version_option, pass_context
+from tabulate import tabulate
 
-from . import __version__, PROGRAM, DESCRIPTION, logging_on
+from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
-from .display import NodeGraph
+from .config import CircuitConfig
 
+CONF = CircuitConfig()
 LOGGER = logging.getLogger(__name__)
 
+# Shared arguments:
+# https://github.com/pallets/click/issues/108
 
-class Parser:
-    def __init__(self, program, version, subcommands=None, err_stream=sys.stderr):
-        # defaults
-        self.parser = None
-        self._subparsers = None
+class State:
+    """CLI state"""
+    MIN_VERBOSITY = logging.WARNING
+    MAX_VERBOSITY = logging.DEBUG
 
-        if subcommands is not None:
-            # build dict
-            subcommands = {command.CMD: command for command in subcommands}
-
-        self.program = program
-        self._version = version
-        self.subcommands = subcommands
-        self.err_stream = err_stream
-
-        self._build_parsers()
-
-    def _build_parsers(self):
-        self.parser = argparse.ArgumentParser(prog=PROGRAM, description=DESCRIPTION)
-        self.parser.add_argument("--version", action="version", version=self.version)
-
-        # create subparser adder
-        self._subparsers = self.parser.add_subparsers(dest="subcommand")
-
-        # add subcommands
-        for subcommand in self.subcommands.values():
-            subcommand.add(self._subparsers)
-
-    def parse(self, args):
-        if len(args) == 1:
-            self.print_help(exit=True)
-
-        # parse arguments
-        namespace = self.parser.parse_args(sys.argv[1:])
-
-        # conduct action
-        self.action(namespace)
-
-    def action(self, namespace):
-        if namespace.subcommand:
-            subcommand = self.subcommands[namespace.subcommand]
-            subcommand.action(namespace)
-
-        # nothing to show
-        pass
-
-    def print_help(self, exit=False):
-        self.parser.print_help(self.err_stream)
-
-        if exit:
-            # exit with error code
-            sys.exit(1)
+    def __init__(self):
+        self._verbosity = self.MIN_VERBOSITY
 
     @property
-    def version(self):
-        return "{prog} {version}".format(prog=self.program, version=self._version)
+    def verbosity(self):
+        """Verbosity on stdout"""
+        return self._verbosity
 
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        self._verbosity = self.MIN_VERBOSITY - 10 * int(verbosity)
 
-class SubCommand:
-    CMD = None
+        if self._verbosity < self.MAX_VERBOSITY:
+            self._verbosity = self.MAX_VERBOSITY
 
-    def add(self, subparser):
-        raise NotImplementedError
-
-    def action(self, namespace):
-        raise NotImplementedError
-
-    @property
-    def base_parser(self):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-v", "--verbose", action="store_true",
-                            help="enable verbose output")
-
-        return parser
+        set_log_verbosity(self._verbosity)
 
     @property
-    def solver_parser(self):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("--no-prescale", action="store_false",
-                            help="disable matrix prescaling")
+    def verbose(self):
+        """Verbose output enabled
 
-        return parser
+        Returns True if the verbosity is enough for INFO or DEBUG messages to be displayed.
+        """
+        return self.verbosity <= logging.INFO
 
-    @property
-    def liso_path_parser(self):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("path", help="file path")
+def set_verbosity(ctx, _, value):
+    """Set stdout verbosity"""
+    state = ctx.ensure_object(State)
+    state.verbosity = value
 
-        return parser
+@group(help=DESCRIPTION)
+@version_option(version=__version__, prog_name=PROGRAM)
+@option("-v", "--verbose", count=True, default=0, callback=set_verbosity, expose_value=False,
+        help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
+def cli():
+    """Base CLI command group"""
+    pass
 
-    @property
-    def liso_io_parser(self):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("--force-input", action="store_true",
-                            help="force parsing as LISO input file")
-        parser.add_argument("--force-output", action="store_true",
-                            help="force parsing as LISO output file")
+@cli.command()
+@argument("file", type=File())
+@option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
+@option("--liso-path", type=Path(exists=True, dir_okay=False), envvar='LISO_PATH',
+        help="Path to LISO binary. If not specified, the environment variable LISO_PATH is searched.")
+@option("--compare", is_flag=True, default=False,
+        help="Simulate using both this tool and LISO binary, and overlay results.")
+@option("--diff", is_flag=True, default=False,
+        help="Show difference between results of comparison.")
+@option("--plot/--no-plot", default=True, show_default=True, help="Display results as figure.")
+@option("--save-figure", type=File("wb", lazy=False), help="Save image of figure to file.")
+@option("--prescale/--no-prescale", default=True, show_default=True,
+        help="Prescale matrices to improve numerical precision.")
+@option("--print-equations", is_flag=True, help="Print circuit equations.")
+@option("--print-matrix", is_flag=True, help="Print circuit matrix.")
+@pass_context
+def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale, print_equations,
+         print_matrix):
+    """Parse and simulate LISO input or output file"""
+    state = ctx.ensure_object(State)
 
-        return parser
+    # check which solutions must be computed
+    compute_liso = liso or compare
+    compute_native = not liso or compare
 
-    @property
-    def liso_analysisdata_parser(self):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("--print-equations", action="store_true",
-                            help="print circuit equations")
-        parser.add_argument("--print-matrix", action="store_true",
-                            help="print circuit matrix")
-
-        return parser
-
-
-class Liso(SubCommand):
-    CMD = "liso"
-
-    def add(self, subparser):
-        return subparser.add_parser(self.CMD, help="parse and run a LISO input or output "
-                                                   "file",
-                                    parents=[self.base_parser, self.solver_parser,
-                                             self.liso_path_parser, self.liso_io_parser,
-                                             self.liso_analysisdata_parser])
-
-    def action(self, namespace):
-        if namespace.verbose:
-            # turn on logging
-            logging_on()
-
-        kwargs = {"prescale": namespace.no_prescale,
-                  "print_progress": namespace.verbose,
-                  "print_equations": namespace.print_equations,
-                  "print_matrix": namespace.print_matrix}
-
-        if namespace.force_output:
-            liso_parser = LisoOutputParser()
-            liso_parser.parse(path=namespace.path)
-        else:
+    if compute_liso:
+        # run file with LISO and parse results
+        runner = LisoRunner(script_path=file.name)
+        parser = runner.run(liso_path, plot=False, parse_output=compute_native)
+        liso_solution = parser.solution()
+    else:
+        # parse specified file
+        try:
+            # try to parse as input file
+            parser = LisoInputParser()
+            parser.parse(path=file.name)
+        except LisoParserError:
             try:
-                liso_parser = LisoInputParser()
-                liso_parser.parse(path=namespace.path)
+                # try to parse as an output file
+                parser = LisoOutputParser()
+                parser.parse(path=file.name)
             except LisoParserError:
-                # file is invalid as input
-                if namespace.force_input:
-                    # don't continue
-                    raise
+                raise ValueError("cannot interpret specified file as either a LISO input or LISO "
+                                 "output file")
 
-                # try as output
-                liso_parser = LisoOutputParser()
-                liso_parser.parse(path=namespace.path)
-
-        liso_parser.show(**kwargs)
-
-
-class LisoCompare(SubCommand):
-    CMD = "liso-compare"
-
-    def add(self, subparser):
-        return subparser.add_parser(self.CMD, help="parse and run a LISO input file, and "
-                                                   "show a comparison to LISO's own results",
-                                    parents=[self.base_parser, self.solver_parser,
-                                             self.liso_path_parser, self.liso_analysisdata_parser])
-
-    def action(self, namespace):
-        if namespace.verbose:
-            # turn on logging
-            logging_on()
-
-        kwargs = {"prescale": namespace.no_prescale,
-                  "print_progress": namespace.verbose,
-                  "print_equations": namespace.print_equations,
-                  "print_matrix": namespace.print_matrix}
-
-        # LISO runner
-        runner = LisoRunner(namespace.path)
-
-        # run LISO, and parse its output
-        liso_parser = runner.run()
-
-        # get LISO solution
-        liso_solution = liso_parser.solution()
+    if compute_native:
+        # build argument list
+        kwargs = {"prescale": prescale,
+                  "print_progress": state.verbose,
+                  "print_equations": print_equations,
+                  "print_matrix": print_matrix}
 
         # get native solution
-        native_solution = liso_parser.solution(force=True, **kwargs)
+        native_solution = parser.solution(force=True, **kwargs)
 
-        # compare
-        if liso_solution.has_tfs:
-            # compare transfer functions
-            # get identified sources and sinks
-            sources = liso_parser.default_tf_sources()
-            sinks = liso_parser.default_tf_sinks()
+    # determine solution to show or save
+    if compare:
+        # make LISO solution plots dashed
+        for function in liso_solution.functions:
+            liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
 
-            # create figure
-            figure = liso_solution.bode_figure()
+        # show difference before changing labels
+        if diff:
+            # group by meta data
+            header, rows = native_solution.difference(liso_solution, defaults_only=True,
+                                                      meta_only=True)
 
-            # compare
-            liso_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
-            # override line style for native solution
-            with native_solution.plot_style_context({'lines.linestyle': "--"}):
-                native_solution.plot_tfs(figure=figure, sources=sources, sinks=sinks)
-        elif liso_solution.has_noise:
-            # compare noise
-            # get noise sources used in sum
-            sources = liso_parser.displayed_noise_sources
+            print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-            # the native solution does not compute the "sum" column automatically, so we must
-            # ask it to if necessary
-            if liso_parser._noise_sum_present:
-                sums = liso_parser.summed_noise_sources
-            else:
-                sums = None
+        # apply suffix to LISO function labels
+        for function in liso_solution.functions:
+            function.label_suffix = "LISO"
 
-            # create figure
-            figure = liso_solution.noise_figure()
-
-            # compare (including sums)
-            liso_solution.plot_noise(figure=figure, sources=sources)
-            # override line style for native solution
-            with native_solution.plot_style_context({'lines.linestyle': "--"}):
-                native_solution.plot_noise(figure=figure, sources=sources,
-                                           compute_sum_sources=sums)
+        # combine results from LISO and native simulations
+        solution = native_solution + liso_solution
+    else:
+        # plot single result
+        if compute_liso:
+            # use LISO's solution
+            solution = liso_solution
         else:
-            raise Exception("no results were computed")
+            # use native solution
+            solution = native_solution
 
-        liso_solution.show()
+    # determine whether to generate plot
+    generate_plot = plot or save_figure
 
-
-class LisoExternal(SubCommand):
-    CMD = "liso-external"
-
-    def add(self, subparser):
-        parser = subparser.add_parser(self.CMD, help="run an input file with a local LISO "
-                                                     "binary and show its results",
-                                      parents=[self.base_parser, self.liso_path_parser])
-        parser.add_argument("--liso-plot", action="store_true",
-                            help="allow LISO to plot its results")
-
-        return parser
-
-    def action(self, namespace):
-        if namespace.verbose:
-            # turn on logging
-            logging_on()
-
-        runner = LisoRunner(namespace.path)
-
-        if namespace.liso_plot:
-            # plot with LISO, and don't parse with this program
-            liso_plot = True
-            liso_parse = False
+    if generate_plot:
+        if solution.has_tfs:
+            figure = solution.plot_tfs()
         else:
-            # plot with this program, and parse
-            liso_plot = False
-            liso_parse = True
+            figure = solution.plot_noise()
 
-        # run
-        solution = runner.run(liso_plot=liso_plot, liso_parse=liso_parse)
+        if save_figure:
+            # there should only be one figure produced in CLI mode
+            solution.save_figure(figure, save_figure)
 
-        if not liso_plot:
-            solution.show()
-
-
-class LisoPath(SubCommand):
-    CMD = "liso-path"
-
-    def add(self, subparser):
-        parser = subparser.add_parser(self.CMD, help="show or set LISO binary path",
-                                      parents=[self.base_parser])
-        parser.add_argument("--set-path", action="store", help="set path to LISO binary")
-
-        return parser
-
-    def action(self, namespace):
-        if namespace.verbose:
-            # turn on logging
-            logging_on()
-
-        if namespace.set_path:
-            raise NotImplementedError("this feature is not yet available")
-        else:
-            runner = LisoRunner()
-            print(runner.liso_path)
-
-
-class LisoGraph(SubCommand):
-    CMD = "liso-graph"
-
-    def add(self, subparser):
-        return subparser.add_parser(self.CMD, help="show node graph for LISO file",
-                                    parents=[self.base_parser, self.liso_path_parser,
-                                             self.liso_io_parser,
-                                             self.liso_analysisdata_parser])
-
-    def action(self, namespace):
-        if namespace.verbose:
-            # turn on logging
-            logging_on()
-
-        kwargs = {"print_progress": namespace.verbose,
-                  "print_equations": namespace.print_equations,
-                  "print_matrix": namespace.print_matrix}
-
-        if namespace.force_output:
-            liso_parser = LisoOutputParser()
-            liso_parser.parse(path=namespace.path)
-        else:
-            try:
-                liso_parser = LisoInputParser()
-                liso_parser.parse(path=namespace.path)
-            except LisoParserError:
-                # file is invalid as input
-                if namespace.force_input:
-                    # don't continue
-                    raise
-
-                # try as output
-                liso_parser = LisoOutputParser()
-                liso_parser.parse(path=namespace.path)
-
-        solution = liso_parser.solution(**kwargs)
-
-        # create node graph
-        graph = NodeGraph(solution.circuit)
-
-        # open PDF
-        graph.view_pdf()
-
-
-def main():
-    """Main program"""
-    parser = Parser(PROGRAM, __version__,
-                    subcommands=[Liso(), LisoCompare(), LisoExternal(), LisoPath(), LisoGraph()])
-    parser.parse(sys.argv)
-
-if __name__ == "__main__":
-    main()
+    if plot:
+        solution.show()

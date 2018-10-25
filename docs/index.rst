@@ -76,5 +76,6 @@ Contents
    format/index
    examples/index
    liso/index
+   cli/index
    API reference <api/modules>
    contributing/index

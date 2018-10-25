@@ -1,12 +1,11 @@
 """Tools for running LISO directly"""
 
-import sys
 import os
 import logging
 from tempfile import NamedTemporaryFile
 import subprocess
-import shutil
 
+from . import LISO_PATH_ENV_VAR
 from .base import LisoParserError
 from .output import LisoOutputParser
 
@@ -14,77 +13,70 @@ LOGGER = logging.getLogger(__name__)
 
 
 class LisoRunner:
-    """LISO runner"""
+    """LISO runner
 
-    # LISO binary names, in order of preference
-    LISO_BINARY_NAMES = {"nix": ["fil_static", "fil"], # Linux / OSX
-                         "win": ["fil.exe"]}           # Windows
-
-    def __init__(self, script_path=None):
+    Parameters
+    ----------
+    script_path : :class:`str`
+        Path to LISO script to run.
+    """
+    def __init__(self, script_path):
         self.script_path = script_path
 
-        # defaults
-        self._liso_path = None
-
-    def run(self, liso_plot=False, liso_parse=True, liso_path=None, output_path=None):
+    def run(self, liso_path=None, output_path=None, plot=False, parse_output=True):
         """Run LISO script using a local LISO binary and handle the results
 
         Parameters
         ----------
-        liso_plot : :class:`bool`, optional
-            Plot the results using LISO.
-        liso_parse : :class:`bool`, optional
-            Parse the output from LISO.
         liso_path : :class:`str`, optional
-            Path to local LISO binary. If not specified, this program will attempt to find it
-            automatically.
+            Path to local LISO binary. If not specified, the value of the environment variable
+            defined in .liso.LISO_PATH_ENV_VAR is used.
         output_path : :class:`str`, optional
-            Path to save LISO output file to. If not specified, LISO's default is used.
+            Path to save LISO output file to.
+        plot : :class:`bool`, optional
+            Plot the results using LISO.
+        parse_output : :class:`bool`, optional
+            Parse the output from LISO.
 
         Returns
         -------
         :class:`.LisoOutputParser`
             The parsed LISO output.
-        """
-        self.liso_path = liso_path
 
-        if not output_path:
+        Raises
+        ------
+        ValueError
+            If the LISO path cannot be determined.
+        """
+        if liso_path is None:
+            # look for environment variable
+            liso_path = os.getenv(LISO_PATH_ENV_VAR)
+
+            if liso_path is None:
+                raise ValueError("LISO path cannot be determined. Set the environment variable "
+                                 "'%s' to the LISO binary path." % LISO_PATH_ENV_VAR)
+
+        if output_path is None:
+            # use temporary file
             temp_file = NamedTemporaryFile()
             output_path = temp_file.name
 
-        return self._liso_result(self.script_path, output_path, liso_parse, liso_plot)
+        # run LISO
+        self._run_liso_process(liso_path, output_path, plot)
 
-    def _liso_result(self, script_path, output_path, parse, plot):
-        """Get LISO results
-
-        Parameters
-        ----------
-        script_path : :class:`str`
-            Path to the LISO ".fil" file.
-        output_path : :class:`str`
-            Path to LISO ".out" file to be created.
-        parse : :class:`bool`
-            Parse the output from LISO.
-        plot : :class:`bool`
-            Ask LISO to plot the result instead of this program.
-
-        Returns
-        -------
-        :class:`.OutputParser` or None
-            Parsed LISO output, if requested, otherwise None.
-        """
-        self._run_liso_process(script_path, output_path, plot)
-
-        if parse:
+        if parse_output:
             parser = LisoOutputParser()
             parser.parse(path=output_path)
         else:
             parser = None
 
+        if output_path is None:
+            temp_file.close()
+
         return parser
 
-    def _run_liso_process(self, script_path, output_path, plot):
-        input_path = os.path.abspath(script_path)
+    def _run_liso_process(self, liso_path, output_path, plot):
+        input_path = os.path.abspath(self.script_path)
 
         if not os.path.exists(input_path):
             raise Exception("input file %s does not exist" % input_path)
@@ -96,7 +88,6 @@ class LisoRunner:
         if not plot:
             flags.append("-n")
 
-        liso_path = self.liso_path
         LOGGER.debug("running LISO binary at %s", liso_path)
 
         # run LISO
@@ -104,58 +95,9 @@ class LisoRunner:
                                 stderr=subprocess.PIPE)
 
         if result.returncode != 0:
-            raise LisoError(result.stderr, script_path=script_path)
+            raise LisoError(result.stderr, script_path=self.script_path)
 
         return result
-
-    @property
-    def liso_path(self):
-        if self._liso_path is not None:
-            return self._liso_path
-
-        liso_path = None
-
-        # try environment variable
-        try:
-            liso_path = self.find_liso(os.environ["LISO_DIR"])
-        except (KeyError, FileNotFoundError):
-            # no environment variable set or LISO not found in specified directory
-            # try searching path
-            for command in self.LISO_BINARY_NAMES[self.platform_key]:
-                path = shutil.which(command)
-                if path is not None:
-                    liso_path = path
-                    break
-
-        if liso_path is None:
-            raise FileNotFoundError("environment variable \"LISO_DIR\" must point to "
-                                    "the directory containing the LISO binary, or the "
-                                    "LISO binary must be available on the system PATH "
-                                    "(and executable)")
-
-        return liso_path
-
-    @liso_path.setter
-    def liso_path(self, path):
-        self._liso_path = path
-
-    @property
-    def platform_key(self):
-        if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
-            return "nix"
-        elif sys.platform.startswith("win32"):
-            return "win"
-
-        raise EnvironmentError("unrecognised operating system")
-
-    def find_liso(self, directory):
-        for filename in self.LISO_BINARY_NAMES[self.platform_key]:
-            path = os.path.join(directory, filename)
-
-            if os.path.isfile(path):
-                return path
-
-        raise FileNotFoundError("no appropriate LISO binary found")
 
 
 class LisoError(Exception):
@@ -179,7 +121,7 @@ class LisoError(Exception):
 
                 # attempt to parse as input
                 try:
-                    parser.parse(path=script_path)
+                    parser.parse(script_path)
 
                     is_output = True
                 except (IOError, LisoParserError):

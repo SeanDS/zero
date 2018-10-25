@@ -8,10 +8,10 @@ REQUIREMENTS = [
     "scipy",
     "matplotlib",
     "progressbar2",
-    "appdirs",
     "tabulate",
     "setuptools_scm",
-    "ply"
+    "ply",
+    "click"
 ]
 
 # extra dependencies
@@ -20,6 +20,7 @@ EXTRAS = {
         "pylint",
         "bandit",
         "sphinx",
+        "sphinx-click",
         "sphinx_rtd_theme",
         "numpydoc",
         "nbsphinx",
@@ -40,8 +41,8 @@ setup(
         "circuit": ["circuit.conf.dist", "library.conf.dist"]
     },
     entry_points={
-        'console_scripts': [
-            '%s = circuit.__main__:main' % "circuit"
+        "console_scripts": [
+            "%s = circuit.__main__:cli" % "circuit"
         ]
     },
     install_requires=REQUIREMENTS,

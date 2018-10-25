@@ -190,19 +190,19 @@ op op1 op00 n2 n3 n4
 
         self.parser.parse(text)
         self.parser.parse("noise nout op1:u")
-        self.assertEqual(len(self.parser.displayed_noise_sources), 1)
+        self.assertEqual(len(self.parser.displayed_noise_objects), 1)
 
         self.reset()
 
         self.parser.parse(text)
         self.parser.parse("noise nout op1:u+-")
-        self.assertEqual(len(self.parser.displayed_noise_sources), 3)
+        self.assertEqual(len(self.parser.displayed_noise_objects), 3)
 
         self.reset()
 
         self.parser.parse(text)
         self.parser.parse("noise nout op1:-u+")
-        self.assertEqual(len(self.parser.displayed_noise_sources), 3)
+        self.assertEqual(len(self.parser.displayed_noise_objects), 3)
 
     def test_cannot_redefine_noise_node(self):
         self.parser.parse("noise nout n1")
@@ -227,7 +227,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noise n3 r2:u")
         self.assertRaisesRegex(LisoParserError,
                                r"noise suffices cannot be specified on non-op-amps \(line 6\)",
-                               getattr, self.parser, "displayed_noise_sources")
+                               getattr, self.parser, "displayed_noise_objects")
 
         self.reset()
 
@@ -236,7 +236,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noise n3 r2:+")
         self.assertRaisesRegex(LisoParserError,
                                r"noise suffices cannot be specified on non-op-amps \(line 6\)",
-                               getattr, self.parser, "displayed_noise_sources")
+                               getattr, self.parser, "displayed_noise_objects")
 
         self.reset()
 
@@ -245,7 +245,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noise n3 r2:-")
         self.assertRaisesRegex(LisoParserError,
                                r"noise suffices cannot be specified on non-op-amps \(line 6\)",
-                               getattr, self.parser, "displayed_noise_sources")
+                               getattr, self.parser, "displayed_noise_objects")
 
     def test_cannot_set_noisy_sum(self):
         text = """
@@ -258,7 +258,7 @@ op op1 op00 gnd n2 n3
         self.parser.parse("noisy sum")
         self.assertRaisesRegex(LisoParserError,
                                r"cannot specify 'sum' as noisy source \(line 6\)",
-                               getattr, self.parser, "summed_noise_sources")
+                               getattr, self.parser, "summed_noise_objects")
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""

@@ -109,10 +109,7 @@ class Component(metaclass=abc.ABCMeta):
         return self.label()
 
     def __eq__(self, other):
-        if hasattr(other, 'name'):
-            return self.name == other.name
-
-        return False
+        return self.name == getattr(other, "name", None)
 
     def __hash__(self):
         """Components uniquely defined by their name"""
@@ -707,11 +704,21 @@ class Noise(metaclass=abc.ABCMeta):
     def label(self):
         return NotImplemented
 
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return tuple(self.label())
+
     def __str__(self):
         return self.label()
 
     def __repr__(self):
         return str(self)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return hash(self._meta_data())
 
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
@@ -732,6 +739,10 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
 
     def spectral_density(self, frequencies):
         return self.function(component=self.component, frequencies=frequencies)
+
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return super()._meta_data(), self.component
 
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
@@ -755,6 +766,10 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
 
     def spectral_density(self, *args, **kwargs):
         return self.function(node=self.node, *args, **kwargs)
+
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return super()._meta_data(), self.node, self.component
 
 
 class VoltageNoise(ComponentNoise):
@@ -781,6 +796,10 @@ class JohnsonNoise(VoltageNoise):
 
     def label(self):
         return "R(%s)" % self.component.name
+
+    def _meta_data(self):
+        """Meta data used to provide hash."""
+        return super()._meta_data(), self.resistance
 
 
 class CurrentNoise(NodeNoise):
