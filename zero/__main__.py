@@ -85,7 +85,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
     if compute_liso:
         # run file with LISO and parse results
         runner = LisoRunner(script_path=file.name)
-        parser = runner.run(liso_path, plot=False, parse_output=compute_native)
+        parser = runner.run(liso_path, plot=False)
         liso_solution = parser.solution()
     else:
         # parse specified file
