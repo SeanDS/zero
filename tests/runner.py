@@ -5,7 +5,7 @@ import os.path
 import logging
 from unittest import TestLoader, TextTestRunner
 
-from circuit import set_log_verbosity
+from zero import set_log_verbosity
 
 # this directory
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -50,8 +50,8 @@ if __name__ == "__main__":
         elif VERBOSITY > 2:
             VERBOSITY = 2
 
-        # tune in to circuit's logs
-        LOGGER = logging.getLogger("circuit")
+        # tune in to zero's logs
+        LOGGER = logging.getLogger("zero")
         # show only warnings with no verbosity, or more if higher
         set_log_verbosity(logging.WARNING - 10 * VERBOSITY, LOGGER)
     else:

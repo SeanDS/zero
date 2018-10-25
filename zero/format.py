@@ -5,6 +5,7 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
+
 class Quantity(float):
     """Container for numeric values and their associated units.
 

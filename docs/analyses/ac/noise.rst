@@ -1,4 +1,4 @@
-.. currentmodule:: circuit.analysis.ac.noise
+.. currentmodule:: zero.analysis.ac.noise
 
 #######################
 Small AC noise analysis

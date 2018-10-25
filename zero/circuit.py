@@ -4,11 +4,11 @@ on which simulations can be performed."""
 import logging
 import numpy as np
 
-from .config import CircuitConfig, OpAmpLibrary
+from .config import ZeroConfig, OpAmpLibrary
 from .components import (Resistor, Capacitor, Inductor, OpAmp, Input, Node)
 
 LOGGER = logging.getLogger(__name__)
-CONF = CircuitConfig()
+CONF = ZeroConfig()
 LIBRARY = OpAmpLibrary()
 
 

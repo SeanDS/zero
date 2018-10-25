@@ -1,9 +1,11 @@
+.. include:: /defs.txt
+
 Components
 ==========
 
 .. code-block:: python
 
-   >>> from circuit.components import Resistor, Capacitor, Inductor, OpAmp
+   >>> from zero.components import Resistor, Capacitor, Inductor, OpAmp
 
 ======================
 What is a 'component'?
@@ -68,7 +70,7 @@ displayed.
 
 .. note::
     Units are just for display and are not used for any calculations. Be careful when specifying
-    units which differ from those used internally by `circuit`.
+    units which differ from those used internally by |Zero|.
 
 .. toctree::
     :maxdepth: 2

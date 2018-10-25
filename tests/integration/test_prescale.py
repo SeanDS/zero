@@ -3,8 +3,8 @@
 from unittest import TestCase
 import numpy as np
 
-from circuit import Circuit
-from circuit.analysis import AcSignalAnalysis, AcNoiseAnalysis
+from zero import Circuit
+from zero.analysis import AcSignalAnalysis, AcNoiseAnalysis
 
 class PrescaleTestCase(TestCase):
     """Matrix prescaling tests"""

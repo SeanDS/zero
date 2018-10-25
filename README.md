@@ -1,4 +1,4 @@
-# circuit.py
+# Zero
 Linear electronic circuit simulator utility. This package provides tools to
 simulate transfer functions and noise in linear electronic circuits, SI unit
 parsing and formatting and more.
@@ -8,7 +8,7 @@ It also (somewhat) understands LISO input and output files, and can plot or
 re-simulate their contents.
 
 ## Documentation
-See the [online documentation](https://docs.ligo.org/sean-leavey/circuit/).
+See the [online documentation](https://docs.ligo.org/sean-leavey/zero/).
 
 ## Program and library
 The simulator tries to replicate LISO's operation: a small signal ac analysis.
@@ -36,31 +36,31 @@ This library contains a `setup.py` file which tells Python how it should be
 installed. Installation can be automated using `pip`. Open up a terminal or
 command prompt (Windows) and type:
 ```bash
-pip install git+https://git.ligo.org/sean-leavey/circuit.git
+pip install git+https://git.ligo.org/sean-leavey/zero.git
 ```
-This installs the library and adds a console script `circuit` which provides
+This installs the library and adds a console script `zero` which provides
 access to the package's command line utility.
 
 If you want to update the library to a later version after having previously
 installed it, run:
 ```bash
-pip install git+https://git.ligo.org/sean-leavey/circuit.git --upgrade
+pip install git+https://git.ligo.org/sean-leavey/zero.git --upgrade
 ```
 
 ## Basic usage
 There is a basic CLI provided by the program. Open up a terminal and type:
 ```bash
-circuit --help
+zero --help
 ```
-for a list of available commands. Run `circuit [command] --help` for more detailed
+for a list of available commands. Run `zero [command] --help` for more detailed
 help for a particular `[command]`.
 
 ### Run LISO files
 ```bash
-circuit liso path/to/liso/file
+zero liso path/to/liso/file
 ```
 
-`circuit.py` can parse both LISO input (`.fil`) and LISO output (`.out`) files.
+`Zero` can parse both LISO input (`.fil`) and LISO output (`.out`) files.
 The above command will display the results. Some commands are not yet supported
 (see `LISO parsing` below).
 
@@ -69,29 +69,29 @@ To force a file to be parsed as either an input or an output file, specify the
 `--force-input` or `--force-output` flags.
 
 ### Comparing results to LISO
-A comparison between `circuit.py`'s native result and that of LISO can be made
-with `circuit liso-compare path/to/liso/file`. Note that any operations that
+A comparison between `Zero`'s native result and that of LISO can be made
+with `zero liso-compare path/to/liso/file`. Note that any operations that
 involve running LISO (e.g. `liso-compare`) require the LISO binary to be set
 using the `LISO_DIR` environment variable.
 
-LISO can also be run by `circuit.py` directly, using the `circuit liso-external`
+LISO can also be run by `Zero` directly, using the `zero liso-external`
 command. To allow LISO to plot its own results, instead of plotting the results
-in `circuit.py`, specify the `--liso-plot` flag.
+in `Zero`, specify the `--liso-plot` flag.
 
 ### As a library
-`circuit.py` can also be included as a library within other Python code. For
+`Zero` can also be included as a library within other Python code. For
 examples of how to build simulation scripts with Python, see the `examples`
 directory.
 
 ## Tests
-The script in `/tests/runner.py` can be run to automatically test `circuit.py`.
+The script in `/tests/runner.py` can be run to automatically test `Zero`.
 There are various tests which compare the results of simulations to LISO; these
 can be run with `runner.py validation`. To run all tests, call `runner.py` with
 the `all` argument.
 
 ## Limitations
-See the documentation for LISO [input](https://docs.ligo.org/sean-leavey/circuit/liso/input.html#known-incompatibilities)
-and [output](https://docs.ligo.org/sean-leavey/circuit/liso/output.html#known-incompatibilities)
+See the documentation for LISO [input](https://docs.ligo.org/sean-leavey/zero/liso/input.html#known-incompatibilities)
+and [output](https://docs.ligo.org/sean-leavey/zero/liso/output.html#known-incompatibilities)
 parsing.
 
 ### Op-amp library
@@ -123,7 +123,7 @@ A LISO op-amp library parser may be added at a later date.
 
 ## Contributing
 Bug reports and feature requests are always welcome, as are contributions to the
-code. Please use the project's [issue tracker](https://git.ligo.org/sean-leavey/circuit/issues).
+code. Please use the project's [issue tracker](https://git.ligo.org/sean-leavey/zero/issues).
 
 ## Future ideas
   - Return plot objects to allow user to modify them
@@ -153,10 +153,9 @@ code. Please use the project's [issue tracker](https://git.ligo.org/sean-leavey/
     thereby allowing nonlinear components like diodes to be modelled)
 
 ## Credits
-Sean Leavey  
-<sean.leavey@ligo.org>  
+Sean Leavey
+<sean.leavey@ligo.org>
 
 Invaluable insight into LISO's workings provided by Gerhard Heinzel.
 
-The author is grateful for additional contributions by:
-  - Sebastian Steinlechner
+The author is grateful for additional contributions by Sebastian Steinlechner.

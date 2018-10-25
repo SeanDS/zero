@@ -7,6 +7,7 @@ from ...data import NoiseSpectrum, Series
 
 LOGGER = logging.getLogger(__name__)
 
+
 class AcNoiseAnalysis(BaseAcAnalysis):
     """Small signal circuit analysis"""
 
@@ -15,7 +16,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         self._node = None
 
         self.node = node
-    
+
         # call parent constructor
         super().__init__(**kwargs)
 

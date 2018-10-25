@@ -51,7 +51,7 @@ clean:
 
 .PHONY: apidoc
 apidoc:
-	sphinx-apidoc -o api -e ../circuit
+	sphinx-apidoc -o api -e ../zero
 
 .PHONY: html
 html: apidoc

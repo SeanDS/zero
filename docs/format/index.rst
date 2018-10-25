@@ -6,4 +6,4 @@ Quantity formatting tools.
 
 .. code-block:: python
 
-   >>> from circuit.format import Quantity
+   >>> from zero.format import Quantity

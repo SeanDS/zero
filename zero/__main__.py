@@ -6,9 +6,9 @@ from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
-from .config import CircuitConfig
+from .config import ZeroConfig
 
-CONF = CircuitConfig()
+CONF = ZeroConfig()
 LOGGER = logging.getLogger(__name__)
 
 # Shared arguments:

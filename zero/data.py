@@ -4,11 +4,11 @@ import abc
 import logging
 import numpy as np
 
-from .config import CircuitConfig
+from .config import ZeroConfig
 from .misc import db
 
 LOGGER = logging.getLogger(__name__)
-CONF = CircuitConfig()
+CONF = ZeroConfig()
 
 def frequencies_match(vector_a, vector_b):
     return np.all(vector_a == vector_b)

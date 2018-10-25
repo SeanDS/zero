@@ -5,7 +5,7 @@ used."""
 import sys
 import os
 
-from circuit.liso import LisoInputParser
+from zero.liso import LisoInputParser
 
 if __name__ == "__main__":
     # parse liso filename, if present

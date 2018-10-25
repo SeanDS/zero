@@ -1,4 +1,4 @@
-.. currentmodule:: circuit.components
+.. currentmodule:: zero.components
 
 ##################
 Passive components

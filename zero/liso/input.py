@@ -15,7 +15,7 @@ class LisoInputParser(LisoParser):
     This implements a lexer to identify appropriate definitions in a LISO input file,
     and a parser to build a circuit from what is found.
     """
-    # dict mapping LISO op-amp parameter overrides to `circuit.components.OpAmp` arguments
+    # dict mapping LISO op-amp parameter overrides to `zero.components.OpAmp` arguments
     OP_OVERRIDE_MAP = {
         "a0": "a0",
         "gbw": "gbw",

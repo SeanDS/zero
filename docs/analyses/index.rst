@@ -3,7 +3,7 @@ Analyses
 
 .. code-block:: python
 
-   >>> from circuit.analysis import AcSignalAnalysis, AcNoiseAnalysis
+   >>> from zero.analysis import AcSignalAnalysis, AcNoiseAnalysis
 
 The circuit can be solved in order to compute transfer functions or noise in a
 single run. If both transfer functions *and* noise are required, then these

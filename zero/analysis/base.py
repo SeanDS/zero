@@ -1,12 +1,11 @@
 import sys
 import os
 import abc
-import copy
 import statistics
 import progressbar
 
-from ..components import (Component, Resistor, Capacitor, Inductor, OpAmp,
-                          Input, Node, ComponentNoise, NodeNoise)
+from ..components import Node
+
 
 class BaseAnalysis(metaclass=abc.ABCMeta):
     """Base class for circuit analysis.

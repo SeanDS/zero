@@ -1,4 +1,4 @@
-.. currentmodule:: circuit.analysis.ac.signal
+.. currentmodule:: zero.analysis.ac.signal
 
 ########################
 Small AC signal analysis

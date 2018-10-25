@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 195)">
 <title>%3</title>
 <polygon fill="white" stroke="none" points="-4,21 -4,-195 237,-195 237,21 -4,21"/>
-<text text-anchor="middle" x="116.5" y="10.4" font-family="Helvetica,sans-Serif" font-size="8.00">Made with graphviz and circuit.py</text>
+<text text-anchor="middle" x="116.5" y="10.4" font-family="Helvetica,sans-Serif" font-size="8.00">Made with graphviz and Zero</text>
 <!-- c1 -->
 <g id="node1" class="node"><title>c1</title>
 <polygon fill="YellowGreen" stroke="black" points="61.9702,-101.596 34.9702,-83.5965 61.9702,-65.5965 88.9702,-83.5965 61.9702,-101.596"/>

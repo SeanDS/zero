@@ -1,11 +1,13 @@
+.. include:: /defs.txt
+
 Input file parsing
 ==================
 
-`circuit.py` is capable of parsing some LISO input files. First, import the LISO input parser:
+|Zero| is capable of parsing some LISO input files. First, import the LISO input parser:
 
 .. code:: python
 
-    from circuit.liso import LisoInputParser
+    from zero.liso import LisoInputParser
 
 then create a parser object:
 
@@ -23,9 +25,9 @@ To parse a LISO circuit, either call the :meth:`~.LisoParser.parse` method with 
     r r2 43k nm nout
     c c2 47p nm nout
     op o1 lt1124 nin nm nout
-    
+
     freq log 1 100k 100
-    
+
     uinput nin 0
     uoutput nout:db:deg
     """)
@@ -53,7 +55,7 @@ You can at any time list the circuit's constituent components:
 .. code-block:: text
 
     Circuit with 6 components and 5 nodes
-    
+
     	1. c1 [in=gnd, out=n1, C=1e-05]
     	2. c2 [in=nm, out=nout, C=4.7e-11]
     	3. input [in=gnd, out=nin, Z=default]
@@ -65,7 +67,7 @@ You can also plot the circuit's node network using Graphviz, if installed:
 
 .. code:: python
 
-    from circuit.display import NodeGraph
+    from zero.display import NodeGraph
     NodeGraph(parser.circuit)
 
 .. image:: /_static/liso-input-node-graph.svg

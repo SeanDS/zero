@@ -1,8 +1,10 @@
+.. include:: /defs.txt
+
 ######################
 Command line interface
 ######################
 
-`Circuit` provides a command line interface to perform some common tasks, mainly focused on the
+|Zero| provides a command line interface to perform some common tasks, mainly focused on the
 running, display and comparison of LISO scripts.
 
 .. hint::
@@ -12,6 +14,6 @@ running, display and comparison of LISO scripts.
 Command line options
 ====================
 
-.. click:: circuit.__main__:cli
-   :prog: circuit
+.. click:: zero.__main__:cli
+   :prog: zero
    :show-nested:

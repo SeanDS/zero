@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# circuit.py documentation build configuration file, created by
+# Zero documentation build configuration file, created by
 # sphinx-quickstart on Mon Nov 13 10:13:06 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -22,7 +22,7 @@ from pkg_resources import get_distribution
 
 sys.path.insert(0, os.path.abspath('.'))
 
-import circuit
+import zero
 
 # -- General configuration ------------------------------------------------
 
@@ -63,7 +63,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'circuit.py'
+project = 'Zero'
 copyright = '2018, Sean Leavey'
 author = 'Sean Leavey'
 
@@ -72,7 +72,7 @@ author = 'Sean Leavey'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = get_distribution('circuit').version
+release = get_distribution('zero').version
 # The short X.Y version.
 version = '.'.join(release.split('.')[:3])
 
@@ -258,7 +258,7 @@ html_show_sphinx = False
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'circuitpydoc'
+htmlhelp_basename = 'zerodoc'
 
 # -- Options for Intersphinx ----------------------------------------------
 
@@ -293,7 +293,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'circuitpy.tex', 'circuit.py Documentation',
+    (master_doc, 'zero.tex', 'Zero Documentation',
      'Sean Leavey', 'manual'),
 ]
 
@@ -335,7 +335,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'circuitpy', 'circuit.py Documentation',
+    (master_doc, 'zero', 'Zero Documentation',
      [author], 1)
 ]
 
@@ -350,8 +350,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'circuitpy', 'circuit.py Documentation',
-     author, 'circuitpy', circuit.DESCRIPTION,
+    (master_doc, 'zero', 'Zero Documentation',
+     author, 'zero', zero.DESCRIPTION,
      'Miscellaneous'),
 ]
 

@@ -7,8 +7,9 @@ from ...components import Component, Node
 
 LOGGER = logging.getLogger(__name__)
 
+
 class AcSignalAnalysis(BaseAcAnalysis):
-    """AC signal analysis"""    
+    """AC signal analysis"""
     def validate_circuit(self):
         """Validate circuit for signal analysis"""
         # check input

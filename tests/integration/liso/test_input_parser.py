@@ -2,7 +2,7 @@
 
 import unittest
 
-from circuit.liso import LisoInputParser, LisoParserError
+from zero.liso import LisoInputParser, LisoParserError
 
 class LisoInputParserTestCase(unittest.TestCase):
     """Base test case class for input parser"""

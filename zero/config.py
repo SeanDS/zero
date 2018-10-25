@@ -14,6 +14,7 @@ from .format import Quantity
 
 LOGGER = logging.getLogger(__name__)
 
+
 class SingletonAbstractMeta(abc.ABCMeta):
     """Abstract singleton class"""
 
@@ -28,6 +29,7 @@ class SingletonAbstractMeta(abc.ABCMeta):
             cls._SINGLETON_REGISTRY[cls] = super().__call__(*args, **kwargs)
 
         return cls._SINGLETON_REGISTRY[cls]
+
 
 class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
     """Abstract configuration class"""
@@ -87,11 +89,13 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
 
         return config_file
 
-class CircuitConfig(BaseConfig):
-    """Circuit config parser"""
 
-    CONFIG_FILENAME = "circuit.conf"
+class ZeroConfig(BaseConfig):
+    """Zero config parser"""
+
+    CONFIG_FILENAME = "zero.conf"
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
+
 
 class OpAmpLibrary(BaseConfig):
     CONFIG_FILENAME = "library.conf"

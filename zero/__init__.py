@@ -2,7 +2,7 @@ import logging
 import locale
 from pkg_resources import get_distribution, DistributionNotFound
 
-PROGRAM = "circuit"
+PROGRAM = "zero"
 DESCRIPTION = "Linear circuit simulator"
 
 # get version
@@ -14,10 +14,10 @@ except DistributionNotFound:
 
 try:
     from matplotlib import rcParams
-    from .config import CircuitConfig
+    from .config import ZeroConfig
 
     # get config
-    CONF = CircuitConfig()
+    CONF = ZeroConfig()
 
     # update Matplotlib options with overrides from config
     rcParams.update(CONF["matplotlib"])

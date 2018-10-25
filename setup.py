@@ -29,20 +29,20 @@ EXTRAS = {
 }
 
 setup(
-    name="circuit",
+    name="zero",
     use_scm_version=True,
     description="Linear circuit simulator",
     long_description=README,
     author="Sean Leavey",
     author_email="sean.leavey@ligo.org",
-    url="https://git.ligo.org/sean-leavey/circuit",
+    url="https://git.ligo.org/sean-leavey/zero",
     packages=find_packages(),
     package_data={
-        "circuit": ["circuit.conf.dist", "library.conf.dist"]
+        "zero": ["zero.conf.dist", "library.conf.dist"]
     },
     entry_points={
         "console_scripts": [
-            "%s = circuit.__main__:cli" % "circuit"
+            "%s = zero.__main__:cli" % "zero"
         ]
     },
     install_requires=REQUIREMENTS,

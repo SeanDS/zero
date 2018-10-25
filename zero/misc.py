@@ -1,10 +1,8 @@
 """Miscellaneous functions"""
 
 import abc
-import sys
-import math
 import numpy as np
-import webbrowser
+
 
 class Singleton(abc.ABCMeta):
     """Metaclass implementing the singleton pattern
@@ -24,6 +22,7 @@ class Singleton(abc.ABCMeta):
             cls._instances[cls] = super().__call__(*args, **kwargs)
 
         return cls._instances[cls]
+
 
 class NamedInstance(abc.ABCMeta):
     """Metaclass to implement a single named instance pattern
@@ -45,6 +44,7 @@ class NamedInstance(abc.ABCMeta):
             cls._names[name] = super().__call__(name, *args, **kwargs)
 
         return cls._names[name]
+
 
 def db(magnitude):
     """Calculate (power) magnitude in decibels

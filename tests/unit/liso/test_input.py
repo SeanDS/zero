@@ -3,8 +3,8 @@
 import unittest
 import numpy as np
 
-from circuit.liso import LisoInputParser, LisoParserError
-from circuit.components import Node, NoiseNotFoundError
+from zero.liso import LisoInputParser, LisoParserError
+from zero.components import Node, NoiseNotFoundError
 
 class LisoInputParserTestCase(unittest.TestCase):
     def setUp(self):

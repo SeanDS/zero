@@ -2,8 +2,9 @@
 
 from unittest import TestCase
 
-from circuit import Circuit
-from circuit.components import Resistor, Capacitor, Inductor, OpAmp, Node
+from zero import Circuit
+from zero.components import Resistor, Capacitor, Inductor, OpAmp, Node
+
 
 class CircuitTestCase(TestCase):
     """Circuit tests"""

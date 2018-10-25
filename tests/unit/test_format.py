@@ -2,7 +2,8 @@
 
 from unittest import TestCase
 
-from circuit.format import Quantity
+from zero.format import Quantity
+
 
 class QuantityParserTestCase(TestCase):
     """Quantity parsing tests"""

@@ -2,7 +2,8 @@
 
 from unittest import TestCase
 
-from circuit.components import Component as ComponentBase, Resistor, Capacitor, Inductor, Node
+from zero.components import Component as ComponentBase, Resistor, Capacitor, Inductor, Node
+
 
 class Component(ComponentBase):
     """Child class of abstract ComponentBase, used to test :class:`components <.Component>` \

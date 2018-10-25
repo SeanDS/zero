@@ -7,13 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
-from .config import CircuitConfig
+from .config import ZeroConfig
 from .data import TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, frequencies_match
 from .components import Component, Node, Noise
 from .format import Quantity
 
 LOGGER = logging.getLogger(__name__)
-CONF = CircuitConfig()
+CONF = ZeroConfig()
+
 
 class Solution:
     """Represents a solution to the simulated circuit"""

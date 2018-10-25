@@ -1,15 +1,14 @@
 """Electronic components"""
 
 import abc
-import logging
 from collections.abc import MutableMapping
 import numpy as np
 
 from .misc import NamedInstance
 from .format import Quantity
-from .config import CircuitConfig
+from .config import ZeroConfig
 
-CONF = CircuitConfig()
+CONF = ZeroConfig()
 
 
 class Component(metaclass=abc.ABCMeta):
@@ -343,7 +342,7 @@ class OpAmp(Component):
         """Op-amp inverse gain.
 
         Note that the inverse gain may be modified by the analysis, e.g. in the
-        case of a voltage follower (see :meth:`circuit.analysis.ac.BaseAcAnalysis.component_equation`).
+        case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
         """
         return 1 / self.gain(*args, **kwargs)
 

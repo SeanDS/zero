@@ -3,9 +3,10 @@
 from unittest import TestCase
 import numpy as np
 
-from circuit.analysis import AcNoiseAnalysis
-from circuit import Circuit
-from circuit.components import Node
+from zero import Circuit
+from zero.analysis import AcNoiseAnalysis
+from zero.components import Node
+
 
 class AcNoiseAnalysisTestCase(TestCase):
     """AC noise analysis tests"""

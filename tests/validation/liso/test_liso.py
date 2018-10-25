@@ -6,8 +6,8 @@ import glob
 import unittest
 import logging
 
-from circuit import set_log_verbosity, add_log_handler
-from circuit.liso import LisoRunner
+from zero import set_log_verbosity, add_log_handler
+from zero.liso import LisoRunner
 
 # directory containing tests relative to this script
 REL_FIL_DIR = "scripts"
@@ -94,8 +94,8 @@ if __name__ == '__main__':
         elif VERBOSITY > 2:
             VERBOSITY = 2
 
-        # tune in to circuit's logs
-        LOGGER = logging.getLogger("circuit")
+        # tune in to zero's logs
+        LOGGER = logging.getLogger("zero")
         # show only warnings with no verbosity, or more if higher
         set_log_verbosity(logging.WARNING - 10 * VERBOSITY, LOGGER)
     else:

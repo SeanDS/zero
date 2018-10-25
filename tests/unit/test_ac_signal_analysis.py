@@ -3,8 +3,9 @@
 from unittest import TestCase
 import numpy as np
 
-from circuit.analysis import AcSignalAnalysis
-from circuit import Circuit
+from zero.analysis import AcSignalAnalysis
+from zero import Circuit
+
 
 class AcSignalAnalysisTestCase(TestCase):
     """AC signal analysis tests"""

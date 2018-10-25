@@ -3,12 +3,13 @@
 from unittest import TestCase
 import numpy as np
 
-from circuit.components import OpAmp, Node, VoltageNoise
-from circuit.solution import Solution, matches_between
-from circuit.data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
+from zero.components import OpAmp, Node, VoltageNoise
+from zero.solution import Solution, matches_between
+from zero.data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
 
 # fixed random seed for test reproducibility
 np.random.seed(seed=2543070)
+
 
 class SolutionTestCase(TestCase):
     """Solution tests"""

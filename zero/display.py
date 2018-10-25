@@ -2,16 +2,16 @@
 
 import abc
 from importlib import import_module
-import numpy as np
 import collections
 import tempfile
-import numbers
+import numpy as np
 from tabulate import tabulate
 
-from .config import CircuitConfig
+from .config import ZeroConfig
 from .components import Resistor, Capacitor, Inductor, OpAmp, Input, Component, Node
 
-CONF = CircuitConfig()
+CONF = ZeroConfig()
+
 
 class NodeGraph:
     # input shapes per input type
@@ -21,8 +21,7 @@ class NodeGraph:
         try:
             self.graphviz = import_module("graphviz")
         except ImportError:
-            raise NotImplementedError("Node graph representation requires the "
-                                      "graphviz package")
+            raise NotImplementedError("Node graph representation requires the graphviz package")
 
         self.circuit = circuit
 
@@ -35,7 +34,7 @@ class NodeGraph:
                    fontsize=CONF["graphviz"]["node_font_size"])
         graph.attr("edge", arrowhead=CONF["graphviz"]["edge_arrowhead"])
         graph.attr("graph", splines=CONF["graphviz"]["graph_splines"],
-                   label="Made with graphviz and circuit.py",
+                   label="Made with graphviz and Zero",
                    fontname=CONF["graphviz"]["graph_font_name"],
                    fontsize=CONF["graphviz"]["graph_font_size"])
         node_map = {}
@@ -89,6 +88,7 @@ class NodeGraph:
     def _repr_svg_(self):
         """Graphviz rendering for Jupyter notebooks."""
         return self.node_graph()._repr_svg_()
+
 
 class TableFormatter(metaclass=abc.ABCMeta):
     """Table formatter mixin
@@ -168,6 +168,7 @@ class TableFormatter(metaclass=abc.ABCMeta):
         base = number / 10 ** power
 
         return base, power
+
 
 class MatrixDisplay(TableFormatter):
     def __init__(self, lhs, middle, rhs, headers):
@@ -265,6 +266,7 @@ class MatrixDisplay(TableFormatter):
         table += "</table>"
 
         return table
+
 
 class EquationDisplay(TableFormatter):
     def __init__(self, lhs, rhs, elements):
