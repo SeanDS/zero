@@ -4,7 +4,7 @@ from unittest import TestCase
 import numpy as np
 
 from circuit.components import OpAmp, Node, VoltageNoise
-from circuit.solution import Solution
+from circuit.solution import Solution, matches_between
 from circuit.data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
 
 # fixed random seed for test reproducibility
@@ -25,6 +25,7 @@ class SolutionTestCase(TestCase):
         # data
         tfdata11 = np.random.random((count1))
         tfdata12 = np.random.random((count1))
+        tfdata13 = np.random.random((count1))
         tfdata21 = np.random.random((count2))
         tfdata22 = np.random.random((count2))
         noisedata11 = np.random.random((count1))
@@ -39,6 +40,7 @@ class SolutionTestCase(TestCase):
         # sinks
         tfsink11 = Node("ntfs11")
         tfsink12 = Node("ntfs12")
+        tfsink13 = Node("ntfs13")
         tfsink21 = Node("ntfs21")
         tfsink22 = Node("ntfs22")
         noisesink11 = Node("nns11")
@@ -48,6 +50,7 @@ class SolutionTestCase(TestCase):
         # series
         tfseries11 = Series(x=self.frequencies1, y=tfdata11)
         tfseries12 = Series(x=self.frequencies1, y=tfdata12)
+        tfseries13 = Series(x=self.frequencies1, y=tfdata13)
         tfseries21 = Series(x=self.frequencies2, y=tfdata21)
         tfseries22 = Series(x=self.frequencies2, y=tfdata22)
         noiseseries11 = Series(x=self.frequencies1, y=noisedata11)
@@ -57,6 +60,7 @@ class SolutionTestCase(TestCase):
         # set 1 functions
         self.tf11 = TransferFunction(source=tfsource11, sink=tfsink11, series=tfseries11)
         self.tf12 = TransferFunction(source=tfsource11, sink=tfsink12, series=tfseries12)
+        self.tf13 = TransferFunction(source=tfsource11, sink=tfsink13, series=tfseries13)
         self.noise11 = NoiseSpectrum(source=noisesource11, sink=noisesink11, series=noiseseries11)
         self.noise12 = NoiseSpectrum(source=noisesource11, sink=noisesink12, series=noiseseries12)
         # set 2 functions
@@ -136,3 +140,36 @@ class SolutionTestCase(TestCase):
         sol_d.add_tf(self.noise11)
 
         self.assertFalse(sol_c.equivalent_to(sol_d))
+
+    def test_solution_matching(self):
+        """Test method to report differences between solutions"""
+        # no matches
+        sol_a = Solution(self.frequencies1)
+        sol_b = Solution(self.frequencies1)
+        matches, residuals_a, residuals_b = matches_between(sol_a, sol_b)
+        self.assertFalse(matches)
+        self.assertFalse(residuals_a)
+        self.assertFalse(residuals_b)
+
+        # one shared match, one non-shared in first
+        sol_a = Solution(self.frequencies1)
+        sol_a.add_tf(self.tf11)
+        sol_a.add_tf(self.tf12)
+        sol_b = Solution(self.frequencies1)
+        sol_b.add_tf(self.tf11)
+        matches, residuals_a, residuals_b = matches_between(sol_a, sol_b)
+        self.assertEqual(matches, [(self.tf11, self.tf11)])
+        self.assertEqual(residuals_a, [self.tf12])
+        self.assertFalse(residuals_b)
+
+        # one shared match, one non-shared in both
+        sol_a = Solution(self.frequencies1)
+        sol_a.add_tf(self.tf11)
+        sol_a.add_tf(self.tf12)
+        sol_b = Solution(self.frequencies1)
+        sol_b.add_tf(self.tf11)
+        sol_b.add_tf(self.tf13)
+        matches, residuals_a, residuals_b = matches_between(sol_a, sol_b)
+        self.assertEqual(matches, [(self.tf11, self.tf11)])
+        self.assertEqual(residuals_a, [self.tf12])
+        self.assertEqual(residuals_b, [self.tf13])
