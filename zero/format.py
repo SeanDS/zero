@@ -125,6 +125,9 @@ class Quantity(float):
         # unit is fifth match
         unit = results.group(5)
 
+        if not mantissa:
+            raise ValueError("unrecognised quantity '%s'" % quantity)
+
         # convert value to float
         value = float(mantissa)
 

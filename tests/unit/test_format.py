@@ -7,6 +7,16 @@ from zero.format import Quantity
 
 class QuantityParserTestCase(TestCase):
     """Quantity parsing tests"""
+    def test_invalid(self):
+        # invalid characters
+        for test_value in r" !\"€£$%^&\*\(\)\{\}\[\];:'@#~/\?><\\\|¬`":
+            with self.subTest(msg="Test invalid quantity", quantity=test_value):
+                self.assertRaisesRegex(ValueError, r"unrecognised quantity", Quantity, test_value)
+
+        # invalid strings
+        self.assertRaisesRegex(ValueError, r"unrecognised quantity", Quantity, "")
+        self.assertRaisesRegex(ValueError, r"unrecognised quantity", Quantity, "invalid")
+
     def test_float_values(self):
         """Test parsing of float quantities"""
         self.assertAlmostEqual(Quantity(1.23), 1.23)
