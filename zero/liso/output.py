@@ -726,10 +726,10 @@ class LisoOutputParser(LisoParser):
                 voltage_noise = Quantity(value + unit, "V")
                 # change unit back
                 voltage_noise.unit = "V/sqrt(Hz)"
-                kwargs["v_noise"] = voltage_noise
+                kwargs["vnoise"] = voltage_noise
             elif prop.startswith("uc"):
                 unit = next(params)
-                kwargs["v_corner"] = value + unit
+                kwargs["vcorner"] = value + unit
             elif prop.startswith("in"):
                 unit = next(params)
                 # split off "/sqrt(Hz)"
@@ -738,23 +738,23 @@ class LisoOutputParser(LisoParser):
                 current_noise = Quantity(value + unit, "A")
                 # change unit back
                 current_noise.unit = "A/sqrt(Hz)"
-                kwargs["i_noise"] = current_noise
+                kwargs["inoise"] = current_noise
             elif prop.startswith("ic"):
                 unit = next(params)
-                kwargs["i_corner"] = value + unit
+                kwargs["icorner"] = value + unit
             elif prop.startswith("umax"):
                 unit = next(params)
-                kwargs["v_max"] = value + unit
+                kwargs["vmax"] = value + unit
             elif prop.startswith("imax"):
                 unit = next(params)
-                kwargs["i_max"] = value + unit
+                kwargs["imax"] = value + unit
             elif prop.startswith("sr"):
                 unit = next(params)
                 # parse without unit to avoid warning
                 slew_rate = Quantity(value, "V/s")
                 # convert from V/us to V/s
                 slew_rate *= 1e6
-                kwargs["slew_rate"] = slew_rate
+                kwargs["sr"] = slew_rate
             elif prop.startswith("delay"):
                 if value != "0":
                     unit = next(params)

@@ -1,15 +1,15 @@
-# Op-amp library from LISO, reproduced with permission. All credit goes to
-# Gerhard Heinzel for the original measurements.
+# Zero op-amp library, based on op-amp library from LISO, reproduced with
+# permission. All credit goes to Gerhard Heinzel for the original measurements.
 #
 # Everything is in SI units:
 #   - 'a0': DC open loop gain
 #   - 'gbw': gain-bandwidth product for typical operating frequencies
-#   - 'vn': voltage noise spectral density (V / sqrt(Hz))
-#   - 'in': current noise spectral density (A / sqrt(Hz))
-#   - 'vc' voltage noise 1/f corner frequency
-#   - 'ic': current noise 1/f corner frequency
-#   - 'pole': pole frequency in the op-amp's open-loop response
-#   - 'zero': zero frequency in the op-amp's open-loop response
+#   - 'vnoise': voltage noise spectral density (V / sqrt(Hz))
+#   - 'vcorner' voltage noise 1/f corner frequency
+#   - 'inoise': current noise spectral density (A / sqrt(Hz))
+#   - 'icorner': current noise 1/f corner frequency
+#   - 'poles': pole frequencies in the op-amp's open-loop response
+#   - 'zeros': zero frequencies in the op-amp's open-loop response
 #
 # Options that are not specified for a particular op-amp default to standard
 # values. Depending on the parameter, the default can be drastically different
@@ -17,13 +17,13 @@
 #
 # Note that multiple pole/zero frequencies can be defined for each op-amp,
 # and complex values can be specified by providing the q-factor after the
-# frequency, e.g. "pole 100k, 1M 1.8, 3M". These values are converted into
+# frequency, e.g. "poles = 100k, 1M 1.8, 3M". These values are converted into
 # single complex values internally.
 #
 # Unless mentioned explicitly, values are "typical" for the cheapest grade
 # at 25 degrees. a0 should usually be uncritical; these are entered for
-# large loads. The 1/f corner frequencies 'vc' and 'ic' (in Hz) are often
-# not well defined. Poles and zeroes of the open-loop transfer function
+# large loads. The 1/f corner frequencies 'vcorner' and 'icorner' (in Hz) are
+# often not well defined. Poles and zeroes of the open-loop transfer function
 # are interpreted as additional features to the 1/f frequency response
 # given by a0 and gbw.
 #
@@ -41,38 +41,38 @@
 
 [op00]
 # (almost) ideal OpAmp
-a0=1e12
-gbw=1e15
-vn=0
-vc=1
-in=0
-ic=1
-vmax=12
-imax=.02
-sr=1e12
+a0 = 1e12
+gbw = 1e15
+vnoise = 0
+vcorner = 1
+inoise = 0
+icorner = 1
+vmax = 12
+imax = .02
+sr = 1e12
 
 [op07]
 # Rout = 90 Ohm, Cin = 23 pF (measured)
 a0 = 4e5
 gbw = 561k # fitted from measurement
-vn = 10e-9
-vc = 1
-in = 0.13e-12
-ic = 100
+vnoise = 10e-9
+vcorner = 1
+inoise = 0.13e-12
+icorner = 100
 vmax = 12
 imax = 0.02
 sr = 0.3e6
 poles = 2M # fitted from measurement
 delay = 74n # fitted from measurement
-# Rout=90 Ohm, Cin=23 pF (measured)
+# Rout=90 Ohm, Cinoise=23 pF (measured)
 
 [op27]
 a0 = 1.5e6
 gbw = 8e6
-vn = 3.2e-9
-vc = 2.7 # from PMI data sheet
-in = 0.4e-12
-ic = 140 # from PMI data sheet
+vnoise = 3.2e-9
+vcorner = 2.7 # from PMI data sheet
+inoise = 0.4e-12
+icorner = 140 # from PMI data sheet
 poles = 6e6
 vmax = 12
 imax = 0.02
@@ -81,10 +81,10 @@ sr = 2.8e6
 [op177]
 a0 = 6e6
 gbw = 721k # fitted from measurement
-vn = 9.4e-9 # from measurement
-vc = 1.2 # from measurement
-in = 0.2e-12 # from measurement
-ic = 2.5 # from measurement
+vnoise = 9.4e-9 # from measurement
+vcorner = 1.2 # from measurement
+inoise = 0.2e-12 # from measurement
+icorner = 2.5 # from measurement
 poles = 7.53M 1.78, 1.66M # fitted from measurement
 delay = 30n # fitted from measurement
 vmax = 12
@@ -98,10 +98,10 @@ gbw = 6e6
 poles = 1.32M
 zeros = 1.73M, 20M
 delay = 21n
-vn = 3.2e-9
-vc = 2.7 # from PMI data sheet
-in = 0.6e-12
-ic = 140 # from PMI data sheet
+vnoise = 3.2e-9
+vcorner = 2.7 # from PMI data sheet
+inoise = 0.6e-12
+icorner = 140 # from PMI data sheet
 vmax = 13.5
 imax = 0.002 # 10V in 5 k
 sr = 2.4e6
@@ -114,10 +114,10 @@ gbw = 14.6M    # fitted from measured data ghh 4/2002
 poles = 200k, 200k # fitted from measured data ghh 4/2002
 zeros = 800k, 800k, 9.4M # fitted from measured data ghh 4/2002
 delay = 18.9n  # fitted from measured data ghh 4/2002
-vn = 2.7n      # from data sheet
-vc = 2.3       # from data sheet
-in = 0.3p      # from data sheet
-ic = 100       # from data sheet
+vnoise = 2.7n      # from data sheet
+vcorner = 2.3       # from data sheet
+inoise = 0.3p      # from data sheet
+icorner = 100       # from data sheet
 sr = 4.5e6     # from data sheet
 vmax = 12      # from data sheet
 imax = 0.02    # from data sheet
@@ -126,10 +126,10 @@ imax = 0.02    # from data sheet
 aliases = tl084
 a0 = 200e3
 gbw = 3M
-vn = 18n
-vc = 300
-in = 0.01p
-ic = 300 # guess
+vnoise = 18n
+vcorner = 300
+inoise = 0.01p
+icorner = 300 # guess
 vmax = 12
 imax = 0.0166666666666667
 sr = 13e6
@@ -138,10 +138,10 @@ delay = 25n # from (hand-drawn) curve in data sheet
 [buf634]
 a0 = 0.9       # 100 ohm load
 gbw = 160M     # wide bandwidth mode, otherwise 20 MHz
-vn = 4e-9      # at 10 kHz
-vc = 100       # unknown!
-in = 1e-9      # unknown!
-ic = 50        # unknown!
+vnoise = 4e-9      # at 10 kHz
+vcorner = 100       # unknown!
+inoise = 1e-9      # unknown!
+icorner = 50        # unknown!
 vmax = 12
 imax = 0.25
 sr = 2000e6
@@ -149,10 +149,10 @@ sr = 2000e6
 [tle2037]
 a0 = 5e6
 gbw = 76e6
-vn = 2.5e-9
-vc = 10
-in = 1.5e-12
-ic = 100
+vnoise = 2.5e-9
+vcorner = 10
+inoise = 1.5e-12
+icorner = 100
 vmax = 12
 imax = 0.02
 sr = 7.5e6 # ???
@@ -160,10 +160,10 @@ sr = 7.5e6 # ???
 [lt1037]
 a0 = 5e6
 gbw = 53M
-vn = 2.5n
-vc = 2
-in = 0.4p
-ic = 120
+vnoise = 2.5n
+vcorner = 2
+inoise = 0.4p
+icorner = 120
 poles = 870k, 17.1M # 870k fitted from PMI OP37 data sheet
 zeros = 1.67M
 vmax = 12
@@ -173,10 +173,10 @@ sr = 15e6
 [lt1037nopole]
 a0 = 5e6
 gbw = 53M
-vn = 2.5n
-vc = 2
-in = 0.4p
-ic = 120
+vnoise = 2.5n
+vcorner = 2
+inoise = 0.4p
+icorner = 120
 vmax=12
 imax=0.02
 sr=15e6
@@ -184,10 +184,10 @@ sr=15e6
 [lt1007]
 a0 = 20e6
 gbw = 8e6
-vn = 2.5e-9
-vc = 10
-in = 0.4e-12
-ic = 100
+vnoise = 2.5e-9
+vcorner = 10
+inoise = 0.4e-12
+icorner = 100
 vmax = 12
 imax = 0.02
 sr = 2.5e6
@@ -196,10 +196,10 @@ sr = 2.5e6
 # fast FET, for photodiode transimpedance
 a0 = 1e4
 gbw = 35e6
-vn = 10e-9
-vc = 1e3
-in = 2e-15
-ic = 2
+vnoise = 10e-9
+vcorner = 1e3
+inoise = 2e-15
+icorner = 2
 vmax = 12
 imax = 50m
 sr = 100e6
@@ -210,10 +210,10 @@ a0 = 400e3
 gbw = 4e6
 poles = 7e6 1
 zeros = 10e6 1
-vn = 16e-9
-vc = 100
-in = 0.01e-12
-ic = 1000 # guessed
+vnoise = 16e-9
+vcorner = 100
+inoise = 0.01e-12
+icorner = 1000 # guessed
 vmax = 12
 imax = 0.02
 sr = 20e6
@@ -225,10 +225,10 @@ gbw = 72e6
 poles = 780k
 zeros = 3.14M
 delay = 7.5n
-vn = 0.85e-9
-vc = 3.5
-in = 1e-12
-ic = 250
+vnoise = 0.85e-9
+vcorner = 3.5
+inoise = 1e-12
+icorner = 250
 vmax = 12
 imax = 0.02
 sr = 15e6
@@ -237,10 +237,10 @@ sr = 15e6
 # fast lownoise voltage-feedback, No ext. comp., measured at gain 1
 a0 = 1e5 # 100V/mV
 gbw = 85M
-vn = 1.7e-9
-vc = 30
-in = 1.5e-12
-ic = 100 # not given in datasheet
+vnoise = 1.7e-9
+vcorner = 30
+inoise = 1.5e-12
+icorner = 100 # not given in datasheet
 vmax = 12
 imax = 0.05
 sr = 260e6
@@ -252,10 +252,10 @@ delay = 1.9n # fitted from measurement
 # fast lownoise voltage-feedback, 0pF comp, +-5V supply, from SPICE model
 a0 = 50k
 gbw =  526.9219936898M
-vn = 1.7e-9
-vc = 30
-in = 1.5e-12
-ic = 100 # not given in datasheet
+vnoise = 1.7e-9
+vcorner = 30
+inoise = 1.5e-12
+icorner = 100 # not given in datasheet
 vmax = 12
 imax = 0.05
 sr = 260e6
@@ -266,10 +266,10 @@ delay = 600p # fitted from measurement
 # fast lownoise voltage-feedback, 3pF comp, +-5V supply, from SPICE model
 a0 = 50k # 100V/mV
 gbw = 335M
-vn = 1.7e-9
-vc = 30
-in = 1.5e-12
-ic = 100 # not given in datasheet
+vnoise = 1.7e-9
+vcorner = 30
+inoise = 1.5e-12
+icorner = 100 # not given in datasheet
 vmax = 12
 imax = 0.05
 sr = 260e6
@@ -280,10 +280,10 @@ delay = 508p # fitted from measurement
 # fast lownoise voltage-feedback, 7pF comp, +-5V supply, from SPICE model
 a0 = 50k
 gbw = 225M
-vn = 1.7e-9
-vc = 30
-in = 1.5e-12
-ic = 100 # not given in datasheet
+vnoise = 1.7e-9
+vcorner = 30
+inoise = 1.5e-12
+icorner = 100 # not given in datasheet
 vmax = 12
 imax = 0.05
 sr = 260e6
@@ -294,10 +294,10 @@ delay = 454p # fitted from measurement
 # fast lownoise voltage-feedback, 22pF comp, +-5V supply, from SPICE model
 a0 = 50k
 gbw = 101M
-vn = 1.7e-9
-vc = 30
-in = 1.5e-12
-ic = 100 # not given in datasheet
+vnoise = 1.7e-9
+vcorner = 30
+inoise = 1.5e-12
+icorner = 100 # not given in datasheet
 vmax = 12
 imax = 0.05
 sr = 260e6
@@ -308,10 +308,10 @@ delay = 390p # fitted from measurement
 # fast lownoise voltage-feedback, 68pF comp, +-5V supply, from SPICE model
 a0 = 50k
 gbw = 37.7M
-vn = 1.7e-9
-vc = 30
-in = 1.5e-12
-ic = 100 # not given in datasheet
+vnoise = 1.7e-9
+vcorner = 30
+inoise = 1.5e-12
+icorner = 100 # not given in datasheet
 vmax = 12
 imax = 0.05
 sr = 260e6
@@ -323,19 +323,19 @@ delay = 355p # fitted from measurement
 a0 = 834.265 # from fitting OPA655.dat
 gbw = 214597e3
 poles = 169968e3
-vn = 6e-9
-vc = 5000
-in = 1.3e-15
-ic = 1 # not given
+vnoise = 6e-9
+vcorner = 5000
+inoise = 1.3e-15
+icorner = 1 # not given
 
 [ad797]
 # very low noise
 a0 = 20M    # data sheet
 gbw = 120M   # fitted from measured data (3 pcs AD797AN 15V DIP)
-vn = 0.9n # data sheet
-vc = 100 # data sheet
-in = 2p # data sheet
-ic = 100 # not given
+vnoise = 0.9n # data sheet
+vcorner = 100 # data sheet
+inoise = 2p # data sheet
+icorner = 100 # not given
 poles = 3.6M, 85M, 129M 3, 207M 1.6 # fitted from measured data (3 pcs AD797AN 15V DIP)
 zeros = 12.7M, 23M # fitted from measured data (3 pcs AD797AN 15V DIP)
 delay = 2.5n  # fitted from measured data (3 pcs AD797AN 15V DIP)
@@ -347,10 +347,10 @@ sr = 20e6 # data sheet
 aliases = opa604
 a0 = 1e5
 gbw = 17.7e6
-vn = 10e-9
-vc = 200
-in = 6e-15
-ic = 1
+vnoise = 10e-9
+vcorner = 200
+inoise = 6e-15
+icorner = 1
 poles = 1.17e6, 12.5e6 # 1.17e6 fitted from data sheet
 zeros = 3.3e6
 vmax = 12
@@ -360,28 +360,28 @@ sr = 25e6
 [lt1001]
 a0 = 8e5
 gbw = 8e5
-vn = 10e-9
-vc = 4
-in = .12e-12
-ic = 70
+vnoise = 10e-9
+vcorner = 4
+inoise = .12e-12
+icorner = 70
 
 [op275]
 # slow rail-to-rail
 a0 = 250e3
 gbw = 9e6
-vn = 6e-9
-vc = 6
-in = 1.5e-12
-ic = 120
+vnoise = 6e-9
+vcorner = 6
+inoise = 1.5e-12
+icorner = 120
 
 [tle2227]
 # standard dual low noise opamp
 a0 = 44668359 #153 dB
 gbw = 15e6
-vn = 2.5e-9
-vc = 10 # guessed
-in = 0.4e-12
-ic = 100 # guessed
+vnoise = 2.5e-9
+vcorner = 10 # guessed
+inoise = 0.4e-12
+icorner = 100 # guessed
 poles = 20e6, 40e6 # guessed
 zeros = 30e6
 delay = 1n
@@ -394,10 +394,10 @@ sr = 2.8e6
 a0 = 3e5 #110dB
 gbw = 7e6 #cc=68pF
 poles = 7e6 #cc=68pF
-vn = 4e-9
-vc = 2e3
-in = 1e-15 # not given
-ic = 1000 # not given
+vnoise = 4e-9
+vcorner = 2e3
+inoise = 1e-15 # not given
+icorner = 1000 # not given
 vmax = 120 # in our circuits
 imax = 0.2
 sr = 1000e6
@@ -406,10 +406,10 @@ sr = 1000e6
 a0 = 1e4
 gbw = 1.2e6
 poles = 1.2e6 # assumed
-vn = 67e-9 # guessed from rms
-vc = 100 # free guess
-in = 1.35e-9 # guessed from rms
-ic = 50 # free guess
+vnoise = 67e-9 # guessed from rms
+vcorner = 100 # free guess
+inoise = 1.35e-9 # guessed from rms
+icorner = 50 # free guess
 vmax = 12 # with 14 V supply
 imax = 1 # 1 Ampere!!
 sr = 1e6
@@ -420,10 +420,10 @@ a0 = 3e4 # 90 dB from data sheet fig. 3
 gbw = 8.3M # fitted from measurement
 poles = 3.17M # fitted from measurement
 delay = 20n # fitted from measurement
-vn = 20e-9 # guessed from rms
-vc = 100 # free guess
-in = 1.e-9 # guessed from rms
-ic = 50 # free guess
+vnoise = 20e-9 # guessed from rms
+vcorner = 100 # free guess
+inoise = 1.e-9 # guessed from rms
+icorner = 50 # free guess
 vmax = 13 # with 15 V supply
 imax = 3 # 3 Ampere!!
 sr = 6e6
@@ -433,10 +433,10 @@ aliases = tle2081, tle2082
 a0 = 3e5 # 110dB
 gbw = 10e6
 poles = 10e6
-vn = 11.6e-9
-vc = 500 # guess
-in = 2.8e-15
-ic = 100 # guess
+vnoise = 11.6e-9
+vcorner = 500 # guess
+inoise = 2.8e-15
+icorner = 100 # guess
 vmax = 13
 imax = 25e-3
 sr = 40e6
@@ -446,10 +446,10 @@ aliases = tle2072, tle2074
 a0 = 3e5 # 100dB
 gbw = 10e6
 poles = 10e6
-vn = 11.6e-9
-vc = 500 # guess
-in = 2.8e-15
-ic = 100 # guess
+vnoise = 11.6e-9
+vcorner = 500 # guess
+inoise = 2.8e-15
+icorner = 100 # guess
 vmax = 13
 imax = 25e-3
 sr = 40e6
@@ -457,10 +457,10 @@ sr = 40e6
 [ina103_1000]
 a0 = 1000
 gbw = 100M
-vn = 1e-9
-vc = 100
-in = 2e-12
-ic = 200
+vnoise = 1e-9
+vcorner = 100
+inoise = 2e-12
+icorner = 200
 vmax = 12
 imax = 40m
 sr = 15e6
@@ -468,10 +468,10 @@ sr = 15e6
 [opa620]
 a0 = 1000 # 60 dB only
 gbw = 200M
-vn = 2.5e-9
-vc = 5k # guess
-in = 2.3e-12
-ic = 1k # guess
+vnoise = 2.5e-9
+vcorner = 5k # guess
+inoise = 2.3e-12
+icorner = 1k # guess
 vmax = 3
 imax = 100e-3
 sr = 250e6
@@ -481,10 +481,10 @@ poles = 250M
 a0 = 50e3
 gbw = 10e6
 poles = 5M
-vn = 5e-9
-vc = 100 # guess
-in = 0.7e-12
-ic = 300 # guess
+vnoise = 5e-9
+vcorner = 100 # guess
+inoise = 0.7e-12
+icorner = 300 # guess
 vmax = 13
 imax = 20e-3
 sr = 9e6
@@ -492,16 +492,16 @@ sr = 9e6
 [ha5002]
 a0 = 0.995
 gbw = 110e6
-vn = 5e9 # guess from 18e-6 Vpp in 1 MHz
-vc = 100 # guess
-in = 1e-12 # free guess
-ic = 100 # free guess
+vnoise = 5e9 # guess from 18e-6 Vpp in 1 MHz
+vcorner = 100 # guess
+inoise = 1e-12 # free guess
+icorner = 100 # free guess
 vmax = 12
 imax = .22
 sr = 1.3e9
 
 [el2099_2]
-# with 2*510 Ohm resistors for gain=2
+# with 2*510 Ohm resistors for gainoise=2
 a0 = 2
 gbw = 178M
 poles = 45M 0.835
@@ -509,10 +509,10 @@ delay = 930p
 vmax = 12
 imax = 0.8
 sr = 1e9
-vn = 7e-9 # inver. current noise * 250 Ohm
-vc = 2k
-in = 3.5e-12 # noniv. current noise
-ic = 10k
+vnoise = 7e-9 # inver. current noise * 250 Ohm
+vcorner = 2k
+inoise = 3.5e-12 # noniv. current noise
+icorner = 10k
 
 [el2099_1]
 a0 = 1
@@ -522,10 +522,10 @@ delay = 930p
 vmax = 12
 imax = 0.8
 sr = 1e9
-vn = 14e-9 # current noise * 500 Ohm
-vc = 10k
-in = 25e-12
-ic = 10k
+vnoise = 14e-9 # current noise * 500 Ohm
+vcorner = 10k
+inoise = 25e-12
+icorner = 10k
 
 [max4106]
 a0 = 1e5
@@ -535,10 +535,10 @@ delay = 300p
 vmax = 3.5
 imax = 80m
 sr = 275e6
-vn = .75e-9 # !!! best ever
-vc = 1k
-in = 2.5e-12
-ic = 10k
+vnoise = .75e-9 # !!! best ever
+vcorner = 1k
+inoise = 2.5e-12
+icorner = 10k
 
 [ad8057]
 # parameters fitted from data sheet
@@ -548,10 +548,10 @@ delay = 485p
 vmax = 3.9
 imax = 30m
 sr = 850M
-vn = 7n # fit = 6.5
-vc = 332
-in = 0.7p # fit = 0.85
-ic = 2.4k
+vnoise = 7n # fit = 6.5
+vcorner = 332
+inoise = 0.7p # fit = 0.85
+icorner = 2.4k
 
 [max4100]
 # parameters fitted from data sheet
@@ -562,10 +562,10 @@ delay = 485p
 vmax = 3.9
 imax = 30m
 sr = 850M
-vn = 7n # fit = 6.5
-vc = 332
-in = 0.7p # fit = 0.85
-ic = 2.4k
+vnoise = 7n # fit = 6.5
+vcorner = 332
+inoise = 0.7p # fit = 0.85
+icorner = 2.4k
 
 [max4101]
 # parameters fitted from data sheet
@@ -576,10 +576,10 @@ delay = 485p
 vmax = 3.9
 imax = 30m
 sr = 850M
-vn = 7n # fit = 6.5
-vc = 332
-in = 0.7p # fit = 0.85
-ic = 2.4k
+vnoise = 7n # fit = 6.5
+vcorner = 332
+inoise = 0.7p # fit = 0.85
+icorner = 2.4k
 
 [op284]
 a0 = 1e6
@@ -587,10 +587,10 @@ gbw = 16M # fitted from measurement
 poles = 800k # fitted from measurement
 zeros = 2.7M # fitted from measurement
 delay = 9n # fitted from measurement
-vn = 3.9e-9
-vc = 20
-in = 0.4e-12
-ic = 100
+vnoise = 3.9e-9
+vcorner = 20
+inoise = 0.4e-12
+icorner = 100
 vmax = 15
 imax = 10e-3
 sr = 4e6
@@ -598,10 +598,10 @@ sr = 4e6
 [opa627]
 a0 = 630957 # 116 dB
 gbw = 16M
-vn = 4.8e-9
-vc = 100
-in = 2.5e-15
-ic = 100 # not given
+vnoise = 4.8e-9
+vcorner = 100
+inoise = 2.5e-15
+icorner = 100 # not given
 vmax = 12
 imax = .045
 sr = 55e6
@@ -613,28 +613,28 @@ gbw = 2.5e6
 sr = 1e6
 vmax = 5
 imax = 0.03
-vn = 22e-9
-vc = 1e-6 # no 1/f noise!
-in = 5e-15
-ic = 1e-6 # no 1/f noise!
+vnoise = 22e-9
+vcorner = 1e-6 # no 1/f noise!
+inoise = 5e-15
+icorner = 1e-6 # no 1/f noise!
 
 [ad8048]
 a0 = 2500 # 68dB
 gbw = 260M # stability only for G>2 not entered
-vn = 3.8e-9
-in = 1e-12
-vc = 100
-ic = 100 #guess
+vnoise = 3.8e-9
+inoise = 1e-12
+vcorner = 100
+icorner = 100 #guess
 sr = 1e9
 
 [ad8065]
 a0 = 500000 # 113dB from data sheet
 gbw = 65M # from data sheet
 delay = 1.7n # guessed from data sheet
-vn = 7n #  from data sheet
-vc = 3k # from data sheet
-in = 0.6f # from data sheet
-ic = 3k # guessed
+vnoise = 7n #  from data sheet
+vcorner = 3k # from data sheet
+inoise = 0.6f # from data sheet
+icorner = 3k # guessed
 vmax = 5 # supply dependent
 imax = 0.03
 sr = 160e6 # from data sheet
@@ -652,10 +652,10 @@ sr = 400e6
 a0 = 1400 # 63dB from data sheet
 gbw = 250M # from data sheet
 poles = 250M# guessed from data sheet
-vn = 5.5n #  from data sheet
-vc = 3k # from data sheet
-in = 3.1p # from data sheet
-ic = 3k # guessed
+vnoise = 5.5n #  from data sheet
+vcorner = 3k # from data sheet
+inoise = 3.1p # from data sheet
+icorner = 3k # guessed
 vmax = 3.9 # supply dependent
 imax = 0.19
 sr = 1000e6 # from data sheet
@@ -667,10 +667,10 @@ poles = 15e6
 sr = 5e6
 vmax = 2
 imax = .08
-vn = 6.5e-9
-vc = 1k
-in = 0.01e-12
-ic = 1k
+vnoise = 6.5e-9
+vcorner = 1k
+inoise = 0.01e-12
+icorner = 1k
 
 [lf353]
 a0 = 100e3
@@ -678,10 +678,10 @@ gbw = 4e6
 poles = 10e6
 delay = 1e-8
 sr = 13e6
-vn = 16e-9
-vc = 200
-in = 0.01e-12
-ic = 200
+vnoise = 16e-9
+vcorner = 200
+inoise = 0.01e-12
+icorner = 200
 vmax = 12
 imax = 10e-3
 
@@ -693,10 +693,10 @@ poles = 12.4k 0.585
 zeros = 11.77k
 delay = 261n
 sr = 10e6
-vn = 1e-9
-vc = 1
-in = 1e-12
-ic = 1
+vnoise = 1e-9
+vcorner = 1
+inoise = 1e-12
+icorner = 1
 vmax = 12
 imax = 10e-3
 
@@ -708,10 +708,10 @@ poles = 9.6k 0.257
 zeros = 18.6k
 delay = 1n
 sr = 10e6
-vn = 1e-9
-vc = 1
-in = 1e-12
-ic = 1
+vnoise = 1e-9
+vcorner = 1
+inoise = 1e-12
+icorner = 1
 vmax = 12
 imax = 10e-3
 
@@ -723,10 +723,10 @@ poles = 12.82k .052
 zeros = 1.09
 delay = 1n
 sr = 10e6
-vn = 1e-9
-vc = 1
-in = 1e-12
-ic = 1
+vnoise = 1e-9
+vcorner = 1
+inoise = 1e-12
+icorner = 1
 vmax = 12
 imax = 10e-3
 
@@ -736,10 +736,10 @@ a0 = 1e6
 gbw = 500e3
 poles = 2M
 sr = 0.1e6
-vn = 18e-9
-vc = 100
-in = 0.4e-12
-ic = 10
+vnoise = 18e-9
+vcorner = 100
+inoise = 0.4e-12
+icorner = 10
 vmax = 11
 imax =20e-3
 
@@ -747,10 +747,10 @@ imax =20e-3
 a0 = 3000 # 70dB
 gbw = 1600e6
 poles = 200M
-vn = 4.8e-9
-vc = 2k
-in = 1.3e-15
-ic = 1
+vnoise = 4.8e-9
+vcorner = 2k
+inoise = 1.3e-15
+icorner = 1
 sr = 700e6
 vmax = 3.9
 imax = 50e-3
@@ -761,10 +761,10 @@ gbw = 14.7M
 poles = 1.75M
 zeros = 2.83M 23.5M
 delay = 12.3n
-vn = 2.8e-9
-vc = 5 # guess
-in = 0.3e-12
-ic = 100 # wild guess
+vnoise = 2.8e-9
+vcorner = 5 # guess
+inoise = 0.3e-12
+icorner = 100 # wild guess
 sr = 4e6
 vmax = 12
 imax = 0.02
@@ -774,10 +774,10 @@ a0 = 4e6
 gbw = 20M
 poles = 70M
 delay = 12.3n
-vn = 2.9e-9
-vc = 70 # guess
-in = 7e-15
-ic = 100 # wild guess
+vnoise = 2.9e-9
+vcorner = 70 # guess
+inoise = 7e-15
+icorner = 100 # wild guess
 sr = 12.5e6
 vmax = 12
 imax = 0.02
@@ -785,10 +785,10 @@ imax = 0.02
 [ad706]
 a0 = 2e6
 gbw = 800k
-vn = 17e-9
-vc = 3
-in = 50e-15
-ic = 10
+vnoise = 17e-9
+vcorner = 3
+inoise = 50e-15
+icorner = 10
 sr = 0.15e6
 delay = 50n
 vmax = 14
@@ -797,10 +797,10 @@ imax = 0.01
 [ad8005]
 a0 = 1000
 gbw = 200M
-vn = 4n
-vc = 300
-in = 1.1p # noninverting, inverting = 9.1
-ic = 3k
+vnoise = 4n
+vcorner = 300
+inoise = 1.1p # noninverting, inverting = 9.1
+icorner = 3k
 umax = 3
 imax = 0.01
 sr = 280e6
@@ -809,10 +809,10 @@ sr = 280e6
 a0 = 3000 # 70dB
 gbw = 400M
 poles = 400M
-vn = 3n
-vc = 30k
-in = 3p
-ic = 30k
+vnoise = 3n
+vcorner = 30k
+inoise = 3p
+icorner = 30k
 umax = 3.5
 imax = 55m
 sr = 500e6
@@ -822,10 +822,10 @@ sr = 500e6
 a0 = 91.7422024939k
 gbw = 207.1096040436M
 poles = 371.6678496027M, 417.6298230894M
-vn = 8e-9
-vc = 2k
-in = 0.6e-12
-ic = 1k
+vnoise = 8e-9
+vcorner = 2k
+inoise = 0.6e-12
+icorner = 1k
 vmax = 4
 imax = 0.014 # 3 V in 250 Ohm
 sr = 400e6
@@ -835,10 +835,10 @@ a0 = 8900 # 79 dB from data sheet
 gbw = 1500M # guess
 poles = 150M, 500M # guess
 delay = 0.3n
-vn = 1e-9
-vc = 10k
-in = 1.8p
-ic = 10k
+vnoise = 1e-9
+vcorner = 10k
+inoise = 1.8p
+icorner = 10k
 umax = 4.9
 imax = 100m
 sr = 400e6
@@ -849,10 +849,10 @@ a0 = 4e6
 gbw = 20M
 poles = 70M
 delay = 12.3n
-vn = 2.9e-9
-vc = 30     # from AD743 Rev E datasheet
-in = 7e-15
-ic = 100    # from AD743 Rev E datasheet
+vnoise = 2.9e-9
+vcorner = 30     # from AD743 Rev E datasheet
+inoise = 7e-15
+icorner = 100    # from AD743 Rev E datasheet
 sr = 12.5e6
 vmax = 12
 imax = 0.02
