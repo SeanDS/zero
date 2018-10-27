@@ -78,6 +78,19 @@ LISO can also be run by `Zero` directly, using the `zero liso-external`
 command. To allow LISO to plot its own results, instead of plotting the results
 in `Zero`, specify the `--liso-plot` flag.
 
+### Search the op-amp library
+`Zero` comes with a library of op-amp measurements, derived from LISO. This
+can be searched using comparison and logical operators by constructing a
+textual filter.
+
+```bash
+zero opamp "vnoise <= 10n & vmax >= 10"
+```
+
+Zero implements an expression parser for filters, and as such complicated and
+arbitrarily long expressions can be specified. Expressions can be grouped
+to ensure precedence, e.g. `(vnoise < 10n & inoise < 10p) | (vnoise < 100n & inoise < 1p)`.
+
 ### As a library
 `Zero` can also be included as a library within other Python code. For
 examples of how to build simulation scripts with Python, see the `examples`

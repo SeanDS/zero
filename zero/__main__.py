@@ -178,7 +178,7 @@ def opamp(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr)
 
         model (model name), a0 (open loop gain), gbw (gain-bandwidth product),
         delay, vnoise (flat voltage noise), vcorner (voltage noise corner frequency),
-        inoise (current noise), icorner (current noise corner frequency),
+        inoise (flat current noise), icorner (current noise corner frequency),
         vmax (maximum output voltage), imax (maximum output current), sr (slew rate)
 
     The parser supports basic comparison and logic operators:
@@ -239,7 +239,7 @@ def opamp(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr)
 
         for device in devices:
             row = [device.model]
-            row.extend([getattr(device, param) for param in params])
+            row.extend([str(getattr(device, param)) for param in params])
             rows.append(row)
 
         print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
