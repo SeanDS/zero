@@ -278,12 +278,14 @@ class LisoParser(metaclass=abc.ABCMeta):
                                                     sinks=self.default_tf_sinks())
 
             for tf in default_tfs:
-                self._solution.set_tf_as_default(tf)
+                if not self._solution.is_default_tf(tf):
+                    self._solution.set_tf_as_default(tf)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
 
             for spectrum in default_spectra:
-                self._solution.set_noise_as_default(spectrum)
+                if not self._solution.is_default_noise(spectrum):
+                    self._solution.set_noise_as_default(spectrum)
 
     def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
         # build circuit if necessary
