@@ -345,3 +345,97 @@ class OpAmpLibrary(BaseConfig):
             raise Exception("invalid frequency list")
 
         return frequencies
+
+
+class LibraryOpAmp:
+    """Represents a library op-amp.
+
+    Some of the default parameter values are based on the OP27.
+
+    Parameters
+    ----------
+    model : :class:`str`
+        Model name.
+    a0 : :class:`float`, optional
+        Open loop gain.
+    gbw : :class:`float`, optional
+        Gain-bandwidth product.
+    delay : :class:`float`, optional
+        Delay.
+    zeros : sequence, optional
+        Zeros.
+    poles : sequence, optional
+        Poles.
+    v_noise : :class:`float`, optional
+        Flat voltage noise.
+    i_noise : :class:`float`, optional
+        Float current noise.
+    v_corner : :class:`float`, optional
+        Voltage noise corner frequency.
+    i_corner : :class:`float`, optional
+        Current noise corner frequency.
+    v_max : :class:`float`, optional
+        Maximum input voltage.
+    i_max : :class:`float`, optional
+        Maximum output current.
+    slew_rate : :class:`float`, optional
+        Slew rate.
+    """
+    def __init__(self, model="OP00", a0=1.5e6, gbw=8e6, delay=0, zeros=np.array([]),
+                 poles=np.array([]), v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
+                 v_max=12, i_max=0.06, slew_rate=1e6, **kwargs):
+        super().__init__(**kwargs)
+
+        # default properties
+        self._model = "None"
+        self.params = {"a0": Quantity(a0), # gain
+                       "gbw": Quantity(gbw, "Hz"), # gain-bandwidth product (Hz)
+                       "delay": Quantity(delay, "s"), # delay (s)
+                       "zeros": np.array(zeros), # array of additional zeros
+                       "poles": np.array(poles), # array of additional poles
+                       "vn": Quantity(v_noise, "V/sqrt(Hz)"), # voltage noise (V/sqrt(Hz))
+                       "in": Quantity(i_noise, "A/sqrt(Hz)"), # current noise (A/sqrt(Hz))
+                       "vc": Quantity(v_corner, "Hz"), # voltage noise corner frequency (Hz)
+                       "ic": Quantity(i_corner, "Hz"), # current noise corner frequency (Hz)
+                       "vmax": Quantity(v_max, "V"), # maximum output voltage amplitude (V)
+                       "imax": Quantity(i_max, "A"), # maximum output current amplitude (A)
+                       "sr": Quantity(slew_rate, "V/s")} # maximum slew rate (V/s)
+
+        # set model name
+        self.model = model
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, model):
+        self._model = str(model).upper()
+
+    def gain(self, frequency):
+        """Get op-amp voltage gain at the specified frequency.
+
+        Parameters
+        ----------
+        frequency : :class:`float`
+            Frequency to compute gain at.
+
+        Returns
+        -------
+        :class:`float`
+            Op-amp gain at specified frequency.
+        """
+
+        return (self.params["a0"]
+                / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
+                * np.exp(-2j * np.pi * self.params["delay"] * frequency)
+                * np.prod(1 + 1j * frequency / self.params["zeros"])
+                / np.prod(1 + 1j * frequency / self.params["poles"]))
+
+    def inverse_gain(self, *args, **kwargs):
+        """Op-amp inverse gain.
+
+        Note that the inverse gain may be modified by the analysis, e.g. in the
+        case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
+        """
+        return 1 / self.gain(*args, **kwargs)
