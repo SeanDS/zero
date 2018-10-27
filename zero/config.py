@@ -377,7 +377,7 @@ class LibraryOpAmp:
     vcorner : :class:`float`, optional
         Voltage noise corner frequency.
     inoise : :class:`float`, optional
-        Float current noise.
+        Flat current noise.
     icorner : :class:`float`, optional
         Current noise corner frequency.
     vmax : :class:`float`, optional
