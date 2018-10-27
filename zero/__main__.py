@@ -69,7 +69,8 @@ def cli():
 @option("--diff", is_flag=True, default=False,
         help="Show difference between results of comparison.")
 @option("--plot/--no-plot", default=True, show_default=True, help="Display results as figure.")
-@option("--save-figure", type=File("wb", lazy=False), help="Save image of figure to file.")
+@option("--save-figure", type=File("wb", lazy=False), multiple=True,
+        help="Save image of figure to file. Can be specified multiple times.")
 @option("--prescale/--no-prescale", default=True, show_default=True,
         help="Prescale matrices to improve numerical precision.")
 @option("--print-equations", is_flag=True, help="Print circuit equations.")
@@ -153,8 +154,10 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
             figure = solution.plot_noise()
 
         if save_figure:
-            # there should only be one figure produced in CLI mode
-            solution.save_figure(figure, save_figure)
+            for save_path in save_figure:
+                # NOTE: use figure file's name so that Matplotlib can identify the file type
+                # appropriately
+                solution.save_figure(figure, save_path.name)
 
     if plot:
         solution.show()
