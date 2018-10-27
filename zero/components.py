@@ -260,11 +260,11 @@ class OpAmp(LibraryOpAmp, Component):
         self.nodes[2] = node
 
     def _noise_voltage(self, component, frequencies):
-        return self.params["vn"] * np.sqrt(1 + self.params["vc"] / frequencies)
+        return self.params["vnoise"] * np.sqrt(1 + self.params["vcorner"] / frequencies)
 
     def _noise_current(self, node, frequencies):
         # ignore node; noise is same at both inputs
-        return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
+        return self.params["inoise"] * np.sqrt(1 + self.params["icorner"] / frequencies)
 
     @property
     def voltage_noise(self):

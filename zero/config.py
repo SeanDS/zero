@@ -215,20 +215,20 @@ class OpAmpLibrary(BaseConfig):
             class_data["gbw"] = Quantity(self._strip_comments(opamp_data["gbw"]), "Hz")
         if "delay" in opamp_data:
             class_data["delay"] = Quantity(self._strip_comments(opamp_data["delay"]), "s")
-        if "vn" in opamp_data:
-            class_data["v_noise"] = Quantity(self._strip_comments(opamp_data["vn"]), "V/sqrt(Hz)")
-        if "in" in opamp_data:
-            class_data["i_noise"] = Quantity(self._strip_comments(opamp_data["in"]), "A/sqrt(Hz)")
-        if "vc" in opamp_data:
-            class_data["v_corner"] = Quantity(self._strip_comments(opamp_data["vc"]), "Hz")
-        if "ic" in opamp_data:
-            class_data["i_corner"] = Quantity(self._strip_comments(opamp_data["ic"]), "Hz")
+        if "vnoise" in opamp_data:
+            class_data["vnoise"] = Quantity(self._strip_comments(opamp_data["vnoise"]), "V/sqrt(Hz)")
+        if "vcorner" in opamp_data:
+            class_data["vcorner"] = Quantity(self._strip_comments(opamp_data["vcorner"]), "Hz")
+        if "inoise" in opamp_data:
+            class_data["inoise"] = Quantity(self._strip_comments(opamp_data["inoise"]), "A/sqrt(Hz)")
+        if "icorner" in opamp_data:
+            class_data["icorner"] = Quantity(self._strip_comments(opamp_data["icorner"]), "Hz")
         if "vmax" in opamp_data:
-            class_data["v_max"] = Quantity(self._strip_comments(opamp_data["vmax"]), "V")
+            class_data["vmax"] = Quantity(self._strip_comments(opamp_data["vmax"]), "V")
         if "imax" in opamp_data:
-            class_data["i_max"] = Quantity(self._strip_comments(opamp_data["imax"]), "A")
+            class_data["imax"] = Quantity(self._strip_comments(opamp_data["imax"]), "A")
         if "sr" in opamp_data:
-            class_data["slew_rate"] = Quantity(self._strip_comments(opamp_data["sr"]), "V/s")
+            class_data["sr"] = Quantity(self._strip_comments(opamp_data["sr"]), "V/s")
 
         # add data to library
         self.add_data(section, class_data)
@@ -346,6 +346,12 @@ class OpAmpLibrary(BaseConfig):
 
         return frequencies
 
+    @property
+    def opamps(self):
+        opdata = self.data.items()
+
+        return [LibraryOpAmp(model=self.format_name(model), **data) for model, data in opdata]
+
 
 class LibraryOpAmp:
     """Represents a library op-amp.
@@ -366,43 +372,44 @@ class LibraryOpAmp:
         Zeros.
     poles : sequence, optional
         Poles.
-    v_noise : :class:`float`, optional
+    vnoise : :class:`float`, optional
         Flat voltage noise.
-    i_noise : :class:`float`, optional
-        Float current noise.
-    v_corner : :class:`float`, optional
+    vcorner : :class:`float`, optional
         Voltage noise corner frequency.
-    i_corner : :class:`float`, optional
+    inoise : :class:`float`, optional
+        Float current noise.
+    icorner : :class:`float`, optional
         Current noise corner frequency.
-    v_max : :class:`float`, optional
+    vmax : :class:`float`, optional
         Maximum input voltage.
-    i_max : :class:`float`, optional
+    imax : :class:`float`, optional
         Maximum output current.
-    slew_rate : :class:`float`, optional
+    sr : :class:`float`, optional
         Slew rate.
     """
     def __init__(self, model="OP00", a0=1.5e6, gbw=8e6, delay=0, zeros=np.array([]),
-                 poles=np.array([]), v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
-                 v_max=12, i_max=0.06, slew_rate=1e6, **kwargs):
+                 poles=np.array([]), vnoise=3.2e-9, vcorner=2.7, inoise=0.4e-12, icorner=140,
+                 vmax=12, imax=0.06, sr=1e6, **kwargs):
         super().__init__(**kwargs)
 
         # default properties
         self._model = "None"
-        self.params = {"a0": Quantity(a0), # gain
-                       "gbw": Quantity(gbw, "Hz"), # gain-bandwidth product (Hz)
-                       "delay": Quantity(delay, "s"), # delay (s)
-                       "zeros": np.array(zeros), # array of additional zeros
-                       "poles": np.array(poles), # array of additional poles
-                       "vn": Quantity(v_noise, "V/sqrt(Hz)"), # voltage noise (V/sqrt(Hz))
-                       "in": Quantity(i_noise, "A/sqrt(Hz)"), # current noise (A/sqrt(Hz))
-                       "vc": Quantity(v_corner, "Hz"), # voltage noise corner frequency (Hz)
-                       "ic": Quantity(i_corner, "Hz"), # current noise corner frequency (Hz)
-                       "vmax": Quantity(v_max, "V"), # maximum output voltage amplitude (V)
-                       "imax": Quantity(i_max, "A"), # maximum output current amplitude (A)
-                       "sr": Quantity(slew_rate, "V/s")} # maximum slew rate (V/s)
+        self.params = {}
 
-        # set model name
+        # set parameters
         self.model = model
+        self.a0 = a0
+        self.gbw = gbw
+        self.delay = delay
+        self.zeros = zeros
+        self.poles = poles
+        self.vnoise = vnoise
+        self.vcorner = vcorner
+        self.inoise = inoise
+        self.icorner = icorner
+        self.vmax = vmax
+        self.imax = imax
+        self.sr = sr
 
     @property
     def model(self):
@@ -411,6 +418,114 @@ class LibraryOpAmp:
     @model.setter
     def model(self, model):
         self._model = str(model).upper()
+
+    @property
+    def a0(self):
+        """Gain"""
+        return self.params["a0"]
+
+    @a0.setter
+    def a0(self, a0):
+        self.params["a0"] = Quantity(a0)
+
+    @property
+    def gbw(self):
+        """Gain-bandwidth product"""
+        return self.params["gbw"]
+
+    @gbw.setter
+    def gbw(self, gbw):
+        self.params["gbw"] = Quantity(gbw, "Hz")
+
+    @property
+    def delay(self):
+        """Delay"""
+        return self.params["delay"]
+
+    @delay.setter
+    def delay(self, delay):
+        self.params["delay"] = Quantity(delay, "s")
+
+    @property
+    def zeros(self):
+        """Additional zeros"""
+        return self.params["zeros"]
+
+    @zeros.setter
+    def zeros(self, zeros):
+        self.params["zeros"] = np.array(zeros)
+
+    @property
+    def poles(self):
+        """Additional poles"""
+        return self.params["poles"]
+
+    @poles.setter
+    def poles(self, poles):
+        self.params["poles"] = np.array(poles)
+
+    @property
+    def vnoise(self):
+        """Voltage noise"""
+        return self.params["vnoise"]
+
+    @vnoise.setter
+    def vnoise(self, vnoise):
+        self.params["vnoise"] = Quantity(vnoise, "V/sqrt(Hz)")
+
+    @property
+    def vcorner(self):
+        """Voltage noise corner frequency"""
+        return self.params["vcorner"]
+
+    @vcorner.setter
+    def vcorner(self, vcorner):
+        self.params["vcorner"] = Quantity(vcorner, "Hz")
+
+    @property
+    def inoise(self):
+        """Current noise"""
+        return self.params["inoise"]
+
+    @inoise.setter
+    def inoise(self, inoise):
+        self.params["inoise"] = Quantity(inoise, "A/sqrt(Hz)")
+
+    @property
+    def icorner(self):
+        """Current noise corner frequency"""
+        return self.params["icorner"]
+
+    @icorner.setter
+    def icorner(self, icorner):
+        self.params["icorner"] = Quantity(icorner, "Hz")
+
+    @property
+    def vmax(self):
+        """Maximum output voltage"""
+        return self.params["vmax"]
+
+    @vmax.setter
+    def vmax(self, vmax):
+        self.params["vmax"] = Quantity(vmax, "V")
+
+    @property
+    def imax(self):
+        """Maximum output current"""
+        return self.params["imax"]
+
+    @imax.setter
+    def imax(self, imax):
+        self.params["imax"] = Quantity(imax, "A")
+
+    @property
+    def sr(self):
+        """Slew rate"""
+        return self.params["sr"]
+
+    @sr.setter
+    def sr(self, sr):
+        self.params["sr"] = Quantity(sr, "V/s")
 
     def gain(self, frequency):
         """Get op-amp voltage gain at the specified frequency.
@@ -426,11 +541,11 @@ class LibraryOpAmp:
             Op-amp gain at specified frequency.
         """
 
-        return (self.params["a0"]
-                / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
-                * np.exp(-2j * np.pi * self.params["delay"] * frequency)
-                * np.prod(1 + 1j * frequency / self.params["zeros"])
-                / np.prod(1 + 1j * frequency / self.params["poles"]))
+        return (self.a0
+                / (1 + self.a0 * 1j * frequency / self.gbw)
+                * np.exp(-2j * np.pi * self.delay * frequency)
+                * np.prod(1 + 1j * frequency / self.zeros)
+                / np.prod(1 + 1j * frequency / self.poles))
 
     def inverse_gain(self, *args, **kwargs):
         """Op-amp inverse gain.

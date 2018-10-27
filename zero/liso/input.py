@@ -20,13 +20,13 @@ class LisoInputParser(LisoParser):
         "a0": "a0",
         "gbw": "gbw",
         "delay": "delay",
-        "un": "v_noise",
-        "uc": "v_corner",
-        "in": "i_noise",
-        "ic": "i_corner",
-        "umax": "v_max",
-        "imax": "i_max",
-        "sr": "slew_rate"
+        "un": "vnoise",
+        "uc": "vcorner",
+        "in": "inoise",
+        "ic": "icorner",
+        "umax": "vmax",
+        "imax": "imax",
+        "sr": "sr"
     }
 
     # reserved keyword tokens
