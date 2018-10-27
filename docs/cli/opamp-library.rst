@@ -4,13 +4,13 @@
 Op-amp library tools
 ####################
 
-|Zero|'s command line interface can be used to search the :class:`op-amp <OpAmp>`
+|Zero|'s command line interface can be used to search the :class:`op-amp <.OpAmp>`
 library bundled with the project.
 
 Search queries
 --------------
 
-Search queries are specified as a set of declarative filters after the `zero opamp`
+Search queries are specified as a set of declarative filters after the ``zero opamp``
 command. |Zero| implements an expression parser which allows queries to be
 arbitrarily long and complex, e.g.:
 
@@ -55,27 +55,27 @@ Available parameters
 
 The following op-amp library parameters can be searched:
 
-*model*
+``model``
   Model name, e.g. `OP27`.
-*a0*
+``a0``
   Open loop gain.
-*gbw*
+``gbw``
   Gain-bandwidth product.
-*delay*
+``delay``
   Delay.
-*vnoise*
+``vnoise``
   Flat voltage noise.
-*vcorner*
+``vcorner``
   Voltage noise corner frequency.
-*inoise*
+``inoise``
   Flat current noise.
-*icorner*
+``icorner``
   Current noise corner frequency.
-*vmax*
+``vmax``
   Maximum output voltage.
-*imax*
+``imax``
   Maximum output current.
-*sr*
+``sr``
   Slew rate.
 
 Operators
@@ -83,21 +83,21 @@ Operators
 
 Expressions can use the following operators:
 
-*=*
+``=``
   Equal.
-*!=*
+``!=``
   Not equal.
-*<*
+``<``
   Less than.
-*<=*
+``<=``
   Less than or equal.
-*>*
+``>``
   Greater than.
-*>=*
+``>=``
   Greater than or equal.
-*&*
+``&``
   Logical AND.
-*|*
+``|``
   Logical OR.
 
 Groups
@@ -116,30 +116,30 @@ The results are displayed in a table. By default, only the op-amp model names
 matching a given query are displayed in the table. To add extra columns,
 specify the corresponding flag as part of the call:
 
-*--a0*
+``--a0``
   Show open loop gain.
-*--gbw*
+``--gbw``
   Show gain-bandwidth product.
-*--delay*
+``--delay``
   Show delay.
-*--vnoise*
+``--vnoise``
   Show flat voltage noise.
-*--vcorner*
+``--vcorner``
   Show voltage noise corner frequency.
-*--inoise*
+``--inoise``
   Show flat current noise.
-*--icorner*
+``--icorner``
   Show current noise corner frequency.
-*--vmax*
+``--vmax``
   Show maximum output voltage.
-*--imax*
+``--imax``
   Show maximum output current.
-*--sr*
+``--sr``
   Show slew rate.
 
-Command line options
---------------------
+Command reference
+-----------------
 
-.. click:: zero.__main__:cli
+.. click:: zero.__main__:opamp
    :prog: zero opamp
    :show-nested:
