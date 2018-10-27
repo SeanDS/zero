@@ -554,3 +554,6 @@ class LibraryOpAmp:
         case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
         """
         return 1 / self.gain(*args, **kwargs)
+
+    def __str__(self):
+        return "{cmp.model}(a0={cmp.a0}, gbw={cmp.gbw}, delay={cmp.delay})".format(cmp=self)
