@@ -9,8 +9,8 @@ Known incompatibilities
 Outputs
 ~~~~~~~
 
-|Zero| does not support the `deg+` or `deg-` output coordinates. Please use `deg` instead.
-It also throws an error when a LISO script's `ioutput` or `uoutput` commands contain only a
+|Zero| does not support the ``deg+`` or ``deg-`` output coordinates. Please use ``deg`` instead.
+It also throws an error when a LISO script's ``ioutput`` or ``uoutput`` commands contain only a
 phase coordinate, e.g.:
 
 .. code-block:: text
@@ -67,7 +67,7 @@ primarily for logistical reasons: Python contains a convenient :class:`~configpa
 library which can read and write config files similar to Windows :code:`INI` files,
 but in a slightly different format to LISO's op-amp library format. The main
 difference is that in :class:`~configparser.ConfigParser` files, repeated terms are not allowed in
-the same entry, so LISO's use of multiple "pole" or "zero" entries under an
+the same entry, so LISO's use of multiple ``pole`` or ``zero`` entries under an
 op-amp are not supported. Instead, the library represents poles and zeros as
 single line expressions of comma separated values:
 
@@ -78,8 +78,8 @@ single line expressions of comma separated values:
     poles = 7.53M 1.78, 1.66M # fitted from measurement
     ...
 
-Furthermore, the library improves on that of LISO's by allowing an
-"alias" setting where you can specify other op-amps with the same properties:
+Furthermore, the library improves on that of LISO's by allowing an ``alias`` setting where you can
+specify other op-amps with the same properties:
 
 .. code-block:: text
 
@@ -88,10 +88,11 @@ Furthermore, the library improves on that of LISO's by allowing an
     aliases = ad711, ad713
     ...
 
-Finally, the English convention of using "v" to represent voltage instead of "u"
-has been used, so :code:`un` and :code:`uc` are instead :code:`vn` and :code:`vc`.
+Finally, the parameters ``un``, ``uc`` ``in`` and ``ic`` have been renamed ``vnoise``, ``vcorner``,
+``inoise`` and ``icorner``, respectively.
 
-A LISO op-amp library parser may be added at a later date.
+Submissions of op-amp parameters to |Zero|'s library are strongly encouraged
+(see :ref:`contributing/index:Op-amp library additions`).
 
 LISO Perl commands
 ~~~~~~~~~~~~~~~~~~

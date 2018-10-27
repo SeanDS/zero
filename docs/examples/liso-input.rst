@@ -38,13 +38,16 @@ Or point it to a file using the :code:`path` parameter:
 
     parser.parse(path="/path/to/liso/script.fil")
 
-Plot the result with :meth:`~.LisoParser.show`:
+Get the solution with :meth:`~.LisoParser.solution` and plot and show it with
+:meth:`.Solution.plot` and :meth:`.Solution.show`:
 
 .. code:: python
 
-    parser.show()
+    solution = parser.solution()
+    solution.plot()
+    solution.show()
 
-.. image:: /_static/liso-input-tf.png
+.. image:: /_static/liso-input-tf.svg
 
 You can at any time list the circuit's constituent components:
 

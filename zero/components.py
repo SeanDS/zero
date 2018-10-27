@@ -6,7 +6,7 @@ import numpy as np
 
 from .misc import NamedInstance
 from .format import Quantity
-from .config import ZeroConfig
+from .config import ZeroConfig, LibraryOpAmp
 
 CONF = ZeroConfig()
 
@@ -198,79 +198,28 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         return NotImplemented
 
 
-class OpAmp(Component):
+class OpAmp(LibraryOpAmp, Component):
     """Represents an (almost) ideal op-amp.
 
     An op-amp produces :class:`voltage noise <VoltageNoise>` across its input
     and output :class:`nodes <Node>`, and :class:`current noise <CurrentNoise>`
     is present at its input :class:`nodes <Node>`.
 
-    The default parameter values are those used in LISO, which are
-    themselves based on the OP27 PMI (information provided by Gerhard
-    Heinzel).
-
     Parameters
     ----------
-    model : :class:`str`
-        Model name.
     node1 : :class:`Node`
         Non-inverting input node.
     node2 : :class:`Node`
         Inverting input node.
     node3 : :class:`Node`
         Output node.
-    a0 : :class:`float`, optional
-        Open loop gain.
-    gbw : :class:`float`, optional
-        Gain-bandwidth product.
-    delay : :class:`float`, optional
-        Delay.
-    zeros : sequence, optional
-        Zeros.
-    poles : sequence, optional
-        Poles.
-    v_noise : :class:`float`, optional
-        Flat voltage noise.
-    i_noise : :class:`float`, optional
-        Float current noise.
-    v_corner : :class:`float`, optional
-        Voltage noise corner frequency.
-    i_corner : :class:`float`, optional
-        Current noise corner frequency.
-    v_max : :class:`float`, optional
-        Maximum input voltage.
-    i_max : :class:`float`, optional
-        Maximum output current.
-    slew_rate : :class:`float`, optional
-        Slew rate.
     """
-
     TYPE = "op-amp"
     BASE_NAME = "op"
 
-    def __init__(self, model, node1, node2, node3, a0=1.5e6, gbw=8e6,
-                 delay=0, zeros=np.array([]), poles=np.array([]),
-                 v_noise=3.2e-9, i_noise=0.4e-12, v_corner=2.7, i_corner=140,
-                 v_max=12, i_max=0.06, slew_rate=1e6, *args, **kwargs):
+    def __init__(self, node1, node2, node3, **kwargs):
         # call parent constructor
-        super().__init__(nodes=[node1, node2, node3], *args, **kwargs)
-
-        # default properties
-        self.params = {"a0": Quantity(a0), # gain
-                       "gbw": Quantity(gbw, "Hz"), # gain-bandwidth product (Hz)
-                       "delay": Quantity(delay, "s"), # delay (s)
-                       "zeros": np.array(zeros), # array of additional zeros
-                       "poles": np.array(poles), # array of additional poles
-                       "vn": Quantity(v_noise, "V/sqrt(Hz)"), # voltage noise (V/sqrt(Hz))
-                       "in": Quantity(i_noise, "A/sqrt(Hz)"), # current noise (A/sqrt(Hz))
-                       "vc": Quantity(v_corner, "Hz"), # voltage noise corner frequency (Hz)
-                       "ic": Quantity(i_corner, "Hz"), # current noise corner frequency (Hz)
-                       "vmax": Quantity(v_max, "V"), # maximum output voltage amplitude (V)
-                       "imax": Quantity(i_max, "A"), # maximum output current amplitude (A)
-                       "sr": Quantity(slew_rate, "V/s")} # maximum slew rate (V/s)
-
-        # set model name
-        self.model = model
+        super().__init__(nodes=[node1, node2, node3], **kwargs)
 
         # op-amp voltage noise
         self.add_noise(VoltageNoise(component=self,
@@ -285,14 +234,6 @@ class OpAmp(Component):
             # inverting input noise
             self.add_noise(CurrentNoise(node=self.node2, component=self,
                                         function=self._noise_current))
-
-    @property
-    def model(self):
-        return self._model
-
-    @model.setter
-    def model(self, model):
-        self._model = str(model).upper()
 
     @property
     def node1(self):
@@ -318,40 +259,12 @@ class OpAmp(Component):
     def node3(self, node):
         self.nodes[2] = node
 
-    def gain(self, frequency):
-        """Get op-amp voltage gain at the specified frequency.
-
-        Parameters
-        ----------
-        frequency : :class:`float`
-            Frequency to compute gain at.
-
-        Returns
-        -------
-        :class:`float`
-            Op-amp gain at specified frequency.
-        """
-
-        return (self.params["a0"]
-                / (1 + self.params["a0"] * 1j * frequency / self.params["gbw"])
-                * np.exp(-2j * np.pi * self.params["delay"] * frequency)
-                * np.prod(1 + 1j * frequency / self.params["zeros"])
-                / np.prod(1 + 1j * frequency / self.params["poles"]))
-
-    def inverse_gain(self, *args, **kwargs):
-        """Op-amp inverse gain.
-
-        Note that the inverse gain may be modified by the analysis, e.g. in the
-        case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
-        """
-        return 1 / self.gain(*args, **kwargs)
-
     def _noise_voltage(self, component, frequencies):
-        return self.params["vn"] * np.sqrt(1 + self.params["vc"] / frequencies)
+        return self.params["vnoise"] * np.sqrt(1 + self.params["vcorner"] / frequencies)
 
     def _noise_current(self, node, frequencies):
         # ignore node; noise is same at both inputs
-        return self.params["in"] * np.sqrt(1 + self.params["ic"] / frequencies)
+        return self.params["inoise"] * np.sqrt(1 + self.params["icorner"] / frequencies)
 
     @property
     def voltage_noise(self):

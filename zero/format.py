@@ -272,3 +272,6 @@ class Quantity(float):
             fmt_str = "{mantissa}{scale}"
 
         return fmt_str.format(mantissa=mantissa, scale=scale, unit=self.unit)
+
+    def __str__(self):
+        return self.format()
