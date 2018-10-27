@@ -69,7 +69,7 @@ binary file, not just its directory, but may be relative to the current director
 An alternative is to set the ``LISO_PATH`` environment variable to point to the LISO binary. Since
 LISO anyway requests that users set the ``LISO_DIR`` environment variable, on Unix systems this can
 be used to set ``LISO_PATH`` either in the terminal profile (e.g. during the call with e.g.
-``export LISO_PATH=$LISO_DIR/fil_static``) or as part of the call:
+``LISO_PATH=$LISO_DIR/fil_static zero liso ...``) or as part of the call:
 
 .. code-block:: bash
 
