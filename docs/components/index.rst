@@ -7,9 +7,14 @@ Components
 
    >>> from zero.components import Resistor, Capacitor, Inductor, OpAmp
 
-======================
+.. toctree::
+    :maxdepth: 2
+
+    passive-components
+    op-amps
+
 What is a 'component'?
-======================
+----------------------
 
 A :class:`component <.Component>` represents a circuit device which sources or
 sinks current, and produces voltage drops between its :class:`nodes <.Node>`.
@@ -23,7 +28,6 @@ Instantiated components may be added to :class:`circuits <.Circuit>` using
 :meth:`.add_inductor` and :meth:`.add_opamp` allow components to be created and added to
 a circuit at the same time.
 
------------------------
 Component noise sources
 -----------------------
 
@@ -32,7 +36,6 @@ Others create noise affecting current flow (:class:`.ComponentNoise`). The type 
 of noise depends on the component; for example, :class:`capacitors <.Capacitor>` do not
 produce noise, whereas :class:`resistors <.Resistor>` do (:class:`Johnson noise <.JohnsonNoise>`).
 
----------------------------
 Setting a component's value
 ---------------------------
 
@@ -71,9 +74,3 @@ displayed.
 .. note::
     Units are just for display and are not used for any calculations. Be careful when specifying
     units which differ from those used internally by |Zero|.
-
-.. toctree::
-    :maxdepth: 2
-
-    passive-components
-    op-amps

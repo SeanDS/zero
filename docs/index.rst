@@ -4,6 +4,7 @@
 ====================
 
 .. note::
+
    |Zero| is still under construction, with the program structure and behaviour **not** stable.
    The program, and this documentation, may be altered in ways that break existing scripts at any
    time without notice.
@@ -31,27 +32,32 @@ What |Zero| does
 ================
 
 |Zero| can perform small signal analyses on circuits containing linear components. It is
-inherently ac, and as such can compute frequency responses between nodes or components and
-noise spectral densities at nodes. Inputs and outputs can be specified in terms of voltage or
-current (except noise, which, for the time being can only be computed as a voltage).
+inherently AC, and as such can compute :ref:`frequency responses between nodes or components <analyses/ac/signal:Small AC signal analysis>`
+and :ref:`noise spectral densities at nodes <analyses/ac/noise:Small AC noise analysis>`. Inputs and
+outputs can be specified in terms of voltage or current (except noise, which, for the time being can
+only be computed as a voltage).
+
+For more information, see :ref:`the available AC analyses <analyses/ac/index:Available analyses>`.
 
 ==========================
 What |Zero| does not do
 ==========================
 
-|Zero| linearises the circuit before performing an analysis, and as such distorsion, saturation
-or intermodulation that would occur in the real circuit is not considered. It also assumes that the
-circuit's components' operating points are around zero, and so non-linear components which can be
-operated in a linear regime such as transistors cannot be simulated, nor the effect of dc offsets
-on op-amps. One exception to this is the :class:`op-amp <.OpAmp>`, which is available in |Zero|
-but only as a linearised component; as such, limits to the op-amp's input or output swing are
-not able to be simulated in the standard analysis.
+|Zero| can only analyse linear time invariant (LTI) circuits. This means that the parameters of the
+components within the circuit cannot change over time, so for example the charging of a capacitor or
+the switching of a MOSFET cannot be simulated. This rules out certain simulations, such as
+those of switch-mode power supply circuits and power-on characteristics, and also effects such as
+distorsion, saturation and intermodulation that would appear in real circuits. Instead, the circuit
+is assumed to be at its operating point, and the circuit is linearised around zero, such that if the
+current through a component is reversed, the voltage drop across that component is also reversed.
 
 It is in principle possible to linearise non-linear components as a first step before performing an
 ac analysis (i.e. to compute a non-zero operating point); this is not yet possible with |Zero|
 but may be available in the future. For those wishing to simulate circuits containing non-linear
 components, try a variety of SPICE (e.g. `LTspice <http://www.analog.com/en/design-center/design-tools-and-calculators/ltspice-simulator.html>`_)
 or `Qucs <http://qucs.sourceforge.net/>`_.
+
+For more information, see :ref:`analyses/ac/index:AC analyses`.
 
 ====
 LISO
@@ -67,7 +73,7 @@ Contents
 ========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    introduction/index
    circuit/index
