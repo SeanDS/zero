@@ -21,12 +21,12 @@ Submission of small bug fixes and features is encouraged. For larger features, p
 first with the author to discuss feasibility and structure.
 
 Code style
-==========
+~~~~~~~~~~
 
 Follow `PEP 8`_ where possible.
 
 Documentation style
-===================
+~~~~~~~~~~~~~~~~~~~
 
 Use `NumPy docstring format`_. Language and grammar should follow `Google style`_.
 
