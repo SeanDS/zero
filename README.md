@@ -8,7 +8,7 @@ It also (somewhat) understands LISO input and output files, and can plot or
 re-simulate their contents.
 
 ## Documentation
-See the [online documentation](https://docs.ligo.org/sean-leavey/zero/latest/).
+See the [online documentation](https://docs.ligo.org/sean-leavey/zero/).
 
 ## Installation
 This library requires that Python 3 is installed. It has been tested on 3.5, 3.6 and 3.7,
