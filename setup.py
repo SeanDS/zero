@@ -7,6 +7,7 @@ REQUIREMENTS = [
     "numpy",
     "scipy",
     "matplotlib",
+    "requests",
     "progressbar2",
     "tabulate",
     "setuptools_scm",
