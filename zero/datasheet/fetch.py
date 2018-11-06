@@ -1,4 +1,4 @@
-"""Datasheet request handler"""
+"""Datasheet fetcher"""
 
 import os
 import sys
@@ -7,24 +7,24 @@ import re
 import datetime
 import json
 import logging
-import tempfile
-import requests
-import progressbar
 import dateutil.parser
 
+from ..misc import Downloadable
 from ..config import ZeroConfig
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
 
 
-class DatasheetRequest:
-    """Datasheet request handler"""
-    def __init__(self, keyword, exact=False, path=None):
+class PartRequest(Downloadable, list):
+    """Part request handler"""
+    def __init__(self, keyword, partial=True, path=None, timeout=None, **kwargs):
+        super().__init__(**kwargs)
+
         self.keyword = keyword
-        self.exact = exact
+        self.partial = partial
         self.path = path
-        self.parts = None
+        self.timeout = timeout
 
         self._request()
 
@@ -37,9 +37,10 @@ class DatasheetRequest:
         # add defaults
         params = {**params, **self.default_params}
         # get parts
-        self._handle_response(requests.get(CONF["octopart"]["api_endpoint"], params))
+        self._handle_response(*self.fetch(CONF["octopart"]["api_endpoint"], params=params,
+                                          label="Downloading part information"))
 
-    def _handle_response(self, response):
+    def _handle_response(self, data, response):
         """Handle response"""
         if response.status_code != 200:
             raise Exception(response)
@@ -47,7 +48,7 @@ class DatasheetRequest:
         if "application/json" not in response.headers["content-type"]:
             raise Exception("unknown response content type")
 
-        response_data = response.json()
+        response_data = json.loads(data)
 
         # debug info
         LOGGER.debug("request took %d ms", response_data["msec"])
@@ -56,7 +57,7 @@ class DatasheetRequest:
             raise Exception("unexpected response")
 
         # first list item in results
-        results = response_data["results"][0]
+        results = next(iter(response_data["results"]))
 
         # parts
         parts = results["items"]
@@ -68,17 +69,14 @@ class DatasheetRequest:
 
     def _parse_parts(self, raw_parts):
         """Parse parts"""
-        parts = []
         for part in raw_parts:
-            parts.append(Part(part, path=self.path))
-
-        self.parts = parts
+            self.append(Part(part, path=self.path, timeout=self.timeout, progress=self.progress))
 
     @property
     def search_query(self):
         """Search query JSON string"""
         keyword = self.keyword
-        if not self.exact:
+        if self.partial:
             keyword = "*%s*" % keyword
 
         return json.dumps([{"mpn": keyword}])
@@ -89,80 +87,26 @@ class DatasheetRequest:
         return {"apikey": CONF["octopart"]["api_key"]}
 
     @property
-    def n_parts(self):
-        """Number of parts found"""
-        return len(self.parts)
+    def latest_part(self):
+        # sort by latest datasheet
+        parts = sorted(self, reverse=True, key=lambda part: nonesorter(part.latest_datasheet))
 
-    @property
-    def latest_datasheet(self):
-        # latest datasheet for each part
-        datasheets = sorted(self.parts, reverse=True,
-                            key=lambda part: part.latest_datasheet.created)
-
-        return next(iter(datasheets), None)
-
-
-class Downloadable:
-    def __init__(self, info_stream=sys.stdout):
-        self.info_stream = info_stream
-
-    def fetch(self, url, progress=True):
-        if progress:
-            stream = self.info_stream
-        else:
-            # null file
-            stream = open(os.devnull, "w")
-
-        pbar = progressbar.ProgressBar(widgets=['Downloading: ',
-                                                progressbar.Percentage(),
-                                                progressbar.Bar(),
-                                                progressbar.ETA()],
-                                       max_value=100, fd=stream).start()
-
-        # make request
-        request = requests.get(url, stream=True)
-        total_data_length = int(request.headers.get("content-length"))
-
-        data_length = 0
-
-        # create temporary file
-        tmp = tempfile.NamedTemporaryFile(delete=False)
-
-        with open(tmp.name, "wb") as file_handler:
-            for chunk in request.iter_content(chunk_size=128):
-                if chunk:
-                    file_handler.write(chunk)
-
-                    data_length += len(chunk)
-
-                    if data_length == total_data_length:
-                        fraction = 100
-                    else:
-                        fraction = 100 * data_length / total_data_length
-
-                    # check in case lengths are misreported
-                    if fraction > 100:
-                        fraction = 100
-                    elif fraction < 0:
-                        fraction = 0
-
-                    pbar.update(fraction)
-
-        pbar.finish()
-
-        return tmp.name
+        return next(iter(parts), None)
 
 
 class Part:
-    def __init__(self, part_info, path=None):
+    def __init__(self, part_info, path=None, timeout=None, progress=False):
         self.path = path
+        self.timeout = timeout
+        self.progress = progress
+
         self.brand = None
         self.brand_url = None
         self.manufacturer = None
         self.manufacturer_url = None
         self.mpn = None
         self.url = None
-        self.datasheets = None
+        self.datasheets = []
 
         self._parse(part_info)
 
@@ -182,7 +126,8 @@ class Part:
         if part_info.get("octopart_url"):
             self.url = part_info["octopart_url"]
         if part_info.get("datasheets"):
-            self.datasheets = [Datasheet(datasheet, part_name=self.mpn, path=self.path)
+            self.datasheets = [Datasheet(datasheet, part_name=self.mpn, path=self.path,
+                                         timeout=self.timeout, progress=self.progress)
                                for datasheet in part_info["datasheets"]]
 
     @property
@@ -191,15 +136,6 @@ class Part:
 
     @property
     def sorted_datasheets(self):
-        def nonesorter(datasheet):
-            if datasheet.created is None:
-                # use minimum date
-                zero = datetime.datetime.min
-                zero.replace(tzinfo=None)
-                return zero
-
-            return datasheet.created.replace(tzinfo=None)
-
         # order datasheets
         return sorted(self.datasheets, reverse=True, key=nonesorter)
 
@@ -212,7 +148,17 @@ class Part:
 
 
 class Datasheet(Downloadable):
-    def __init__(self, datasheet_data, part_name=None, path=None):
+    def __init__(self, datasheet_data, part_name=None, path=None, **kwargs):
+        """Datasheet.
+
+        Parameters
+        ----------
+        path : :class:`str` or file
+            Path to store downloaded file. If a directory is specified, the downloaded part name is
+            used.
+        """
+        super().__init__(**kwargs)
+
         self.part_name = part_name
         self.path = path
         self.created = None
@@ -223,8 +169,6 @@ class Datasheet(Downloadable):
         self._downloaded = False
 
         self._parse(datasheet_data)
-
-        super().__init__()
 
     def _parse(self, datasheet_data):
         if datasheet_data.get("metadata"):
@@ -239,7 +183,7 @@ class Datasheet(Downloadable):
         """Get path to store datasheet including filename, or None if no path is set"""
         path = self.path
 
-        if path is not None:
+        if os.path.isdir(path):
             # add filename
             path = os.path.join(path, self.safe_filename)
 
@@ -272,15 +216,11 @@ class Datasheet(Downloadable):
             # already downloaded
             return
 
-        tmp_path = self.fetch(url=self.url)
+        filename, _ = self.fetch_file(url=self.url, filename=self.path,
+                                      label="Downloading %s" % self.part_name)
 
-        if self.full_path is not None:
-            # move to specified path
-            os.rename(tmp_path, self.full_path)
-
-            self.path = os.path.normpath(self.full_path)
-        else:
-            self.path = tmp_path
+        # update path, if necessary
+        self.path = filename
 
         self._downloaded = True
 
@@ -307,3 +247,14 @@ class Datasheet(Downloadable):
             pages = "unknown"
 
         return "Datasheet (created %s, %s pages)" % (created, pages)
+
+
+def nonesorter(datasheet):
+    """Return datasheet creation date, or minimum time, for the purposes of sorting."""
+    if getattr(datasheet, "created", None) is None:
+        # use minimum date
+        zero = datetime.datetime.min
+        zero.replace(tzinfo=None)
+        return zero
+
+    return datasheet.created.replace(tzinfo=None)
