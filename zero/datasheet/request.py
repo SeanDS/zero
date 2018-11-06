@@ -12,13 +12,14 @@ import requests
 import progressbar
 import dateutil.parser
 
+from ..config import ZeroConfig
+
 LOGGER = logging.getLogger(__name__)
+CONF = ZeroConfig()
 
 
 class DatasheetRequest:
     """Datasheet request handler"""
-    API_ENDPOINT = "https://octopart.com/api/v3/parts/match"
-    API_KEY = "ebdc07fc"
     def __init__(self, keyword, exact=False, path=None):
         self.keyword = keyword
         self.exact = exact
@@ -36,7 +37,7 @@ class DatasheetRequest:
         # add defaults
         params = {**params, **self.default_params}
         # get parts
-        self._handle_response(requests.get(self.API_ENDPOINT, params))
+        self._handle_response(requests.get(CONF["octopart"]["api_endpoint"], params))
 
     def _handle_response(self, response):
         """Handle response"""
@@ -85,7 +86,7 @@ class DatasheetRequest:
     @property
     def default_params(self):
         """Default parameters to include in every request"""
-        return {"apikey": self.API_KEY}
+        return {"apikey": CONF["octopart"]["api_key"]}
 
     @property
     def n_parts(self):
@@ -99,6 +100,7 @@ class DatasheetRequest:
                             key=lambda part: part.latest_datasheet.created)
 
         return next(iter(datasheets), None)
+
 
 class Downloadable:
     def __init__(self, info_stream=sys.stdout):
@@ -126,10 +128,10 @@ class Downloadable:
         # create temporary file
         tmp = tempfile.NamedTemporaryFile(delete=False)
 
-        with open(tmp.name, "wb") as f:
+        with open(tmp.name, "wb") as file_handler:
             for chunk in request.iter_content(chunk_size=128):
                 if chunk:
-                    f.write(chunk)
+                    file_handler.write(chunk)
 
                     data_length += len(chunk)
 
@@ -149,6 +151,7 @@ class Downloadable:
         pbar.finish()
 
         return tmp.name
+
 
 class Part:
     def __init__(self, part_info, path=None):
@@ -206,6 +209,7 @@ class Part:
 
     def __repr__(self):
         return "{brand} / {manufacturer} {mpn}".format(**self.__dict__)
+
 
 class Datasheet(Downloadable):
     def __init__(self, datasheet_data, part_name=None, path=None):
