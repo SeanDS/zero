@@ -1,0 +1,10 @@
+c c1 10u gnd n1
+r r1 430 n1 nm
+r r2 43k nm nout
+c c2 47p nm nout
+op o1 lt1124 nin nm nout
+
+freq log 1 100k 100
+
+uinput nin 0
+noise nout all

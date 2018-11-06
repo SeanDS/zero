@@ -1,0 +1,92 @@
+# LIGO TTFSS v3 EOM path with some modifications for the purposes of testing
+# (don't build this)
+#
+# This tests op-amp library parameter overrides (e.g. "sr=36e6")
+
+###############################################################################
+# Common path - from D040105 rev C page 1                                     #
+###############################################################################
+
+r  r3 124       nTP1 nU3m
+r  r4 392       nU3m nTP5
+op U3 ad829 gnd nU3m nTP5
+
+###############################################################################
+# Daughter board - from TTFSSDGHTRDAVID                                       #
+###############################################################################
+
+# boost stage
+c  c4_b  10n       nTP5 nC4_R5_b
+r  r5_b  154       nC4_R5_b nN3m_b
+r  r4_b  1.78k     nTP5 nN3m_b
+op N3_b  ad797 gnd nN3m_b nN3_C8R8_b a0=10M
+r  r6_b  14.7k     nN3m_b nN3_C8R8_b
+c  c7_b  10n       nN3m_b nC7_R7_b
+r  r7_b  154       nC7_R7_b nN3_C8R8_b
+c  c8_b  10n       nN3_C8R8_b nC8_R9_b
+r  r9_b  154       nC8_R9_b nN4m_b
+r  r8_b  1.78k     nN3_C8R8_b nN4m_b
+op N4_b  ad797 gnd nN4m_b nN2p_b a0=10M gbw=100M
+c  c9_b  10n       nN4m_b nC9_R11_b
+r  r11_b 154       nC9_R11_b nN2p_b
+r  r10_b 15.2k     nN4m_b nN2p_b
+
+# reference cavity pole compensation
+op N2_b  ad829 nN2p_b nN2m_b nN2_R3_b un=10n
+r  r1_b  1k        nN2m_b nN2_R3_b
+r  r2_b  82        nN2m_b nR2_C3_b
+c  c3_b  68n       nR2_C3_b gnd
+r  r3_b  100       nN2_R3_b nCOM
+
+###############################################################################
+# EOM path - from D040105 rev C page 2 - additionally including TTFSSDGHTR    #
+###############################################################################
+
+# notch for EOM resonance
+c c11  330p nCOM     nC11_R14
+r r14 3.01k nC11_R14 nR14R16_R15L1
+
+l l1  220u  nR14R16_R15L1 nL1_C13
+c c13 4.5p  nL1_C13  gnd        # variable: 4.5-65pF
+
+r r15 100   nR14R16_R15L1 nU6m       # sums into U6
+
+# U4 stage
+c c23 33n   nCOM      nC23_R22
+r r22 1.1k  nC23_R22  nU4m
+r r17 0     nU4m      nR17_C15
+c c15 3.3n  nR17_C15  nTP11
+r r19 3.3k  nU4m      nTP11
+op U4 ad797 gnd nU4m  nTP11
+
+# U5 stage
+c c24 100n  nTP11     nC24_R24
+r r24 1.3k  nC24_R24  nU5m
+r r18 1.5k  nU5m      nR18_C16
+c c16 3.3n  nR18_C16  nTP12
+c c18 33p   nU5m      nTP12
+r r20 47k   nU5m      nTP12
+op U5 ad797 gnd nU5m  nTP12
+
+# U6 stage
+c c25 1u    nTP12     nC25_R25
+r r25 499   nC25_R25  nU6m
+c c19 4.7p  nU6m      nEOM
+r r21 1.6k  nU6m      nEOM
+op U6 ad829 gnd nU6m  nEOM sr=38e6 # adjusted slew rate due to C28
+
+# TTFSSDGHTR
+op N1 ad8045 nEOM nN1m nN1_C4
+r  r1 909         nN1m nN1_C4
+r  r2 40.2        nN1m nR2_C3
+c  c3 470p        nR2_C3 gnd
+c  c4 220n        nN1_C4 nEOMDGHTR
+
+###############################################################################
+# Computation commands
+###############################################################################
+
+freq log 1 10M 100
+
+uinput nTP1
+uoutput nEOMDGHTR

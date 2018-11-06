@@ -1,0 +1,11 @@
+# circuit with default OP00 op-amp
+
+r r1 100 nin nsum
+r r2 1000 nout nsum
+c c1 100p nout nsum
+op op1 op00 gnd nin nout
+
+freq log 1k 1G 1000
+
+uinput nin 50
+uoutput nout nsum
