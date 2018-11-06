@@ -6,7 +6,7 @@ DESCRIPTION = "Linear circuit simulator"
 
 # get version
 try:
-    from .version import version as __version__
+    from ._version import version as __version__
 except ImportError:
     # packaging resources are not installed
     __version__ = '?.?.?'

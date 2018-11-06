@@ -37,6 +37,9 @@ class State:
 
         set_log_verbosity(self._verbosity)
 
+        # write some debug info now that we've set up the logger
+        LOGGER.debug("%s %s", PROGRAM, __version__)
+
     @property
     def verbose(self):
         """Verbose output enabled
