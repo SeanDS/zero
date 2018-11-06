@@ -85,8 +85,13 @@ class Downloadable:
                                                 progressbar.ETA()],
                                        max_value=100, fd=info_stream).start()
 
+        timeout = self.timeout
+        if timeout == 0:
+            # avoid invalid timeout
+            timeout = None
+
         # make request
-        request = requests.get(url, params=params, stream=True, timeout=self.timeout)
+        request = requests.get(url, params=params, stream=True, timeout=timeout)
         total_data_length = int(request.headers.get("content-length"))
 
         data_length = 0

@@ -273,7 +273,7 @@ def opamp(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr)
         help="Display the downloaded file.")
 @option("-p", "--path", type=Path(writable=True),
         help="File or directory in which to save the first found datasheet.")
-@option("-t", "--timeout", type=IntRange(0))
+@option("-t", "--timeout", type=IntRange(0), help="Request timeout in seconds.")
 @pass_context
 def datasheet(ctx, term, first, partial, display, path, timeout):
     """Search, fetch and display datasheets."""
