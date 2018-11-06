@@ -1,17 +1,19 @@
+"""Datasheet request handler"""
+
 import os
 import sys
 import subprocess
 import re
-import unicodedata
-import requests
+import datetime
 import json
 import logging
 import tempfile
+import requests
 import progressbar
-import datetime
 import dateutil.parser
 
-LOGGER = logging.getLogger("datasheet")
+LOGGER = logging.getLogger(__name__)
+
 
 class DatasheetRequest:
     """Datasheet request handler"""
