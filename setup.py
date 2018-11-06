@@ -30,7 +30,9 @@ EXTRAS = {
 
 setup(
     name="zero",
-    use_scm_version=True,
+    use_scm_version={
+        "write_to": "zero/_version.py"
+    },
     description="Linear circuit simulator",
     long_description=README,
     author="Sean Leavey",
