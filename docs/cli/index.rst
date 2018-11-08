@@ -4,8 +4,11 @@
 Command line interface
 ######################
 
-|Zero| provides a command line interface to perform some common tasks, mainly focused on the
-running, display and comparison of LISO scripts.
+|Zero| provides a command line interface to perform some common tasks:
+
+- :ref:`Run LISO scripts <cli/liso:LISO tools>`
+- :ref:`Parametrically search the op-amp library <cli/opamp-library:Op-amp library tools>`
+- :ref:`Download and display datasheets <cli/datasheets:Datasheets>`
 
 ===========
 Subcommands
@@ -16,6 +19,7 @@ Subcommands
 
     liso
     opamp-library
+    datasheets
 
 ====================
 Command line options
