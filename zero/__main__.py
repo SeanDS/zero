@@ -1,11 +1,13 @@
 """Circuit simulator command line interface"""
 
+import sys
 import logging
-from click import Path, File, group, argument, option, version_option, pass_context
+from click import Path, File, IntRange, group, argument, option, version_option, pass_context
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
+from .datasheet import PartRequest
 from .config import ZeroConfig
 from .library import LibraryQueryEngine
 
@@ -37,6 +39,9 @@ class State:
 
         set_log_verbosity(self._verbosity)
 
+        # write some debug info now that we've set up the logger
+        LOGGER.debug("%s %s", PROGRAM, __version__)
+
     @property
     def verbose(self):
         """Verbose output enabled
@@ -44,6 +49,18 @@ class State:
         Returns True if the verbosity is enough for INFO or DEBUG messages to be displayed.
         """
         return self.verbosity <= logging.INFO
+
+    def _print(self, msg, stream, exit_, exit_code):
+        print(msg, file=stream)
+
+        if exit_:
+            sys.exit(exit_code)
+
+    def print_info(self, msg, exit_=False):
+        self._print(msg, sys.stdout, exit_, 0)
+
+    def print_error(self, msg, exit_=True):
+        self._print(msg, sys.stderr, exit_, 1)
 
 
 def set_verbosity(ctx, _, value):
@@ -246,3 +263,90 @@ def opamp(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr)
             rows.append(row)
 
         print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+
+@cli.command()
+@argument("term")
+@option("-f", "--first", is_flag=True, default=False,
+        help="Download first match without further prompts.")
+@option("--partial/--exact", is_flag=True, default=True, help="Allow partial matches.")
+@option("--display/--download-only", is_flag=True, default=True,
+        help="Display the downloaded file.")
+@option("-p", "--path", type=Path(writable=True),
+        help="File or directory in which to save the first found datasheet.")
+@option("-t", "--timeout", type=IntRange(0), help="Request timeout in seconds.")
+@pass_context
+def datasheet(ctx, term, first, partial, display, path, timeout):
+    """Search, fetch and display datasheets."""
+    state = ctx.ensure_object(State)
+
+    # get parts
+    parts = PartRequest(term, partial=partial, path=path, timeout=timeout, progress=state.verbose)
+
+    if not parts:
+        state.print_error("No parts found")
+
+    if first or len(parts) == 1:
+        # latest part
+        part = parts.latest_part
+
+        # show results directly
+        state.print_info(part)
+    else:
+        state.print_info("Found multiple parts:")
+        for index, part in enumerate(parts, 1):
+            state.print_info("%d: %s" % (index, part))
+
+        chosen_part_idx = 0
+        while chosen_part_idx <= 0 or chosen_part_idx > len(parts):
+            try:
+                chosen_part_idx = int(input("Enter part number: "))
+
+                if chosen_part_idx <= 0 or chosen_part_idx > len(parts):
+                    raise ValueError
+            except ValueError:
+                state.print_error("Invalid, try again", exit=False)
+
+        # get chosen datasheet
+        part = parts[chosen_part_idx - 1]
+
+    # get chosen part
+    if part.n_datasheets == 0:
+        state.print_error("No datasheets found for '%s'" % part.mpn)
+
+    if first or part.n_datasheets == 1:
+        # show results directly
+        state.print_info(part)
+
+        # get datasheet
+        ds = part.latest_datasheet
+    else:
+        state.print_info("Found multiple datasheets:")
+        for index, ds in enumerate(part.sorted_datasheets, 1):
+            state.print_info("%d: %s" % (index, ds))
+
+        chosen_datasheet_idx = 0
+        while chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
+            try:
+                chosen_datasheet_idx = int(input("Enter datasheet number: "))
+
+                if chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
+                    raise ValueError
+            except ValueError:
+                state.print_error("Invalid, try again", exit=False)
+
+        # get datasheet
+        ds = part.datasheets[chosen_datasheet_idx - 1]
+
+    # display details
+    if ds.created is not None:
+        LOGGER.debug("Created: %s", ds.created)
+    if ds.n_pages is not None:
+        LOGGER.debug("Pages: %d", ds.n_pages)
+    if ds.url is not None:
+        LOGGER.debug("URL: %s", ds.url)
+
+    ds.download()
+    LOGGER.debug("Saved to: %s", ds.path)
+
+    if display:
+        ds.display()

@@ -4,10 +4,10 @@ AC analyses
 ===========
 
 The available AC analyses are performed assuming the circuit to be linear time invariant (LTI),
-meanoing that the parameters of the components within the circuit, and the circuit itself, cannot
-change over time. This is a reasonable assumption to make for circuits containing passive components
-such as resistors, capacitors and inductors, and op-amps far from saturation, and where only the
-frequency response or noise spectral density is required to be computed.
+meaning that the parameters of the components within the circuit, and the circuit itself, cannot
+change over time. This is usually a reasonable assumption to make for circuits containing passive
+components such as resistors, capacitors and inductors, and op-amps far from saturation, and where
+only the frequency response or noise spectral density is required to be computed.
 
 The linearity property implies the principle of superposition, such that if you double the circuit's
 input voltage, the current through each component will also double. This restriction implies

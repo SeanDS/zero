@@ -1,16 +1,15 @@
 import logging
 import locale
-from pkg_resources import get_distribution, DistributionNotFound
 
 PROGRAM = "zero"
 DESCRIPTION = "Linear circuit simulator"
 
 # get version
 try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
+    from ._version import version as __version__
+except ImportError:
     # packaging resources are not installed
-    __version__ = '?'
+    __version__ = '?.?.?'
 
 try:
     from matplotlib import rcParams

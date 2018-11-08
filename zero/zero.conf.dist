@@ -30,3 +30,8 @@ node_style = filled
 node_font_name = Helvetica
 node_font_size = 10
 edge_arrowhead = dot
+
+[octopart]
+# Octopart API settings, for fetching datasheets
+api_endpoint = https://octopart.com/api/v3/parts/match
+api_key = ebdc07fc
