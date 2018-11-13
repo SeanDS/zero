@@ -7,16 +7,31 @@ Op-amp library tools
 |Zero|'s command line interface can be used to search the :class:`op-amp <.OpAmp>`
 library bundled with the project.
 
+Listing the user library path
+-----------------------------
+
+The built-in op-amp definitions can be supplemented or overridden by a user-defined
+op-amp library. This library is stored in the user's home directory in a location
+that depends on the operating system.
+
+The path to this file can be listed with the command ``zero library path``.
+
+Opening the user library for editing
+------------------------------------
+
+The built-in library can be opened with the command ``zero library open``. If the
+file does not yet exist, it is created before opening.
+
 Search queries
 --------------
 
-Search queries are specified as a set of declarative filters after the ``zero opamp``
+Search queries are specified as a set of declarative filters after the ``zero library search``
 command. |Zero| implements an expression parser which allows queries to be
 arbitrarily long and complex, e.g.:
 
 .. code-block:: text
 
-    $ zero opamp "model != OP27 & ((vnoise <= 2n & vcorner < 10) | (vnoise <= 25n & inoise < 100f & icorner < 100))" --vnoise --vcorner --inoise --icorner
+    $ zero library search "model != OP27 & ((vnoise <= 2n & vcorner < 10) | (vnoise <= 25n & inoise < 100f & icorner < 100))" --vnoise --vcorner --inoise --icorner
 
     ╒═════════╤════════════════════╤════════════╤════════════════════╤════════════╕
     │ Model   │ vnoise             │ vcorner    │ inoise             │ icorner    │
@@ -140,6 +155,6 @@ specify the corresponding flag as part of the call:
 Command reference
 -----------------
 
-.. click:: zero.__main__:opamp
-   :prog: zero opamp
+.. click:: zero.__main__:library
+   :prog: zero library
    :show-nested:

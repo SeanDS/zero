@@ -1,6 +1,7 @@
 """Circuit simulator command line interface"""
 
 import sys
+import os
 import logging
 from click import Path, File, IntRange, group, argument, option, version_option, pass_context
 from tabulate import tabulate
@@ -10,6 +11,7 @@ from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
 from .config import ZeroConfig
 from .library import LibraryQueryEngine
+from .misc import open_file
 
 CONF = ZeroConfig()
 LOGGER = logging.getLogger(__name__)
@@ -179,7 +181,12 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
     if plot:
         solution.show()
 
-@cli.command()
+@cli.group()
+def library():
+    """Op-amp library functions."""
+    pass
+
+@library.command()
 @argument("query")
 @option("--a0", is_flag=True, default=False, help="Show open loop gain.")
 @option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
@@ -191,7 +198,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 @option("--imax", is_flag=True, default=False, help="Show maximum output current.")
 @option("--sr", is_flag=True, default=False, help="Show slew rate.")
 @pass_context
-def opamp(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr):
+def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr):
     """Search Zero op-amp library.
 
     Op-amp parameters listed in the library can be searched:
@@ -263,6 +270,32 @@ def opamp(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr)
             rows.append(row)
 
         print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+
+@library.command("path")
+def library_path():
+    """Print user op-amp library file path.
+
+    Note: this path may not exist.
+    """
+    print(CONF.get_user_config_filepath())
+
+@library.command("open")
+def library_open():
+    """Open user op-amp library file for editing.
+
+    If the op-amp library doesn't exist, it is created.
+    """
+    path = CONF.get_user_config_filepath()
+
+    if not os.path.exists(path):
+        # make directories if necessary
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        # create empty library file
+        with open(path, "a") as file_object:
+            # add empty line to ensure OS recognises it as a text file
+            file_object.write("\n")
+
+    open_file(path)
 
 @cli.command()
 @argument("term")
