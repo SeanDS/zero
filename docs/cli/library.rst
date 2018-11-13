@@ -7,48 +7,60 @@ Op-amp library tools
 |Zero|'s command line interface can be used to search the :class:`op-amp <.OpAmp>`
 library bundled with the project.
 
+Listing the user library path
+-----------------------------
+
+The built-in op-amp definitions can be supplemented or overridden by a user-defined
+op-amp library. This library is stored in the user's home directory in a location
+that depends on the operating system.
+
+The path to this file can be listed with the command ``zero library path``.
+
+Opening the user library for editing
+------------------------------------
+
+The built-in library can be opened with the command ``zero library open``. If the
+file does not yet exist, it is created before opening.
+
 Search queries
 --------------
 
-Search queries are specified as a set of declarative filters after the ``zero opamp``
+Search queries are specified as a set of declarative filters after the ``zero library search``
 command. |Zero| implements an expression parser which allows queries to be
 arbitrarily long and complex, e.g.:
 
 .. code-block:: text
 
-    $ zero opamp "model != OP27 & ((vnoise <= 2n & vcorner < 10) | (vnoise <= 25n & inoise < 100f & icorner < 100))" --vnoise --vcorner --inoise --icorner
+    $ zero library search "model != OP* & ((vnoise <= 2n & vcorner < 10) | (vnoise <= 25n & inoise < 100f & icorner < 100))" --vnoise --vcorner --inoise --icorner
 
     ╒═════════╤════════════════════╤════════════╤════════════════════╤════════════╕
     │ Model   │ vnoise             │ vcorner    │ inoise             │ icorner    │
     ╞═════════╪════════════════════╪════════════╪════════════════════╪════════════╡
-    │ OPA671  │ 10.000 nV/sqrt(Hz) │ 1.0000 kHz │ 2.0000 fA/sqrt(Hz) │ 2.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ OPA657  │ 4.8000 nV/sqrt(Hz) │ 2.0000 kHz │ 1.3000 fA/sqrt(Hz) │ 1.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ OP00    │ 0.0000 V/sqrt(Hz)  │ 1.0000 Hz  │ 0.0000 A/sqrt(Hz)  │ 1.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
     │ PZTFET1 │ 1.0000 nV/sqrt(Hz) │ 1.0000 Hz  │ 1.0000 pA/sqrt(Hz) │ 1.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ OPA2604 │ 10.000 nV/sqrt(Hz) │ 200.00 Hz  │ 6.0000 fA/sqrt(Hz) │ 1.0000 Hz  │
     ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
     │ PZTFET2 │ 1.0000 nV/sqrt(Hz) │ 1.0000 Hz  │ 1.0000 pA/sqrt(Hz) │ 1.0000 Hz  │
     ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
     │ LT1028  │ 850.00 pV/sqrt(Hz) │ 3.5000 Hz  │ 1.0000 pA/sqrt(Hz) │ 250.00 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ OPA604  │ 10.000 nV/sqrt(Hz) │ 200.00 Hz  │ 6.0000 fA/sqrt(Hz) │ 1.0000 Hz  │
     ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
     │ PZTFET3 │ 1.0000 nV/sqrt(Hz) │ 1.0000 Hz  │ 1.0000 pA/sqrt(Hz) │ 1.0000 Hz  │
     ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
     │ AD706   │ 17.000 nV/sqrt(Hz) │ 3.0000 Hz  │ 50.000 fA/sqrt(Hz) │ 10.000 Hz  │
     ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
     │ AD8628  │ 22.000 nV/sqrt(Hz) │ 1.0000 µHz │ 5.0000 fA/sqrt(Hz) │ 1.0000 µHz │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ OPA655  │ 6.0000 nV/sqrt(Hz) │ 5.0000 kHz │ 1.3000 fA/sqrt(Hz) │ 1.0000 Hz  │
     ╘═════════╧════════════════════╧════════════╧════════════════════╧════════════╛
 
 The expression must be defined on one line. Whitespace is ignored. Where values are specified,
 such as "1n", these are parsed by :class:`.Quantity`
 (see :ref:`Formatting and parsing quantities <format/index:Formatting and parsing quantities>`).
+
+Where a string comparison is made, e.g. with ``model``, wildcards are supported:
+
+``*``
+  Match any number of characters (including zero), e.g. ``OP*`` would match ``OP27``, ``OP37``,
+  ``OP227``, etc.
+``?``
+  Match a single character, e.g. ``LT1?28`` would match ``LT1028`` and ``LT1128`` but not
+  ``LT10028``.
 
 Available parameters
 ~~~~~~~~~~~~~~~~~~~~
@@ -83,7 +95,7 @@ Operators
 
 Expressions can use the following operators:
 
-``=``
+``==``
   Equal.
 ``!=``
   Not equal.
@@ -140,6 +152,6 @@ specify the corresponding flag as part of the call:
 Command reference
 -----------------
 
-.. click:: zero.__main__:opamp
-   :prog: zero opamp
+.. click:: zero.__main__:library
+   :prog: zero library
    :show-nested:

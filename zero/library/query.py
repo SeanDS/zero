@@ -2,9 +2,10 @@
 
 import logging
 import operator
+import fnmatch
 from ply import lex, yacc
 
-from ..config import OpAmpLibrary, LibraryOpAmp
+from ..config import OpAmpLibrary
 from ..format import Quantity
 
 LOGGER = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ class LibraryQueryParser:
 
     # operator method map
     _operators = {
-        "=": "eq",
+        "==": "eq",
         "!=": "ne",
         ">": "gt",
         ">=": "ge",
@@ -61,11 +62,16 @@ class LibraryQueryParser:
         "|": "or_"
     }
 
+    # textual parameters (support wildcard comparisons)
+    _text_params = {
+        "model"
+    }
+
     # ignore spaces and tabs
     t_ignore = ' \t'
 
     # simple tokens (don't need method)
-    t_EQUAL = r'='
+    t_EQUAL = r'=='
     t_NOT_EQUAL = r'!='
     t_GREATER_THAN = r'>'
     t_GREATER_THAN_EQUAL = r'>='
@@ -90,6 +96,29 @@ class LibraryQueryParser:
         self.parser.parse(text, lexer=self.lexer)
         return self._filters
 
+    @classmethod
+    def _get_comparison_method(cls, comparison, parameter):
+        """Get appropriate comparison method for the specified comparison and parameter."""
+        # check if this is a text comparison
+        if parameter in cls._text_params:
+            if comparison == getattr(operator, cls._operators["=="]):
+                # equal
+                comparison = cls._textual_equal
+            elif comparison == getattr(operator, cls._operators["!="]):
+                # not equal
+                comparison = cls._textual_not_equal
+
+        return comparison
+
+    @classmethod
+    def _textual_equal(cls, left, right):
+        # slightly abuse unix file path matching
+        return fnmatch.fnmatch(left.lower(), right.lower())
+
+    @classmethod
+    def _textual_not_equal(cls, left, right):
+        return not cls._textual_equal(left, right)
+
     def t_newline(self, t):
         r'\n+'
         t.lexer.lineno += t.value.count("\n")
@@ -103,7 +132,7 @@ class LibraryQueryParser:
         return None
 
     def t_TERM(self, t):
-        r'[a-zA-Z\d.-]+'
+        r'[a-zA-Z\?\*\d.-]+'
         if t.value.lower() in self.parameters:
             t.type = 'PARAMETER'
         else:
@@ -169,6 +198,9 @@ class LibraryQueryParser:
 
         parameter = t[1]
         comparison = t[2]
+
+        # change comparison method if necessary (e.g. text comparison)
+        comparison = self._get_comparison_method(comparison, parameter)
 
         # create expression
         t[0] = lambda opamps: set([opamp for opamp in opamps
