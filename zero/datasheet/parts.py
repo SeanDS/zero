@@ -8,7 +8,7 @@ import datetime
 import logging
 import dateutil.parser
 
-from ..misc import Downloadable
+from ..misc import Downloadable, open_file
 
 LOGGER = logging.getLogger(__name__)
 
@@ -145,14 +145,7 @@ class Datasheet(Downloadable):
 
     def display(self):
         self.download()
-        self._open_pdf(self.path)
-
-    def _open_pdf(self, filename):
-        if sys.platform == "win32":
-            os.startfile(filename)
-        else:
-            opener = "open" if sys.platform == "darwin" else "xdg-open"
-            subprocess.run([opener, filename])
+        open_file(self.path)
 
     def __str__(self):
         if self.created is not None:

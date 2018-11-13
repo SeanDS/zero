@@ -4,6 +4,7 @@ import sys
 import os
 import abc
 import tempfile
+import subprocess
 import numpy as np
 import requests
 import progressbar
@@ -125,6 +126,14 @@ class Downloadable:
 
         return filename, request
 
+
+def open_file(path):
+    """Open the specified file in a relevant application."""
+    if sys.platform == "win32":
+        os.startfile(path)
+    else:
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.run([opener, path])
 
 def db(magnitude):
     """Calculate (power) magnitude in decibels
