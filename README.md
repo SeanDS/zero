@@ -3,9 +3,10 @@ Linear electronic circuit utility. This package provides tools to
 simulate transfer functions and noise in linear electronic circuits, SI unit
 parsing and formatting, datasheet grabbing, and more.
 
-This tool's simulator is inspired by [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso).
-It also (somewhat) understands LISO input and output files, and can plot or
-re-simulate their contents.
+This tool's simulator is inspired by [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso), and comes bundled
+with its op-amp library ([including tools to search it](https://docs.ligo.org/sean-leavey/zero/cli/library.html#search-queries)).
+It also (somewhat) understands LISO input and output files, and can plot or re-simulate their
+contents.
 
 ## Documentation
 See the [online documentation](https://docs.ligo.org/sean-leavey/zero/).
