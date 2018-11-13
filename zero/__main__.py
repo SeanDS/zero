@@ -210,7 +210,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
 
     The parser supports basic comparison and logic operators:
 
-        = (equal), != (not equal), > (greater than), >= (greater than or equal),
+        == (equal), != (not equal), > (greater than), >= (greater than or equal),
         < (less than), <= (less than or equal), & (logic AND), | (logic OR)
 
     Clauses can be grouped together with parentheses:
