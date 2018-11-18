@@ -193,33 +193,26 @@ class LisoOutputParser(LisoParser):
             # create appropriate transfer function depending on analysis
             if self.input_type == "voltage":
                 source = self.input_node_p
-                source_unit = "V"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                    sink_unit = "V"
                 elif tf_output.output_type == "current":
                     sink = self.circuit[tf_output.component]
-                    sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self.circuit.input_component
-                source_unit = "A"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                    sink_unit = "V"
                 elif tf_output.output_type == "current":
                     sink = self.circuit[tf_output.component]
-                    sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             else:
                 raise ValueError("invalid input type")
 
-            function = TransferFunction(series=series, source=source, source_unit=source_unit,
-                                        sink=sink, sink_unit=sink_unit)
+            function = TransferFunction(series=series, source=source, sink=sink)
 
             self._solution.add_tf(function)
 

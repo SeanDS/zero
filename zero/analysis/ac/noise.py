@@ -137,10 +137,9 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             series = Series(x=self.frequencies, y=projected_noise)
 
             # add noise function to solution
-            self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.element,
-                                                  series=series))
+            self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.element, series=series))
 
-        if len(empty):
+        if empty:
             LOGGER.debug("empty noise sources: %s", ", ".join([str(tf) for tf in empty]))
 
     @property

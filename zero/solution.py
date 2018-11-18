@@ -568,8 +568,7 @@ class Solution:
         return figure
 
     def _plot_spectrum(self, noise, figure=None, legend=True, legend_loc="best", title=None,
-                       xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
-                       ylabel=r"$\bf{Noise}$ ($\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$)"):
+                       xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)", ylabel=None):
         if figure is None:
             # create figure
             figure = self.noise_figure()
@@ -578,6 +577,16 @@ class Solution:
             raise ValueError("specified figure must contain one axis")
 
         ax = figure.axes[0]
+
+        if ylabel is None:
+            unit_tex = []
+            # generate from noise
+            if any([spectrum.sink_unit == "V" for spectrum in noise]):
+                unit_tex.append(r"$\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$")
+            if any([spectrum.sink_unit == "A" for spectrum in noise]):
+                unit_tex.append(r"$\frac{\mathrm{A}}{\sqrt{\mathrm{Hz}}}$")
+
+            ylabel = r"$\bf{Noise}$" + " (%s)" % ", ".join(unit_tex)
 
         with self._figure_style_context():
             for spectrum in noise:
