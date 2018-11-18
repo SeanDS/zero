@@ -16,6 +16,15 @@ class AcSignalAnalysis(BaseAcAnalysis):
         if self.circuit.input_component.input_type not in ["voltage", "current"]:
             raise ValueError("circuit input type must be either 'voltage' or 'current'")
 
+    @property
+    def prescale_value(self):
+        if self.prescale:
+            scale = 1 / self.mean_resistance
+        else:
+            scale = 1
+
+        return scale
+
     def right_hand_side(self):
         """Circuit signal (input) vector.
 
@@ -97,15 +106,12 @@ class AcSignalAnalysis(BaseAcAnalysis):
             # create appropriate transfer function depending on input type
             if self.has_voltage_input:
                 source = self.circuit.input_component.node_p
-                source_unit = "V"
             elif self.has_current_input:
                 source = self.circuit.input_component
-                source_unit = "A"
             else:
                 raise ValueError("specify either a current or voltage input")
 
-            function = TransferFunction(source=source, source_unit=source_unit, sink=component,
-                                        sink_unit="A", series=series)
+            function = TransferFunction(source=source, sink=component, series=series)
 
             # add transfer function to solution
             self.solution.add_tf(function)
@@ -125,15 +131,12 @@ class AcSignalAnalysis(BaseAcAnalysis):
             # create appropriate transfer function depending on input type
             if self.has_voltage_input:
                 source = self.circuit.input_component.node_p
-                source_unit = "V"
             elif self.has_current_input:
                 source = self.circuit.input_component
-                source_unit = "A"
             else:
                 raise ValueError("specify either a current or voltage input")
 
-            function = TransferFunction(source=source, source_unit=source_unit, sink=node,
-                                        sink_unit="V", series=series)
+            function = TransferFunction(source=source, sink=node, series=series)
 
             # add transfer function to solution
             self.solution.add_tf(function)

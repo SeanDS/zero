@@ -6,6 +6,13 @@ LISO input file parsing
 Known incompatibilities
 -----------------------
 
+Duplicate component and node names
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In LISO, nodes and components may share the same name, and the user is warned
+that this may lead to confusion. In |Zero|, nodes and components cannot share
+the same name.
+
 Outputs
 ~~~~~~~
 

@@ -7,7 +7,7 @@ import logging
 from ply import lex, yacc
 import numpy as np
 
-from ..circuit import Circuit, ComponentNotFoundError
+from ..circuit import Circuit, ElementNotFoundError
 from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
@@ -63,8 +63,8 @@ class LisoParser(metaclass=abc.ABCMeta):
         # list of (name, coupling, l1, l2) inductor coupling tuples
         self._inductor_couplings = []
 
-        # the node noise is projected to
-        self._noise_output_node = None
+        # the node or component that circuit noise is projected to
+        self._noise_output_element = None
 
         # noise sources to calculate
         self._noise_sources = None
@@ -143,16 +143,19 @@ class LisoParser(metaclass=abc.ABCMeta):
         self._input_impedance = Quantity(input_impedance, "Ω")
 
     @property
-    def noise_output_node(self):
-        """Node that noise sources in the circuit are projected to"""
-        return self._noise_output_node
+    def noise_output_element(self):
+        """Node or component that noise sources in the circuit are projected to.
 
-    @noise_output_node.setter
-    def noise_output_node(self, noise_output_node):
-        if self._noise_output_node is not None:
-            self.p_error("cannot redefine noise output node")
+        Note: this is a string.
+        """
+        return self._noise_output_element
 
-        self._noise_output_node = Node(noise_output_node)
+    @noise_output_element.setter
+    def noise_output_element(self, noise_output_element):
+        if self._noise_output_element is not None:
+            self.p_error("cannot redefine noise output element")
+
+        self._noise_output_element = noise_output_element
 
     def add_tf_output(self, output):
         """Add transfer function output.
@@ -260,9 +263,10 @@ class LisoParser(metaclass=abc.ABCMeta):
             if self._noise_sum_to_be_computed:
                 # find spectra in solution
                 sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
+                # get sink element
+                sum_sink = self.circuit[self.noise_output_element]
                 # create overall spectrum
-                sum_spectrum = MultiNoiseSpectrum(sink=self.noise_output_node,
-                                                  constituents=sum_spectra)
+                sum_spectrum = MultiNoiseSpectrum(sink=sum_sink, constituents=sum_spectra)
                 # build noise sum and show by default
                 self._solution.add_noise_sum(sum_spectrum, default=True)
 
@@ -294,8 +298,10 @@ class LisoParser(metaclass=abc.ABCMeta):
         if self.output_type == "tf":
             analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
         elif self.output_type == "noise":
+            # get noise output element
+            element = self.circuit[self.noise_output_element]
             analysis = AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies,
-                                       node=self.noise_output_node, **kwargs)
+                                       element=element, **kwargs)
         else:
             self.p_error("no outputs requested")
 
@@ -339,7 +345,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         elif self.input_node_n is None and self.input_node_p is None:
             # no input nodes found
             self.p_error("no input nodes found")
-        elif not self.tf_outputs and self.noise_output_node is None:
+        elif not self.tf_outputs and self.noise_output_element is None:
             # no output requested
             self.p_error("no output requested")
 
@@ -351,17 +357,16 @@ class LisoParser(metaclass=abc.ABCMeta):
             if not self.circuit.has_component(element) and not self.circuit.has_node(element):
                 self.p_error("output element '%s' is not present in the circuit" % element)
 
-        # check if noise output node exists
-        if self.noise_output_node is not None:
-            name = self.noise_output_node.name
-            if not self.circuit.has_node(name):
-                self.p_error("noise output node '%s' is not present in the circuit" % name)
+        # noise output element must exist
+        if self.noise_output_element is not None:
+            if self.noise_output_element not in self.circuit:
+                self.p_error("noise output element '%s' is not present in the circuit" % self.noise_output_element)
 
         # check if noise sources exist
         try:
             _ = self.displayed_noise_objects
             _ = self.summed_noise_objects
-        except ComponentNotFoundError as e:
+        except ElementNotFoundError as e:
             self.p_error("noise source '%s' is not present in the circuit" % e.name)
 
     @property
@@ -382,7 +387,7 @@ class LisoParser(metaclass=abc.ABCMeta):
     @property
     def will_calc_noise(self):
         """Whether the analysis will calculate noise"""
-        return self.noise_output_node is not None
+        return self.noise_output_element is not None
 
     @property
     def plottable(self):
@@ -452,7 +457,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         # create input component if necessary
         try:
             self.circuit["input"]
-        except ComponentNotFoundError:
+        except ElementNotFoundError:
             # add input
             input_type = self.input_type
             node = None
@@ -468,9 +473,8 @@ class LisoParser(metaclass=abc.ABCMeta):
                 node_p = self.input_node_p
                 node_n = self.input_node_n
 
-            # input type depends on whether we calculate noise or transfer
-            # functions
-            if self.noise_output_node is not None:
+            # input type depends on whether we calculate noise or transfer functions
+            if self.noise_output_element is not None:
                 # we're calculating noise
                 input_type = "noise"
 

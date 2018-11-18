@@ -149,7 +149,7 @@ ioutput load ri1 allop
 
 class NoiseOutputTestCase(LisoInputParserTestCase):
     """Noise output command tests"""
-    def test_invalid_noise_output_node(self):
+    def test_invalid_noise_output_element(self):
         """Test nonexistent noise output node"""
         self.parser.parse("""
 r r1 1k n1 n2
@@ -159,7 +159,7 @@ freq log 1 1k 100
 noise n3 all
 """)
         self.assertRaisesRegex(LisoParserError,
-                               r"noise output node 'n3' is not present in the circuit",
+                               r"noise output element 'n3' is not present in the circuit",
                                self.parser.solution)
 
     def test_invalid_noisy_node(self):

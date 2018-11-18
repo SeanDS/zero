@@ -38,6 +38,8 @@
 # Please note: this library is experimental, incomplete and may be wrong.
 # Whenever the individual op-amp properties become important, you must
 # check yourself that the correct values are entered below.
+#
+# Strings starting with '#' are comments.
 
 [op00]
 # (almost) ideal OpAmp

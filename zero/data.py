@@ -212,28 +212,32 @@ class Function(metaclass=abc.ABCMeta):
 
 class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
     """Data set containing data for a single source"""
-    def __init__(self, source, source_unit=None, **kwargs):
+    def __init__(self, source, **kwargs):
         # call parent constructor
         super().__init__(sources=[source], **kwargs)
-
-        self.source_unit = source_unit
 
     @property
     def source(self):
         return self.sources[0]
 
+    @property
+    def source_unit(self):
+        return self.source.UNIT
+
 
 class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
     """Data set containing data for a single sink"""
-    def __init__(self, sink, sink_unit=None, **kwargs):
+    def __init__(self, sink, **kwargs):
         # call parent constructor
         super().__init__(sinks=[sink], **kwargs)
-
-        self.sink_unit = sink_unit
 
     @property
     def sink(self):
         return self.sinks[0]
+
+    @property
+    def sink_unit(self):
+        return self.sink.UNIT
 
 
 class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
@@ -327,7 +331,7 @@ class NoiseSpectrum(SingleSourceFunction, SingleSinkFunction, NoiseSpectrumBase)
         else:
             format_str = "%s to %s"
 
-        return format_str % (self.noise_name, self.sink)
+        return format_str % (self.noise_name, self.sink.label())
 
 
 class MultiNoiseSpectrum(SingleSinkFunction, NoiseSpectrumBase):

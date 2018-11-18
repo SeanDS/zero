@@ -29,6 +29,7 @@ class Component(metaclass=abc.ABCMeta):
 
     TYPE = "component"
     BASE_NAME = "?"
+    UNIT = "A"
 
     def __init__(self, name=None, nodes=None):
         if name is not None:
@@ -577,6 +578,8 @@ class Node(metaclass=NamedInstance):
         :class:`Components <Component>` that sink current connected to this
         node.
     """
+
+    UNIT = "V"
 
     def __init__(self, name):
         """Instantiate a new node."""

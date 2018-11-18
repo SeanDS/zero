@@ -54,7 +54,8 @@ class LisoOutputParser(LisoParser):
         ('nodes', 'inclusive'),
         ('voltageoutputnodes', 'inclusive'),
         ('currentoutputcomponents', 'inclusive'),
-        ('noiseoutputs', 'inclusive'),             # plotted noise
+        ('noisevoltageoutputs', 'inclusive'),      # node voltage noise and plotted noise
+        ('noisecurrentoutputs', 'inclusive'),      # component current noise and plotted noise
         ('noisysources', 'inclusive'),             # calculated noise
         ('gnuplotoptions', 'inclusive'),           # used to prevent mis-parsing of gnuplot options
                                                    # as something else
@@ -147,7 +148,7 @@ class LisoOutputParser(LisoParser):
         elif self.output_type == "noise":
             self._build_noise()
         else:
-            raise ValueError("unrecognised output type")
+            raise ValueError("unrecognised output type '%s'" % self.output_type)
 
     def _build_tfs(self):
         # column offset
@@ -192,33 +193,26 @@ class LisoOutputParser(LisoParser):
             # create appropriate transfer function depending on analysis
             if self.input_type == "voltage":
                 source = self.input_node_p
-                source_unit = "V"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                    sink_unit = "V"
                 elif tf_output.output_type == "current":
                     sink = self.circuit[tf_output.component]
-                    sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self.circuit.input_component
-                source_unit = "A"
 
                 if tf_output.output_type == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                    sink_unit = "V"
                 elif tf_output.output_type == "current":
                     sink = self.circuit[tf_output.component]
-                    sink_unit = "A"
                 else:
                     raise ValueError("invalid output type")
             else:
                 raise ValueError("invalid input type")
 
-            function = TransferFunction(series=series, source=source, source_unit=source_unit,
-                                        sink=sink, sink_unit=sink_unit)
+            function = TransferFunction(series=series, source=source, sink=sink)
 
             self._solution.add_tf(function)
 
@@ -227,8 +221,8 @@ class LisoOutputParser(LisoParser):
 
     def _build_noise(self):
         """Build noise outputs"""
-        # the data sink is always the noise output node
-        sink = self.noise_output_node
+        # the data sink is always the noise output element
+        sink = self.circuit[self.noise_output_element]
 
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):
@@ -358,12 +352,12 @@ class LisoOutputParser(LisoParser):
         t.lexer.begin('nodes')
 
     def t_ANY_noisysources(self, t):
-        # match start of noise node section
-        r'\#Noise\sis\scomputed\sat\snode\s(?P<node>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
+        # match start of noise source section
+        r'\#Noise\sis\scomputed\s(?P<ntype>at\snode|through\scomponent)\s(?:.+\:)?(?P<element>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
         self.output_type = "noise"
         self.nnoise = t.lexer.lexmatch.group('nnoise')
         self.nnoisy = t.lexer.lexmatch.group('nnoisy')
-        self.noise_output_node = t.lexer.lexmatch.group('node')
+        self.noise_output_element = t.lexer.lexmatch.group('element')
         t.lexer.begin('noisysources')
 
     def t_ANY_voltageinput(self, t):
@@ -399,11 +393,17 @@ class LisoOutputParser(LisoParser):
         self.nioutputs = t.lexer.lexmatch.group('nout')
         t.lexer.begin('currentoutputcomponents')
 
-    def t_ANY_noiseoutputs(self, t):
-        # match start of noise output section
+    def t_ANY_noisevoltageoutputs(self, t):
+        # match start of noise voltage output section
         r'\#OUTPUT\s(?P<nsource>\d+)\snoise\svoltages?\scaused\sby:'
         self.nnoisesources = t.lexer.lexmatch.group('nsource')
-        t.lexer.begin('noiseoutputs')
+        t.lexer.begin('noisevoltageoutputs')
+
+    def t_ANY_noisecurrentoutputs(self, t):
+        # match start of noise current output section
+        r'\#OUTPUT\s(?P<nsource>\d+)\snoise\scurrents?\scaused\sby:'
+        self.nnoisesources = t.lexer.lexmatch.group('nsource')
+        t.lexer.begin('noisecurrentoutputs')
 
     def t_ANY_gnuplotoptions(self, t):
         # match start of gnuplot section
@@ -476,7 +476,7 @@ class LisoOutputParser(LisoParser):
         t.value = (t.lexer.lexmatch.group('index'), t.lexer.lexmatch.group('component'))
         return t
 
-    def t_noiseoutputs_NOISE_OUTPUTS(self, t):
+    def t_noisevoltageoutputs_noisecurrentoutputs_NOISE_OUTPUTS(self, t):
         r'\#\s*(?P<components>.*)'
         t.type = "NOISE_OUTPUTS"
         t.value = t.lexer.lexmatch.group('components')
@@ -880,18 +880,21 @@ class LisoOutputParser(LisoParser):
             # this is a sum column
             # (don't set self._source_sum = True as this regenerates the sum)
             self._source_sum_index = int(data_index)
-        else:
-            # individual component
-            definition = [component_name]
 
-            if len(output_pieces) > 1:
-                # remove trailing bracket
-                noise_type_id = output_pieces[1].rstrip(")")
+            # nothing more to do
+            return
 
-                # add op-amp noise type
-                definition.append(noise_type_id)
+        # individual component
+        definition = [component_name]
 
-            self._noise_defs.append(definition)
+        if len(output_pieces) > 1:
+            # remove trailing bracket
+            noise_type_id = output_pieces[1].rstrip(")")
+
+            # add op-amp noise type
+            definition.append(noise_type_id)
+
+        self._noise_defs.append(definition)
 
     def _parse_noisy_sources(self, sources_line):
         """Parse noise sources used to calculate the noise outputs."""

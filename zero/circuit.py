@@ -13,7 +13,7 @@ LIBRARY = OpAmpLibrary()
 
 
 class ElementNotFoundError(Exception):
-    def __init__(self, name, message, *args, **kwargs):
+    def __init__(self, name, message="element '%s' not found", *args, **kwargs):
         # apply name to message
         message = message % name
 
@@ -64,10 +64,10 @@ class Circuit:
         self.nodes = set()
 
     def __getitem__(self, key):
-        return self.get_component(key)
+        return self.get_element(key)
 
     def __contains__(self, key):
-        return self.has_component(key)
+        return self.has_element(key)
 
     @property
     def non_gnd_nodes(self):
@@ -125,8 +125,8 @@ class Circuit:
             # assign name
             self._set_default_name(component)
 
-        if component in self.components:
-            raise ValueError("component with name '{name}' already in circuit".format(name=component.name))
+        if component.name in self:
+            raise ValueError("element with name '{name}' already in circuit".format(name=component.name))
         elif component.name in self.RESERVED_NAMES:
             raise ValueError("component name '{name}' is reserved".format(name=component.name))
 
@@ -134,7 +134,11 @@ class Circuit:
         self.components.append(component)
 
         # add nodes
-        self.nodes.update(component.nodes)
+        for node in component.nodes:
+            if node.name in self.component_names:
+                raise ValueError("node '{name}' is the same as existing circuit component".format(name=node.name))
+
+            self.nodes.add(node)
 
     def add_input(self, *args, **kwargs):
         """Add input to circuit."""
@@ -274,6 +278,53 @@ class Circuit:
         """
         return node_name.lower() in [name.lower() for name in self.node_names]
 
+    def get_element(self, element_name):
+        """Get circuit element (component or node) by name.
+
+        Parameters
+        ----------
+        element_name : :class:`str`
+            The name of the element to fetch.
+
+        Returns
+        -------
+        :class:`.Component` or :class:`.Node`
+            The found component or element.
+
+        Raises
+        ------
+        :class:`ElementNotFoundError`
+            If the element is not found.
+        """
+        name = element_name.lower()
+
+        try:
+            return self.get_component(name)
+        except ComponentNotFoundError:
+            pass
+
+        try:
+            return self.get_node(name)
+        except NodeNotFoundError:
+            pass
+
+        raise ElementNotFoundError(element_name)
+
+    def has_element(self, element_name):
+        """Check if element (component or node) is present in circuit.
+
+        Parameters
+        ----------
+        element_name : str
+            The name of the element to check.
+
+        Returns
+        -------
+        :class:`bool`
+            True if element exists, False otherwise.
+        """
+        return element_name.lower() in [name.lower() for name in self.element_names]
+
     def get_noise(self, noise_name):
         """Get noise by component or node name.
 
@@ -395,6 +446,18 @@ class Circuit:
             The node names.
         """
         return [node.name for node in self.nodes]
+
+    @property
+    def element_names(self):
+        """The names of the elements (components and nodes) in the circuit.
+
+        Yields
+        ------
+        :class:`str`
+            The element names.
+        """
+        yield from self.component_names
+        yield from self.node_names
 
     @property
     def n_components(self):

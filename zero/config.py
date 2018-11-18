@@ -1,6 +1,7 @@
 """Configuration parser and defaults"""
 
 import os.path
+import shutil
 import abc
 import logging
 import re
@@ -33,9 +34,9 @@ class SingletonAbstractMeta(abc.ABCMeta):
 
 class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
     """Abstract configuration class"""
-
     CONFIG_FILENAME = None
     DEFAULT_CONFIG_FILENAME = None
+    DEFAULT_USER_CONFIG_FILENAME = None
 
     def __init__(self, *args, **kwargs):
         """Instantiate a new BaseConfig"""
@@ -70,15 +71,18 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         config_file = self.get_user_config_filepath()
 
         # check the config file exists
-        if os.path.isfile(config_file):
-            self.load_config_file(config_file)
+        if not os.path.isfile(config_file):
+            LOGGER.info("Creating default user config file at '%s'", config_file)
+            # copy default
+            source = pkg_resources.resource_filename(__name__, self.DEFAULT_USER_CONFIG_FILENAME)
+            destination = self.get_user_config_filepath()
+            shutil.copyfile(source, destination)
+
+        self.load_config_file(config_file)
 
     @classmethod
     def get_user_config_filepath(cls):
         """Find the path to the config file
-
-        This creates the config file if it does not exist, using the distributed
-        template.
 
         :return: path to user config file
         :rtype: str
@@ -92,14 +96,15 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
 
 class ZeroConfig(BaseConfig):
     """Zero config parser"""
-
     CONFIG_FILENAME = "zero.conf"
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
+    DEFAULT_USER_CONFIG_FILENAME = DEFAULT_CONFIG_FILENAME + ".default"
 
 
 class OpAmpLibrary(BaseConfig):
     CONFIG_FILENAME = "library.conf"
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
+    DEFAULT_USER_CONFIG_FILENAME = DEFAULT_CONFIG_FILENAME + ".default"
 
     # compiled regular expressions for parsing op-amp data
     COMMENT_REGEX = re.compile(r"\s*\#.*$")
@@ -451,6 +456,11 @@ class LibraryOpAmp:
         """Additional zeros"""
         return self.params["zeros"]
 
+    @property
+    def zeros_mag_q(self):
+        """Additional zeros, in tuples containing magnitude and Q-factor"""
+        return self._mag_q_pairs(self.zeros)
+
     @zeros.setter
     def zeros(self, zeros):
         self.params["zeros"] = np.array(zeros)
@@ -459,6 +469,11 @@ class LibraryOpAmp:
     def poles(self):
         """Additional poles"""
         return self.params["poles"]
+
+    @property
+    def poles_mag_q(self):
+        """Additional poles, in tuples containing magnitude and Q-factor"""
+        return self._mag_q_pairs(self.poles)
 
     @poles.setter
     def poles(self, poles):
@@ -554,6 +569,24 @@ class LibraryOpAmp:
         case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
         """
         return 1 / self.gain(*args, **kwargs)
+
+    def _mag_q_pairs(self, complex_freqs):
+        complex_freqs = list(complex_freqs)
+        pairs = []
+
+        for freq in complex_freqs:
+            fabs = np.absolute(freq)
+            freq_conj = np.conj(freq)
+
+            # find conjugate
+            if freq_conj in complex_freqs:
+                complex_freqs.remove(freq_conj)
+
+            qfactor = fabs / (2 * np.real(freq)) # = 0.5 if real pole
+
+            pairs.append((fabs, qfactor))
+
+        return pairs
 
     def __str__(self):
         return "{cmp.model}(a0={cmp.a0}, gbw={cmp.gbw}, delay={cmp.delay})".format(cmp=self)

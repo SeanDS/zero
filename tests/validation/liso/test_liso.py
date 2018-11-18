@@ -23,15 +23,18 @@ class LisoTester(unittest.TestCase):
         # test message
         message = "Test %s against LISO" % self.fil_path
 
-        with self.subTest(msg=message):
-            self.compare(self._liso_output())
+        with self.subTest(msg=message + " (without prescaling)"):
+            self.compare(self._liso_output(), prescale=False)
 
-    def compare(self, liso_output):
+        with self.subTest(msg=message + " (with prescaling)"):
+            self.compare(self._liso_output(), prescale=True)
+
+    def compare(self, liso_output, **native_kwargs):
         # get LISO solution
         liso_solution = liso_output.solution()
 
         # run native
-        native_solution = liso_output.solution(force=True)
+        native_solution = liso_output.solution(force=True, **native_kwargs)
 
         # check if they match (only check defaults as LISO only generates defaults)
         self.assertTrue(liso_solution.equivalent_to(native_solution, defaults_only=True))

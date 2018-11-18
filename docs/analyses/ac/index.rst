@@ -112,6 +112,18 @@ circuit is solved with the constraint that the voltage between ``n1`` and ground
 ``1``. The solver can adjust all of the other non-zero matrix elements in the left hand side until
 this condition is met within some level of tolerance.
 
+Prescaling
+~~~~~~~~~~
+
+By default, |Zero| prescales matrices used in the computation of the solution, in order to improve
+numerical precision. This behaviour is currently only implemented for signal analyses and not for
+noise.
+
+.. warning::
+    When prescaling is switched on, any functions which output the circuit matrix (such as the
+    ``--no-prescale`` :ref:`CLI flag <cli/liso:Prescaling>`) will not match the underlying values they represent, but instead
+    those of the prescaled matrix.
+
 Available analyses
 ~~~~~~~~~~~~~~~~~~
 
