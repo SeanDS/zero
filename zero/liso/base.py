@@ -7,7 +7,7 @@ import logging
 from ply import lex, yacc
 import numpy as np
 
-from ..circuit import Circuit, ComponentNotFoundError
+from ..circuit import Circuit, ElementNotFoundError
 from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
@@ -361,7 +361,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         try:
             _ = self.displayed_noise_objects
             _ = self.summed_noise_objects
-        except ComponentNotFoundError as e:
+        except ElementNotFoundError as e:
             self.p_error("noise source '%s' is not present in the circuit" % e.name)
 
     @property
@@ -452,7 +452,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         # create input component if necessary
         try:
             self.circuit["input"]
-        except ComponentNotFoundError:
+        except ElementNotFoundError:
             # add input
             input_type = self.input_type
             node = None
