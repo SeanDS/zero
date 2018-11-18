@@ -2,7 +2,6 @@ import logging
 import numpy as np
 
 from .base import BaseAcAnalysis
-from ...components import Node
 from ...data import NoiseSpectrum, Series
 
 LOGGER = logging.getLogger(__name__)
@@ -11,46 +10,26 @@ LOGGER = logging.getLogger(__name__)
 class AcNoiseAnalysis(BaseAcAnalysis):
     """Small signal circuit analysis"""
 
-    def __init__(self, node, **kwargs):
-        # empty fields
-        self._node = None
-
-        self.node = node
-
+    def __init__(self, element, **kwargs):
         # call parent constructor
         super().__init__(**kwargs)
+
+        if not hasattr(element, "name"):
+            # get element name from circuit
+            element = self.circuit[element]
+
+        self.element = element
+
+    @property
+    def prescale_value(self):
+        # switch off for noise
+        return 1
 
     def validate_circuit(self):
         """Validate circuit for noise analysis"""
         # check input
         if self.circuit.input_component.input_type != "noise":
             raise ValueError("circuit input type must be 'noise'")
-
-    @property
-    def node(self):
-        """Circuit noise node
-
-        Returns
-        -------
-        :class:`~.components.Node`
-            The circuit's noise node
-        """
-        return self._node
-
-    @node.setter
-    def node(self, node):
-        """Set circuit's noise node
-
-        Parameters
-        ----------
-        node : :class:`~.components.Node`
-            The circuit's new noise node
-        """
-
-        if not isinstance(node, Node):
-            node = Node(node)
-
-        self._node = node
 
     def circuit_matrix(self, *args, **kwargs):
         """Calculate and return matrix used to solve for circuit noise at a \
@@ -69,7 +48,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         """Circuit noise (output) vector
 
         This creates a vector of size nx1, where n is the number of elements in
-        the circuit, and sets the noise node's coefficient to 1 before
+        the circuit, and sets the noise element's coefficient to 1 before
         returning it.
 
         Returns
@@ -81,14 +60,13 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         # create column vector
         e_n = self.get_empty_results_matrix(1)
 
-        # set input to noise node
-        e_n[self.noise_node_index, 0] = 1
+        # set input to noise element
+        e_n[self.noise_element_index, 0] = 1
 
         return e_n
 
     def calculate(self):
-        """Calculate noise from circuit :class:`component <.Component>` / \
-        :class:`node <.Node>` at a particular :class:`node <.Node>`.
+        """Calculate noise from circuit elements at a particular element.
 
         Returns
         -------
@@ -116,10 +94,10 @@ class AcNoiseAnalysis(BaseAcAnalysis):
 
         if self.prescale:
             # convert currents from natural units back to amperes
-            prescaler = 1 / self.mean_resistance
+            prescale_value = self.prescale_value
 
             for node in self.circuit.non_gnd_nodes:
-                scale[self.node_matrix_index(node), 0] = 1 / prescaler
+                scale[self.node_matrix_index(node), 0] = 1 / prescale_value
 
         # unscale
         noise_matrix *= scale
@@ -151,7 +129,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             # get response from this element to every other
             response = noise_matrix[index, :]
 
-            # multiply response from element to noise node by noise entering
+            # multiply response from element to noise output element by noise entering
             # at that element, for all frequencies
             projected_noise = np.abs(response * spectral_density)
 
@@ -159,16 +137,25 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             series = Series(x=self.frequencies, y=projected_noise)
 
             # add noise function to solution
-            self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.node,
-                                                  series=series))
+            self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.element, series=series))
 
-        if len(empty):
+        if empty:
             LOGGER.debug("empty noise sources: %s", ", ".join([str(tf) for tf in empty]))
 
     @property
-    def noise_node_index(self):
-        """Noise node matrix index"""
-        return self.node_matrix_index(self.node)
+    def noise_element_index(self):
+        """Noise element matrix index"""
+        try:
+            return self.component_matrix_index(self.element)
+        except ValueError:
+            pass
+
+        try:
+            return self.node_matrix_index(self.element)
+        except ValueError:
+            pass
+
+        raise ValueError("noise output element '%s' is not in the circuit" % self.element)
 
     @property
     def has_noise_input(self):

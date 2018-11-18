@@ -112,8 +112,9 @@ Prescaling
 ----------
 
 |Zero| can prescale its circuit matrices in the same way that LISO does, to help improve numerical
-precision. By default, this behaviour is switched on, but can be disabled with the
-``--no-prescale`` flag. This option is only available when a native simulation is being performed.
+precision (see :ref:`Prescaling <analyses/ac/index:Prescaling>` for more details). By default,
+this behaviour is switched on, but can be disabled with the ``--no-prescale`` flag. This option is
+only available when a native simulation is being performed.
 
 Saving figures
 --------------

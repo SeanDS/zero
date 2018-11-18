@@ -42,6 +42,10 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """Validate circuit"""
         raise NotImplementedError
 
+    @abc.abstractproperty
+    def prescale_value(self):
+        raise NotImplementedError
+
     @property
     def dim_size(self):
         """Circuit matrix dimension size
@@ -121,10 +125,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         # create new sparse matrix
         matrix = self.solver.sparse((self.dim_size, self.dim_size))
 
-        if self.prescale:
-            scale = 1 / self.mean_resistance
-        else:
-            scale = 1
+        scale = self.prescale_value
 
         # add sources and sinks
         self.set_up_sources_and_sinks()

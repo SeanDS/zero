@@ -548,7 +548,7 @@ class LisoInputParser(LisoParser):
         self.output_type = "noise"
 
         # noise output
-        self.noise_output_node = params[0]
+        self.noise_output_element = params[0]
 
         # parse noise sources
         for source_str in params[1:]:

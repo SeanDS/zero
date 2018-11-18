@@ -178,7 +178,7 @@ class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):
         self.parser.parse("noise nout n1")
         self.assertEqual(self.parser.output_type, "noise")
-        self.assertEqual(self.parser.noise_output_node, Node("nout"))
+        self.assertEqual(self.parser.noise_output_element, "nout")
 
     def test_noise_suffices(self):
         text = """
@@ -207,11 +207,11 @@ op op1 op00 n2 n3 n4
     def test_cannot_redefine_noise_node(self):
         self.parser.parse("noise nout n1")
         # try to set noise node again
-        self.assertRaisesRegex(LisoParserError, r"cannot redefine noise output node \(line 2\)",
+        self.assertRaisesRegex(LisoParserError, r"cannot redefine noise output element \(line 2\)",
                                self.parser.parse, "noise nin n1")
 
-    def test_must_set_noise_output_node(self):
-        # sink node defined, but no sources
+    def test_must_set_noise_output_element(self):
+        # sink element defined, but no sources
         self.assertRaisesRegex(LisoParserError, r"unexpected end of file \(line 1\)",
                                self.parser.parse, "noise nout")
 

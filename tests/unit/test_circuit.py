@@ -120,7 +120,7 @@ class CircuitTestCase(TestCase):
         r2 = Resistor(name="r1", value=2e5, node1="n3", node2="n4")
 
         self.circuit.add_component(r1)
-        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit",
+        self.assertRaisesRegex(ValueError, r"element with name 'r1' already in circuit",
                                self.circuit.add_component, r2)
 
         self.reset()
@@ -130,5 +130,48 @@ class CircuitTestCase(TestCase):
         op1 = OpAmp(name="r1", model="OP00", node1="n3", node2="n4", node3="n5")
 
         self.circuit.add_component(r1)
-        self.assertRaisesRegex(ValueError, r"component with name 'r1' already in circuit",
+        self.assertRaisesRegex(ValueError, r"element with name 'r1' already in circuit",
+                               self.circuit.add_component, op1)
+
+    def test_cannot_add_component_with_same_name_as_node(self):
+        """Test component with same name as existing node cannot be added"""
+        # first component
+        r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
+        # second component, with same name as one of first component's nodes
+        r2 = Resistor(name="n1", value=2e5, node1="n3", node2="r4")
+
+        self.circuit.add_component(r1)
+        self.assertRaisesRegex(ValueError, r"element with name 'n1' already in circuit",
+                               self.circuit.add_component, r2)
+
+        self.reset()
+
+        # different component with same name
+        r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
+        op1 = OpAmp(name="n1", model="OP00", node1="n2", node2="n4", node3="n5")
+
+        self.circuit.add_component(r1)
+        self.assertRaisesRegex(ValueError, r"element with name 'n1' already in circuit",
+                               self.circuit.add_component, op1)
+
+
+    def test_cannot_add_node_with_same_name_as_component(self):
+        """Test node with same name as existing component cannot be added"""
+        # first component
+        r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
+        # second component, with node with same name as first component
+        r2 = Resistor(name="r2", value=2e5, node1="n3", node2="r1")
+
+        self.circuit.add_component(r1)
+        self.assertRaisesRegex(ValueError, r"node 'r1' is the same as existing circuit component",
+                               self.circuit.add_component, r2)
+
+        self.reset()
+
+        # different component with same name
+        r1 = Resistor(name="r1", value=1e3, node1="n1", node2="n2")
+        op1 = OpAmp(name="op1", model="OP00", node1="r1", node2="n4", node3="n5")
+
+        self.circuit.add_component(r1)
+        self.assertRaisesRegex(ValueError, r"node 'r1' is the same as existing circuit component",
                                self.circuit.add_component, op1)

@@ -13,12 +13,13 @@ class AcNoiseAnalysisTestCase(TestCase):
     def setUp(self):
         self.circuit = Circuit()
         self.default_f = np.logspace(0, 5, 1000)
-        self.default_node = Node("nin")
+        self.default_element = Node("nin")
 
     @property
     def default_params(self):
         """Default analysis parameters"""
-        return {"circuit": self.circuit, "frequencies": self.default_f, "node": self.default_node}
+        return {"circuit": self.circuit, "frequencies": self.default_f,
+                "element": self.default_element}
 
     def default_analysis(self):
         """Default analysis"""
@@ -28,7 +29,7 @@ class AcNoiseAnalysisTestCase(TestCase):
         """Test set noise input"""
         self.circuit.add_input(input_type="noise", node="nin", impedance=152.6)
         analysis = self.default_analysis()
-        self.assertEqual(analysis.node, self.default_node)
+        self.assertEqual(analysis.element, self.default_element)
 
     def test_invalid_input(self):
         """Test input type must be 'noise' for noise analysis"""
