@@ -76,6 +76,14 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
             # copy default
             source = pkg_resources.resource_filename(__name__, self.DEFAULT_USER_CONFIG_FILENAME)
             destination = self.get_user_config_filepath()
+
+            config_dir = os.path.dirname(destination)
+
+            if not os.path.isdir(config_dir):
+                # make directory tree
+                os.makedirs(config_dir)
+
+            # do copy
             shutil.copyfile(source, destination)
 
         self.load_config_file(config_file)
