@@ -54,7 +54,8 @@ class LisoOutputParser(LisoParser):
         ('nodes', 'inclusive'),
         ('voltageoutputnodes', 'inclusive'),
         ('currentoutputcomponents', 'inclusive'),
-        ('noiseoutputs', 'inclusive'),             # plotted noise
+        ('noisevoltageoutputs', 'inclusive'),      # node voltage noise and plotted noise
+        ('noisecurrentoutputs', 'inclusive'),      # component current noise and plotted noise
         ('noisysources', 'inclusive'),             # calculated noise
         ('gnuplotoptions', 'inclusive'),           # used to prevent mis-parsing of gnuplot options
                                                    # as something else
@@ -147,7 +148,7 @@ class LisoOutputParser(LisoParser):
         elif self.output_type == "noise":
             self._build_noise()
         else:
-            raise ValueError("unrecognised output type")
+            raise ValueError("unrecognised output type '%s'" % self.output_type)
 
     def _build_tfs(self):
         # column offset
@@ -227,8 +228,8 @@ class LisoOutputParser(LisoParser):
 
     def _build_noise(self):
         """Build noise outputs"""
-        # the data sink is always the noise output node
-        sink = self.noise_output_node
+        # the data sink is always the noise output element
+        sink = self.noise_output_element
 
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):
@@ -358,12 +359,12 @@ class LisoOutputParser(LisoParser):
         t.lexer.begin('nodes')
 
     def t_ANY_noisysources(self, t):
-        # match start of noise node section
-        r'\#Noise\sis\scomputed\sat\snode\s(?P<node>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
+        # match start of noise source section
+        r'\#Noise\sis\scomputed\s(?P<ntype>at\snode|through\scomponent)\s(?P<element>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
         self.output_type = "noise"
         self.nnoise = t.lexer.lexmatch.group('nnoise')
         self.nnoisy = t.lexer.lexmatch.group('nnoisy')
-        self.noise_output_node = t.lexer.lexmatch.group('node')
+        self.noise_output_element = t.lexer.lexmatch.group('element')
         t.lexer.begin('noisysources')
 
     def t_ANY_voltageinput(self, t):
@@ -399,11 +400,17 @@ class LisoOutputParser(LisoParser):
         self.nioutputs = t.lexer.lexmatch.group('nout')
         t.lexer.begin('currentoutputcomponents')
 
-    def t_ANY_noiseoutputs(self, t):
-        # match start of noise output section
+    def t_ANY_noisevoltageoutputs(self, t):
+        # match start of noise voltage output section
         r'\#OUTPUT\s(?P<nsource>\d+)\snoise\svoltages?\scaused\sby:'
         self.nnoisesources = t.lexer.lexmatch.group('nsource')
-        t.lexer.begin('noiseoutputs')
+        t.lexer.begin('noisevoltageoutputs')
+
+    def t_ANY_noisecurrentoutputs(self, t):
+        # match start of noise current output section
+        r'\#OUTPUT\s(?P<nsource>\d+)\snoise\scurrents?\scaused\sby:'
+        self.nnoisesources = t.lexer.lexmatch.group('nsource')
+        t.lexer.begin('noisecurrentoutputs')
 
     def t_ANY_gnuplotoptions(self, t):
         # match start of gnuplot section
@@ -476,7 +483,7 @@ class LisoOutputParser(LisoParser):
         t.value = (t.lexer.lexmatch.group('index'), t.lexer.lexmatch.group('component'))
         return t
 
-    def t_noiseoutputs_NOISE_OUTPUTS(self, t):
+    def t_noisevoltageoutputs_noisecurrentoutputs_NOISE_OUTPUTS(self, t):
         r'\#\s*(?P<components>.*)'
         t.type = "NOISE_OUTPUTS"
         t.value = t.lexer.lexmatch.group('components')
