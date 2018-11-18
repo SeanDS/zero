@@ -16,6 +16,15 @@ class AcSignalAnalysis(BaseAcAnalysis):
         if self.circuit.input_component.input_type not in ["voltage", "current"]:
             raise ValueError("circuit input type must be either 'voltage' or 'current'")
 
+    @property
+    def prescale_value(self):
+        if self.prescale:
+            scale = 1 / self.mean_resistance
+        else:
+            scale = 1
+
+        return scale
+
     def right_hand_side(self):
         """Circuit signal (input) vector.
 

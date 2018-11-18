@@ -2,7 +2,6 @@ import logging
 import numpy as np
 
 from .base import BaseAcAnalysis
-from ...components import Node
 from ...data import NoiseSpectrum, Series
 
 LOGGER = logging.getLogger(__name__)
@@ -20,6 +19,11 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             element = self.circuit[element]
 
         self.element = element
+
+    @property
+    def prescale_value(self):
+        # switch off for noise
+        return 1
 
     def validate_circuit(self):
         """Validate circuit for noise analysis"""
@@ -90,10 +94,10 @@ class AcNoiseAnalysis(BaseAcAnalysis):
 
         if self.prescale:
             # convert currents from natural units back to amperes
-            prescaler = 1 / self.mean_resistance
+            prescale_value = self.prescale_value
 
             for node in self.circuit.non_gnd_nodes:
-                scale[self.node_matrix_index(node), 0] = 1 / prescaler
+                scale[self.node_matrix_index(node), 0] = 1 / prescale_value
 
         # unscale
         noise_matrix *= scale
