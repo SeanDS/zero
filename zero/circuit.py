@@ -125,7 +125,7 @@ class Circuit:
             # assign name
             self._set_default_name(component)
 
-        if component in self.components:
+        if component.name in self:
             raise ValueError("element with name '{name}' already in circuit".format(name=component.name))
         elif component.name in self.RESERVED_NAMES:
             raise ValueError("component name '{name}' is reserved".format(name=component.name))
