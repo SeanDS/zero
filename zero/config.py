@@ -456,6 +456,11 @@ class LibraryOpAmp:
         """Additional zeros"""
         return self.params["zeros"]
 
+    @property
+    def zeros_mag_q(self):
+        """Additional zeros, in tuples containing magnitude and Q-factor"""
+        return self._mag_q_pairs(self.zeros)
+
     @zeros.setter
     def zeros(self, zeros):
         self.params["zeros"] = np.array(zeros)
@@ -464,6 +469,11 @@ class LibraryOpAmp:
     def poles(self):
         """Additional poles"""
         return self.params["poles"]
+
+    @property
+    def poles_mag_q(self):
+        """Additional poles, in tuples containing magnitude and Q-factor"""
+        return self._mag_q_pairs(self.poles)
 
     @poles.setter
     def poles(self, poles):
@@ -559,6 +569,24 @@ class LibraryOpAmp:
         case of a voltage follower (see :meth:`zero.analysis.ac.BaseAcAnalysis.component_equation`).
         """
         return 1 / self.gain(*args, **kwargs)
+
+    def _mag_q_pairs(self, complex_freqs):
+        complex_freqs = list(complex_freqs)
+        pairs = []
+
+        for freq in complex_freqs:
+            fabs = np.absolute(freq)
+            freq_conj = np.conj(freq)
+
+            # find conjugate
+            if freq_conj in complex_freqs:
+                complex_freqs.remove(freq_conj)
+
+            qfactor = fabs / (2 * np.real(freq)) # = 0.5 if real pole
+
+            pairs.append((fabs, qfactor))
+
+        return pairs
 
     def __str__(self):
         return "{cmp.model}(a0={cmp.a0}, gbw={cmp.gbw}, delay={cmp.delay})".format(cmp=self)
