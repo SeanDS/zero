@@ -360,7 +360,7 @@ class LisoOutputParser(LisoParser):
 
     def t_ANY_noisysources(self, t):
         # match start of noise source section
-        r'\#Noise\sis\scomputed\s(?P<ntype>at\snode|through\scomponent)\s(?P<element>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
+        r'\#Noise\sis\scomputed\s(?P<ntype>at\snode|through\scomponent)\s(?:.+\:)?(?P<element>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
         self.output_type = "noise"
         self.nnoise = t.lexer.lexmatch.group('nnoise')
         self.nnoisy = t.lexer.lexmatch.group('nnoisy')
@@ -887,18 +887,21 @@ class LisoOutputParser(LisoParser):
             # this is a sum column
             # (don't set self._source_sum = True as this regenerates the sum)
             self._source_sum_index = int(data_index)
-        else:
-            # individual component
-            definition = [component_name]
 
-            if len(output_pieces) > 1:
-                # remove trailing bracket
-                noise_type_id = output_pieces[1].rstrip(")")
+            # nothing more to do
+            return
 
-                # add op-amp noise type
-                definition.append(noise_type_id)
+        # individual component
+        definition = [component_name]
 
-            self._noise_defs.append(definition)
+        if len(output_pieces) > 1:
+            # remove trailing bracket
+            noise_type_id = output_pieces[1].rstrip(")")
+
+            # add op-amp noise type
+            definition.append(noise_type_id)
+
+        self._noise_defs.append(definition)
 
     def _parse_noisy_sources(self, sources_line):
         """Parse noise sources used to calculate the noise outputs."""
