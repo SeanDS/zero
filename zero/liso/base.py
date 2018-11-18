@@ -298,8 +298,10 @@ class LisoParser(metaclass=abc.ABCMeta):
         if self.output_type == "tf":
             analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
         elif self.output_type == "noise":
+            # get noise output element
+            element = self.circuit[self.noise_output_element]
             analysis = AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies,
-                                       node=self.noise_output_element, **kwargs)
+                                       element=element, **kwargs)
         else:
             self.p_error("no outputs requested")
 

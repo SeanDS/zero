@@ -41,9 +41,9 @@ class PrescaleTestCase(TestCase):
 
         noise_node = "n3"
 
-        analysis_unscaled = AcNoiseAnalysis(circuit=circuit, node=noise_node, frequencies=self.f,
+        analysis_unscaled = AcNoiseAnalysis(circuit=circuit, element=noise_node, frequencies=self.f,
                                             prescale=True)
-        analysis_scaled = AcNoiseAnalysis(circuit=circuit, node=noise_node, frequencies=self.f,
+        analysis_scaled = AcNoiseAnalysis(circuit=circuit, element=noise_node, frequencies=self.f,
                                           prescale=False)
 
         analysis_unscaled.calculate()
