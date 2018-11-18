@@ -41,7 +41,8 @@ setup(
     url="https://git.ligo.org/sean-leavey/zero",
     packages=find_packages(),
     package_data={
-        "zero": ["zero.conf.dist", "library.conf.dist"]
+        "zero": ["zero.conf.dist", "zero.conf.dist.default",
+                 "library.conf.dist", "library.conf.dist.default"]
     },
     entry_points={
         "console_scripts": [

@@ -1,6 +1,7 @@
 """Configuration parser and defaults"""
 
 import os.path
+import shutil
 import abc
 import logging
 import re
@@ -33,9 +34,9 @@ class SingletonAbstractMeta(abc.ABCMeta):
 
 class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
     """Abstract configuration class"""
-
     CONFIG_FILENAME = None
     DEFAULT_CONFIG_FILENAME = None
+    DEFAULT_USER_CONFIG_FILENAME = None
 
     def __init__(self, *args, **kwargs):
         """Instantiate a new BaseConfig"""
@@ -70,15 +71,18 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         config_file = self.get_user_config_filepath()
 
         # check the config file exists
-        if os.path.isfile(config_file):
-            self.load_config_file(config_file)
+        if not os.path.isfile(config_file):
+            LOGGER.info("Creating default user config file at '%s'", config_file)
+            # copy default
+            source = pkg_resources.resource_filename(__name__, self.DEFAULT_USER_CONFIG_FILENAME)
+            destination = self.get_user_config_filepath()
+            shutil.copyfile(source, destination)
+
+        self.load_config_file(config_file)
 
     @classmethod
     def get_user_config_filepath(cls):
         """Find the path to the config file
-
-        This creates the config file if it does not exist, using the distributed
-        template.
 
         :return: path to user config file
         :rtype: str
@@ -92,14 +96,15 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
 
 class ZeroConfig(BaseConfig):
     """Zero config parser"""
-
     CONFIG_FILENAME = "zero.conf"
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
+    DEFAULT_USER_CONFIG_FILENAME = DEFAULT_CONFIG_FILENAME + ".default"
 
 
 class OpAmpLibrary(BaseConfig):
     CONFIG_FILENAME = "library.conf"
     DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
+    DEFAULT_USER_CONFIG_FILENAME = DEFAULT_CONFIG_FILENAME + ".default"
 
     # compiled regular expressions for parsing op-amp data
     COMMENT_REGEX = re.compile(r"\s*\#.*$")

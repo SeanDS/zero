@@ -9,12 +9,13 @@ from tabulate import tabulate
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
-from .config import ZeroConfig
+from .config import ZeroConfig, OpAmpLibrary
 from .library import LibraryQueryEngine
 from .misc import open_file
 
-CONF = ZeroConfig()
 LOGGER = logging.getLogger(__name__)
+CONF = ZeroConfig()
+LIBRARY = OpAmpLibrary()
 
 
 # Shared arguments:
@@ -277,25 +278,12 @@ def library_path():
 
     Note: this path may not exist.
     """
-    print(CONF.get_user_config_filepath())
+    print(LIBRARY.get_user_config_filepath())
 
 @library.command("open")
 def library_open():
-    """Open user op-amp library file for editing.
-
-    If the op-amp library doesn't exist, it is created.
-    """
-    path = CONF.get_user_config_filepath()
-
-    if not os.path.exists(path):
-        # make directories if necessary
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        # create empty library file
-        with open(path, "a") as file_object:
-            # add empty line to ensure OS recognises it as a text file
-            file_object.write("\n")
-
-    open_file(path)
+    """Open user op-amp library file for editing."""
+    open_file(LIBRARY.get_user_config_filepath())
 
 @cli.command()
 @argument("term")
