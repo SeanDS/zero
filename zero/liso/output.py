@@ -229,7 +229,7 @@ class LisoOutputParser(LisoParser):
     def _build_noise(self):
         """Build noise outputs"""
         # the data sink is always the noise output element
-        sink = self.noise_output_element
+        sink = self.circuit[self.noise_output_element]
 
         # now that we have all the noise sources, create noise outputs
         for index, definition in enumerate(self._noise_defs):

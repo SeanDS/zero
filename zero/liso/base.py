@@ -144,7 +144,10 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     @property
     def noise_output_element(self):
-        """Node or component that noise sources in the circuit are projected to"""
+        """Node or component that noise sources in the circuit are projected to.
+
+        Note: this is a string.
+        """
         return self._noise_output_element
 
     @noise_output_element.setter
@@ -152,7 +155,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         if self._noise_output_element is not None:
             self.p_error("cannot redefine noise output element")
 
-        self._noise_output_element = Node(noise_output_element)
+        self._noise_output_element = noise_output_element
 
     def add_tf_output(self, output):
         """Add transfer function output.
@@ -260,9 +263,10 @@ class LisoParser(metaclass=abc.ABCMeta):
             if self._noise_sum_to_be_computed:
                 # find spectra in solution
                 sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
+                # get sink element
+                sum_sink = self.circuit[self.noise_output_element]
                 # create overall spectrum
-                sum_spectrum = MultiNoiseSpectrum(sink=self.noise_output_element,
-                                                  constituents=sum_spectra)
+                sum_spectrum = MultiNoiseSpectrum(sink=sum_sink, constituents=sum_spectra)
                 # build noise sum and show by default
                 self._solution.add_noise_sum(sum_spectrum, default=True)
 
@@ -353,9 +357,8 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         # noise output element must exist
         if self.noise_output_element is not None:
-            name = self.noise_output_element.name
-            if not self.circuit.has_node(name):
-                self.p_error("noise output element '%s' is not present in the circuit" % name)
+            if self.noise_output_element not in self.circuit:
+                self.p_error("noise output element '%s' is not present in the circuit" % self.noise_output_element)
 
         # check if noise sources exist
         try:
