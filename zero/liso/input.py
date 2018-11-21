@@ -78,9 +78,6 @@ class LisoInputParser(LisoParser):
         self._noise_defs = [] # displayed noise
         self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
 
-        # noise sum request
-        self._noise_sum_to_be_computed = False
-
         super().__init__(*args, **kwargs)
 
     def _do_build(self):
