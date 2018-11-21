@@ -369,6 +369,11 @@ class LisoParser(metaclass=abc.ABCMeta):
         except ElementNotFoundError as e:
             self.p_error("noise source '%s' is not present in the circuit" % e.name)
 
+        # sum cannot be computed without a "noisy" command
+        if self._noise_sum_to_be_computed and not self.summed_noise_objects:
+            # no sum noises defined
+            self.p_error("noise sum requires noisy components to be defined")
+
     @property
     def will_calc_tfs(self):
         """Whether the analysis will calculate transfer functions"""
