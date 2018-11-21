@@ -29,7 +29,8 @@ class Component(metaclass=abc.ABCMeta):
 
     TYPE = "component"
     BASE_NAME = "?"
-    UNIT = "A"
+    SOURCE_SINK_UNIT = "A"
+    DISPLAY_UNIT = "?"
 
     def __init__(self, name=None, nodes=None):
         if name is not None:
@@ -139,8 +140,6 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
         The component value.
     """
 
-    UNIT = "?"
-
     def __init__(self, value=None, node1=None, node2=None, *args, **kwargs):
         super().__init__(nodes=[node1, node2], *args, **kwargs)
         self.value = value
@@ -159,7 +158,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
     @value.setter
     def value(self, value):
         if value is not None:
-            value = Quantity(value, self.UNIT)
+            value = Quantity(value, self.DISPLAY_UNIT)
 
         self._value = value
 
@@ -395,7 +394,7 @@ class Input(Component):
 class Resistor(PassiveComponent):
     """Represents a resistor or set of series or parallel resistors"""
 
-    UNIT = "Ω"
+    DISPLAY_UNIT = "Ω"
     TYPE = "resistor"
     BASE_NAME = "r"
 
@@ -439,7 +438,7 @@ class Resistor(PassiveComponent):
 class Capacitor(PassiveComponent):
     """Represents a capacitor or set of series or parallel capacitors"""
 
-    UNIT = "F"
+    DISPLAY_UNIT = "F"
     TYPE = "capacitor"
     BASE_NAME = "c"
 
@@ -473,7 +472,7 @@ class Capacitor(PassiveComponent):
 class Inductor(PassiveComponent):
     """Represents an inductor or set of series or parallel inductors"""
 
-    UNIT = "H"
+    DISPLAY_UNIT = "H"
     TYPE = "inductor"
     BASE_NAME = "l"
 
@@ -531,7 +530,7 @@ class Inductor(PassiveComponent):
         coupling_factor = self.coupling_factors[other]
         mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
 
-        return Quantity(mutual_inductance, unit=self.UNIT)
+        return Quantity(mutual_inductance, unit=self.DISPLAY_UNIT)
 
     def impedance_from(self, other, frequency):
         """Calculate the impedance this inductor has due to the specified coupled inductor
@@ -579,7 +578,7 @@ class Node(metaclass=NamedInstance):
         node.
     """
 
-    UNIT = "V"
+    SOURCE_SINK_UNIT = "V"
 
     def __init__(self, name):
         """Instantiate a new node."""

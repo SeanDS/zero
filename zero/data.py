@@ -222,7 +222,7 @@ class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
 
     @property
     def source_unit(self):
-        return self.source.UNIT
+        return self.source.SOURCE_SINK_UNIT
 
 
 class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
@@ -237,7 +237,7 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
 
     @property
     def sink_unit(self):
-        return self.sink.UNIT
+        return self.sink.SOURCE_SINK_UNIT
 
 
 class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
