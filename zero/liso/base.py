@@ -460,35 +460,35 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     def _set_circuit_input(self):
         # create input component if necessary
-        try:
-            self.circuit["input"]
-        except ElementNotFoundError:
-            # add input
-            input_type = self.input_type
-            node = None
-            node_p = None
-            node_n = None
-            impedance = None
+        if self.circuit.has_component("input"):
+            return
 
-            if self.input_node_n is None:
-                # fixed input
-                node = self.input_node_p
-            else:
-                # floating input
-                node_p = self.input_node_p
-                node_n = self.input_node_n
+        # add input
+        input_type = self.input_type
+        node = None
+        node_p = None
+        node_n = None
+        impedance = None
 
-            # input type depends on whether we calculate noise or transfer functions
-            if self.noise_output_element is not None:
-                # we're calculating noise
-                input_type = "noise"
+        if self.input_node_n is None:
+            # fixed input
+            node = self.input_node_p
+        else:
+            # floating input
+            node_p = self.input_node_p
+            node_n = self.input_node_n
 
-                # set input impedance
-                impedance = self.input_impedance
+        # input type depends on whether we calculate noise or transfer functions
+        if self.noise_output_element is not None:
+            # we're calculating noise
+            input_type = "noise"
 
-            self.circuit.add_input(input_type=input_type, node=node,
-                                   node_p=node_p, node_n=node_n,
-                                   impedance=impedance)
+            # set input impedance
+            impedance = self.input_impedance
+
+        self.circuit.add_input(input_type=input_type, node=node,
+                                node_p=node_p, node_n=node_n,
+                                impedance=impedance)
 
     def _set_inductor_couplings(self):
         # discard name (not used in circuit mode)
