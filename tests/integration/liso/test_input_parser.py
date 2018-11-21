@@ -4,6 +4,7 @@ import unittest
 
 from zero.liso import LisoInputParser, LisoParserError
 
+
 class LisoInputParserTestCase(unittest.TestCase):
     """Base test case class for input parser"""
     def setUp(self):
@@ -12,6 +13,7 @@ class LisoInputParserTestCase(unittest.TestCase):
     def reset(self):
         """Reset input parser"""
         self.parser = LisoInputParser()
+
 
 class VoltageOutputTestCase(LisoInputParserTestCase):
     """Voltage output command tests"""
@@ -80,6 +82,7 @@ uoutput no ni allop
         # 3 op-amp outputs, one of which is no, plus ni
         self.assertEqual(4, self.parser.n_tf_outputs)
 
+
 class CurrentOutputTestCase(LisoInputParserTestCase):
     """Current output command tests"""
     def test_invalid_output_node(self):
@@ -146,6 +149,7 @@ ioutput load ri1 allop
         self.parser.build()
         # 3 op-amp outputs, plus two independent
         self.assertEqual(5, self.parser.n_tf_outputs)
+
 
 class NoiseOutputTestCase(LisoInputParserTestCase):
     """Noise output command tests"""
@@ -241,3 +245,18 @@ noise no rin n2a allop
         self.parser.build()
         # there should be 2 noise outputs per op-amp, so 6 total, plus one extra; one is duplicate
         self.assertEqual(7, self.parser.n_displayed_noise)
+
+    def test_cannot_compute_noise_sum_without_noisy_command(self):
+        self.parser.parse("""
+r r1 1k n1 n2
+r r2 10k n2 n3
+op op1 op00 gnd n2 n3
+freq log 1 100 10
+uinput n1
+noise op1 sum
+""")
+
+        # noise sum requires noisy command
+        self.assertRaisesRegex(LisoParserError,
+                               r"noise sum requires noisy components to be defined",
+                               self.parser.solution)
