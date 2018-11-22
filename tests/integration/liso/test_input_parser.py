@@ -1,6 +1,7 @@
 """LISO input parser tests"""
 
 import unittest
+import tempfile
 
 from zero.liso import LisoInputParser, LisoParserError
 
@@ -13,6 +14,34 @@ class LisoInputParserTestCase(unittest.TestCase):
     def reset(self):
         """Reset input parser"""
         self.parser = LisoInputParser()
+
+
+class InvalidFileTestCase(LisoInputParserTestCase):
+    """Voltage output command tests"""
+    def test_empty_string(self):
+        """Test empty file"""
+        self.parser.parse("")
+        self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
+
+    def test_empty_file(self):
+        """Test empty file"""
+        with tempfile.NamedTemporaryFile(mode="w") as fp:
+            # write empty line
+            fp.write("")
+            # parse
+            self.parser.parse(path=fp.name)
+
+        self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
+
+    def test_file_with_blank_line(self):
+        """Test file with only a blank line"""
+        with tempfile.NamedTemporaryFile(mode="w") as fp:
+            # write empty line
+            fp.write("\n")
+            # parse
+            self.parser.parse(path=fp.name)
+
+        self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
 
 
 class VoltageOutputTestCase(LisoInputParserTestCase):
