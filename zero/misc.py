@@ -52,6 +52,23 @@ class NamedInstance(abc.ABCMeta):
         return cls._names[name]
 
 
+class ChangeFlagDict(dict):
+    """Dict with flag which gets set when a change is made after initialisation."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # change flag
+        self.changed = False
+
+    def __setitem__(self, *args, **kwargs):
+        super().__setitem__(*args, **kwargs)
+        self.changed = True
+
+    def __delitem__(self, *args, **kwargs):
+        super().__delitem__(*args, **kwargs)
+        self.changed = True
+
+
 class Downloadable:
     """Mixin for downloadable URL classes, providing a progress bar."""
     def __init__(self, info_stream=sys.stdout, progress=True, timeout=None, **kwargs):

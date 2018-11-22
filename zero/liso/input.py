@@ -9,6 +9,7 @@ from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserEr
 
 LOGGER = logging.getLogger(__name__)
 
+
 class LisoInputParser(LisoParser):
     """LISO input file parser
 
@@ -61,50 +62,134 @@ class LisoInputParser(LisoParser):
     # ignore comments
     t_ignore_COMMENT = r'\#.*'
 
-    def __init__(self, *args, **kwargs):
-        self._instructions = []
+    @property
+    def _default_circuit_properties(self):
+        extra = {"output_all_nodes": False,
+                 "output_all_nodes_scales": None,
+                 "output_all_opamp_nodes": False,
+                 "output_all_opamp_nodes_scales": None,
+                 "output_all_components": False,
+                 "output_all_components_scales": None,
+                 "output_all_opamps": False,
+                 "output_all_opamps_scales": None,
+                 # displayed noise
+                 "noisy_elements": [],
+                 # extra noise to include in "sum" in addition to displayed noise
+                 "noisy_sum_elements": []}
 
-        # output flags
-        self._output_all_nodes = False
-        self._output_all_nodes_scales = None
-        self._output_all_opamp_nodes = False
-        self._output_all_opamp_nodes_scales = None
-        self._output_all_components = False
-        self._output_all_components_scales = None
-        self._output_all_opamps = False
-        self._output_all_opamps_scales = None
+        return {**super()._default_circuit_properties, **extra}
 
-        # raw noise source lists
-        self._noise_defs = [] # displayed noise
-        self._noisy_extra_defs = [] # extra noise to include in "sum" in addition to displayed noise
+    @property
+    def output_all_nodes(self):
+        return self._circuit_properties["output_all_nodes"]
 
-        super().__init__(*args, **kwargs)
+    @output_all_nodes.setter
+    def output_all_nodes(self, output_all_nodes):
+        self._circuit_properties["output_all_nodes"] = output_all_nodes
+
+    @property
+    def output_all_nodes_scales(self):
+        return self._circuit_properties["output_all_nodes_scales"]
+
+    @output_all_nodes_scales.setter
+    def output_all_nodes_scales(self, output_all_nodes_scales):
+        self._circuit_properties["output_all_nodes_scales"] = output_all_nodes_scales
+
+    @property
+    def output_all_opamp_nodes(self):
+        return self._circuit_properties["output_all_opamp_nodes"]
+
+    @output_all_opamp_nodes.setter
+    def output_all_opamp_nodes(self, output_all_opamp_nodes):
+        self._circuit_properties["output_all_opamp_nodes"] = output_all_opamp_nodes
+
+    @property
+    def output_all_opamp_nodes_scales(self):
+        return self._circuit_properties["output_all_opamp_nodes_scales"]
+
+    @output_all_opamp_nodes_scales.setter
+    def output_all_opamp_nodes_scales(self, output_all_opamp_nodes_scales):
+        self._circuit_properties["output_all_opamp_nodes_scales"] = output_all_opamp_nodes_scales
+
+    @property
+    def output_all_components(self):
+        return self._circuit_properties["output_all_components"]
+
+    @output_all_components.setter
+    def output_all_components(self, output_all_components):
+        self._circuit_properties["output_all_components"] = output_all_components
+
+    @property
+    def output_all_components_scales(self):
+        return self._circuit_properties["output_all_components_scales"]
+
+    @output_all_components_scales.setter
+    def output_all_components_scales(self, output_all_components_scales):
+        self._circuit_properties["output_all_components_scales"] = output_all_components_scales
+
+    @property
+    def output_all_opamps(self):
+        return self._circuit_properties["output_all_opamps"]
+
+    @output_all_opamps.setter
+    def output_all_opamps(self, output_all_opamps):
+        self._circuit_properties["output_all_opamps"] = output_all_opamps
+
+    @property
+    def output_all_opamps_scales(self):
+        return self._circuit_properties["output_all_opamps_scales"]
+
+    @output_all_opamps_scales.setter
+    def output_all_opamps_scales(self, output_all_opamps_scales):
+        self._circuit_properties["output_all_opamps_scales"] = output_all_opamps_scales
+
+    @property
+    def noisy_elements(self):
+        return self._circuit_properties["noisy_elements"]
+
+    @noisy_elements.setter
+    def noisy_elements(self, noisy_elements):
+        if self.noisy_elements is not None:
+            self.p_error("cannot redefine noisy elements")
+
+        self._circuit_properties["noisy_elements"] = noisy_elements
+
+    @property
+    def noisy_sum_elements(self):
+        return self._circuit_properties["noisy_sum_elements"]
+
+    @noisy_sum_elements.setter
+    def noisy_sum_elements(self, noisy_sum_elements):
+        if self.noisy_sum_elements is not None:
+            self.p_error("cannot redefine noisy sum elements")
+
+        self._circuit_properties["noisy_sum_elements"] = noisy_sum_elements
 
     def _do_build(self):
         super()._do_build()
 
         # add extra node outputs
-        if self._output_all_nodes:
+        if self.output_all_nodes:
             # show all nodes
             for node in self.circuit.non_gnd_nodes:
                 if node.name in self.output_nodes:
                     # already present
                     continue
 
-                sink = LisoOutputVoltage(node=node.name, scales=self._output_all_nodes_scales)
+                sink = LisoOutputVoltage(node=node.name, scales=self.output_all_nodes_scales)
                 self.add_tf_output(sink)
-        elif self._output_all_opamp_nodes:
+        elif self.output_all_opamp_nodes:
             # show all op-amp nodes
             for node in self.circuit.opamp_output_nodes:
                 if node.name in self.output_nodes:
                     # already present
                     continue
 
-                sink = LisoOutputVoltage(node=node.name, scales=self._output_all_opamp_nodes_scales)
+                sink = LisoOutputVoltage(node=node.name, scales=self.output_all_opamp_nodes_scales)
                 self.add_tf_output(sink)
 
         # add extra component outputs
-        if self._output_all_components:
+        if self.output_all_components:
             # show all components
             for component in self.circuit.components:
                 if component.name in self.output_components:
@@ -112,9 +197,9 @@ class LisoInputParser(LisoParser):
                     continue
 
                 sink = LisoOutputCurrent(component=component.name,
-                                         scales=self._output_all_components_scales)
+                                         scales=self.output_all_components_scales)
                 self.add_tf_output(sink)
-        elif self._output_all_opamps:
+        elif self.output_all_opamps:
             # show all op-amps
             for component in self.circuit.opamps:
                 if component.name in self.output_components:
@@ -122,7 +207,7 @@ class LisoInputParser(LisoParser):
                     continue
 
                 sink = LisoOutputCurrent(component=component.name,
-                                         scales=self._output_all_opamps_scales)
+                                         scales=self.output_all_opamps_scales)
                 self.add_tf_output(sink)
 
     def _get_noise_objects(self, definitions):
@@ -161,7 +246,7 @@ class LisoInputParser(LisoParser):
                     sources.update(self._get_component_noise(resistor))
             elif component_name == "sum":
                 # show sum of circuit noises
-                self._noise_sum_to_be_computed = True
+                self._circuit_properties["noise_sum_to_be_computed"] = True
             else:
                 # individual component
                 component = self.circuit[component_name]
@@ -212,16 +297,16 @@ class LisoInputParser(LisoParser):
     @property
     def displayed_noise_objects(self):
         """Noise sources to be plotted"""
-        return self._get_noise_objects(self._noise_defs)
+        return self._get_noise_objects(self.noisy_elements)
 
     @property
     def summed_noise_objects(self):
         """Noise sources included in the sum column"""
         # check "sum" is not present in noisy definitions
-        if "sum" in [definition[0].split(":")[0] for definition in self._noisy_extra_defs]:
+        if "sum" in [definition[0].split(":")[0] for definition in self.noisy_sum_elements]:
             self.p_error("cannot specify 'sum' as noisy source")
 
-        sum_sources = self._get_noise_objects(self._noisy_extra_defs)
+        sum_sources = self._get_noise_objects(self.noisy_sum_elements)
 
         # add displayed noise sources if not already present
         sum_sources.update(self.displayed_noise_objects)
@@ -399,7 +484,8 @@ class LisoInputParser(LisoParser):
             self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
 
     def _parse_mutual_inductance(self, name, coupling_factor, inductor_1, inductor_2):
-        self._inductor_couplings.append((name, coupling_factor, inductor_1, inductor_2))
+        coupling = (name, coupling_factor, inductor_1, inductor_2)
+        self._circuit_properties["inductor_couplings"].append(coupling)
 
     def _parse_library_opamp(self, *params):
         if len(params) < 5 or len(params) > 6:
@@ -502,12 +588,12 @@ class LisoInputParser(LisoParser):
 
         if node_name.lower() == "all":
             # all node voltages
-            self._output_all_nodes = True
-            self._output_all_nodes_scales = scales
+            self.output_all_nodes = True
+            self.output_all_nodes_scales = scales
         elif node_name.lower() == "allop":
             # op-amp outputs voltages
-            self._output_all_opamp_nodes = True
-            self._output_all_opamp_nodes_scales = scales
+            self.output_all_opamp_nodes = True
+            self.output_all_opamp_nodes_scales = scales
         else:
             # add output
             self.add_tf_output(LisoOutputVoltage(node=node_name, scales=scales))
@@ -527,12 +613,12 @@ class LisoInputParser(LisoParser):
 
         if component_name.lower() == "all":
             # all component currents
-            self._output_all_components = True
-            self._output_all_components_scales = scales
+            self.output_all_components = True
+            self.output_all_components_scales = scales
         elif component_name.lower() == "allop":
             # op-amp output currents
-            self._output_all_opamps = True
-            self._output_all_opamps_scales = scales
+            self.output_all_opamps = True
+            self.output_all_opamps_scales = scales
         else:
             # add output
             self.add_tf_output(LisoOutputCurrent(component=component_name, scales=scales))
@@ -560,7 +646,7 @@ class LisoInputParser(LisoParser):
                 self.p_error("unexpected extra ':'")
 
             # add raw noise definition and any suffices
-            self._noise_defs.append(source_pieces)
+            self._circuit_properties["noisy_elements"].append(source_pieces)
 
     def _parse_noisy_source(self, noisy_str):
         """Set contributions to "sum" noise curve"""
@@ -576,4 +662,4 @@ class LisoInputParser(LisoParser):
             source_pieces = source_str.split(":")
 
             # add raw noise definition and any suffices
-            self._noisy_extra_defs.append(source_pieces)
+            self._circuit_properties["noisy_sum_elements"].append(source_pieces)

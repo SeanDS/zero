@@ -11,6 +11,7 @@ from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserEr
 
 LOGGER = logging.getLogger(__name__)
 
+
 class LisoOutputParser(LisoParser):
     """LISO output file parser
 
@@ -92,65 +93,175 @@ class LisoOutputParser(LisoParser):
     # ignore spaces and tabs (always)
     t_ignore = ' \t'
 
-    def __init__(self, *args, **kwargs):
-        # raw data lists from parsed file
-        self._raw_data = []
+    @property
+    def _default_circuit_properties(self):
+        extra = {"n_resistors": None,
+                 "n_capacitors": None,
+                 "n_inductors": None,
+                 "n_mutual_inductances": None,
+                 "n_opamps": None,
+                 "n_nodes": None,
+                 "n_voltage_outputs": None,
+                 "n_current_outputs": None,
+                 "n_noise_sources": None,
+                 "n_noise": None,
+                 "n_noisy": None,
+                 # data lists from parsed file
+                 "raw_data": [],
+                 # index of noise source sum column
+                 "source_sum_index": None,
+                 # displayed noise
+                 "noisy_elements": [],
+                 # extra noise to include in "sum" in addition to displayed noise
+                 "noisy_sum_elements": []}
 
-        # data in float array
-        self._data = None
+        return {**super()._default_circuit_properties, **extra}
 
-        # number of each element as reported by the output file
-        self.nresistors = None
-        self.ncapacitors = None
-        self.ninductors = None
-        self.nmutualindutances = None
-        self.nopamps = None
-        self.nnodes = None
-        self.nvoutputs = None
-        self.nioutputs = None
-        self.nnoisesources = None
-        self.nnoise = None
-        self.nnoisy = None
+    @property
+    def n_resistors(self):
+        return self._circuit_properties["n_resistors"]
 
-        # index of noise source sum column
-        self._source_sum_index = None
+    @n_resistors.setter
+    def n_resistors(self, n_resistors):
+        self._circuit_properties["n_resistors"] = int(n_resistors)
 
-        # raw noise source lists
-        self._noise_defs = [] # displayed noise
-        self._noisy_defs = [] # computed noise, including extra sources included in "sum"
+    @property
+    def n_capacitors(self):
+        return self._circuit_properties["n_capacitors"]
 
-        super().__init__(*args, **kwargs)
+    @n_capacitors.setter
+    def n_capacitors(self, n_capacitors):
+        self._circuit_properties["n_capacitors"] = int(n_capacitors)
+
+    @property
+    def n_inductors(self):
+        return self._circuit_properties["n_inductors"]
+
+    @n_inductors.setter
+    def n_inductors(self, n_inductors):
+        self._circuit_properties["n_inductors"] = int(n_inductors)
+
+    @property
+    def n_mutual_inductances(self):
+        return self._circuit_properties["n_mutual_inductances"]
+
+    @n_mutual_inductances.setter
+    def n_mutual_inductances(self, n_mutual_inductances):
+        self._circuit_properties["n_mutual_inductances"] = int(n_mutual_inductances)
+
+    @property
+    def n_opamps(self):
+        return self._circuit_properties["n_opamps"]
+
+    @n_opamps.setter
+    def n_opamps(self, n_opamps):
+        self._circuit_properties["n_opamps"] = int(n_opamps)
+
+    @property
+    def n_nodes(self):
+        return self._circuit_properties["n_nodes"]
+
+    @n_nodes.setter
+    def n_nodes(self, n_nodes):
+        self._circuit_properties["n_nodes"] = int(n_nodes)
+
+    @property
+    def n_voltage_outputs(self):
+        return self._circuit_properties["n_voltage_outputs"]
+
+    @n_voltage_outputs.setter
+    def n_voltage_outputs(self, n_voltage_outputs):
+        self._circuit_properties["n_voltage_outputs"] = int(n_voltage_outputs)
+
+    @property
+    def n_current_outputs(self):
+        return self._circuit_properties["n_current_outputs"]
+
+    @n_current_outputs.setter
+    def n_current_outputs(self, n_current_outputs):
+        self._circuit_properties["n_current_outputs"] = int(n_current_outputs)
+
+    @property
+    def n_noise_sources(self):
+        return self._circuit_properties["n_noise_sources"]
+
+    @n_noise_sources.setter
+    def n_noise_sources(self, n_noise_sources):
+        self._circuit_properties["n_noise_sources"] = int(n_noise_sources)
+
+    @property
+    def n_noise(self):
+        return self._circuit_properties["n_noise"]
+
+    @n_noise.setter
+    def n_noise(self, n_noise):
+        self._circuit_properties["n_noise"] = int(n_noise)
+
+    @property
+    def n_noisy(self):
+        return self._circuit_properties["n_noisy"]
+
+    @n_noisy.setter
+    def n_noisy(self, n_noisy):
+        self._circuit_properties["n_noisy"] = int(n_noisy)
+
+    @property
+    def source_sum_index(self):
+        return self._circuit_properties["source_sum_index"]
+
+    @source_sum_index.setter
+    def source_sum_index(self, source_sum_index):
+        self._circuit_properties["source_sum_index"] = int(source_sum_index)
+
+    @property
+    def noisy_elements(self):
+        return self._circuit_properties["noisy_elements"]
+
+    @noisy_elements.setter
+    def noisy_elements(self, noisy_elements):
+        if self.noisy_elements is not None:
+            self.p_error("cannot redefine noisy elements")
+
+        self._circuit_properties["noisy_elements"] = noisy_elements
+
+    @property
+    def noisy_sum_elements(self):
+        return self._circuit_properties["noisy_sum_elements"]
+
+    @noisy_sum_elements.setter
+    def noisy_sum_elements(self, noisy_sum_elements):
+        if self.noisy_sum_elements is not None:
+            self.p_error("cannot redefine noisy sum elements")
+
+        self._circuit_properties["noisy_sum_elements"] = noisy_sum_elements
 
     def _do_build(self):
         # call parent
         super()._do_build()
 
         # parse data
-        data = np.array(self._raw_data)
+        data = np.array(self._circuit_properties["raw_data"])
 
         # frequencies are the first data column
         self.frequencies = data[:, 0]
 
         # the rest is data
-        self._data = data[:, 1:]
+        data = data[:, 1:]
 
         # create solution
-        self._build_solution()
+        self._build_solution(data)
 
-        # clear data
-        self._data = None
-
-    def _build_solution(self):
+    def _build_solution(self, data):
         self._solution = Solution(self.frequencies)
 
         if self.output_type == "tf":
-            self._build_tfs()
+            self._build_tfs(data)
         elif self.output_type == "noise":
-            self._build_noise()
+            self._build_noise(data)
         else:
             raise ValueError("unrecognised output type '%s'" % self.output_type)
 
-    def _build_tfs(self):
+    def _build_tfs(self, data):
         # column offset
         offset = 0
 
@@ -161,31 +272,31 @@ class LisoOutputParser(LisoParser):
                 imag_index, _ = tf_output.imag_index
 
                 # get data
-                real_data = self._data[:, offset + real_index]
-                imag_data = self._data[:, offset + imag_index]
+                real_data = data[:, offset + real_index]
+                imag_data = data[:, offset + imag_index]
 
                 # create data series
                 series = Series.from_re_im(x=self.frequencies, re=real_data, im=imag_data)
             elif tf_output.has_magnitude or tf_output.has_phase:
                 # dict to contain Series arguments
-                data = {}
+                series_data = {}
 
                 if tf_output.has_magnitude:
                     mag_index, mag_scale = tf_output.magnitude_index
 
                     # get magnitude data
-                    data["magnitude"] = self._data[:, offset + mag_index]
-                    data["mag_scale"] = mag_scale
+                    series_data["magnitude"] = data[:, offset + mag_index]
+                    series_data["mag_scale"] = mag_scale
 
                 if tf_output.has_phase:
                     phase_index, phase_scale = tf_output.phase_index
 
                     # get phase data
-                    data["phase"] = self._data[:, offset + phase_index]
-                    data["phase_scale"] = phase_scale
+                    series_data["phase"] = data[:, offset + phase_index]
+                    series_data["phase_scale"] = phase_scale
 
                 # create data series
-                series = Series.from_mag_phase(x=self.frequencies, **data)
+                series = Series.from_mag_phase(x=self.frequencies, **series_data)
             else:
                 raise ValueError("cannot build solution without either magnitude or phase, or "
                                  "both real and imaginary data columns present")
@@ -219,18 +330,18 @@ class LisoOutputParser(LisoParser):
             # increment offset
             offset += tf_output.n_scales
 
-    def _build_noise(self):
+    def _build_noise(self, data):
         """Build noise outputs"""
         # the data sink is always the noise output element
         sink = self.circuit[self.noise_output_element]
 
         # now that we have all the noise sources, create noise outputs
-        for index, definition in enumerate(self._noise_defs):
+        for index, definition in enumerate(self.noisy_elements):
             # get component
             component = self.circuit[definition[0]]
 
             # get data
-            series = Series(x=self.frequencies, y=self._data[:, index])
+            series = Series(x=self.frequencies, y=data[:, index])
 
             if len(definition) > 1:
                 # op-amp noise type specified
@@ -256,19 +367,19 @@ class LisoOutputParser(LisoParser):
             self._solution.add_noise(spectrum)
 
         # generate sum if present
-        if self._source_sum_index is not None:
+        if self.source_sum_index is not None:
             # get sources contributing to sum
             sources = self.summed_noise_objects
 
             # get data
-            series = Series(x=self.frequencies, y=self._data[:, self._source_sum_index])
+            series = Series(x=self.frequencies, y=data[:, self.source_sum_index])
 
             # create and store sum noise
             sum_noise = MultiNoiseSpectrum(sources=sources, sink=sink, series=series)
             self._solution.add_noise_sum(sum_noise, default=True)
 
             # flag that noise sum must be generated for any future native runs of this circuit
-            self._noise_sum_to_be_computed = True
+            self._circuit_properties["noise_sum_to_be_computed"] = True
 
     def _get_noise_objects(self, definitions):
         """Get noise objects for the specified raw noise defintions"""
@@ -308,55 +419,55 @@ class LisoOutputParser(LisoParser):
     @property
     def displayed_noise_objects(self):
         """Noise objects to be plotted"""
-        return self._get_noise_objects(self._noise_defs)
+        return self._get_noise_objects(self.noisy_elements)
 
     @property
     def summed_noise_objects(self):
         """Noise sources included in the sum column"""
-        return self._get_noise_objects(self._noisy_defs)
+        return self._get_noise_objects(self.noisy_sum_elements)
 
     def t_ANY_resistors(self, t):
         # match start of resistor section
         r'\#(?P<n>\d+)\sresistors?:'
-        self.nresistors = t.lexer.lexmatch.group('n')
+        self.n_resistors = t.lexer.lexmatch.group('n')
         t.lexer.begin('resistors')
 
     def t_ANY_capacitors(self, t):
         # match start of capacitor section
         r'\#(?P<n>\d+)\scapacitors?:'
-        self.ncapacitors = t.lexer.lexmatch.group('n')
+        self.n_capacitors = t.lexer.lexmatch.group('n')
         t.lexer.begin('capacitors')
 
     def t_ANY_inductors(self, t):
         # match start of inductor section
         r'\#(?P<n>\d+)\scoils?:'
-        self.ninductors = t.lexer.lexmatch.group('n')
+        self.n_inductors = t.lexer.lexmatch.group('n')
         t.lexer.begin('inductors')
 
     def t_ANY_mutualinductances(self, t):
         # match start of mutual inductance section
         r'\#(?P<n>\d+)\smutual\sinductances?:'
-        self.nmutualindutances = t.lexer.lexmatch.groups('n')
+        self.n_mutual_indutances = t.lexer.lexmatch.groups('n')
         t.lexer.begin('mutualinductances')
 
     def t_ANY_opamps(self, t):
         # match start of op-amp section
         r'\#(?P<n>\d+)\sop-amps?:'
-        self.nopamps = t.lexer.lexmatch.group('n')
+        self.n_opamps = t.lexer.lexmatch.group('n')
         t.lexer.begin('opamps')
 
     def t_ANY_nodes(self, t):
         # match start of node section
         r'\#(?P<n>\d+)\snodes?:'
-        self.nnodes = t.lexer.lexmatch.group('n')
+        self.n_nodes = t.lexer.lexmatch.group('n')
         t.lexer.begin('nodes')
 
     def t_ANY_noisysources(self, t):
         # match start of noise source section
         r'\#Noise\sis\scomputed\s(?P<ntype>at\snode|through\scomponent)\s(?:.+\:)?(?P<element>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
         self.output_type = "noise"
-        self.nnoise = t.lexer.lexmatch.group('nnoise')
-        self.nnoisy = t.lexer.lexmatch.group('nnoisy')
+        self.n_noise = t.lexer.lexmatch.group('nnoise')
+        self.n_noisy = t.lexer.lexmatch.group('nnoisy')
         self.noise_output_element = t.lexer.lexmatch.group('element')
         t.lexer.begin('noisysources')
 
@@ -383,26 +494,26 @@ class LisoOutputParser(LisoParser):
         # match start of voltage output section
         r'\#OUTPUT\s(?P<nout>\d+)\svoltage\soutputs?:'
         self.output_type = "tf"
-        self.nvoutputs = t.lexer.lexmatch.group('nout')
+        self.n_voltage_outputs = t.lexer.lexmatch.group('nout')
         t.lexer.begin('voltageoutputnodes')
 
     def t_ANY_currentoutputcomponents(self, t):
         # match start of current output section
         r'\#OUTPUT\s(?P<nout>\d+)\scurrent\soutputs?:'
         self.output_type = "tf"
-        self.nioutputs = t.lexer.lexmatch.group('nout')
+        self.n_current_outputs = t.lexer.lexmatch.group('nout')
         t.lexer.begin('currentoutputcomponents')
 
     def t_ANY_noisevoltageoutputs(self, t):
         # match start of noise voltage output section
         r'\#OUTPUT\s(?P<nsource>\d+)\snoise\svoltages?\scaused\sby:'
-        self.nnoisesources = t.lexer.lexmatch.group('nsource')
+        self.n_noise_sources = t.lexer.lexmatch.group('nsource')
         t.lexer.begin('noisevoltageoutputs')
 
     def t_ANY_noisecurrentoutputs(self, t):
         # match start of noise current output section
         r'\#OUTPUT\s(?P<nsource>\d+)\snoise\scurrents?\scaused\sby:'
-        self.nnoisesources = t.lexer.lexmatch.group('nsource')
+        self.n_noise_sources = t.lexer.lexmatch.group('nsource')
         t.lexer.begin('noisecurrentoutputs')
 
     def t_ANY_gnuplotoptions(self, t):
@@ -522,7 +633,7 @@ class LisoOutputParser(LisoParser):
             return
 
         # add new row to data
-        self._raw_data.append(p[1])
+        self._circuit_properties["raw_data"].append(p[1])
 
     def p_data(self, p):
         # list of measurements
@@ -680,10 +791,10 @@ class LisoOutputParser(LisoParser):
         if len(tokens) != 4:
             self.p_error("unexpected parameter count (%d)" % len(tokens))
 
-        # unpack tokens
-        name, coupling_factor, inductor_1, inductor_2 = tokens
+        # pack tokens
+        couplings = tuple(tokens)
 
-        self._inductor_couplings.append((name, coupling_factor, inductor_1, inductor_2))
+        self._circuit_properties["inductor_couplings"].append(couplings)
 
     def _parse_opamp(self, opamp_str):
         # remove ignored strings
@@ -879,7 +990,7 @@ class LisoOutputParser(LisoParser):
         if component_name == "sum":
             # this is a sum column
             # (don't set self._source_sum = True as this regenerates the sum)
-            self._source_sum_index = int(data_index)
+            self.source_sum_index = data_index
 
             # nothing more to do
             return
@@ -894,7 +1005,7 @@ class LisoOutputParser(LisoParser):
             # add op-amp noise type
             definition.append(noise_type_id)
 
-        self._noise_defs.append(definition)
+        self._circuit_properties["noisy_elements"].append(definition)
 
     def _parse_noisy_sources(self, sources_line):
         """Parse noise sources used to calculate the noise outputs."""
@@ -925,4 +1036,4 @@ class LisoOutputParser(LisoParser):
             # add op-amp noise type
             definition.append(type_str)
 
-        self._noisy_defs.append(definition)
+        self._circuit_properties["noisy_sum_elements"].append(definition)
