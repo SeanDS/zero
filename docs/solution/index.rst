@@ -47,18 +47,21 @@ with two inputs and one output:
     # parse base circuit
     parser.parse(base_circuit)
     # set input to low frequency port
-    parser.parse("uinput nlf 50", reset=False)
+    parser.parse("uinput nlf 50")
     # ground unused input
-    parser.parse("r nrfsrc 5 nrf gnd", reset=False)
+    parser.parse("r nrfsrc 5 nrf gnd")
     # calculate solution
     solutionlf = parser.solution()
+
+    # reset parser state
+    parser.reset()
 
     # parse base circuit
     parser.parse(base_circuit)
     # set input to radio frequency port
-    parser.parse("uinput nrf 50", reset=False)
+    parser.parse("uinput nrf 50")
     # ground unused input
-    parser.parse("r nlfsrc 5 nlf gnd", reset=False)
+    parser.parse("r nlfsrc 5 nlf gnd")
     # calculate solution
     solutionrf = parser.solution()
 

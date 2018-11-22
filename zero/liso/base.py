@@ -213,7 +213,7 @@ class LisoParser(metaclass=abc.ABCMeta):
     def n_summed_noise(self):
         return len(self.summed_noise_objects)
 
-    def parse(self, text=None, path=None, reset=True):
+    def parse(self, text=None, path=None):
         """Parse LISO file.
 
         Parameters
@@ -222,10 +222,6 @@ class LisoParser(metaclass=abc.ABCMeta):
             LISO text to parse.
         path : :class:`str`, optional
             Path to LISO file to parse.
-        reset : :class:`bool`, optional
-            Reset the parser state before parsing the specified text or file. If False, the parser
-            carries on as if the specified text or file is part of the previously parsed circuit
-            definition.
         """
         if text is None and path is None:
             raise ValueError("must provide either text or a path")
@@ -240,12 +236,8 @@ class LisoParser(metaclass=abc.ABCMeta):
             with open(path, "r") as obj:
                 text = obj.read()
 
-        if reset:
-            self.reset()
-
-        if self._eof:
-            # reset end of file
-            self._eof = False
+        # reset end of file
+        self._eof = False
 
         self.parser.parse(text, lexer=self.lexer)
 

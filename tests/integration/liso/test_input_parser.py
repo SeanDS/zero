@@ -69,11 +69,12 @@ uoutput n3
         self.parser.parse(circuit1)
         _ = self.parser.solution()
 
-        # parse second circuit with same parser (parser resets by default)
+        # parse second circuit with same parser, but with reset state
+        self.parser.reset()
         self.parser.parse(circuit2)
         sol2a = self.parser.solution()
 
-        # parse second circuit using a reset parser
+        # parse second circuit using a newly instantiated parser
         self.reset()
         self.parser.parse(circuit2)
         sol2b = self.parser.solution()
@@ -99,8 +100,9 @@ uoutput n3
         sol1a = self.parser.solution()
 
         # parse first and second parts subsequently
+        self.reset()
         self.parser.parse(circuit1a)
-        self.parser.parse(circuit1b, reset=False)
+        self.parser.parse(circuit1b)
         sol1b = self.parser.solution()
 
         self.assertTrue(sol1a.equivalent_to(sol1b))
