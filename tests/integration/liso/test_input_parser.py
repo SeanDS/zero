@@ -15,7 +15,6 @@ class LisoInputParserTestCase(unittest.TestCase):
         """Reset input parser"""
         self.parser = LisoInputParser()
 
-
 class InvalidFileTestCase(LisoInputParserTestCase):
     """Voltage output command tests"""
     def test_empty_string(self):
@@ -42,6 +41,69 @@ class InvalidFileTestCase(LisoInputParserTestCase):
             self.parser.parse(path=fp.name)
 
         self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
+
+
+class ParserReuseTestCase(LisoInputParserTestCase):
+    """Test reusing input parser for the same or different circuits"""
+    def test_parser_reuse_for_different_circuit(self):
+        """Test reusing input parser for different circuits"""
+        circuit1 = """
+r r1 1k n1 n2
+op op1 OP00 gnd n2 n3
+r r2 2k n2 n3
+freq log 1 1k 100
+uinput n1
+uoutput n3
+"""
+
+        circuit2 = """
+r r1 2k n1 n2
+op op1 OP00 gnd n2 n3
+r r2 4k n2 n3
+freq log 1 2k 100
+uinput n1
+uoutput n3
+"""
+
+        # parse first circuit
+        self.parser.parse(circuit1)
+        _ = self.parser.solution()
+
+        # parse second circuit with same parser (parser resets by default)
+        self.parser.parse(circuit2)
+        sol2a = self.parser.solution()
+
+        # parse second circuit using a reset parser
+        self.reset()
+        self.parser.parse(circuit2)
+        sol2b = self.parser.solution()
+
+        self.assertTrue(sol2a.equivalent_to(sol2b))
+
+    def test_parser_reuse_for_same_circuit(self):
+        """Test reusing input parser for same circuits"""
+        circuit1a = """
+r r1 1k n1 n2
+op op1 OP00 gnd n2 n3
+r r2 2k n2 n3
+"""
+
+        circuit1b = """
+freq log 1 1k 100
+uinput n1
+uoutput n3
+"""
+
+        # parse first and second parts together
+        self.parser.parse(circuit1a + circuit1b)
+        sol1a = self.parser.solution()
+
+        # parse first and second parts subsequently
+        self.parser.parse(circuit1a)
+        self.parser.parse(circuit1b, reset=False)
+        sol1b = self.parser.solution()
+
+        self.assertTrue(sol1a.equivalent_to(sol1b))
 
 
 class VoltageOutputTestCase(LisoInputParserTestCase):
