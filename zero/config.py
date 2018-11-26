@@ -9,6 +9,12 @@ from configparser import ConfigParser
 import numpy as np
 import pkg_resources
 import click
+from yaml import safe_load
+
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
 from . import PROGRAM
 from .format import Quantity
@@ -30,6 +36,94 @@ class SingletonAbstractMeta(abc.ABCMeta):
             cls._SINGLETON_REGISTRY[cls] = super().__call__(*args, **kwargs)
 
         return cls._SINGLETON_REGISTRY[cls]
+
+
+class ZeroConfig(dict):
+    """Zero config parser"""
+    # user config filename
+    USER_CONFIG_FILENAME = "zero.yaml"
+    # default config copied to user directory if requested
+    DEFAULT_USER_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist"
+    # config into which others are merged
+    BASE_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist.default"
+
+    def __init__(self):
+        self._user_config_path = None
+        # load default config then override with user config
+        self._load_base_config()
+        self._load_user_config()
+
+    @property
+    def base_config_path(self):
+        return pkg_resources.resource_filename(__name__, self.BASE_CONFIG_FILENAME)
+
+    @property
+    def user_config_path(self):
+        config_dir = click.get_app_dir(PROGRAM)
+        return os.path.join(config_dir, self.USER_CONFIG_FILENAME)
+
+    def create_user_config(self):
+        if os.path.exists(self.user_config_path):
+            raise Exception("config file already exists at %s" % self.user_config_path)
+
+        LOGGER.info("Creating default user config file at %s", self.user_config_path)
+
+        # copy default
+        default_path = pkg_resources.resource_filename(__name__, self.DEFAULT_USER_CONFIG_FILENAME)
+
+        # user configuration directory
+        config_dir = os.path.dirname(self.user_config_path)
+
+        if not os.path.isdir(config_dir):
+            # make directory tree
+            os.makedirs(config_dir)
+
+        # copy default config into user config directory
+        shutil.copyfile(default_path, self.user_config_path)
+
+    def _load_base_config(self):
+        self._merge_yaml_file(self.base_config_path)
+
+    def _load_user_config(self):
+        """Load user config file"""
+        # check the config file exists
+        if not os.path.isfile(self.user_config_path):
+            LOGGER.info("No user config file found at %s", self.user_config_path)
+            return
+
+        self._merge_yaml_file(self.user_config_path)
+
+    def _merge_yaml_file(self, path):
+        with open(path, "r") as configfile:
+            config = safe_load(configfile)
+
+        self._merge_config(config)
+
+    def _merge_config(self, config):
+        """Merge specified configuration with this one."""
+        self._merge_recursive(self, config)
+
+    @classmethod
+    def _merge_recursive(cls, config_a, config_b, _path=None):
+        """Merge second configuration into first configuration.
+        https://stackoverflow.com/a/7205107
+        """
+        if _path is None:
+            _path = []
+
+        for key in config_b:
+            if key in config_a:
+                if isinstance(config_a[key], dict) and isinstance(config_b[key], dict):
+                    cls._merge_recursive(config_a[key], config_b[key], _path + [str(key)])
+                elif config_a[key] == config_b[key]:
+                    # same leaf value
+                    pass
+                else:
+                    raise Exception('config merge conflict at %s' % '.'.join(_path + [str(key)]))
+            else:
+                config_a[key] = config_b[key]
+
+        return config_a
 
 
 class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
@@ -100,13 +194,6 @@ class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
         config_file = os.path.join(config_dir, cls.CONFIG_FILENAME)
 
         return config_file
-
-
-class ZeroConfig(BaseConfig):
-    """Zero config parser"""
-    CONFIG_FILENAME = "zero.conf"
-    DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
-    DEFAULT_USER_CONFIG_FILENAME = DEFAULT_CONFIG_FILENAME + ".default"
 
 
 class OpAmpLibrary(BaseConfig):

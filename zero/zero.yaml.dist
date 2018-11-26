@@ -1,0 +1,14 @@
+# Zero user configuration. This file allows users to override the default settings
+# used in Zero.
+#
+# Strings starting with '#' are comments.
+
+# Example of overriding plot options:
+#plot:
+#  # Default plot size, in inches.
+#  size_x: 10
+#  size_y: 8
+#
+#  # Matplotlib configuration overrides.
+#  matplotlib:
+#    legend.fontsize: 10

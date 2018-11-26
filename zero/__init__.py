@@ -19,7 +19,7 @@ try:
     CONF = ZeroConfig()
 
     # update Matplotlib options with overrides from config
-    rcParams.update(CONF["matplotlib"])
+    rcParams.update(CONF["plot"]["matplotlib"])
 except ImportError:
     # matplotlib and/or numpy not installed
     pass

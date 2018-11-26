@@ -12,7 +12,8 @@ REQUIREMENTS = [
     "tabulate",
     "setuptools_scm",
     "ply",
-    "click"
+    "click",
+    "PyYAML"
 ]
 
 # extra dependencies
@@ -41,7 +42,7 @@ setup(
     url="https://git.ligo.org/sean-leavey/zero",
     packages=find_packages(),
     package_data={
-        "zero": ["zero.conf.dist", "zero.conf.dist.default",
+        "zero": ["zero.yaml.dist", "zero.yaml.dist.default",
                  "library.conf.dist", "library.conf.dist.default"]
     },
     entry_points={
