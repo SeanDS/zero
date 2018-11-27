@@ -146,6 +146,9 @@ class Downloadable:
 
 def open_file(path):
     """Open the specified file in a relevant application."""
+    if not os.path.isfile(path):
+        raise FileNotFoundError("specified path does not exist or is not readable")
+
     if sys.platform == "win32":
         os.startfile(path)
     else:
