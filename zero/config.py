@@ -11,16 +11,11 @@ import pkg_resources
 import click
 from yaml import safe_load
 
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
-
 from . import PROGRAM
 from .format import Quantity
+from .misc import open_file
 
 LOGGER = logging.getLogger(__name__)
-
 
 class SingletonAbstractMeta(abc.ABCMeta):
     """Abstract singleton class"""
@@ -38,7 +33,7 @@ class SingletonAbstractMeta(abc.ABCMeta):
         return cls._SINGLETON_REGISTRY[cls]
 
 
-class ZeroConfig(dict):
+class ZeroConfig(dict, metaclass=SingletonAbstractMeta):
     """Zero config parser"""
     # user config filename
     USER_CONFIG_FILENAME = "zero.yaml"
@@ -48,6 +43,9 @@ class ZeroConfig(dict):
     BASE_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist.default"
 
     def __init__(self):
+        # flag whether config is invalid
+        self.user_config_invalid = False
+
         self._user_config_path = None
         # load default config then override with user config
         self._load_base_config()
@@ -64,7 +62,7 @@ class ZeroConfig(dict):
 
     def create_user_config(self):
         if os.path.exists(self.user_config_path):
-            raise Exception("config file already exists at %s" % self.user_config_path)
+            raise ConfigAlreadyExistsException(self.user_config_path)
 
         LOGGER.info("Creating default user config file at %s", self.user_config_path)
 
@@ -81,6 +79,12 @@ class ZeroConfig(dict):
         # copy default config into user config directory
         shutil.copyfile(default_path, self.user_config_path)
 
+    def open_user_config(self):
+        try:
+            open_file(self.user_config_path)
+        except FileNotFoundError:
+            raise ConfigDoesntExistException(self.user_config_path)
+
     def _load_base_config(self):
         self._merge_yaml_file(self.base_config_path)
 
@@ -91,11 +95,22 @@ class ZeroConfig(dict):
             LOGGER.info("No user config file found at %s", self.user_config_path)
             return
 
-        self._merge_yaml_file(self.user_config_path)
+        try:
+            self._merge_yaml_file(self.user_config_path)
+        except Exception as e:
+            # an error occurred loading user file
+            if not self.user_config_invalid:
+                LOGGER.error("user config file at %s is invalid" % self.user_config_path)
+                self.user_config_invalid = True
 
     def _merge_yaml_file(self, path):
         with open(path, "r") as configfile:
             config = safe_load(configfile)
+
+        if config is None:
+            # config may be empty
+            LOGGER.debug("config file at %s is empty" % path)
+            return
 
         self._merge_config(config)
 
@@ -104,22 +119,26 @@ class ZeroConfig(dict):
         self._merge_recursive(self, config)
 
     @classmethod
-    def _merge_recursive(cls, config_a, config_b, _path=None):
+    def _merge_recursive(cls, config_a, config_b, path=None):
         """Merge second configuration into first configuration.
         https://stackoverflow.com/a/7205107
         """
-        if _path is None:
-            _path = []
+        if path is None:
+            path = []
 
         for key in config_b:
             if key in config_a:
                 if isinstance(config_a[key], dict) and isinstance(config_b[key], dict):
-                    cls._merge_recursive(config_a[key], config_b[key], _path + [str(key)])
+                    # merge values together
+                    cls._merge_recursive(config_a[key], config_b[key], path + [str(key)])
                 elif config_a[key] == config_b[key]:
                     # same leaf value
                     pass
+                elif config_b[key] is None:
+                    # don't copy anything to preserve a's structure
+                    pass
                 else:
-                    raise Exception('config merge conflict at %s' % '.'.join(_path + [str(key)]))
+                    raise Exception('configuration conflict at %s' % '.'.join(path + [str(key)]))
             else:
                 config_a[key] = config_b[key]
 
@@ -685,3 +704,13 @@ class LibraryOpAmp:
 
     def __str__(self):
         return "{cmp.model}(a0={cmp.a0}, gbw={cmp.gbw}, delay={cmp.delay})".format(cmp=self)
+
+
+class ConfigDoesntExistException(Exception):
+    def __init__(self, config_path, *args, **kwargs):
+        super().__init__("config file %s doesn't exist" % config_path, *args, **kwargs)
+
+
+class ConfigAlreadyExistsException(Exception):
+    def __init__(self, config_path, *args, **kwargs):
+        super().__init__("config file already exists at %s" % config_path, *args, **kwargs)
