@@ -2,6 +2,7 @@
 
 import sys
 import logging
+from pprint import pformat
 from click import Path, File, IntRange, group, argument, option, version_option, pass_context
 from tabulate import tabulate
 
@@ -312,6 +313,14 @@ def edit(ctx):
         CONF.open_user_config()
     except ConfigDoesntExistException:
         state.print_error("Configuration file doesn't exist. Try 'zero config create'.")
+
+@config.command("dump")
+@pass_context
+def dump(ctx):
+    """Print the config that Zero uses."""
+    state = ctx.ensure_object(State)
+
+    state.print_info(pformat(CONF))
 
 @cli.command()
 @argument("term")
