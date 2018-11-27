@@ -14,12 +14,12 @@ The built-in op-amp definitions can be supplemented or overridden by a user-defi
 op-amp library. This library is stored in the user's home directory in a location
 that depends on the operating system.
 
-The path to this file can be listed with the command ``zero library path``.
+The path to this file can be listed with the command ``zero config path``.
 
 Opening the user library for editing
 ------------------------------------
 
-The built-in library can be opened with the command ``zero library open``. If the
+The built-in library can be opened with the command ``zero config edit``. If the
 file does not yet exist, it is created before opening.
 
 Search queries
