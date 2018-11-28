@@ -4,16 +4,16 @@ docs-html:
 test: test-all
 
 test-all:
-	python tests/runner.py all
+	python -m tests run all
 
 test-unit:
-	python tests/runner.py unit
+	python -m tests run unit
 
 test-integration:
-	python tests/runner.py integration
+	python -m tests run integration
 
 test-validation:
-	python tests/runner.py validation
+	python -m tests run validation
 
 lint:
 	pylint --rcfile=.pylintrc zero
