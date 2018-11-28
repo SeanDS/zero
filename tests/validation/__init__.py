@@ -1,0 +1,1 @@
+from .liso import LisoTestSuite
