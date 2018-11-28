@@ -319,7 +319,6 @@ def edit(ctx):
 def dump(ctx):
     """Print the config that Zero uses."""
     state = ctx.ensure_object(State)
-
     state.print_info(pformat(CONF))
 
 @cli.command()

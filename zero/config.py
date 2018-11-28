@@ -17,6 +17,7 @@ from .misc import open_file
 
 LOGGER = logging.getLogger(__name__)
 
+
 class SingletonAbstractMeta(abc.ABCMeta):
     """Abstract singleton class"""
 
@@ -100,7 +101,7 @@ class ZeroConfig(dict, metaclass=SingletonAbstractMeta):
         except Exception as e:
             # an error occurred loading user file
             if not self.user_config_invalid:
-                LOGGER.error("user config file at %s is invalid" % self.user_config_path)
+                LOGGER.error("user config file at %s is invalid", self.user_config_path)
                 self.user_config_invalid = True
 
     def _merge_yaml_file(self, path):
@@ -109,7 +110,7 @@ class ZeroConfig(dict, metaclass=SingletonAbstractMeta):
 
         if config is None:
             # config may be empty
-            LOGGER.debug("config file at %s is empty" % path)
+            LOGGER.debug("config file at %s is empty", path)
             return
 
         self._merge_config(config)
