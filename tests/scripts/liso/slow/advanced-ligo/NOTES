@@ -1,0 +1,12 @@
+These LISO scripts were provided by Christopher Wipf, originally derived from Altium electronics
+designs publicly available in the following places:
+
+  - https://dcc.ligo.org/LIGO-D1001530/public
+  - https://dcc.ligo.org/LIGO-D0902747/public
+  - https://dcc.ligo.org/LIGO-D070481/public
+  - https://dcc.ligo.org/LIGO-D0901047/public
+  - https://dcc.ligo.org/LIGO-D070483/public
+
+The following op-amp substitutions have been made due to these parts not being in the library:
+  - OPA548 -> PA85
+  - OPA544 -> PA85
