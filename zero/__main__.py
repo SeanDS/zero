@@ -52,18 +52,6 @@ class State:
         """
         return self.verbosity <= logging.INFO
 
-    def _print(self, msg, is_error, exit_, exit_code=0):
-        click.echo(msg, err=is_error)
-
-        if exit_:
-            sys.exit(exit_code)
-
-    def print_info(self, msg, exit_=False):
-        self._print(msg, False, exit_, 0)
-
-    def print_error(self, msg, exit_=True):
-        self._print(msg, True, exit_, 1)
-
 
 def set_verbosity(ctx, _, value):
     """Set stdout verbosity"""
@@ -148,7 +136,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
             header, rows = native_solution.difference(liso_solution, defaults_only=True,
                                                       meta_only=True)
 
-            state.print_info(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+            click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
         # apply suffix to LISO function labels
         for function in liso_solution.functions:
@@ -185,8 +173,42 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
 @cli.group()
 def library():
-    """Op-amp library functions."""
+    """Component library functions."""
     pass
+
+@library.command("path")
+def library_path():
+    """Print component library file path.
+
+    Note: this path may not exist.
+    """
+    click.echo(click.format_filename(LIBRARY.user_config_path))
+
+@library.command("create")
+def library_create():
+    """Create empty library file in user directory."""
+    # create config
+    try:
+        LIBRARY.create_user_config()
+    except ConfigAlreadyExistsException as e:
+        click.echo(e, err=True)
+    else:
+        click.echo("Library created at %s" % LIBRARY.user_config_path)
+
+@library.command("edit")
+def library_edit():
+    """Open library file for editing."""
+    try:
+        LIBRARY.open_user_config()
+    except ConfigDoesntExistException:
+        click.echo("Configuration file doesn't exist. Try 'zero library create'.", err=True)
+
+@library.command("show")
+@click.option("--paged", is_flag=True, default=False, help="Print with paging.")
+def library_show(paged):
+    """Print the library that Zero uses."""
+    echo = click.echo_via_pager if paged else click.echo
+    echo(pformat(LIBRARY))
 
 @library.command()
 @click.argument("query")
@@ -199,8 +221,8 @@ def library():
 @click.option("--vmax", is_flag=True, default=False, help="Show maximum output voltage.")
 @click.option("--imax", is_flag=True, default=False, help="Show maximum output current.")
 @click.option("--sr", is_flag=True, default=False, help="Show slew rate.")
-@click.pass_context
-def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr):
+@click.option("--paged", is_flag=True, default=False, help="Print results with paging.")
+def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr, paged):
     """Search Zero op-amp library.
 
     Op-amp parameters listed in the library can be searched:
@@ -226,7 +248,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
 
         vnoise < 10n & vcorner < 10
     """
-    state = ctx.ensure_object(State)
+    echo = click.echo_via_pager if paged else click.echo
 
     engine = LibraryQueryEngine()
 
@@ -255,7 +277,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
     devices = engine.query(query)
 
     if not devices:
-        state.print_info("No op-amps found")
+        click.echo("No op-amps found")
     else:
         nmodel = len(devices)
         if nmodel == 1:
@@ -263,7 +285,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
         else:
             opstr = "op-amps"
 
-        state.print_info("%i %s found:" % (nmodel, opstr))
+        click.echo("%i %s found:" % (nmodel, opstr))
 
         header = ["Model"] + params
         rows = []
@@ -273,7 +295,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
             row.extend([str(getattr(device, param)) for param in params])
             rows.append(row)
 
-        state.print_info(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+        echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
 @cli.group()
 def config():
@@ -281,47 +303,38 @@ def config():
     pass
 
 @config.command("path")
-@click.pass_context
-def path(ctx):
+def config_path():
     """Print user config file path.
 
     Note: this path may not exist.
     """
-    state = ctx.ensure_object(State)
-
-    state.print_info(click.format_filename(CONF.user_config_path))
+    click.echo(click.format_filename(CONF.user_config_path))
 
 @config.command("create")
-@click.pass_context
-def create(ctx):
+def config_create():
     """Create empty config file in user directory."""
-    state = ctx.ensure_object(State)
-
     # create config
     try:
         CONF.create_user_config()
     except ConfigAlreadyExistsException as e:
-        state.print_error(e)
+        click.echo(e, err=True)
     else:
-        state.print_info("Config created at %s" % CONF.user_config_path)
+        click.echo("Config created at %s" % CONF.user_config_path)
 
 @config.command("edit")
-@click.pass_context
-def edit(ctx):
+def config_edit():
     """Open user config file for editing."""
-    state = ctx.ensure_object(State)
-
     try:
         CONF.open_user_config()
     except ConfigDoesntExistException:
-        state.print_error("Configuration file doesn't exist. Try 'zero config create'.")
+        click.echo("Configuration file doesn't exist. Try 'zero config create'.", err=True)
 
-@config.command("dump")
-@click.pass_context
-def dump(ctx):
+@config.command("show")
+@click.option("--paged", is_flag=True, default=False, help="Print with paging.")
+def config_show(paged):
     """Print the config that Zero uses."""
-    state = ctx.ensure_object(State)
-    state.print_info(pformat(CONF))
+    echo = click.echo_via_pager if paged else click.echo
+    echo(pformat(CONF))
 
 @cli.command()
 @click.argument("term")
@@ -342,59 +355,49 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     parts = PartRequest(term, partial=partial, path=path, timeout=timeout, progress=state.verbose)
 
     if not parts:
-        state.print_error("No parts found")
+        click.echo("No parts found", err=True)
+        sys.exit(1)
 
     if first or len(parts) == 1:
         # latest part
         part = parts.latest_part
 
         # show results directly
-        state.print_info(part)
+        click.echo(part)
     else:
-        state.print_info("Found multiple parts:")
+        click.echo("Found multiple parts:")
         for index, part in enumerate(parts, 1):
-            state.print_info("%d: %s" % (index, part))
+            click.echo("%d: %s" % (index, part))
 
-        chosen_part_idx = 0
-        while chosen_part_idx <= 0 or chosen_part_idx > len(parts):
-            try:
-                chosen_part_idx = int(input("Enter part number: "))
-
-                if chosen_part_idx <= 0 or chosen_part_idx > len(parts):
-                    raise ValueError
-            except ValueError:
-                state.print_error("Invalid, try again", exit=False)
+        # get selection
+        part_choice = click.IntRange(1, len(parts))
+        part_index = click.prompt("Enter part number", default=1, type=part_choice)
 
         # get chosen datasheet
-        part = parts[chosen_part_idx - 1]
+        part = parts[part_index - 1]
 
     # get chosen part
     if part.n_datasheets == 0:
-        state.print_error("No datasheets found for '%s'" % part.mpn)
+        click.echo("No datasheets found for '%s'" % part.mpn, err=True)
+        sys.exit(1)
 
     if first or part.n_datasheets == 1:
         # show results directly
-        state.print_info(part)
+        click.echo(part)
 
         # get datasheet
         ds = part.latest_datasheet
     else:
-        state.print_info("Found multiple datasheets:")
+        click.echo("Found multiple datasheets:")
         for index, ds in enumerate(part.sorted_datasheets, 1):
-            state.print_info("%d: %s" % (index, ds))
+            click.echo("%d: %s" % (index, ds))
 
-        chosen_datasheet_idx = 0
-        while chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
-            try:
-                chosen_datasheet_idx = int(input("Enter datasheet number: "))
-
-                if chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
-                    raise ValueError
-            except ValueError:
-                state.print_error("Invalid, try again", exit=False)
+        # get selection
+        datasheet_choice = click.IntRange(1, part.n_datasheets)
+        datasheet_index = click.prompt("Enter part number", default=1, type=datasheet_choice)
 
         # get datasheet
-        ds = part.datasheets[chosen_datasheet_idx - 1]
+        ds = part.datasheets[datasheet_index - 1]
 
     # display details
     if ds.created is not None:
