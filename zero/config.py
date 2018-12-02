@@ -2,7 +2,6 @@
 
 import os.path
 import shutil
-import abc
 import logging
 import re
 from configparser import ConfigParser
@@ -13,28 +12,12 @@ from yaml import safe_load
 
 from . import PROGRAM
 from .format import Quantity
-from .misc import open_file
+from .misc import Singleton, open_file
 
 LOGGER = logging.getLogger(__name__)
 
 
-class SingletonAbstractMeta(abc.ABCMeta):
-    """Abstract singleton class"""
-
-    # dict of active instances
-    _SINGLETON_REGISTRY = {}
-
-    def __call__(cls, *args, **kwargs):
-        """Return instance of `cls` if alrady exists, otherwise create"""
-
-        if cls not in cls._SINGLETON_REGISTRY:
-            # create new instance
-            cls._SINGLETON_REGISTRY[cls] = super().__call__(*args, **kwargs)
-
-        return cls._SINGLETON_REGISTRY[cls]
-
-
-class ZeroConfig(dict, metaclass=SingletonAbstractMeta):
+class ZeroConfig(dict, metaclass=Singleton):
     """Zero config parser"""
     # user config filename
     USER_CONFIG_FILENAME = "zero.yaml"
@@ -146,7 +129,7 @@ class ZeroConfig(dict, metaclass=SingletonAbstractMeta):
         return config_a
 
 
-class BaseConfig(ConfigParser, metaclass=SingletonAbstractMeta):
+class BaseConfig(ConfigParser, metaclass=Singleton):
     """Abstract configuration class"""
     CONFIG_FILENAME = None
     DEFAULT_CONFIG_FILENAME = None
