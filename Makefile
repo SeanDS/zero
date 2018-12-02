@@ -3,9 +3,6 @@ docs-html:
 
 test: test-all
 
-test-all:
-	python -m tests run all
-
 test-unit:
 	python -m tests run unit
 
@@ -17,6 +14,12 @@ test-validation:
 
 test-validation-fast:
 	python -m tests run validation-fast
+
+test-all:
+	python -m tests run all
+
+test-all-fast:
+	python -m tests run all-fast
 
 lint:
 	pylint --rcfile=.pylintrc zero
