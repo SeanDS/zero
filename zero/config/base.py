@@ -65,6 +65,12 @@ class BaseConfig(dict, metaclass=Singleton):
 
         launch(self.user_config_path)
 
+    def remove_user_config(self):
+        try:
+            os.remove(self.user_config_path)
+        except FileNotFoundError:
+            raise ConfigDoesntExistException(self.user_config_path)
+
     def _load_base_config(self):
         self._merge_yaml_file(self.base_config_path)
 

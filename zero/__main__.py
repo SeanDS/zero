@@ -197,11 +197,21 @@ def library_create():
 
 @library.command("edit")
 def library_edit():
-    """Open library file for editing."""
+    """Open library file in default editor."""
     try:
         LIBRARY.open_user_config()
     except ConfigDoesntExistException:
         click.echo("Configuration file doesn't exist. Try 'zero library create'.", err=True)
+
+@library.command("remove")
+def library_remove():
+    """Remove user component library file."""
+    click.confirm("Delete library file at %s?" % click.format_filename(LIBRARY.user_config_path),
+                  abort=True)
+    try:
+        LIBRARY.remove_user_config()
+    except ConfigDoesntExistException as e:
+        click.echo(e, err=True)
 
 @library.command("show")
 @click.option("--paged", is_flag=True, default=False, help="Print with paging.")
@@ -210,7 +220,7 @@ def library_show(paged):
     echo = click.echo_via_pager if paged else click.echo
     echo(pformat(LIBRARY))
 
-@library.command()
+@library.command("search")
 @click.argument("query")
 @click.option("--a0", is_flag=True, default=False, help="Show open loop gain.")
 @click.option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
@@ -323,11 +333,21 @@ def config_create():
 
 @config.command("edit")
 def config_edit():
-    """Open user config file for editing."""
+    """Open user config file in default editor."""
     try:
         CONF.open_user_config()
     except ConfigDoesntExistException:
         click.echo("Configuration file doesn't exist. Try 'zero config create'.", err=True)
+
+@config.command("remove")
+def config_remove():
+    """Remove user config file."""
+    click.confirm("Delete config file at %s?" % click.format_filename(CONF.user_config_path),
+                  abort=True)
+    try:
+        CONF.remove_user_config()
+    except ConfigDoesntExistException as e:
+        click.echo(e, err=True)
 
 @config.command("show")
 @click.option("--paged", is_flag=True, default=False, help="Print with paging.")
@@ -355,8 +375,8 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     parts = PartRequest(term, partial=partial, path=path, timeout=timeout, progress=state.verbose)
 
     if not parts:
-        click.echo("No parts found", err=True)
-        sys.exit(1)
+        click.echo(click.style("No parts found", fg="red"))
+        sys.exit()
 
     if first or len(parts) == 1:
         # latest part
@@ -367,7 +387,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     else:
         click.echo("Found multiple parts:")
         for index, part in enumerate(parts, 1):
-            click.echo("%d: %s" % (index, part))
+            click.echo(click.style("%d: %s" % (index, part), fg="green"))
 
         # get selection
         part_choice = click.IntRange(1, len(parts))
@@ -378,8 +398,8 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
 
     # get chosen part
     if part.n_datasheets == 0:
-        click.echo("No datasheets found for '%s'" % part.mpn, err=True)
-        sys.exit(1)
+        click.echo(click.style("No datasheets found for '%s'" % part.mpn, fg="red"))
+        sys.exit()
 
     if first or part.n_datasheets == 1:
         # show results directly
@@ -390,7 +410,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     else:
         click.echo("Found multiple datasheets:")
         for index, ds in enumerate(part.sorted_datasheets, 1):
-            click.echo("%d: %s" % (index, ds))
+            click.echo(click.style("%d: %s" % (index, ds), fg="green"))
 
         # get selection
         datasheet_choice = click.IntRange(1, part.n_datasheets)
