@@ -287,25 +287,26 @@ def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax,
     devices = engine.query(query)
 
     if not devices:
-        click.echo("No op-amps found")
+        click.echo("No op-amps found", err=True)
+        sys.exit()
+
+    nmodel = len(devices)
+    if nmodel == 1:
+        opstr = "op-amp"
     else:
-        nmodel = len(devices)
-        if nmodel == 1:
-            opstr = "op-amp"
-        else:
-            opstr = "op-amps"
+        opstr = "op-amps"
 
-        click.echo("%i %s found:" % (nmodel, opstr))
+    click.echo("%i %s found:" % (nmodel, opstr))
 
-        header = ["Model"] + params
-        rows = []
+    header = ["Model"] + params
+    rows = []
 
-        for device in devices:
-            row = [device.model]
-            row.extend([str(getattr(device, param)) for param in params])
-            rows.append(row)
+    for device in devices:
+        row = [device.model]
+        row.extend([str(getattr(device, param)) for param in params])
+        rows.append(row)
 
-        echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+    echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
 @cli.group()
 def config():
@@ -375,7 +376,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     parts = PartRequest(term, partial=partial, path=path, timeout=timeout, progress=state.verbose)
 
     if not parts:
-        click.echo(click.style("No parts found", fg="red"))
+        click.echo("No parts found", err=True)
         sys.exit()
 
     if first or len(parts) == 1:
@@ -398,7 +399,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
 
     # get chosen part
     if part.n_datasheets == 0:
-        click.echo(click.style("No datasheets found for '%s'" % part.mpn, fg="red"))
+        click.echo("No datasheets found for '%s'" % part.mpn, err=True)
         sys.exit()
 
     if first or part.n_datasheets == 1:
