@@ -3,7 +3,8 @@
 import sys
 import logging
 from pprint import pformat
-from click import Path, File, IntRange, group, argument, option, version_option, pass_context
+from click import (Path, File, IntRange, group, argument, option, version_option, pass_context,
+                   format_filename)
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
@@ -287,7 +288,7 @@ def path(ctx):
     """
     state = ctx.ensure_object(State)
 
-    state.print_info(CONF.user_config_path)
+    state.print_info(format_filename(CONF.user_config_path))
 
 @config.command("create")
 @pass_context
