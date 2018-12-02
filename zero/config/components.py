@@ -1,211 +1,23 @@
-"""Configuration parser and defaults"""
+"""Component libraries"""
 
-import os.path
-import shutil
 import logging
 import re
-from configparser import ConfigParser
 import numpy as np
-import pkg_resources
-import click
-from yaml import safe_load
 
-from . import PROGRAM
-from .format import Quantity
-from .misc import Singleton, open_file
+from .base import BaseConfig
+from ..format import Quantity
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ZeroConfig(dict, metaclass=Singleton):
-    """Zero config parser"""
+class OpAmpLibrary(BaseConfig):
+    """Op-amp library"""
     # user config filename
-    USER_CONFIG_FILENAME = "zero.yaml"
+    USER_CONFIG_FILENAME = "components.yaml"
     # default config copied to user directory if requested
     DEFAULT_USER_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist"
     # config into which others are merged
     BASE_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist.default"
-
-    def __init__(self):
-        # flag whether config is invalid
-        self.user_config_invalid = False
-
-        self._user_config_path = None
-        # load default config then override with user config
-        self._load_base_config()
-        self._load_user_config()
-
-    @property
-    def base_config_path(self):
-        return pkg_resources.resource_filename(__name__, self.BASE_CONFIG_FILENAME)
-
-    @property
-    def user_config_path(self):
-        config_dir = click.get_app_dir(PROGRAM)
-        return os.path.join(config_dir, self.USER_CONFIG_FILENAME)
-
-    def create_user_config(self):
-        if os.path.exists(self.user_config_path):
-            raise ConfigAlreadyExistsException(self.user_config_path)
-
-        LOGGER.info("Creating default user config file at %s", self.user_config_path)
-
-        # copy default
-        default_path = pkg_resources.resource_filename(__name__, self.DEFAULT_USER_CONFIG_FILENAME)
-
-        # user configuration directory
-        config_dir = os.path.dirname(self.user_config_path)
-
-        if not os.path.isdir(config_dir):
-            # make directory tree
-            os.makedirs(config_dir)
-
-        # copy default config into user config directory
-        shutil.copyfile(default_path, self.user_config_path)
-
-    def open_user_config(self):
-        try:
-            open_file(self.user_config_path)
-        except FileNotFoundError:
-            raise ConfigDoesntExistException(self.user_config_path)
-
-    def _load_base_config(self):
-        self._merge_yaml_file(self.base_config_path)
-
-    def _load_user_config(self):
-        """Load user config file"""
-        # check the config file exists
-        if not os.path.isfile(self.user_config_path):
-            LOGGER.info("No user config file found at %s", self.user_config_path)
-            return
-
-        try:
-            self._merge_yaml_file(self.user_config_path)
-        except Exception as e:
-            # an error occurred loading user file
-            if not self.user_config_invalid:
-                LOGGER.error("user config file at %s is invalid", self.user_config_path)
-                self.user_config_invalid = True
-
-    def _merge_yaml_file(self, path):
-        with open(path, "r") as configfile:
-            config = safe_load(configfile)
-
-        if config is None:
-            # config may be empty
-            LOGGER.debug("config file at %s is empty", path)
-            return
-
-        self._merge_config(config)
-
-    def _merge_config(self, config):
-        """Merge specified configuration with this one."""
-        self._merge_recursive(self, config)
-
-    @classmethod
-    def _merge_recursive(cls, config_a, config_b, path=None):
-        """Merge second configuration into first configuration.
-        https://stackoverflow.com/a/7205107
-        """
-        if path is None:
-            path = []
-
-        for key in config_b:
-            if key in config_a:
-                if isinstance(config_a[key], dict) and isinstance(config_b[key], dict):
-                    # merge values together
-                    cls._merge_recursive(config_a[key], config_b[key], path + [str(key)])
-                elif config_a[key] == config_b[key]:
-                    # same leaf value
-                    pass
-                elif config_b[key] is None:
-                    # don't copy anything to preserve a's structure
-                    pass
-                else:
-                    raise Exception('configuration conflict at %s' % '.'.join(path + [str(key)]))
-            else:
-                config_a[key] = config_b[key]
-
-        return config_a
-
-
-class BaseConfig(ConfigParser, metaclass=Singleton):
-    """Abstract configuration class"""
-    CONFIG_FILENAME = None
-    DEFAULT_CONFIG_FILENAME = None
-    DEFAULT_USER_CONFIG_FILENAME = None
-
-    def __init__(self, *args, **kwargs):
-        """Instantiate a new BaseConfig"""
-
-        super().__init__(*args, **kwargs)
-
-        # load default config then overwrite with user config if present
-        self.load_default_config_file()
-        self.load_user_config_file()
-
-    def load_config_file(self, path):
-        """Load and parse a config file
-
-        :param path: config file path
-        :type path: str
-        """
-
-        with open(path) as obj:
-            LOGGER.debug("reading config from %s", path)
-            self.read_file(obj)
-
-    def load_default_config_file(self):
-        """Load and parse the default config file"""
-
-        self.load_config_file(
-            pkg_resources.resource_filename(__name__, self.DEFAULT_CONFIG_FILENAME)
-        )
-
-    def load_user_config_file(self):
-        """Load and parse a user config file"""
-
-        config_file = self.get_user_config_filepath()
-
-        # check the config file exists
-        if not os.path.isfile(config_file):
-            LOGGER.info("Creating default user config file at '%s'", config_file)
-            # copy default
-            source = pkg_resources.resource_filename(__name__, self.DEFAULT_USER_CONFIG_FILENAME)
-            destination = self.get_user_config_filepath()
-
-            config_dir = os.path.dirname(destination)
-
-            if not os.path.isdir(config_dir):
-                # make directory tree
-                os.makedirs(config_dir)
-
-            # do copy
-            shutil.copyfile(source, destination)
-
-        self.load_config_file(config_file)
-
-    @classmethod
-    def get_user_config_filepath(cls):
-        """Find the path to the config file
-
-        :return: path to user config file
-        :rtype: str
-        """
-
-        config_dir = click.get_app_dir(PROGRAM)
-        config_file = os.path.join(config_dir, cls.CONFIG_FILENAME)
-
-        return config_file
-
-
-class OpAmpLibrary(BaseConfig):
-    CONFIG_FILENAME = "library.conf"
-    DEFAULT_CONFIG_FILENAME = CONFIG_FILENAME + ".dist"
-    DEFAULT_USER_CONFIG_FILENAME = DEFAULT_CONFIG_FILENAME + ".default"
-
-    # compiled regular expressions for parsing op-amp data
-    COMMENT_REGEX = re.compile(r"\s*\#.*$")
 
     def __init__(self, *args, **kwargs):
         """Instantiate a new op-amp library"""
@@ -226,8 +38,8 @@ class OpAmpLibrary(BaseConfig):
         count = 0
 
         # each section is a new op-amp
-        for opamp in self.sections():
-            self._parse_lib_data(opamp)
+        for opamp, data in self["op-amps"].items():
+            self._parse_lib_data(opamp, data)
             count += 1
 
         LOGGER.debug("found %i op-amps", count)
@@ -288,23 +100,16 @@ class OpAmpLibrary(BaseConfig):
 
         return None
 
-    def _parse_lib_data(self, section):
-        """Parse op-amp data from config file
-
-        :param section: section of config file correponding to op-amp
-        :type section: str
-        """
-
-        opamp_data = self[section]
-
+    def _parse_lib_data(self, name, data):
+        """Parse op-amp data from config file"""
         # handle poles and zeros
-        if "poles" in opamp_data:
-            poles = self._parse_freq_set(opamp_data["poles"])
+        if "poles" in data and data["poles"] is not None:
+            poles = [self._parse_freq_str(freq) for freq in data["poles"]]
         else:
             poles = np.array([])
 
-        if "zeros" in opamp_data:
-            zeros = self._parse_freq_set(opamp_data["zeros"])
+        if "zeros" in data and data["zeros"] is not None:
+            zeros = [self._parse_freq_str(freq) for freq in data["zeros"]]
         else:
             zeros = np.array([])
 
@@ -312,35 +117,35 @@ class OpAmpLibrary(BaseConfig):
         class_data = {"zeros": zeros, "poles": poles}
 
         # add other op-amp data
-        if "a0" in opamp_data:
-            class_data["a0"] = Quantity(self._strip_comments(opamp_data["a0"]))
-        if "gbw" in opamp_data:
-            class_data["gbw"] = Quantity(self._strip_comments(opamp_data["gbw"]), "Hz")
-        if "delay" in opamp_data:
-            class_data["delay"] = Quantity(self._strip_comments(opamp_data["delay"]), "s")
-        if "vnoise" in opamp_data:
-            class_data["vnoise"] = Quantity(self._strip_comments(opamp_data["vnoise"]), "V/sqrt(Hz)")
-        if "vcorner" in opamp_data:
-            class_data["vcorner"] = Quantity(self._strip_comments(opamp_data["vcorner"]), "Hz")
-        if "inoise" in opamp_data:
-            class_data["inoise"] = Quantity(self._strip_comments(opamp_data["inoise"]), "A/sqrt(Hz)")
-        if "icorner" in opamp_data:
-            class_data["icorner"] = Quantity(self._strip_comments(opamp_data["icorner"]), "Hz")
-        if "vmax" in opamp_data:
-            class_data["vmax"] = Quantity(self._strip_comments(opamp_data["vmax"]), "V")
-        if "imax" in opamp_data:
-            class_data["imax"] = Quantity(self._strip_comments(opamp_data["imax"]), "A")
-        if "sr" in opamp_data:
-            class_data["sr"] = Quantity(self._strip_comments(opamp_data["sr"]), "V/s")
+        if "a0" in data:
+            class_data["a0"] = Quantity(data["a0"])
+        if "gbw" in data:
+            class_data["gbw"] = Quantity(data["gbw"], "Hz")
+        if "delay" in data:
+            class_data["delay"] = Quantity(data["delay"], "s")
+        if "vnoise" in data:
+            class_data["vnoise"] = Quantity(data["vnoise"], "V/sqrt(Hz)")
+        if "vcorner" in data:
+            class_data["vcorner"] = Quantity(data["vcorner"], "Hz")
+        if "inoise" in data:
+            class_data["inoise"] = Quantity(data["inoise"], "A/sqrt(Hz)")
+        if "icorner" in data:
+            class_data["icorner"] = Quantity(data["icorner"], "Hz")
+        if "vmax" in data:
+            class_data["vmax"] = Quantity(data["vmax"], "V")
+        if "imax" in data:
+            class_data["imax"] = Quantity(data["imax"], "A")
+        if "sr" in data:
+            class_data["sr"] = Quantity(data["sr"], "V/s")
 
         # add data to library
-        self.add_data(section, class_data)
+        self.add_data(name, class_data)
 
         # check if there are aliases
-        if "aliases" in opamp_data:
+        if "aliases" in data:
             # get individual aliases
             aliases = [alias.strip() for alias
-                       in opamp_data["aliases"].split(",")]
+                       in data["aliases"].split(",")]
 
             # create new op-amps for each alias using identical data
             for alias in aliases:
@@ -374,42 +179,6 @@ class OpAmpLibrary(BaseConfig):
 
         return self.data.keys()
 
-    def _strip_comments(self, line):
-        """Remove comments from specified config file line
-
-        :param line: line to clean
-        :type line: str
-        :return: line with comments removed
-        :rtype: str
-        """
-
-        return re.sub(self.COMMENT_REGEX, "", line)
-
-    def _parse_freq_set(self, entry):
-        """Parse string list of frequencies and q-factors as a numpy array
-
-        This also strips out comments.
-
-        :param entry: list of frequencies to split
-        :type entry: str
-        :return: array of complex frequencies
-        :rtype: :class:`~np.array`
-        """
-
-        # strip out comments
-        entry = self._strip_comments(entry)
-
-        # split into groups delimited by commas
-        freq_tokens = [freq.strip() for freq in entry.split(",")]
-
-        # generate complex frequencies from the list and combine them into one list
-        frequencies = []
-
-        for token in freq_tokens:
-            frequencies.extend(self._parse_freq_str(token))
-
-        return np.array(frequencies)
-
     def _parse_freq_str(self, token):
         """Parse token as complex frequency/frequencies
 
@@ -426,7 +195,11 @@ class OpAmpLibrary(BaseConfig):
         frequencies = []
 
         # split frequency and optional q-factor into list entries
-        parts = token.split()
+        try:
+            parts = token.split()
+        except AttributeError:
+            # not a string; assume number
+            parts = [token]
 
         # frequency is always first in the list
         frequency = Quantity(parts[0], "Hz")
@@ -688,13 +461,3 @@ class LibraryOpAmp:
 
     def __str__(self):
         return "{cmp.model}(a0={cmp.a0}, gbw={cmp.gbw}, delay={cmp.delay})".format(cmp=self)
-
-
-class ConfigDoesntExistException(Exception):
-    def __init__(self, config_path, *args, **kwargs):
-        super().__init__("config file %s doesn't exist" % config_path, *args, **kwargs)
-
-
-class ConfigAlreadyExistsException(Exception):
-    def __init__(self, config_path, *args, **kwargs):
-        super().__init__("config file already exists at %s" % config_path, *args, **kwargs)

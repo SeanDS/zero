@@ -42,8 +42,8 @@ setup(
     url="https://git.ligo.org/sean-leavey/zero",
     packages=find_packages(),
     package_data={
-        "zero": ["zero.yaml.dist", "zero.yaml.dist.default",
-                 "library.yaml.dist", "library.yaml.dist.default"]
+        "zero.config": ["zero.yaml.dist", "zero.yaml.dist.default",
+                        "components.yaml.dist", "components.yaml.dist.default"]
     },
     entry_points={
         "console_scripts": [

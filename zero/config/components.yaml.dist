@@ -41,9 +41,7 @@
 #
 # Strings starting with '#' are comments.
 
-components:
-
-  op-amps:
+op-amps:
 
   #op00:
     #description: (almost) ideal op-amp
