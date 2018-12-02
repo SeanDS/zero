@@ -43,7 +43,7 @@ setup(
     packages=find_packages(),
     package_data={
         "zero": ["zero.yaml.dist", "zero.yaml.dist.default",
-                 "library.conf.dist", "library.conf.dist.default"]
+                 "library.yaml.dist", "library.yaml.dist.default"]
     },
     entry_points={
         "console_scripts": [

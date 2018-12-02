@@ -41,17 +41,23 @@
 #
 # Strings starting with '#' are comments.
 
-#[op00]
-## (almost) ideal OpAmp
-#a0 = 1e12
-#gbw = 1e15
-#vnoise = 0
-#vcorner = 1
-#inoise = 0
-#icorner = 1
-#vmax = 12
-#imax = .02
-#poles = 1G
-#zeros = 1G
-#sr = 1e12
-#delay = 0n
+components:
+
+  op-amps:
+
+  #op00:
+    #description: (almost) ideal op-amp
+    #a0: 1e12
+    #gbw: 1e15
+    #vnoise: 0
+    #vcorner: 1
+    #inoise: 0
+    #icorner: 1
+    #vmax: 12
+    #imax: .02
+    #poles:
+    #  - 1G
+    #zeros:
+    #  - 1G
+    #sr: 1e12
+    #delay: 0
