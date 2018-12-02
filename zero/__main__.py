@@ -1,17 +1,16 @@
 """Circuit simulator command line interface"""
 
 import sys
-import os
 import logging
+from pprint import pformat
 from click import Path, File, IntRange, group, argument, option, version_option, pass_context
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
-from .config import ZeroConfig, OpAmpLibrary
-from .library import LibraryQueryEngine
-from .misc import open_file
+from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
+                     ConfigAlreadyExistsException, LibraryQueryEngine)
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -147,7 +146,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
             header, rows = native_solution.difference(liso_solution, defaults_only=True,
                                                       meta_only=True)
 
-            print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+            state.print_info(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
         # apply suffix to LISO function labels
         for function in liso_solution.functions:
@@ -225,6 +224,8 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
 
         vnoise < 10n & vcorner < 10
     """
+    state = ctx.ensure_object(State)
+
     engine = LibraryQueryEngine()
 
     # build parameter list
@@ -252,7 +253,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
     devices = engine.query(query)
 
     if not devices:
-        print("No op-amps found")
+        state.print_info("No op-amps found")
     else:
         nmodel = len(devices)
         if nmodel == 1:
@@ -260,7 +261,7 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
         else:
             opstr = "op-amps"
 
-        print("%i %s found:" % (nmodel, opstr))
+        state.print_info("%i %s found:" % (nmodel, opstr))
 
         header = ["Model"] + params
         rows = []
@@ -270,20 +271,55 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
             row.extend([str(getattr(device, param)) for param in params])
             rows.append(row)
 
-        print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+        state.print_info(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-@library.command("path")
-def library_path():
-    """Print user op-amp library file path.
+@cli.group()
+def config():
+    """Zero configuration functions."""
+    pass
+
+@config.command("path")
+@pass_context
+def path(ctx):
+    """Print user config file path.
 
     Note: this path may not exist.
     """
-    print(LIBRARY.get_user_config_filepath())
+    state = ctx.ensure_object(State)
 
-@library.command("open")
-def library_open():
-    """Open user op-amp library file for editing."""
-    open_file(LIBRARY.get_user_config_filepath())
+    state.print_info(CONF.user_config_path)
+
+@config.command("create")
+@pass_context
+def create(ctx):
+    """Create empty config file in user directory."""
+    state = ctx.ensure_object(State)
+
+    # create config
+    try:
+        CONF.create_user_config()
+    except ConfigAlreadyExistsException as e:
+        state.print_error(e)
+    else:
+        state.print_info("Config created at %s" % CONF.user_config_path)
+
+@config.command("edit")
+@pass_context
+def edit(ctx):
+    """Open user config file for editing."""
+    state = ctx.ensure_object(State)
+
+    try:
+        CONF.open_user_config()
+    except ConfigDoesntExistException:
+        state.print_error("Configuration file doesn't exist. Try 'zero config create'.")
+
+@config.command("dump")
+@pass_context
+def dump(ctx):
+    """Print the config that Zero uses."""
+    state = ctx.ensure_object(State)
+    state.print_info(pformat(CONF))
 
 @cli.command()
 @argument("term")
