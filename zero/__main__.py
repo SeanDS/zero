@@ -281,7 +281,7 @@ def config():
 @config.command("path")
 @pass_context
 def path(ctx):
-    """Print user op-amp library file path.
+    """Print user config file path.
 
     Note: this path may not exist.
     """
@@ -292,6 +292,7 @@ def path(ctx):
 @config.command("create")
 @pass_context
 def create(ctx):
+    """Create empty config file in user directory."""
     state = ctx.ensure_object(State)
 
     # create config
@@ -305,7 +306,7 @@ def create(ctx):
 @config.command("edit")
 @pass_context
 def edit(ctx):
-    """Open user op-amp library file for editing."""
+    """Open user config file for editing."""
     state = ctx.ensure_object(State)
 
     try:
