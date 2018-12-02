@@ -10,8 +10,7 @@ from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
-                     ConfigAlreadyExistsException)
-from .library import LibraryQueryEngine
+                     ConfigAlreadyExistsException, LibraryQueryEngine)
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
