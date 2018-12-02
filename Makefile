@@ -15,6 +15,9 @@ test-integration:
 test-validation:
 	python -m tests run validation
 
+test-validation-fast:
+	python -m tests run validation-fast
+
 lint:
 	pylint --rcfile=.pylintrc zero
 

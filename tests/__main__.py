@@ -34,8 +34,9 @@ TESTS = {
     "unit": UNIT_TESTS,
     "integration": INTEGRATION_TESTS,
     "validation": VALIDATION_TESTS,
-    "all-fast": ALL_FAST_TESTS,
-    "all": ALL_TESTS
+    "validation-fast": FAST_VALIDATION_TESTS,
+    "all": ALL_TESTS,
+    "all-fast": ALL_FAST_TESTS
 }
 
 @group()
