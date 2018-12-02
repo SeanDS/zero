@@ -143,18 +143,6 @@ class Downloadable:
 
         return filename, request
 
-
-def open_file(path):
-    """Open the specified file in a relevant application."""
-    if not os.path.isfile(path):
-        raise FileNotFoundError("specified path does not exist or is not readable")
-
-    if sys.platform == "win32":
-        os.startfile(path)
-    else:
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
-        subprocess.run([opener, path])
-
 def db(magnitude):
     """Calculate (power) magnitude in decibels
 

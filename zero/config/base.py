@@ -6,9 +6,10 @@ import logging
 import pkg_resources
 import click
 from yaml import safe_load
+from click import launch
 
 from .. import PROGRAM
-from ..misc import Singleton, open_file
+from ..misc import Singleton
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,10 +60,10 @@ class BaseConfig(dict, metaclass=Singleton):
         shutil.copyfile(default_path, self.user_config_path)
 
     def open_user_config(self):
-        try:
-            open_file(self.user_config_path)
-        except FileNotFoundError:
+        if not os.path.isfile(self.user_config_path):
             raise ConfigDoesntExistException(self.user_config_path)
+
+        launch(self.user_config_path)
 
     def _load_base_config(self):
         self._merge_yaml_file(self.base_config_path)
