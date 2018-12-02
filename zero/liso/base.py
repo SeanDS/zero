@@ -12,6 +12,7 @@ from ..components import Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
 from ..format import Quantity
+from ..misc import ChangeFlagDict
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,106 +42,121 @@ class LisoParserError(ValueError):
 class LisoParser(metaclass=abc.ABCMeta):
     """Base LISO parser"""
     def __init__(self):
-        # initial line number
-        self.lineno = 1
-        self._previous_newline_position = 0
+        # circuit object and the properties from which it is built
+        self.circuit = None
+        self._circuit_properties = None
 
-        # create circuit
-        self.circuit = Circuit()
-
-        # circuit built status
+        # circuit model built flag
         self._circuit_built = False
-
-        # default circuit values
-        self._frequencies = None
-        self._input_type = None
-        self._input_node_n = None
-        self._input_node_p = None
-        self._input_impedance = None
-        self._output_type = None
-        self.tf_outputs = []
-
-        # list of (name, coupling, l1, l2) inductor coupling tuples
-        self._inductor_couplings = []
-
-        # the node or component that circuit noise is projected to
-        self._noise_output_element = None
-
-        # noise sources to calculate
-        self._noise_sources = None
 
         # circuit solution
         self._solution = None
 
-        # flag for when noise sum must be computed when building solution
-        self._noise_sum_to_be_computed = False
+        # initial line and character positions
+        self.lineno = None
+        self._previous_newline_position = None
+
+        # whether parser end of file has been reached
+        self._eof = None
+
+        # initialise parser properties
+        self.reset()
 
         # create lexer and parser handlers
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
 
-        # whether parser end of file has been reached
+    def reset(self):
+        """Reset parser to default state."""
+        self.circuit = Circuit()
+
+        self._circuit_properties = ChangeFlagDict(self._default_circuit_properties)
+
+        self._circuit_built = False
+        self._solution = None
+        self.lineno = 1
+        self._previous_newline_position = 0
         self._eof = False
+
+    @property
+    def _default_circuit_properties(self):
+        """Default properties assumed before any circuit definitions are parsed."""
+        return {"frequencies": None,
+                "input_type": None,
+                "input_node_p": None,
+                "input_node_n": None,
+                "input_impedance": None,
+                "output_type": None,
+                "noise_output_element": None,
+                "tf_outputs": [],
+                # list of (name, coupling, l1, l2) inductor coupling tuples
+                "inductor_couplings": [],
+                # flag for when noise sum must be computed when building solution
+                "noise_sum_to_be_computed": False}
+
+    @property
+    def parsing_started(self):
+        return self._circuit_properties.changed
 
     @property
     def frequencies(self):
         """Analysis frequencies"""
-        return self._frequencies
+        return self._circuit_properties["frequencies"]
 
     @frequencies.setter
     def frequencies(self, frequencies):
-        if self._frequencies is not None:
+        if self.frequencies is not None:
             self.p_error("cannot redefine frequencies")
 
-        self._frequencies = np.array(frequencies)
+        self._circuit_properties["frequencies"] = np.array(frequencies)
 
     @property
     def input_type(self):
         """Circuit input type"""
-        return self._input_type
+        return self._circuit_properties["input_type"]
 
     @input_type.setter
     def input_type(self, input_type):
-        if self._input_type is not None:
+        if self.input_type is not None:
             self.p_error("cannot redefine input type")
 
-        self._input_type = input_type
+        self._circuit_properties["input_type"] = input_type
 
     @property
     def input_node_p(self):
         """Circuit positive input node"""
-        return self._input_node_p
+        return self._circuit_properties["input_node_p"]
 
     @input_node_p.setter
     def input_node_p(self, input_node_p):
-        if self._input_node_p is not None:
+        if self.input_node_p is not None:
             self.p_error("cannot redefine positive input node")
 
-        self._input_node_p = Node(input_node_p)
+        self._circuit_properties["input_node_p"] = Node(input_node_p)
 
     @property
     def input_node_n(self):
         """Circuit negative input node"""
-        return self._input_node_n
+        return self._circuit_properties["input_node_n"]
 
     @input_node_n.setter
     def input_node_n(self, input_node_n):
-        if self._input_node_n is not None:
+        if self.input_node_n is not None:
             self.p_error("cannot redefine negative input node")
 
-        self._input_node_n = Node(input_node_n)
+        self._circuit_properties["input_node_n"] = Node(input_node_n)
 
     @property
     def input_impedance(self):
         """Circuit input impedance"""
-        return self._input_impedance
+        return self._circuit_properties["input_impedance"]
 
     @input_impedance.setter
     def input_impedance(self, input_impedance):
-        if self._input_impedance is not None:
+        if self.input_impedance is not None:
             self.p_error("cannot redefine input impedance")
 
-        self._input_impedance = Quantity(input_impedance, "Ω")
+        self._circuit_properties["input_impedance"] = Quantity(input_impedance, "Ω")
 
     @property
     def noise_output_element(self):
@@ -148,14 +164,18 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         Note: this is a string.
         """
-        return self._noise_output_element
+        return self._circuit_properties["noise_output_element"]
 
     @noise_output_element.setter
     def noise_output_element(self, noise_output_element):
-        if self._noise_output_element is not None:
+        if self.noise_output_element is not None:
             self.p_error("cannot redefine noise output element")
 
-        self._noise_output_element = noise_output_element
+        self._circuit_properties["noise_output_element"] = noise_output_element
+
+    @property
+    def tf_outputs(self):
+        return self._circuit_properties["tf_outputs"]
 
     def add_tf_output(self, output):
         """Add transfer function output.
@@ -175,7 +195,11 @@ class LisoParser(metaclass=abc.ABCMeta):
         if output in self.tf_outputs:
             raise ValueError("sink '%s' is already present" % output)
 
-        self.tf_outputs.append(output)
+        self._circuit_properties["tf_outputs"].append(output)
+
+    @property
+    def inductor_couplings(self):
+        return self._circuit_properties["inductor_couplings"]
 
     @property
     def n_tf_outputs(self):
@@ -190,6 +214,15 @@ class LisoParser(metaclass=abc.ABCMeta):
         return len(self.summed_noise_objects)
 
     def parse(self, text=None, path=None):
+        """Parse LISO file.
+
+        Parameters
+        ----------
+        text : :class:`str`, optional
+            LISO text to parse.
+        path : :class:`str`, optional
+            Path to LISO file to parse.
+        """
         if text is None and path is None:
             raise ValueError("must provide either text or a path")
 
@@ -203,9 +236,8 @@ class LisoParser(metaclass=abc.ABCMeta):
             with open(path, "r") as obj:
                 text = obj.read()
 
-        if self._eof:
-            # reset end of file
-            self._eof = False
+        # reset end of file
+        self._eof = False
 
         self.parser.parse(text, lexer=self.lexer)
 
@@ -254,13 +286,16 @@ class LisoParser(metaclass=abc.ABCMeta):
         set_default_plots : :class:`bool`
             Set the plots defined in the LISO file as defaults.
         """
+        if not self.parsing_started:
+            raise LisoParserError("no circuit defined")
+
         # build circuit if necessary
         self.build()
 
         if not self._solution or force:
             self._solution = self._run(**kwargs)
 
-            if self._noise_sum_to_be_computed:
+            if self._circuit_properties["noise_sum_to_be_computed"]:
                 # find spectra in solution
                 sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
                 # get sink element
@@ -323,7 +358,6 @@ class LisoParser(metaclass=abc.ABCMeta):
             # check the circuit is valid
             self._validate()
 
-            # set built flag
             self._circuit_built = True
 
     def _do_build(self):
@@ -368,6 +402,11 @@ class LisoParser(metaclass=abc.ABCMeta):
             _ = self.summed_noise_objects
         except ElementNotFoundError as e:
             self.p_error("noise source '%s' is not present in the circuit" % e.name)
+
+        # sum cannot be computed without a "noisy" command
+        if self._circuit_properties["noise_sum_to_be_computed"] and not self.summed_noise_objects:
+            # no sum noises defined
+            self.p_error("noise sum requires noisy components to be defined")
 
     @property
     def will_calc_tfs(self):
@@ -435,59 +474,59 @@ class LisoParser(metaclass=abc.ABCMeta):
     @property
     def output_type(self):
         """Transfer function output type"""
-        return self._output_type
+        return self._circuit_properties["output_type"]
 
     @output_type.setter
     def output_type(self, output_type):
         if self.output_type is not None:
-            if self.output_type != output_type:
-                # output type changed
-                raise Exception("output file contains both transfer functions "
-                                "and noise, which is not supported")
+            if self.output_type == output_type:
+                # output type isn't being changed; no need to do anything else
+                return
 
-            # output type isn't being changed; no need to do anything else
-            return
+            # output type changed
+            self.p_error("output file contains both transfer functions and noise, which is not"
+                         "supported")
 
         if output_type not in ["tf", "noise"]:
             raise ValueError("unknown output type")
 
-        self._output_type = output_type
+        self._circuit_properties["output_type"] = output_type
 
     def _set_circuit_input(self):
         # create input component if necessary
-        try:
-            self.circuit["input"]
-        except ElementNotFoundError:
-            # add input
-            input_type = self.input_type
-            node = None
-            node_p = None
-            node_n = None
-            impedance = None
+        if self.circuit.has_component("input"):
+            return
 
-            if self.input_node_n is None:
-                # fixed input
-                node = self.input_node_p
-            else:
-                # floating input
-                node_p = self.input_node_p
-                node_n = self.input_node_n
+        # add input
+        input_type = self.input_type
+        node = None
+        node_p = None
+        node_n = None
+        impedance = None
 
-            # input type depends on whether we calculate noise or transfer functions
-            if self.noise_output_element is not None:
-                # we're calculating noise
-                input_type = "noise"
+        if self.input_node_n is None:
+            # fixed input
+            node = self.input_node_p
+        else:
+            # floating input
+            node_p = self.input_node_p
+            node_n = self.input_node_n
 
-                # set input impedance
-                impedance = self.input_impedance
+        # input type depends on whether we calculate noise or transfer functions
+        if self.noise_output_element is not None:
+            # we're calculating noise
+            input_type = "noise"
 
-            self.circuit.add_input(input_type=input_type, node=node,
-                                   node_p=node_p, node_n=node_n,
-                                   impedance=impedance)
+            # set input impedance
+            impedance = self.input_impedance
+
+        self.circuit.add_input(input_type=input_type, node=node,
+                                node_p=node_p, node_n=node_n,
+                                impedance=impedance)
 
     def _set_inductor_couplings(self):
         # discard name (not used in circuit mode)
-        for _, value, inductor_1, inductor_2 in self._inductor_couplings:
+        for _, value, inductor_1, inductor_2 in self.inductor_couplings:
             self.circuit.set_inductor_coupling(inductor_1, inductor_2, value)
 
 

@@ -1,0 +1,57 @@
+# Zero default configuration file. This is overridden by user-provided configuration, if present.
+
+# Physical constants.
+constants:
+  kB: 1.3806488e-23
+  T: 298.15
+
+# Formatting options.
+format:
+  # Table format. Choose from:
+  #   plain, simple, grid, fancy_grid, pipe, orgtbl, jira, presto, psql,
+  #   rst, mediawiki, moinmoin, youtrack, html, latex, latex_raw,
+  #   latex_booktabs, texile
+  table: fancy_grid
+
+# Plot options.
+plot:
+  # Default plot size, in inches.
+  size_x: 8
+  size_y: 6
+
+  # Matplotlib configuration overrides.
+  matplotlib:
+    legend.fontsize: 9
+
+# Linear algebra options.
+algebra:
+  # Matrix solver.
+  solver: scipy-default
+
+# Data options.
+data:
+  # Absolute and relative tolerances for comparisons between transfer
+  # functions and noise spectra.
+  tf_abs_tol: 1e-4
+  tf_rel_tol: 1e-4
+  noise_abs_tol: 1e-5
+  noise_rel_tol: 1e-5
+
+# Graphviz options.
+graphviz:
+  engine: fdp
+  graph_splines: compound
+  graph_font_name: &graphviz_font Helvetica
+  graph_font_size: 8
+  node_style: filled
+  node_font_name: *graphviz_font
+  node_font_size: 10
+  edge_arrowhead: dot
+
+# Octopart API settings, for fetching datasheets.
+octopart:
+  # HTTP endpoint used to access the Octopart API.
+  api_endpoint: https://octopart.com/api/v3/parts/match
+  # API key. Replace this key with your own if the one below stops
+  # working.
+  api_key: ebdc07fc

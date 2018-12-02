@@ -7,8 +7,9 @@ import re
 import datetime
 import logging
 import dateutil.parser
+from click import launch
 
-from ..misc import Downloadable, open_file
+from ..misc import Downloadable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -145,7 +146,7 @@ class Datasheet(Downloadable):
 
     def display(self):
         self.download()
-        open_file(self.path)
+        launch(self.path)
 
     def __str__(self):
         if self.created is not None:

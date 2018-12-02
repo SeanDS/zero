@@ -222,7 +222,7 @@ class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
 
     @property
     def source_unit(self):
-        return self.source.UNIT
+        return self.source.SOURCE_SINK_UNIT
 
 
 class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
@@ -237,7 +237,7 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
 
     @property
     def sink_unit(self):
-        return self.sink.UNIT
+        return self.sink.SOURCE_SINK_UNIT
 
 
 class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
@@ -292,7 +292,7 @@ class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
         return "%s/%s" % (self.sink_unit, self.source_unit)
 
 
-class NoiseSpectrumBase(Function, metaclass=abc.ABCMeta):
+class NoiseSpectrumBase(SingleSinkFunction, metaclass=abc.ABCMeta):
     """Function with a single noise spectrum."""
     @property
     def spectrum(self):
@@ -311,7 +311,7 @@ class NoiseSpectrumBase(Function, metaclass=abc.ABCMeta):
         axes.loglog(self.frequencies, self.spectrum, label=self.label(tex=True))
 
 
-class NoiseSpectrum(SingleSourceFunction, SingleSinkFunction, NoiseSpectrumBase):
+class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
     """Noise data series"""
     @property
     def noise_name(self):
@@ -334,7 +334,7 @@ class NoiseSpectrum(SingleSourceFunction, SingleSinkFunction, NoiseSpectrumBase)
         return format_str % (self.noise_name, self.sink.label())
 
 
-class MultiNoiseSpectrum(SingleSinkFunction, NoiseSpectrumBase):
+class MultiNoiseSpectrum(NoiseSpectrumBase):
     """Set of noise data series from multiple sources to a single sink"""
     def __init__(self, sources=None, series=None, constituents=None, label="incoherent sum",
                  **kwargs):

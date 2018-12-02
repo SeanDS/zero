@@ -1,26 +1,42 @@
 .. include:: /defs.txt
 
-####################
-Op-amp library tools
-####################
+#######################
+Component library tools
+#######################
 
 |Zero|'s command line interface can be used to search the :class:`op-amp <.OpAmp>`
 library bundled with the project.
 
-Listing the user library path
------------------------------
+Listing the user library file path
+----------------------------------
 
 The built-in op-amp definitions can be supplemented or overridden by a user-defined
-op-amp library. This library is stored in the user's home directory in a location
+op-amp library. This library is stored within the user's home directory in a location
 that depends on the operating system.
 
 The path to this file can be listed with the command ``zero library path``.
 
+Creating a user library
+-----------------------
+
+An empty user library can be created with ``zero library create``.
+
 Opening the user library for editing
 ------------------------------------
 
-The built-in library can be opened with the command ``zero library open``. If the
-file does not yet exist, it is created before opening.
+The user library can be opened with the command ``zero library edit``.
+
+Removing the user library
+-------------------------
+
+The user library can be removed with ``zero library remove``.
+
+Showing the library
+-------------------
+
+The combined contents of the built-in library and any user-defined additions or overrides can be
+printed to the screen with ``zero library show``. For large libraries, it is often useful to
+specify the ``--paged`` flag to allow the contents to be navigated.
 
 Search queries
 --------------

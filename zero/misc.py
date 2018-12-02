@@ -52,6 +52,23 @@ class NamedInstance(abc.ABCMeta):
         return cls._names[name]
 
 
+class ChangeFlagDict(dict):
+    """Dict with flag which gets set when a change is made after initialisation."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # change flag
+        self.changed = False
+
+    def __setitem__(self, *args, **kwargs):
+        super().__setitem__(*args, **kwargs)
+        self.changed = True
+
+    def __delitem__(self, *args, **kwargs):
+        super().__delitem__(*args, **kwargs)
+        self.changed = True
+
+
 class Downloadable:
     """Mixin for downloadable URL classes, providing a progress bar."""
     def __init__(self, info_stream=sys.stdout, progress=True, timeout=None, **kwargs):
@@ -125,15 +142,6 @@ class Downloadable:
         pbar.finish()
 
         return filename, request
-
-
-def open_file(path):
-    """Open the specified file in a relevant application."""
-    if sys.platform == "win32":
-        os.startfile(path)
-    else:
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
-        subprocess.run([opener, path])
 
 def db(magnitude):
     """Calculate (power) magnitude in decibels

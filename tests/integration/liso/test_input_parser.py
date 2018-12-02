@@ -1,8 +1,10 @@
 """LISO input parser tests"""
 
 import unittest
+import tempfile
 
 from zero.liso import LisoInputParser, LisoParserError
+
 
 class LisoInputParserTestCase(unittest.TestCase):
     """Base test case class for input parser"""
@@ -12,6 +14,99 @@ class LisoInputParserTestCase(unittest.TestCase):
     def reset(self):
         """Reset input parser"""
         self.parser = LisoInputParser()
+
+class InvalidFileTestCase(LisoInputParserTestCase):
+    """Voltage output command tests"""
+    def test_empty_string(self):
+        """Test empty file"""
+        self.parser.parse("")
+        self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
+
+    def test_empty_file(self):
+        """Test empty file"""
+        with tempfile.NamedTemporaryFile(mode="w") as fp:
+            # write empty line
+            fp.write("")
+            # parse
+            self.parser.parse(path=fp.name)
+
+        self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
+
+    def test_file_with_blank_line(self):
+        """Test file with only a blank line"""
+        with tempfile.NamedTemporaryFile(mode="w") as fp:
+            # write empty line
+            fp.write("\n")
+            # parse
+            self.parser.parse(path=fp.name)
+
+        self.assertRaisesRegex(LisoParserError, "no circuit defined", self.parser.solution)
+
+
+class ParserReuseTestCase(LisoInputParserTestCase):
+    """Test reusing input parser for the same or different circuits"""
+    def test_parser_reuse_for_different_circuit(self):
+        """Test reusing input parser for different circuits"""
+        circuit1 = """
+r r1 1k n1 n2
+op op1 OP00 gnd n2 n3
+r r2 2k n2 n3
+freq log 1 1k 100
+uinput n1
+uoutput n3
+"""
+
+        circuit2 = """
+r r1 2k n1 n2
+op op1 OP00 gnd n2 n3
+r r2 4k n2 n3
+freq log 1 2k 100
+uinput n1
+uoutput n3
+"""
+
+        # parse first circuit
+        self.parser.parse(circuit1)
+        _ = self.parser.solution()
+
+        # parse second circuit with same parser, but with reset state
+        self.parser.reset()
+        self.parser.parse(circuit2)
+        sol2a = self.parser.solution()
+
+        # parse second circuit using a newly instantiated parser
+        self.reset()
+        self.parser.parse(circuit2)
+        sol2b = self.parser.solution()
+
+        self.assertTrue(sol2a.equivalent_to(sol2b))
+
+    def test_parser_reuse_for_same_circuit(self):
+        """Test reusing input parser for same circuits"""
+        circuit1a = """
+r r1 1k n1 n2
+op op1 OP00 gnd n2 n3
+r r2 2k n2 n3
+"""
+
+        circuit1b = """
+freq log 1 1k 100
+uinput n1
+uoutput n3
+"""
+
+        # parse first and second parts together
+        self.parser.parse(circuit1a + circuit1b)
+        sol1a = self.parser.solution()
+
+        # parse first and second parts subsequently
+        self.reset()
+        self.parser.parse(circuit1a)
+        self.parser.parse(circuit1b)
+        sol1b = self.parser.solution()
+
+        self.assertTrue(sol1a.equivalent_to(sol1b))
+
 
 class VoltageOutputTestCase(LisoInputParserTestCase):
     """Voltage output command tests"""
@@ -80,6 +175,7 @@ uoutput no ni allop
         # 3 op-amp outputs, one of which is no, plus ni
         self.assertEqual(4, self.parser.n_tf_outputs)
 
+
 class CurrentOutputTestCase(LisoInputParserTestCase):
     """Current output command tests"""
     def test_invalid_output_node(self):
@@ -146,6 +242,7 @@ ioutput load ri1 allop
         self.parser.build()
         # 3 op-amp outputs, plus two independent
         self.assertEqual(5, self.parser.n_tf_outputs)
+
 
 class NoiseOutputTestCase(LisoInputParserTestCase):
     """Noise output command tests"""
@@ -241,3 +338,18 @@ noise no rin n2a allop
         self.parser.build()
         # there should be 2 noise outputs per op-amp, so 6 total, plus one extra; one is duplicate
         self.assertEqual(7, self.parser.n_displayed_noise)
+
+    def test_cannot_compute_noise_sum_without_noisy_command(self):
+        self.parser.parse("""
+r r1 1k n1 n2
+r r2 10k n2 n3
+op op1 op00 gnd n2 n3
+freq log 1 100 10
+uinput n1
+noise op1 sum
+""")
+
+        # noise sum requires noisy command
+        self.assertRaisesRegex(LisoParserError,
+                               r"noise sum requires noisy components to be defined",
+                               self.parser.solution)

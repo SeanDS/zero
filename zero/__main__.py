@@ -1,17 +1,16 @@
 """Circuit simulator command line interface"""
 
 import sys
-import os
 import logging
-from click import Path, File, IntRange, group, argument, option, version_option, pass_context
+from pprint import pformat
+import click
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
-from .config import ZeroConfig, OpAmpLibrary
-from .library import LibraryQueryEngine
-from .misc import open_file
+from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
+                     ConfigAlreadyExistsException, LibraryQueryEngine)
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -53,49 +52,39 @@ class State:
         """
         return self.verbosity <= logging.INFO
 
-    def _print(self, msg, stream, exit_, exit_code):
-        print(msg, file=stream)
-
-        if exit_:
-            sys.exit(exit_code)
-
-    def print_info(self, msg, exit_=False):
-        self._print(msg, sys.stdout, exit_, 0)
-
-    def print_error(self, msg, exit_=True):
-        self._print(msg, sys.stderr, exit_, 1)
-
 
 def set_verbosity(ctx, _, value):
     """Set stdout verbosity"""
     state = ctx.ensure_object(State)
     state.verbosity = value
 
-@group(help=DESCRIPTION)
-@version_option(version=__version__, prog_name=PROGRAM)
-@option("-v", "--verbose", count=True, default=0, callback=set_verbosity, expose_value=False,
-        help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
+@click.group(help=DESCRIPTION)
+@click.version_option(version=__version__, prog_name=PROGRAM)
+@click.option("-v", "--verbose", count=True, default=0, callback=set_verbosity, expose_value=False,
+              help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
 def cli():
     """Base CLI command group"""
     pass
 
 @cli.command()
-@argument("file", type=File())
-@option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
-@option("--liso-path", type=Path(exists=True, dir_okay=False), envvar='LISO_PATH',
-        help="Path to LISO binary. If not specified, the environment variable LISO_PATH is searched.")
-@option("--compare", is_flag=True, default=False,
-        help="Simulate using both this tool and LISO binary, and overlay results.")
-@option("--diff", is_flag=True, default=False,
-        help="Show difference between results of comparison.")
-@option("--plot/--no-plot", default=True, show_default=True, help="Display results as figure.")
-@option("--save-figure", type=File("wb", lazy=False), multiple=True,
-        help="Save image of figure to file. Can be specified multiple times.")
-@option("--prescale/--no-prescale", default=True, show_default=True,
-        help="Prescale matrices to improve numerical precision.")
-@option("--print-equations", is_flag=True, help="Print circuit equations.")
-@option("--print-matrix", is_flag=True, help="Print circuit matrix.")
-@pass_context
+@click.argument("file", type=click.File())
+@click.option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
+@click.option("--liso-path", type=click.Path(exists=True, dir_okay=False), envvar='LISO_PATH',
+              help="Path to LISO binary. If not specified, the environment variable LISO_PATH is "
+              "searched.")
+@click.option("--compare", is_flag=True, default=False,
+              help="Simulate using both this tool and LISO binary, and overlay results.")
+@click.option("--diff", is_flag=True, default=False,
+              help="Show difference between results of comparison.")
+@click.option("--plot/--no-plot", default=True, show_default=True, help="Display results as "
+              "figure.")
+@click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
+              help="Save image of figure to file. Can be specified multiple times.")
+@click.option("--prescale/--no-prescale", default=True, show_default=True,
+              help="Prescale matrices to improve numerical precision.")
+@click.option("--print-equations", is_flag=True, help="Print circuit equations.")
+@click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
+@click.pass_context
 def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale, print_equations,
          print_matrix):
     """Parse and simulate LISO input or output file"""
@@ -147,7 +136,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
             header, rows = native_solution.difference(liso_solution, defaults_only=True,
                                                       meta_only=True)
 
-            print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+            click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
         # apply suffix to LISO function labels
         for function in liso_solution.functions:
@@ -184,22 +173,66 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
 @cli.group()
 def library():
-    """Op-amp library functions."""
+    """Component library functions."""
     pass
 
-@library.command()
-@argument("query")
-@option("--a0", is_flag=True, default=False, help="Show open loop gain.")
-@option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
-@option("--vnoise", is_flag=True, default=False, help="Show flat voltage noise.")
-@option("--vcorner", is_flag=True, default=False, help="Show voltage noise corner frequency.")
-@option("--inoise", is_flag=True, default=False, help="Show flat current noise.")
-@option("--icorner", is_flag=True, default=False, help="Show current noise corner frequency.")
-@option("--vmax", is_flag=True, default=False, help="Show maximum output voltage.")
-@option("--imax", is_flag=True, default=False, help="Show maximum output current.")
-@option("--sr", is_flag=True, default=False, help="Show slew rate.")
-@pass_context
-def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr):
+@library.command("path")
+def library_path():
+    """Print component library file path.
+
+    Note: this path may not exist.
+    """
+    click.echo(click.format_filename(LIBRARY.user_config_path))
+
+@library.command("create")
+def library_create():
+    """Create empty library file in user directory."""
+    # create config
+    try:
+        LIBRARY.create_user_config()
+    except ConfigAlreadyExistsException as e:
+        click.echo(e, err=True)
+    else:
+        click.echo("Library created at %s" % LIBRARY.user_config_path)
+
+@library.command("edit")
+def library_edit():
+    """Open library file in default editor."""
+    try:
+        LIBRARY.open_user_config()
+    except ConfigDoesntExistException:
+        click.echo("Configuration file doesn't exist. Try 'zero library create'.", err=True)
+
+@library.command("remove")
+def library_remove():
+    """Remove user component library file."""
+    click.confirm("Delete library file at %s?" % click.format_filename(LIBRARY.user_config_path),
+                  abort=True)
+    try:
+        LIBRARY.remove_user_config()
+    except ConfigDoesntExistException as e:
+        click.echo(e, err=True)
+
+@library.command("show")
+@click.option("--paged", is_flag=True, default=False, help="Print with paging.")
+def library_show(paged):
+    """Print the library that Zero uses."""
+    echo = click.echo_via_pager if paged else click.echo
+    echo(pformat(LIBRARY))
+
+@library.command("search")
+@click.argument("query")
+@click.option("--a0", is_flag=True, default=False, help="Show open loop gain.")
+@click.option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
+@click.option("--vnoise", is_flag=True, default=False, help="Show flat voltage noise.")
+@click.option("--vcorner", is_flag=True, default=False, help="Show voltage noise corner frequency.")
+@click.option("--inoise", is_flag=True, default=False, help="Show flat current noise.")
+@click.option("--icorner", is_flag=True, default=False, help="Show current noise corner frequency.")
+@click.option("--vmax", is_flag=True, default=False, help="Show maximum output voltage.")
+@click.option("--imax", is_flag=True, default=False, help="Show maximum output current.")
+@click.option("--sr", is_flag=True, default=False, help="Show slew rate.")
+@click.option("--paged", is_flag=True, default=False, help="Print results with paging.")
+def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr, paged):
     """Search Zero op-amp library.
 
     Op-amp parameters listed in the library can be searched:
@@ -225,6 +258,8 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
 
         vnoise < 10n & vcorner < 10
     """
+    echo = click.echo_via_pager if paged else click.echo
+
     engine = LibraryQueryEngine()
 
     # build parameter list
@@ -252,50 +287,87 @@ def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr
     devices = engine.query(query)
 
     if not devices:
-        print("No op-amps found")
+        click.echo("No op-amps found", err=True)
+        sys.exit()
+
+    nmodel = len(devices)
+    if nmodel == 1:
+        opstr = "op-amp"
     else:
-        nmodel = len(devices)
-        if nmodel == 1:
-            opstr = "op-amp"
-        else:
-            opstr = "op-amps"
+        opstr = "op-amps"
 
-        print("%i %s found:" % (nmodel, opstr))
+    click.echo("%i %s found:" % (nmodel, opstr))
 
-        header = ["Model"] + params
-        rows = []
+    header = ["Model"] + params
+    rows = []
 
-        for device in devices:
-            row = [device.model]
-            row.extend([str(getattr(device, param)) for param in params])
-            rows.append(row)
+    for device in devices:
+        row = [device.model]
+        row.extend([str(getattr(device, param)) for param in params])
+        rows.append(row)
 
-        print(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+    echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-@library.command("path")
-def library_path():
-    """Print user op-amp library file path.
+@cli.group()
+def config():
+    """Zero configuration functions."""
+    pass
+
+@config.command("path")
+def config_path():
+    """Print user config file path.
 
     Note: this path may not exist.
     """
-    print(LIBRARY.get_user_config_filepath())
+    click.echo(click.format_filename(CONF.user_config_path))
 
-@library.command("open")
-def library_open():
-    """Open user op-amp library file for editing."""
-    open_file(LIBRARY.get_user_config_filepath())
+@config.command("create")
+def config_create():
+    """Create empty config file in user directory."""
+    # create config
+    try:
+        CONF.create_user_config()
+    except ConfigAlreadyExistsException as e:
+        click.echo(e, err=True)
+    else:
+        click.echo("Config created at %s" % CONF.user_config_path)
+
+@config.command("edit")
+def config_edit():
+    """Open user config file in default editor."""
+    try:
+        CONF.open_user_config()
+    except ConfigDoesntExistException:
+        click.echo("Configuration file doesn't exist. Try 'zero config create'.", err=True)
+
+@config.command("remove")
+def config_remove():
+    """Remove user config file."""
+    click.confirm("Delete config file at %s?" % click.format_filename(CONF.user_config_path),
+                  abort=True)
+    try:
+        CONF.remove_user_config()
+    except ConfigDoesntExistException as e:
+        click.echo(e, err=True)
+
+@config.command("show")
+@click.option("--paged", is_flag=True, default=False, help="Print with paging.")
+def config_show(paged):
+    """Print the config that Zero uses."""
+    echo = click.echo_via_pager if paged else click.echo
+    echo(pformat(CONF))
 
 @cli.command()
-@argument("term")
-@option("-f", "--first", is_flag=True, default=False,
-        help="Download first match without further prompts.")
-@option("--partial/--exact", is_flag=True, default=True, help="Allow partial matches.")
-@option("--display/--download-only", is_flag=True, default=True,
-        help="Display the downloaded file.")
-@option("-p", "--path", type=Path(writable=True),
-        help="File or directory in which to save the first found datasheet.")
-@option("-t", "--timeout", type=IntRange(0), help="Request timeout in seconds.")
-@pass_context
+@click.argument("term")
+@click.option("-f", "--first", is_flag=True, default=False,
+              help="Download first match without further prompts.")
+@click.option("--partial/--exact", is_flag=True, default=True, help="Allow partial matches.")
+@click.option("--display/--download-only", is_flag=True, default=True,
+              help="Display the downloaded file.")
+@click.option("-p", "--path", type=click.Path(writable=True),
+              help="File or directory in which to save the first found datasheet.")
+@click.option("-t", "--timeout", type=click.IntRange(0), help="Request timeout in seconds.")
+@click.pass_context
 def datasheet(ctx, term, first, partial, display, path, timeout):
     """Search, fetch and display datasheets."""
     state = ctx.ensure_object(State)
@@ -304,59 +376,49 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     parts = PartRequest(term, partial=partial, path=path, timeout=timeout, progress=state.verbose)
 
     if not parts:
-        state.print_error("No parts found")
+        click.echo("No parts found", err=True)
+        sys.exit()
 
     if first or len(parts) == 1:
         # latest part
         part = parts.latest_part
 
         # show results directly
-        state.print_info(part)
+        click.echo(part)
     else:
-        state.print_info("Found multiple parts:")
+        click.echo("Found multiple parts:")
         for index, part in enumerate(parts, 1):
-            state.print_info("%d: %s" % (index, part))
+            click.echo(click.style("%d: %s" % (index, part), fg="green"))
 
-        chosen_part_idx = 0
-        while chosen_part_idx <= 0 or chosen_part_idx > len(parts):
-            try:
-                chosen_part_idx = int(input("Enter part number: "))
-
-                if chosen_part_idx <= 0 or chosen_part_idx > len(parts):
-                    raise ValueError
-            except ValueError:
-                state.print_error("Invalid, try again", exit=False)
+        # get selection
+        part_choice = click.IntRange(1, len(parts))
+        part_index = click.prompt("Enter part number", default=1, type=part_choice)
 
         # get chosen datasheet
-        part = parts[chosen_part_idx - 1]
+        part = parts[part_index - 1]
 
     # get chosen part
     if part.n_datasheets == 0:
-        state.print_error("No datasheets found for '%s'" % part.mpn)
+        click.echo("No datasheets found for '%s'" % part.mpn, err=True)
+        sys.exit()
 
     if first or part.n_datasheets == 1:
         # show results directly
-        state.print_info(part)
+        click.echo(part)
 
         # get datasheet
         ds = part.latest_datasheet
     else:
-        state.print_info("Found multiple datasheets:")
+        click.echo("Found multiple datasheets:")
         for index, ds in enumerate(part.sorted_datasheets, 1):
-            state.print_info("%d: %s" % (index, ds))
+            click.echo(click.style("%d: %s" % (index, ds), fg="green"))
 
-        chosen_datasheet_idx = 0
-        while chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
-            try:
-                chosen_datasheet_idx = int(input("Enter datasheet number: "))
-
-                if chosen_datasheet_idx <= 0 or chosen_datasheet_idx > part.n_datasheets:
-                    raise ValueError
-            except ValueError:
-                state.print_error("Invalid, try again", exit=False)
+        # get selection
+        datasheet_choice = click.IntRange(1, part.n_datasheets)
+        datasheet_index = click.prompt("Enter part number", default=1, type=datasheet_choice)
 
         # get datasheet
-        ds = part.datasheets[chosen_datasheet_idx - 1]
+        ds = part.datasheets[datasheet_index - 1]
 
     # display details
     if ds.created is not None:
