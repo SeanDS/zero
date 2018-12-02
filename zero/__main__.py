@@ -3,8 +3,7 @@
 import sys
 import logging
 from pprint import pformat
-from click import (Path, File, IntRange, group, argument, option, version_option, pass_context,
-                   format_filename)
+import click
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
@@ -53,17 +52,17 @@ class State:
         """
         return self.verbosity <= logging.INFO
 
-    def _print(self, msg, stream, exit_, exit_code):
-        print(msg, file=stream)
+    def _print(self, msg, is_error, exit_, exit_code=0):
+        click.echo(msg, err=is_error)
 
         if exit_:
             sys.exit(exit_code)
 
     def print_info(self, msg, exit_=False):
-        self._print(msg, sys.stdout, exit_, 0)
+        self._print(msg, False, exit_, 0)
 
     def print_error(self, msg, exit_=True):
-        self._print(msg, sys.stderr, exit_, 1)
+        self._print(msg, True, exit_, 1)
 
 
 def set_verbosity(ctx, _, value):
@@ -71,31 +70,33 @@ def set_verbosity(ctx, _, value):
     state = ctx.ensure_object(State)
     state.verbosity = value
 
-@group(help=DESCRIPTION)
-@version_option(version=__version__, prog_name=PROGRAM)
-@option("-v", "--verbose", count=True, default=0, callback=set_verbosity, expose_value=False,
-        help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
+@click.group(help=DESCRIPTION)
+@click.version_option(version=__version__, prog_name=PROGRAM)
+@click.option("-v", "--verbose", count=True, default=0, callback=set_verbosity, expose_value=False,
+              help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
 def cli():
     """Base CLI command group"""
     pass
 
 @cli.command()
-@argument("file", type=File())
-@option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
-@option("--liso-path", type=Path(exists=True, dir_okay=False), envvar='LISO_PATH',
-        help="Path to LISO binary. If not specified, the environment variable LISO_PATH is searched.")
-@option("--compare", is_flag=True, default=False,
-        help="Simulate using both this tool and LISO binary, and overlay results.")
-@option("--diff", is_flag=True, default=False,
-        help="Show difference between results of comparison.")
-@option("--plot/--no-plot", default=True, show_default=True, help="Display results as figure.")
-@option("--save-figure", type=File("wb", lazy=False), multiple=True,
-        help="Save image of figure to file. Can be specified multiple times.")
-@option("--prescale/--no-prescale", default=True, show_default=True,
-        help="Prescale matrices to improve numerical precision.")
-@option("--print-equations", is_flag=True, help="Print circuit equations.")
-@option("--print-matrix", is_flag=True, help="Print circuit matrix.")
-@pass_context
+@click.argument("file", type=click.File())
+@click.option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
+@click.option("--liso-path", type=click.Path(exists=True, dir_okay=False), envvar='LISO_PATH',
+              help="Path to LISO binary. If not specified, the environment variable LISO_PATH is "
+              "searched.")
+@click.option("--compare", is_flag=True, default=False,
+              help="Simulate using both this tool and LISO binary, and overlay results.")
+@click.option("--diff", is_flag=True, default=False,
+              help="Show difference between results of comparison.")
+@click.option("--plot/--no-plot", default=True, show_default=True, help="Display results as "
+              "figure.")
+@click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
+              help="Save image of figure to file. Can be specified multiple times.")
+@click.option("--prescale/--no-prescale", default=True, show_default=True,
+              help="Prescale matrices to improve numerical precision.")
+@click.option("--print-equations", is_flag=True, help="Print circuit equations.")
+@click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
+@click.pass_context
 def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale, print_equations,
          print_matrix):
     """Parse and simulate LISO input or output file"""
@@ -188,17 +189,17 @@ def library():
     pass
 
 @library.command()
-@argument("query")
-@option("--a0", is_flag=True, default=False, help="Show open loop gain.")
-@option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
-@option("--vnoise", is_flag=True, default=False, help="Show flat voltage noise.")
-@option("--vcorner", is_flag=True, default=False, help="Show voltage noise corner frequency.")
-@option("--inoise", is_flag=True, default=False, help="Show flat current noise.")
-@option("--icorner", is_flag=True, default=False, help="Show current noise corner frequency.")
-@option("--vmax", is_flag=True, default=False, help="Show maximum output voltage.")
-@option("--imax", is_flag=True, default=False, help="Show maximum output current.")
-@option("--sr", is_flag=True, default=False, help="Show slew rate.")
-@pass_context
+@click.argument("query")
+@click.option("--a0", is_flag=True, default=False, help="Show open loop gain.")
+@click.option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
+@click.option("--vnoise", is_flag=True, default=False, help="Show flat voltage noise.")
+@click.option("--vcorner", is_flag=True, default=False, help="Show voltage noise corner frequency.")
+@click.option("--inoise", is_flag=True, default=False, help="Show flat current noise.")
+@click.option("--icorner", is_flag=True, default=False, help="Show current noise corner frequency.")
+@click.option("--vmax", is_flag=True, default=False, help="Show maximum output voltage.")
+@click.option("--imax", is_flag=True, default=False, help="Show maximum output current.")
+@click.option("--sr", is_flag=True, default=False, help="Show slew rate.")
+@click.pass_context
 def search(ctx, query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr):
     """Search Zero op-amp library.
 
@@ -280,7 +281,7 @@ def config():
     pass
 
 @config.command("path")
-@pass_context
+@click.pass_context
 def path(ctx):
     """Print user config file path.
 
@@ -288,10 +289,10 @@ def path(ctx):
     """
     state = ctx.ensure_object(State)
 
-    state.print_info(format_filename(CONF.user_config_path))
+    state.print_info(click.format_filename(CONF.user_config_path))
 
 @config.command("create")
-@pass_context
+@click.pass_context
 def create(ctx):
     """Create empty config file in user directory."""
     state = ctx.ensure_object(State)
@@ -305,7 +306,7 @@ def create(ctx):
         state.print_info("Config created at %s" % CONF.user_config_path)
 
 @config.command("edit")
-@pass_context
+@click.pass_context
 def edit(ctx):
     """Open user config file for editing."""
     state = ctx.ensure_object(State)
@@ -316,23 +317,23 @@ def edit(ctx):
         state.print_error("Configuration file doesn't exist. Try 'zero config create'.")
 
 @config.command("dump")
-@pass_context
+@click.pass_context
 def dump(ctx):
     """Print the config that Zero uses."""
     state = ctx.ensure_object(State)
     state.print_info(pformat(CONF))
 
 @cli.command()
-@argument("term")
-@option("-f", "--first", is_flag=True, default=False,
-        help="Download first match without further prompts.")
-@option("--partial/--exact", is_flag=True, default=True, help="Allow partial matches.")
-@option("--display/--download-only", is_flag=True, default=True,
-        help="Display the downloaded file.")
-@option("-p", "--path", type=Path(writable=True),
-        help="File or directory in which to save the first found datasheet.")
-@option("-t", "--timeout", type=IntRange(0), help="Request timeout in seconds.")
-@pass_context
+@click.argument("term")
+@click.option("-f", "--first", is_flag=True, default=False,
+              help="Download first match without further prompts.")
+@click.option("--partial/--exact", is_flag=True, default=True, help="Allow partial matches.")
+@click.option("--display/--download-only", is_flag=True, default=True,
+              help="Display the downloaded file.")
+@click.option("-p", "--path", type=click.Path(writable=True),
+              help="File or directory in which to save the first found datasheet.")
+@click.option("-t", "--timeout", type=click.IntRange(0), help="Request timeout in seconds.")
+@click.pass_context
 def datasheet(ctx, term, first, partial, display, path, timeout):
     """Search, fetch and display datasheets."""
     state = ctx.ensure_object(State)
