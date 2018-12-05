@@ -4,7 +4,7 @@ import os
 import sys
 import logging
 from unittest import TestSuite, TestLoader, TextTestRunner
-from click import group, argument, option
+import click
 from zero import set_log_verbosity
 
 from .validation import LisoTestSuite
@@ -39,15 +39,15 @@ TESTS = {
     "all-fast": ALL_FAST_TESTS
 }
 
-@group()
+@click.group()
 def tests():
     """Zero testing facility."""
     pass
 
 @tests.command()
-@argument("suite_names", nargs=-1, required=True)
-@option("-v", "--verbose", count=True, default=0,
-        help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
+@click.argument("suite_names", nargs=-1, required=True)
+@click.option("-v", "--verbose", count=True, default=0,
+              help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
 def run(suite_names, verbose):
     """Run test suites."""
     if verbose > 2:
@@ -59,14 +59,21 @@ def run(suite_names, verbose):
     set_log_verbosity(logging.WARNING - 10 * verbose, logger)
 
     # test suite to run
-    suite = TestSuite([TESTS.get(suite_name) for suite_name in suite_names])
+    try:
+        test_suites = [TESTS[suite_name] for suite_name in suite_names]
+    except KeyError as e:
+        click.echo("Suite name %s is invalid (use \"suites\" to list available suites)" % e,
+                   err=True)
+        sys.exit()
 
-    print("Running %i tests" % suite.countTestCases())
+    suite = TestSuite(test_suites)
+
+    click.echo("Running %i tests" % suite.countTestCases())
     run_and_exit(suite, verbosity=verbose)
 
 @tests.command()
 def suites():
-    print(", ".join(TESTS))
+    click.echo(", ".join(TESTS))
 
 def run_and_exit(suite, verbosity=1):
     """Run tests and exit with a status code representing the test result"""
