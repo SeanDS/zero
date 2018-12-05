@@ -45,7 +45,7 @@ def tests():
     pass
 
 @tests.command()
-@argument("suite_names", nargs=-1)
+@argument("suite_names", nargs=-1, required=True)
 @option("-v", "--verbose", count=True, default=0,
         help="Enable verbose output. Supply extra flag for greater verbosity, i.e. \"-vv\".")
 def run(suite_names, verbose):
