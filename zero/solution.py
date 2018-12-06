@@ -26,6 +26,9 @@ class Solution:
     NOISE_SINKS_ALL = "all"
     NOISE_TYPES_ALL = "all"
 
+    # default group name (reserved)
+    _DEFAULT_GROUP = "__default__"
+
     def __init__(self, frequencies, name=None):
         """Instantiate a new solution
 
@@ -33,8 +36,12 @@ class Solution:
                             results for
         :type frequencies: :class:`~np.ndarray`
         """
-        # defaults
+        # functions and groups
         self.functions = []
+        self._function_groups = {}
+        self._group_functions = defaultdict(list)
+
+        # default functions
         self._default_tfs = []
         self._default_noise = []
         self._default_noise_sums = []
@@ -47,7 +54,6 @@ class Solution:
 
         # plot styles
         self.figure_plot_style = {}
-        self.function_plot_styles = defaultdict(dict)
 
         self.frequencies = frequencies
 
@@ -65,7 +71,7 @@ class Solution:
     def name(self, name):
         self._name = name
 
-    def add_tf(self, tf, default=False):
+    def add_tf(self, tf, default=False, group=None):
         """Add a transfer function to the solution.
 
         Parameters
@@ -74,6 +80,8 @@ class Solution:
             The transfer function to add.
         default : :class:`bool`, optional
             Whether this transfer function is a default.
+        group : :class:`str`, optional
+            Group name.
 
         Raises
         ------
@@ -84,7 +92,7 @@ class Solution:
         if not np.all(tf.frequencies == self.frequencies):
             raise ValueError("transfer function '%s' doesn't fit this solution" % tf)
 
-        self._add_function(tf)
+        self._add_function(tf, group=group)
 
         if default:
             self.set_tf_as_default(tf)
@@ -102,7 +110,7 @@ class Solution:
 
         self._default_tfs.append(tf)
 
-    def add_noise(self, spectrum, default=False):
+    def add_noise(self, spectrum, default=False, group=None):
         """Add a noise spectrum to the solution.
 
         Parameters
@@ -111,6 +119,8 @@ class Solution:
             The noise spectrum to add.
         default : :class:`bool`, optional
             Whether this noise spectrum is a default.
+        group : :class:`str`, optional
+            Group name.
 
         Raises
         ------
@@ -125,7 +135,7 @@ class Solution:
         if not np.all(spectrum.frequencies == self.frequencies):
             raise ValueError("noise spectrum '%s' doesn't fit this solution" % spectrum)
 
-        self._add_function(spectrum)
+        self._add_function(spectrum, group=group)
 
         if default:
             self.set_noise_as_default(spectrum)
@@ -143,7 +153,7 @@ class Solution:
 
         self._default_noise.append(spectrum)
 
-    def add_noise_sum(self, noise_sum, default=False):
+    def add_noise_sum(self, noise_sum, default=False, group=None):
         """Add a noise sum to the solution.
 
         Parameters
@@ -152,6 +162,8 @@ class Solution:
             The noise sum to add.
         default : :class:`bool`, optional
             Whether this noise sum is a default.
+        group : :class:`str`, optional
+            Group name.
 
         Raises
         ------
@@ -165,7 +177,7 @@ class Solution:
         if not np.all(noise_sum.frequencies == self.frequencies):
             raise ValueError("noise sum '%s' doesn't fit this solution" % noise_sum)
 
-        self._add_function(noise_sum)
+        self._add_function(noise_sum, group=group)
 
         if default:
             self.set_noise_sum_as_default(noise_sum)
@@ -183,11 +195,20 @@ class Solution:
 
         self._default_noise_sums.append(noise_sum)
 
-    def _add_function(self, function):
+    def _add_function(self, function, group=None):
         if function in self.functions:
             raise ValueError("duplicate function")
 
+        if group is None:
+            group = self._DEFAULT_GROUP
+        elif group == self._DEFAULT_GROUP:
+            raise ValueError("group '%s' is a reserved keyword" % self._DEFAULT_GROUP)
+
+        group = str(group)
+
         self.functions.append(function)
+        self._function_groups[function] = group
+        self._group_functions[group].append(function)
 
     def filter_tfs(self, **kwargs):
         return self._apply_tf_filters(self.tfs, **kwargs)
@@ -533,8 +554,7 @@ class Solution:
 
         with self._figure_style_context():
             for tf in tfs:
-                with self._function_style_context(tf):
-                    tf.draw(ax1, ax2)
+                tf.draw(ax1, ax2)
 
             # overall figure title
             if title:
@@ -590,8 +610,7 @@ class Solution:
 
         with self._figure_style_context():
             for spectrum in noise:
-                with self._function_style_context(spectrum):
-                    spectrum.draw(ax)
+                spectrum.draw(ax)
 
             # overall figure title
             if title:
@@ -620,13 +639,6 @@ class Solution:
         Used to override the default style for a figure.
         """
         return plt.rc_context(self.figure_plot_style)
-
-    def _function_style_context(self, function):
-        """Function style context manager.
-
-        Used to override the default style for a plotted function.
-        """
-        return plt.rc_context(self.function_plot_styles[function])
 
     @staticmethod
     def save_figure(figure, path, **kwargs):
@@ -691,6 +703,8 @@ class Solution:
             - have no equivalent functions
 
         To combine solutions with potentially identical functions, use labels to disambiguate.
+
+        The figure style settings are inherited from the solution from which `combine` is called.
         """
         # check frequencies match
         if not frequencies_match(self.frequencies, other.frequencies):
@@ -706,31 +720,20 @@ class Solution:
         # resultant solution
         result = self.__class__(self.frequencies, name)
 
-        flagged_tfs = []
-        flagged_noise = []
-        flagged_noise_sums = []
+        def flag_functions(solution):
+            # use solution name as group name
+            group = str(solution)
 
-        # get functions with their default statuses
-        for solution in (self, other):
             for tf in solution.tfs:
-                flagged_tfs.append((tf, solution.is_default_tf(tf)))
+                result.add_tf(tf, default=solution.is_default_tf(tf), group=group)
             for spectrum in solution.noise:
-                flagged_noise.append((spectrum, solution.is_default_noise(spectrum)))
+                result.add_noise(spectrum, default=solution.is_default_noise(spectrum), group=group)
             for noise_sum in solution.noise_sums:
-                flagged_noise_sums.append((noise_sum, solution.is_default_noise_sum(noise_sum)))
+                result.add_noise_sum(noise_sum, default=solution.is_default_noise_sum(noise_sum),
+                                     group=group)
 
-        # add functions and set plot styles
-        for tf, default in flagged_tfs:
-            result.add_tf(tf, default=default)
-        for spectrum, default in flagged_noise:
-            result.add_noise(spectrum, default=default)
-        for noise_sum, default in flagged_noise_sums:
-            result.add_noise_sum(noise_sum, default=default)
-
-        # combine function plot styles
-        styles = {**self.function_plot_styles, **other.function_plot_styles}
-        for function, style in styles.items():
-            result.function_plot_styles[function] = style
+        flag_functions(self)
+        flag_functions(other)
 
         # take other settings from LHS
         result.figure_plot_style = self.figure_plot_style
