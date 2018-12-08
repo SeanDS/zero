@@ -4,10 +4,11 @@ import sys
 import os
 import abc
 import tempfile
-import subprocess
+import colorsys
 import numpy as np
 import requests
 import progressbar
+from matplotlib import colors
 
 
 class Singleton(abc.ABCMeta):
@@ -153,3 +154,26 @@ def db(magnitude):
     """
 
     return 20 * np.log10(magnitude)
+
+def lighten_colours(colour_cycle, factor):
+    """Lightens the given color by multiplying (1 - luminosity) by the given factor.
+
+    https://stackoverflow.com/a/49601444/2251982
+    """
+    cycle = []
+
+    for this_colour in colour_cycle:
+        try:
+            # get RGB values from hex string or name
+            c = colors.cnames[this_colour]
+        except KeyError:
+            c = this_colour
+
+        c = colorsys.rgb_to_hls(*colors.to_rgb(c))
+        new = colorsys.hls_to_rgb(c[0], 1 - factor * (1 - c[1]), c[2])
+        newints = tuple([int(value * 255) for value in new])
+        hexcode = "#%02x%02x%02x" % newints
+
+        cycle.append(hexcode)
+
+    return cycle

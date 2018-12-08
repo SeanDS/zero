@@ -126,10 +126,6 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
     # determine solution to show or save
     if compare:
-        # make LISO solution plots dashed
-        for function in liso_solution.functions:
-            liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
-
         # show difference before changing labels
         if diff:
             # group by meta data

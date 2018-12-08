@@ -6,11 +6,13 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
+from matplotlib import cycler
 
 from .config import ZeroConfig
 from .data import TransferFunction, NoiseSpectrum, MultiNoiseSpectrum, frequencies_match
 from .components import Component, Node, Noise
 from .format import Quantity
+from .misc import lighten_colours
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -52,8 +54,13 @@ class Solution:
         # solution name
         self.name = name
 
-        # plot styles
-        self.figure_plot_style = {}
+        # line style group cycle
+        self._linestyles = ["-", "--", "-.", ":"]
+
+        # default colour cycle
+        self._default_color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        # cycles by group
+        self._group_colours = {}
 
         self.frequencies = frequencies
 
@@ -552,38 +559,45 @@ class Solution:
 
         ax1, ax2 = figure.axes
 
-        with self._figure_style_context():
-            for tf in tfs:
-                tf.draw(ax1, ax2)
+        grouped_tfs = self._group_functions_by_group(tfs)
 
-            # overall figure title
-            if title:
-                figure.suptitle(title)
+        for group, group_tfs in grouped_tfs.items():
+            with self._figure_style_context(group):
+                # reset axes colour wheels
+                ax1.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
+                ax2.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
 
-            # legend
-            if legend:
-                ax1.legend(loc=legend_loc)
+                for tf in group_tfs:
+                    tf.draw(ax1, ax2)
 
-            # limits
-            if xlim:
-                ax1.set_xlim(xlim)
-                ax2.set_xlim(xlim)
-            if ylim:
-                ax1.set_ylim(ylim)
-                ax2.set_ylim(ylim)
+                # overall figure title
+                if title:
+                    figure.suptitle(title)
 
-            # set other axis properties
-            ax2.set_xlabel(xlabel)
-            ax1.set_ylabel(ylabel_mag)
-            ax2.set_ylabel(ylabel_phase)
-            ax1.grid(True)
-            ax2.grid(True)
+                # legend
+                if legend:
+                    ax1.legend(loc=legend_loc)
 
-            # magnitude and phase tick locators
-            ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
-            ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
-            ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
-            ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
+                # limits
+                if xlim:
+                    ax1.set_xlim(xlim)
+                    ax2.set_xlim(xlim)
+                if ylim:
+                    ax1.set_ylim(ylim)
+                    ax2.set_ylim(ylim)
+
+                # set other axis properties
+                ax2.set_xlabel(xlabel)
+                ax1.set_ylabel(ylabel_mag)
+                ax2.set_ylabel(ylabel_phase)
+                ax1.grid(True)
+                ax2.grid(True)
+
+                # magnitude and phase tick locators
+                ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
+                ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
+                ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
+                ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
 
         return figure
 
@@ -608,37 +622,71 @@ class Solution:
 
             ylabel = r"$\bf{Noise}$" + " (%s)" % ", ".join(unit_tex)
 
-        with self._figure_style_context():
-            for spectrum in noise:
-                spectrum.draw(ax)
+        grouped_noise = self._group_functions_by_group(noise)
 
-            # overall figure title
-            if title:
-                figure.suptitle(title)
+        for group, grouped_noise in grouped_noise.items():
+            # reset axis colour wheel
+            ax.set_prop_cycle(None)
 
-            # legend
-            if legend:
-                ax.legend(loc=legend_loc)
+            with self._figure_style_context(group):
+                # reset axes colour wheels
+                ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
 
-            # limits
-            if xlim:
-                ax.set_xlim(xlim)
-            if ylim:
-                ax.set_ylim(ylim)
+                for spectrum in grouped_noise:
+                    spectrum.draw(ax)
 
-            # set other axis properties
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
-            ax.grid(True)
+                # overall figure title
+                if title:
+                    figure.suptitle(title)
+
+                # legend
+                if legend:
+                    ax.legend(loc=legend_loc)
+
+                # limits
+                if xlim:
+                    ax.set_xlim(xlim)
+                if ylim:
+                    ax.set_ylim(ylim)
+
+                # set other axis properties
+                ax.set_xlabel(xlabel)
+                ax.set_ylabel(ylabel)
+                ax.grid(True)
 
         return figure
 
-    def _figure_style_context(self):
+    def _figure_style_context(self, group):
         """Figure style context manager.
 
         Used to override the default style for a figure.
         """
-        return plt.rc_context(self.figure_plot_style)
+        groups = list(self._group_functions)
+        # group index
+        group_index = groups.index(group)
+        # get line style according to group index
+        index = group_index % len(self._linestyles)
+
+        if group not in self._group_colours:
+            # brighten new cycle
+            cycle = lighten_colours(self._default_color_cycle, 0.5 ** group_index)
+            self._group_colours[group] = cycle
+
+        prop_cycler = cycler(color=self._group_colours[group])
+
+        settings = {"lines.linestyle": self._linestyles[index],
+                    "axes.prop_cycle": prop_cycler}
+
+        return plt.rc_context(settings)
+
+    def _group_functions_by_group(self, functions):
+        """Group functions by group."""
+        groups = defaultdict(list)
+
+        for function in functions:
+            groups[self._function_groups[function]].append(function)
+
+        return groups
 
     @staticmethod
     def save_figure(figure, path, **kwargs):
@@ -703,8 +751,6 @@ class Solution:
             - have no equivalent functions
 
         To combine solutions with potentially identical functions, use labels to disambiguate.
-
-        The figure style settings are inherited from the solution from which `combine` is called.
         """
         # check frequencies match
         if not frequencies_match(self.frequencies, other.frequencies):
@@ -734,9 +780,6 @@ class Solution:
 
         flag_functions(self)
         flag_functions(other)
-
-        # take other settings from LHS
-        result.figure_plot_style = self.figure_plot_style
 
         return result
 
