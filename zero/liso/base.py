@@ -539,7 +539,9 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
                         "real": {"real": ["re", "real"]},
                         "imaginary": {"imag": ["im", "imag"]}}
 
-    def __init__(self, type_, element=None, scales=None, index=None, output_type=None):
+    OUTPUT_TYPE = None
+
+    def __init__(self, type_, element=None, scales=None, index=None):
         if scales is None:
             scales = []
 
@@ -552,7 +554,6 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
         self.element = element
         self.scales = scales
         self.index = index
-        self.output_type = output_type
 
     @property
     def scales(self):
@@ -653,8 +654,10 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
 
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
-    def __init__(self, *args, node=None, **kwargs):
-        super().__init__(type_="node", element=node, output_type="voltage", *args, **kwargs)
+    OUTPUT_TYPE = "voltage"
+
+    def __init__(self, node=None, **kwargs):
+        super().__init__("node", element=node, **kwargs)
 
     @property
     def node(self):
@@ -664,9 +667,10 @@ class LisoOutputVoltage(LisoOutputElement):
 
 class LisoOutputCurrent(LisoOutputElement):
     """LISO output current"""
-    def __init__(self, *args, component=None, **kwargs):
-        super().__init__(type_="component", element=component, output_type="current", *args,
-                         **kwargs)
+    OUTPUT_TYPE = "current"
+
+    def __init__(self, component=None, **kwargs):
+        super().__init__("component", element=component, **kwargs)
 
     @property
     def component(self):
