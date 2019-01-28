@@ -33,7 +33,7 @@ class NullOpAmpLibrary(OpAmpLibrary):
             if opamp.model == name:
                 return opamp
 
-        raise ValueError(f"op-amp '{name}' not found")
+        raise ValueError("op-amp '%s' not found" % name)
 
 
 class OpAmpPolesTestCase(unittest.TestCase):
@@ -49,7 +49,7 @@ class OpAmpPolesTestCase(unittest.TestCase):
         # Generate unique name.
         # Slow JSON serialisation used to avoid implementing our own hashing method:
         #   https://stackoverflow.com/questions/5884066/hashing-a-dictionary
-        name = f"__testop__{hash(json.dumps(data))}__"
+        name = "__testop__%s__" % hash(json.dumps(data))
 
         # parse
         self.library.parse_opamp_test_data(name, data)
