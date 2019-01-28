@@ -38,9 +38,10 @@ class OpAmpLibrary(BaseConfig):
         count = 0
 
         # each section is a new op-amp
-        for opamp, data in self["op-amps"].items():
-            self._parse_lib_data(opamp, data)
-            count += 1
+        if "op-amps" in self and self["op-amps"] is not None:
+            for opamp, data in self["op-amps"].items():
+                self._parse_lib_data(opamp, data)
+                count += 1
 
         LOGGER.debug("found %i op-amps", count)
 
