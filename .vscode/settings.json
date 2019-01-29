@@ -3,6 +3,5 @@
     "files.trimTrailingWhitespace": true,
     "editor.rulers": [100],
     "editor.tabSize": 4,
-    "editor.insertSpaces": true,
-    "python.pythonPath": "/home/sean/conda/envs/circuit/bin/python"
+    "editor.insertSpaces": true
 }
