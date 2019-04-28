@@ -5,4 +5,3 @@ from .base import LisoParserError
 from .input import LisoInputParser
 from .output import LisoOutputParser
 from .runner import LisoRunner
-from .util import liso_order_key

@@ -13,7 +13,7 @@ from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
 from ..format import Quantity
 from ..misc import ChangeFlagDict
-from .util import liso_order_key
+from .util import liso_sort_key
 
 LOGGER = logging.getLogger(__name__)
 
@@ -311,6 +311,9 @@ class LisoParser(metaclass=abc.ABCMeta):
         if set_default_plots:
             self._set_default_plots()
 
+        # Sort functions.
+        self._solution.sort_functions(liso_sort_key)
+
         return self._solution
 
     def _set_default_plots(self):
@@ -320,9 +323,6 @@ class LisoParser(metaclass=abc.ABCMeta):
                                                     sinks=self.default_tf_sinks())
 
             for group, tfs in default_tfs.items():
-                # Sort plots in LISO order.
-                tfs = sorted(tfs, key=liso_order_key)
-
                 for tf in tfs:
                     if not self._solution.is_default_tf(tf, group):
                         self._solution.set_tf_as_default(tf, group)
@@ -330,9 +330,6 @@ class LisoParser(metaclass=abc.ABCMeta):
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
 
             for group, spectra in default_spectra.items():
-                # Sort plots in LISO order.
-                spectra = sorted(spectra, key=liso_order_key)
-
                 for spectrum in spectra:
                     if not self._solution.is_default_noise(spectrum, group):
                         self._solution.set_noise_as_default(spectrum, group)

@@ -71,6 +71,13 @@ class Solution:
         """Get function group"""
         return self._function_groups[function]
 
+    def sort_functions(self, key_function):
+        """Sort functions using specified callback"""
+        groups = defaultdict(list)
+        for group, functions in self._groups.items():
+            groups[group] = sorted(functions, key=key_function)
+        self._groups = groups
+
     def _merge_groups(self, *groupsets):
         """Merge grouped functions into one dict"""
         combined = defaultdict(list)
