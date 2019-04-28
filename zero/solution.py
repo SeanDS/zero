@@ -21,32 +21,35 @@ CONF = ZeroConfig()
 class Solution:
     """Represents a solution to the simulated circuit"""
 
-    # filter flags
+    # Function filter flags.
     TF_SOURCES_ALL = "all"
     TF_SINKS_ALL = "all"
+    TF_GROUPS_ALL = "all"
     NOISE_SOURCES_ALL = "all"
     NOISE_SINKS_ALL = "all"
+    NOISE_GROUPS_ALL = "all"
     NOISE_TYPES_ALL = "all"
 
-    # default group name (reserved)
+    # Default group name (reserved).
     _DEFAULT_GROUP = "__default__"
 
     def __init__(self, frequencies, name=None):
         """Instantiate a new solution
 
-        :param frequencies: sequence of frequencies this solution contains \
-                            results for
+        :param frequencies: sequence of frequencies this solution contains results for
         :type frequencies: :class:`~np.ndarray`
         """
-        # functions and groups
-        self.functions = []
+        # Groups of functions. The order of functions in their groups, and the groups themselves,
+        # determine plotting order.
+        self._groups = defaultdict(list)
+        # Map of functions to their groups.
         self._function_groups = {}
-        self._group_functions = defaultdict(list)
 
-        # default functions
-        self._default_tfs = []
-        self._default_noise = []
-        self._default_noise_sums = []
+        # Default functions in each group.
+        self._default_tfs = defaultdict(list)
+        self._default_noise = defaultdict(list)
+        self._default_noise_sums = defaultdict(list)
+
         self._name = None
 
         # creation date
@@ -63,6 +66,20 @@ class Solution:
         self._group_colours = {}
 
         self.frequencies = frequencies
+
+    def function_group(self, function):
+        """Get function group"""
+        return self._function_groups[function]
+
+    def _merge_groups(self, *groupsets):
+        """Merge grouped functions into one dict"""
+        combined = defaultdict(list)
+
+        for groups in groupsets:
+            for group, functions in groups.items():
+                combined[group].extend(functions)
+
+        return combined
 
     @property
     def name(self):
@@ -95,27 +112,46 @@ class Solution:
         ValueError
             If the specified transfer function is incompatible with this solution.
         """
-        # dimension sanity checks
+        # Dimension sanity checks.
         if not np.all(tf.frequencies == self.frequencies):
             raise ValueError("transfer function '%s' doesn't fit this solution" % tf)
 
         self._add_function(tf, group=group)
 
         if default:
-            self.set_tf_as_default(tf)
+            self.set_tf_as_default(tf, group)
 
-    def is_default_tf(self, tf):
-        return tf in self._default_tfs
+    def is_default_tf(self, tf, group=None):
+        if group is None:
+            group = self._DEFAULT_GROUP
 
-    def set_tf_as_default(self, tf):
-        """Set the specified transfer function as a default"""
-        if tf not in self.tfs:
+        return tf in self._default_tfs[group]
+
+    def set_tf_as_default(self, tf, group=None):
+        """Set the specified transfer function as a default.
+
+        Parameters
+        ----------
+        tf : :class:`.TransferFunction`
+            The transfer function to set as default.
+        group : str, optional
+            The function group. If None, the default is used.
+
+        Raises
+        ------
+        ValueError
+            If `tf` is not part of this solution or already set as a default.
+        """
+        if group is None:
+            group = self._DEFAULT_GROUP
+
+        if tf not in self.tfs[group]:
             raise ValueError("transfer function '%s' is not in the solution" % tf)
 
-        if self.is_default_tf(tf):
+        if self.is_default_tf(tf, group):
             raise ValueError("transfer function '%s' is already default" % tf)
 
-        self._default_tfs.append(tf)
+        self._default_tfs[group].append(tf)
 
     def add_noise(self, spectrum, default=False, group=None):
         """Add a noise spectrum to the solution.
@@ -127,7 +163,7 @@ class Solution:
         default : :class:`bool`, optional
             Whether this noise spectrum is a default.
         group : :class:`str`, optional
-            Group name.
+            The function group. If None, the default is used.
 
         Raises
         ------
@@ -145,20 +181,26 @@ class Solution:
         self._add_function(spectrum, group=group)
 
         if default:
-            self.set_noise_as_default(spectrum)
+            self.set_noise_as_default(spectrum, group)
 
-    def is_default_noise(self, noise):
-        return noise in self._default_noise
+    def is_default_noise(self, noise, group=None):
+        if group is None:
+            group = self._DEFAULT_GROUP
 
-    def set_noise_as_default(self, spectrum):
+        return noise in self._default_noise[group]
+
+    def set_noise_as_default(self, spectrum, group=None):
         """Set the specified noise spectrum as a default"""
-        if spectrum not in self.noise:
+        if group is None:
+            group = self._DEFAULT_GROUP
+
+        if spectrum not in self.noise[group]:
             raise ValueError("noise spectrum '%s' is not in the solution" % spectrum)
 
-        if self.is_default_noise(spectrum):
+        if self.is_default_noise(spectrum, group):
             raise ValueError("noise spectrum '%s' is already default" % spectrum)
 
-        self._default_noise.append(spectrum)
+        self._default_noise[group].append(spectrum)
 
     def add_noise_sum(self, noise_sum, default=False, group=None):
         """Add a noise sum to the solution.
@@ -170,7 +212,7 @@ class Solution:
         default : :class:`bool`, optional
             Whether this noise sum is a default.
         group : :class:`str`, optional
-            Group name.
+            The function group. If None, the default is used.
 
         Raises
         ------
@@ -187,25 +229,28 @@ class Solution:
         self._add_function(noise_sum, group=group)
 
         if default:
-            self.set_noise_sum_as_default(noise_sum)
+            self.set_noise_sum_as_default(noise_sum, group)
 
-    def is_default_noise_sum(self, noise_sum):
-        return noise_sum in self._default_noise_sums
+    def is_default_noise_sum(self, noise_sum, group=None):
+        if group is None:
+            group = self._DEFAULT_GROUP
 
-    def set_noise_sum_as_default(self, noise_sum):
+        return noise_sum in self._default_noise_sums[group]
+
+    def set_noise_sum_as_default(self, noise_sum, group=None):
         """Set the specified noise sum as a default"""
-        if noise_sum not in self.noise_sums:
+        if group is None:
+            group = self._DEFAULT_GROUP
+
+        if noise_sum not in self.noise_sums[group]:
             raise ValueError("noise sum '%s' is not in the solution" % noise_sum)
 
         if self.is_default_noise_sum(noise_sum):
             raise ValueError("noise sum '%s' is already default" % noise_sum)
 
-        self._default_noise_sums.append(noise_sum)
+        self._default_noise_sums[group].append(noise_sum)
 
     def _add_function(self, function, group=None):
-        if function in self.functions:
-            raise ValueError("duplicate function")
-
         if group is None:
             group = self._DEFAULT_GROUP
         elif group == self._DEFAULT_GROUP:
@@ -213,21 +258,31 @@ class Solution:
 
         group = str(group)
 
-        self.functions.append(function)
+        if function in self._groups[group]:
+            raise ValueError(f"duplicate function '{function}' in group '{group}'")
+
+        self._groups[group].append(function)
         self._function_groups[function] = group
-        self._group_functions[group].append(function)
 
     def filter_tfs(self, **kwargs):
         return self._apply_tf_filters(self.tfs, **kwargs)
 
-    def _apply_tf_filters(self, tfs, sources=None, sinks=None):
+    def _apply_tf_filters(self, tfs, groups=None, sources=None, sinks=None):
         filter_sources = []
         filter_sinks = []
 
+        if groups is None:
+            groups = self.TF_GROUPS_ALL
         if sources is None:
             sources = self.TF_SOURCES_ALL
         if sinks is None:
             sinks = self.TF_SINKS_ALL
+
+        if groups != self.TF_GROUPS_ALL:
+            # Filter by group.
+            for group in tfs:
+                if group not in groups:
+                    del tfs[groups]
 
         if sources != self.TF_SOURCES_ALL:
             if isinstance(sources, str):
@@ -242,8 +297,9 @@ class Solution:
 
                 filter_sources.append(source)
 
-            # filter by source
-            tfs = [tf for tf in tfs if tf.source in filter_sources]
+            # Filter by source.
+            for group, group_tfs in tfs.items():
+                tfs[group] = [tf for tf in group_tfs if tf.source in filter_sources]
 
         if sinks != self.TF_SINKS_ALL:
             if isinstance(sinks, str):
@@ -258,8 +314,9 @@ class Solution:
 
                 filter_sinks.append(sink)
 
-            # filter by sink
-            tfs = [tf for tf in tfs if tf.sink in filter_sinks]
+            # Filter by sink.
+            for group, group_tfs in tfs.items():
+                tfs[group] = [tf for tf in group_tfs if tf.sink in filter_sinks]
 
         return tfs
 
@@ -277,16 +334,24 @@ class Solution:
         """
         return self._apply_noise_filters(self._default_noise, **kwargs)
 
-    def _apply_noise_filters(self, spectra, sources=None, sinks=None, types=None):
+    def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, types=None):
         filter_sources = []
         filter_sinks = []
 
+        if groups is None:
+            groups = self.NOISE_GROUPS_ALL
         if sources is None:
             sources = self.NOISE_SOURCES_ALL
         if sinks is None:
             sinks = self.NOISE_SINKS_ALL
         if types is None:
             types = self.NOISE_TYPES_ALL
+
+        if groups != self.NOISE_GROUPS_ALL:
+            # Filter by group.
+            for group in spectra:
+                if group not in groups:
+                    del spectra[groups]
 
         if sources != self.NOISE_SOURCES_ALL:
             if isinstance(sources, str):
@@ -301,8 +366,10 @@ class Solution:
 
                 filter_sources.append(source)
 
-            # filter by source
-            spectra = [spectrum for spectrum in spectra if spectrum.source in filter_sources]
+            # Filter by source.
+            for group, group_spectra in spectra.items():
+                spectra[group] = [spectrum for spectrum in group_spectra
+                                  if spectrum.source in filter_sources]
 
         if sinks != self.NOISE_SINKS_ALL:
             if isinstance(sinks, str):
@@ -317,48 +384,62 @@ class Solution:
 
                 filter_sinks.append(sink)
 
-            # filter by sink
-            spectra = [spectrum for spectrum in spectra if spectrum.sink in filter_sinks]
+            # Filter by sink.
+            for group, group_spectra in spectra.items():
+                spectra[group] = [spectrum for spectrum in group_spectra
+                                  if spectrum.sink in filter_sinks]
 
         if types != self.NOISE_TYPES_ALL:
-            # filter by noise type
-            for spectrum in spectra:
-                if spectrum.noise_type not in types and spectrum.noise_subtype not in types:
-                    # no match
-                    spectra.remove(spectrum)
+            # Filter by noise type.
+            for group, group_spectra in spectra.items():
+                for spectrum in group_spectra:
+                    if spectrum.noise_type not in types and spectrum.noise_subtype not in types:
+                        # No match.
+                        group_spectra.remove(spectrum)
+                spectra[group] = group_spectra
 
         return spectra
 
     @property
     def tfs(self):
-        return [function for function in self.functions if isinstance(function, TransferFunction)]
+        return {group: [function for function in functions if isinstance(function, TransferFunction)]
+                for group, functions in self._groups.items()}
 
     @property
     def noise(self):
-        return [spectrum for spectrum in self.functions if isinstance(spectrum, NoiseSpectrum)]
+        return {group: [function for function in functions if isinstance(function, NoiseSpectrum)]
+                for group, functions in self._groups.items()}
 
     @property
     def noise_sums(self):
-        return [spectrum for spectrum in self.functions if isinstance(spectrum, MultiNoiseSpectrum)]
+        return {group: [function for function in functions if isinstance(function, MultiNoiseSpectrum)]
+                for group, functions in self._groups.items()}
 
     @property
     def has_tfs(self):
-        return len(self.tfs) > 0
+        for tfs in self.tfs.values():
+            if tfs:
+                return True
+        return False
 
     @property
     def has_noise(self):
-        return len(self.noise) > 0
+        for spectra in self.noise.values():
+            if spectra:
+                return True
+        return False
 
     @property
     def has_noise_sums(self):
-        return len(self.noise_sums) > 0
+        for sum_spectra in self.noise_sums.values():
+            if sum_spectra:
+                return True
+        return False
 
     @property
     def default_functions(self):
         """Default transfer functions and noise spectra"""
-        yield from self._default_tfs
-        yield from self._default_noise
-        yield from self._default_noise_sums
+        return self._merge_groups(self._default_tfs, self._default_noise, self._default_noise_sums)
 
     @property
     def tf_source_nodes(self):
@@ -367,7 +448,10 @@ class Solution:
         :return: input nodes
         :rtype: Set[:class:`Node`]
         """
-        return set([tf.source for tf in self.tfs if isinstance(tf.source, Node)])
+        nodes = set()
+        for tfs in self.tfs.values():
+            nodes.update([tf.source for tf in tfs if isinstance(tf.source, Node)])
+        return nodes
 
     @property
     def tf_source_components(self):
@@ -376,7 +460,10 @@ class Solution:
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
-        return set([tf.source for tf in self.tfs if isinstance(tf.source, Component)])
+        components = set()
+        for tfs in self.tfs.values():
+            components.update([tf.source for tf in tfs if isinstance(tf.source, Component)])
+        return components
 
     @property
     def tf_sources(self):
@@ -398,7 +485,10 @@ class Solution:
         :return: output nodes
         :rtype: Set[:class:`Node`]
         """
-        return set([tf.sink for tf in self.tfs if isinstance(tf.sink, Node)])
+        nodes = set()
+        for tfs in self.tfs.values():
+            nodes.update([tf.sink for tf in tfs if isinstance(tf.sink, Node)])
+        return nodes
 
     @property
     def tf_sink_components(self):
@@ -407,7 +497,10 @@ class Solution:
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
-        return set([tf.sink for tf in self.tfs if isinstance(tf.sink, Component)])
+        components = set()
+        for tfs in self.tfs.values():
+            components.update([tf.sink for tf in tfs if isinstance(tf.sink, Component)])
+        return components
 
     @property
     def tf_sinks(self):
@@ -428,7 +521,10 @@ class Solution:
 
         :return: noise sources
         """
-        return [spectrum.source for spectrum in self.noise]
+        sources = set()
+        for spectra in self.noise.values():
+            sources.update([spectrum.source for spectrum in spectra])
+        return sources
 
     def get_noise_source(self, source_name):
         source_name = source_name.lower()
@@ -446,7 +542,11 @@ class Solution:
         :return: noise nodes
         :rtype: Set[:class:`Node`]
         """
-        return set([spectrum.sink for spectrum in self.noise if isinstance(spectrum.sink, Node)])
+        nodes = set()
+        for spectra in self.noise.values():
+            nodes.update([spectrum.sink for spectrum in spectra
+                          if isinstance(spectrum.sink, Node)])
+        return nodes
 
     @property
     def noise_sink_components(self):
@@ -455,8 +555,11 @@ class Solution:
         :return: output components
         :rtype: Sequence[:class:`Component`]
         """
-        return set([spectrum.sink for spectrum in self.noise
-                    if isinstance(spectrum.sink, Component)])
+        components = set()
+        for spectra in self.noise.values():
+            components.update([spectrum.sink for spectrum in spectra
+                               if isinstance(spectrum.sink, Component)])
+        return components
 
     @property
     def noise_sinks(self):
@@ -501,24 +604,24 @@ class Solution:
 
         return figure
 
-    def plot_noise(self, figure=None, sources=None, sinks=None, types=None, show_sums=True,
-                   title=None):
+    def plot_noise(self, figure=None, groups=None, sources=None, sinks=None, types=None,
+                   show_sums=True, title=None):
         """Plot noise.
 
-        Note: if only some of "sources", "sinks" and "types" are specified, the others default to
-        "all" as per the behaviour of :meth:`.filter_noise`.
+        Note: if only some of "groups", "sources", "sinks", "types" are specified, the others
+        default to "all" as per the behaviour of :meth:`.filter_noise`.
         """
-        if sources is None and sinks is None and types is None:
-            # filter against sum flag
+        if groups is None and sources is None and sinks is None and types is None:
+            # Filter against sum flag.
             noise = self._filter_default_noise()
 
             if show_sums:
-                noise.extend(self._default_noise_sums)
+                noise = self._merge_groups(noise, self._default_noise_sums)
         else:
-            noise = self.filter_noise(sources=sources, sinks=sinks, types=types)
+            noise = self.filter_noise(sources=sources, sinks=sinks, groups=groups, types=types)
 
             if show_sums:
-                noise.extend(self.noise_sums)
+                noise = self._merge_groups(noise, self.noise_sums)
 
         if not noise:
             raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
@@ -559,9 +662,7 @@ class Solution:
 
         ax1, ax2 = figure.axes
 
-        grouped_tfs = self._group_functions_by_group(tfs)
-
-        for group, group_tfs in grouped_tfs.items():
+        for group, group_tfs in tfs.items():
             with self._figure_style_context(group):
                 # reset axes colour wheels
                 ax1.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
@@ -614,17 +715,24 @@ class Solution:
 
         if ylabel is None:
             unit_tex = []
-            # generate from noise
-            if any([spectrum.sink_unit == "V" for spectrum in noise]):
+            has_volts = False
+            has_amps = False
+
+            # Check which noise units to use.
+            for spectra in noise.values():
+                if any([spectrum.sink_unit == "V" for spectrum in spectra]):
+                    has_volts = True
+                if any([spectrum.sink_unit == "A" for spectrum in spectra]):
+                    has_amps = True
+
+            if has_volts:
                 unit_tex.append(r"$\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$")
-            if any([spectrum.sink_unit == "A" for spectrum in noise]):
+            if has_amps:
                 unit_tex.append(r"$\frac{\mathrm{A}}{\sqrt{\mathrm{Hz}}}$")
 
             ylabel = r"$\bf{Noise}$" + " (%s)" % ", ".join(unit_tex)
 
-        grouped_noise = self._group_functions_by_group(noise)
-
-        for group, grouped_noise in grouped_noise.items():
+        for group, spectra in noise.items():
             # reset axis colour wheel
             ax.set_prop_cycle(None)
 
@@ -632,7 +740,7 @@ class Solution:
                 # reset axes colour wheels
                 ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
 
-                for spectrum in grouped_noise:
+                for spectrum in spectra:
                     spectrum.draw(ax)
 
                 # overall figure title
@@ -661,9 +769,10 @@ class Solution:
 
         Used to override the default style for a figure.
         """
-        groups = list(self._group_functions)
+        # Get group indices. This relies on dicts having order, as in Python 3.6+.
+        indices = list(self._groups)
         # group index
-        group_index = groups.index(group)
+        group_index = indices.index(group)
         # get line style according to group index
         index = group_index % len(self._linestyles)
 
@@ -678,15 +787,6 @@ class Solution:
                     "axes.prop_cycle": prop_cycler}
 
         return plt.rc_context(settings)
-
-    def _group_functions_by_group(self, functions):
-        """Group functions by group."""
-        groups = defaultdict(list)
-
-        for function in functions:
-            groups[self._function_groups[function]].append(function)
-
-        return groups
 
     @staticmethod
     def save_figure(figure, path, **kwargs):
@@ -746,20 +846,23 @@ class Solution:
     def combine(self, other):
         """Combine this solution with the specified other solution.
 
-        To be able to be combined, the two solutions must:
-            - have equivalent frequency vectors
-            - have no equivalent functions
-
-        To combine solutions with potentially identical functions, use labels to disambiguate.
+        To be able to be combined, the two solutions must have equivalent frequency vectors.
         """
+        LOGGER.info("combining %s solution with %s", self, other)
+
+        if str(self) == str(other):
+            raise ValueError("cannot combined groups with the same name")
+
         # check frequencies match
         if not frequencies_match(self.frequencies, other.frequencies):
             raise ValueError("specified other solution '%s' is incompatible with this one" % other)
 
-        # check no functions match
-        for function in self.functions:
-            if function in other.functions:
-                raise ValueError("function '%s' appears in both solutions" % function)
+        for group, functions in self._groups.items():
+            if group in other._groups:
+                for function in functions:
+                    if function in other._groups[group]:
+                        LOGGER.debug("function '%s' appears in both solutions (group '%s')",
+                                     function, group)
 
         # resultant name
         name = "%s + %s" % (self, other)
@@ -768,15 +871,20 @@ class Solution:
 
         def flag_functions(solution):
             # use solution name as group name
-            group = str(solution)
+            new_group = str(solution)
 
-            for tf in solution.tfs:
-                result.add_tf(tf, default=solution.is_default_tf(tf), group=group)
-            for spectrum in solution.noise:
-                result.add_noise(spectrum, default=solution.is_default_noise(spectrum), group=group)
-            for noise_sum in solution.noise_sums:
-                result.add_noise_sum(noise_sum, default=solution.is_default_noise_sum(noise_sum),
-                                     group=group)
+            for group, tfs in solution.tfs.items():
+                for tf in tfs:
+                    result.add_tf(tf, default=solution.is_default_tf(tf, group), group=new_group)
+            for group, spectra in solution.noise.items():
+                for spectrum in spectra:
+                    result.add_noise(spectrum, default=solution.is_default_noise(spectrum, group),
+                                     group=new_group)
+            for group, noise_sums in solution.noise_sums.items():
+                for noise_sum in noise_sums:
+                    result.add_noise_sum(noise_sum,
+                                         default=solution.is_default_noise_sum(noise_sum, group),
+                                         group=new_group)
 
         flag_functions(self)
         flag_functions(other)
@@ -860,7 +968,7 @@ class NoDataException(Exception):
 
 
 def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
-    """Finds matching functions in the specified solutions.
+    """Finds matching functions in the specified solutions. Ignores groups.
 
     Parameters
     ----------
@@ -879,46 +987,48 @@ def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
         Functions only present in the first or second solutions, respectively.
     """
     if defaults_only:
-        sol_a_functions = list(sol_a.default_functions)
-        sol_b_functions = list(sol_b.default_functions)
+        sol_a_functions = sol_a.default_functions
+        sol_b_functions = sol_b.default_functions
     else:
-        sol_a_functions = list(sol_a.functions)
-        sol_b_functions = list(sol_b.functions)
+        sol_a_functions = sol_a._groups
+        sol_b_functions = sol_b._groups
 
-    # function to check for match depending on type of equivalence specified
-    def function_in_list(check_item, list_to_search):
-        for item in list_to_search:
-            if meta_only:
-                match = check_item.meta_equivalent(item)
-            else:
-                match = check_item.equivalent(item)
+    def function_in_dict(check_item, search_dict):
+        """Check for match depending on type of equivalence specified."""
+        for items in search_dict.values():
+            for item in items:
+                if meta_only:
+                    match = check_item.meta_equivalent(item)
+                else:
+                    match = check_item.equivalent(item)
 
-            if match:
-                return item
+                if match:
+                    return item
 
         return None
 
-    # lists to hold matching pairs and those remaining
+    # Lists to hold matching pairs and those remaining.
     matches = []
     residuals_a = []
     residuals_b = []
 
-    # functions in list b but not a (will be refined in next step)
-    residuals_b = sol_b_functions
+    # Functions in list b but not a (will be refined in next step).
+    residuals_b = [function for functions in sol_b_functions.values() for function in functions]
 
     # Get difference between functions.
     # Can't use sets here because Series is not hashable (because data can match not exactly
     # but within tolerance).
-    for item_a in sol_a_functions:
-        item_b = function_in_list(item_a, sol_b_functions)
+    for items_a in sol_a_functions.values():
+        for item_a in items_a:
+            item_b = function_in_dict(item_a, sol_b_functions)
 
-        if item_b is None:
-            # not matched in solution b
-            residuals_a.append(item_a)
-        else:
-            matches.append((item_a, item_b))
+            if item_b is None:
+                # Not matched in solution b.
+                residuals_a.append(item_a)
+            else:
+                matches.append((item_a, item_b))
 
-            # remove from residuals
-            residuals_b.remove(item_b)
+                # Remove from residuals.
+                residuals_b.remove(item_b)
 
     return matches, residuals_a, residuals_b

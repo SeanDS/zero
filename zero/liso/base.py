@@ -8,11 +8,12 @@ from ply import lex, yacc
 import numpy as np
 
 from ..circuit import Circuit, ElementNotFoundError
-from ..components import Node
+from ..components import Component, Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
 from ..format import Quantity
 from ..misc import ChangeFlagDict
+from .util import liso_order_key
 
 LOGGER = logging.getLogger(__name__)
 
@@ -296,8 +297,10 @@ class LisoParser(metaclass=abc.ABCMeta):
             self._solution = self._run(**kwargs)
 
             if self._circuit_properties["noise_sum_to_be_computed"]:
-                # find spectra in solution
-                sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
+                # Find spectra in solution.
+                sum_spectra_groups = self._solution.filter_noise(sources=self.summed_noise_objects)
+                sum_spectra = [spectrum for group_spectra in sum_spectra_groups.values()
+                               for spectrum in group_spectra]
                 # get sink element
                 sum_sink = self.circuit[self.noise_output_element]
                 # create overall spectrum
@@ -316,15 +319,23 @@ class LisoParser(metaclass=abc.ABCMeta):
             default_tfs = self._solution.filter_tfs(sources=self.default_tf_sources(),
                                                     sinks=self.default_tf_sinks())
 
-            for tf in default_tfs:
-                if not self._solution.is_default_tf(tf):
-                    self._solution.set_tf_as_default(tf)
+            for group, tfs in default_tfs.items():
+                # Sort plots in LISO order.
+                tfs = sorted(tfs, key=liso_order_key)
+
+                for tf in tfs:
+                    if not self._solution.is_default_tf(tf, group):
+                        self._solution.set_tf_as_default(tf, group)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
 
-            for spectrum in default_spectra:
-                if not self._solution.is_default_noise(spectrum):
-                    self._solution.set_noise_as_default(spectrum)
+            for group, spectra in default_spectra.items():
+                # Sort plots in LISO order.
+                spectra = sorted(spectra, key=liso_order_key)
+
+                for spectrum in spectra:
+                    if not self._solution.is_default_noise(spectrum, group):
+                        self._solution.set_noise_as_default(spectrum, group)
 
     def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
         # build circuit if necessary

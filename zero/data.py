@@ -153,9 +153,6 @@ class Function(metaclass=abc.ABCMeta):
         self.sinks = list(sinks)
         self.series = series
 
-        # text to add in brackets after label
-        self.label_suffix = ""
-
     @property
     def frequencies(self):
         return self.series.x
@@ -164,17 +161,8 @@ class Function(metaclass=abc.ABCMeta):
     def draw(self, *axes):
         raise NotImplementedError
 
-    def label(self, tex=False):
-        label_str = self._label_base(tex)
-
-        if self.label_suffix:
-            label_str += " (%s)" % self.label_suffix
-
-        return label_str
-
     @abc.abstractmethod
-    def _label_base(self, tex):
-        """Data set label, without suffix."""
+    def label(self, tex=False):
         raise NotImplementedError
 
     def __str__(self):
@@ -269,7 +257,7 @@ class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
         self._draw_magnitude(axes[0])
         self._draw_phase(axes[1])
 
-    def _label_base(self, tex=False):
+    def label(self, tex=False):
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)"
         else:
@@ -325,7 +313,7 @@ class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
     def noise_subtype(self):
         return self.source.SUBTYPE
 
-    def _label_base(self, tex=False):
+    def label(self, tex=False):
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$"
         else:
@@ -386,5 +374,5 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
 
         return [spectrum.noise_name for spectrum in self.constituent_noise]
 
-    def _label_base(self, *args, **kwargs):
+    def label(self, *args, **kwargs):
         return self._label
