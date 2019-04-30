@@ -99,6 +99,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
         runner = LisoRunner(script_path=file.name)
         parser = runner.run(liso_path, plot=False)
         liso_solution = parser.solution()
+        liso_solution.name = "LISO"
     else:
         # parse specified file
         try:
@@ -123,13 +124,10 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
         # get native solution
         native_solution = parser.solution(force=True, **kwargs)
+        native_solution.name = "Native"
 
     # determine solution to show or save
     if compare:
-        # make LISO solution plots dashed
-        for function in liso_solution.functions:
-            liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
-
         # show difference before changing labels
         if diff:
             # group by meta data
@@ -137,10 +135,6 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
                                                       meta_only=True)
 
             click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
-
-        # apply suffix to LISO function labels
-        for function in liso_solution.functions:
-            function.label_suffix = "LISO"
 
         # combine results from LISO and native simulations
         solution = native_solution + liso_solution

@@ -305,18 +305,18 @@ class LisoOutputParser(LisoParser):
             if self.input_type == "voltage":
                 source = self.input_node_p
 
-                if tf_output.output_type == "voltage":
+                if tf_output.OUTPUT_TYPE == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                elif tf_output.output_type == "current":
+                elif tf_output.OUTPUT_TYPE == "current":
                     sink = self.circuit[tf_output.component]
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self.circuit.input_component
 
-                if tf_output.output_type == "voltage":
+                if tf_output.OUTPUT_TYPE == "voltage":
                     sink = self.circuit.get_node(tf_output.node)
-                elif tf_output.output_type == "current":
+                elif tf_output.OUTPUT_TYPE == "current":
                     sink = self.circuit[tf_output.component]
                 else:
                     raise ValueError("invalid output type")

@@ -8,11 +8,12 @@ from ply import lex, yacc
 import numpy as np
 
 from ..circuit import Circuit, ElementNotFoundError
-from ..components import Node
+from ..components import Component, Node
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
 from ..format import Quantity
 from ..misc import ChangeFlagDict
+from .util import liso_sort_key
 
 LOGGER = logging.getLogger(__name__)
 
@@ -296,8 +297,10 @@ class LisoParser(metaclass=abc.ABCMeta):
             self._solution = self._run(**kwargs)
 
             if self._circuit_properties["noise_sum_to_be_computed"]:
-                # find spectra in solution
-                sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
+                # Find spectra in solution.
+                sum_spectra_groups = self._solution.filter_noise(sources=self.summed_noise_objects)
+                sum_spectra = [spectrum for group_spectra in sum_spectra_groups.values()
+                               for spectrum in group_spectra]
                 # get sink element
                 sum_sink = self.circuit[self.noise_output_element]
                 # create overall spectrum
@@ -308,6 +311,9 @@ class LisoParser(metaclass=abc.ABCMeta):
         if set_default_plots:
             self._set_default_plots()
 
+        # Sort functions.
+        self._solution.sort_functions(liso_sort_key)
+
         return self._solution
 
     def _set_default_plots(self):
@@ -316,15 +322,17 @@ class LisoParser(metaclass=abc.ABCMeta):
             default_tfs = self._solution.filter_tfs(sources=self.default_tf_sources(),
                                                     sinks=self.default_tf_sinks())
 
-            for tf in default_tfs:
-                if not self._solution.is_default_tf(tf):
-                    self._solution.set_tf_as_default(tf)
+            for group, tfs in default_tfs.items():
+                for tf in tfs:
+                    if not self._solution.is_default_tf(tf, group):
+                        self._solution.set_tf_as_default(tf, group)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
 
-            for spectrum in default_spectra:
-                if not self._solution.is_default_noise(spectrum):
-                    self._solution.set_noise_as_default(spectrum)
+            for group, spectra in default_spectra.items():
+                for spectrum in spectra:
+                    if not self._solution.is_default_noise(spectrum, group):
+                        self._solution.set_noise_as_default(spectrum, group)
 
     def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
         # build circuit if necessary
@@ -539,7 +547,9 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
                         "real": {"real": ["re", "real"]},
                         "imaginary": {"imag": ["im", "imag"]}}
 
-    def __init__(self, type_, element=None, scales=None, index=None, output_type=None):
+    OUTPUT_TYPE = None
+
+    def __init__(self, type_, element=None, scales=None, index=None):
         if scales is None:
             scales = []
 
@@ -552,7 +562,6 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
         self.element = element
         self.scales = scales
         self.index = index
-        self.output_type = output_type
 
     @property
     def scales(self):
@@ -653,8 +662,10 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
 
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
-    def __init__(self, *args, node=None, **kwargs):
-        super().__init__(type_="node", element=node, output_type="voltage", *args, **kwargs)
+    OUTPUT_TYPE = "voltage"
+
+    def __init__(self, node=None, **kwargs):
+        super().__init__("node", element=node, **kwargs)
 
     @property
     def node(self):
@@ -664,9 +675,10 @@ class LisoOutputVoltage(LisoOutputElement):
 
 class LisoOutputCurrent(LisoOutputElement):
     """LISO output current"""
-    def __init__(self, *args, component=None, **kwargs):
-        super().__init__(type_="component", element=component, output_type="current", *args,
-                         **kwargs)
+    OUTPUT_TYPE = "current"
+
+    def __init__(self, component=None, **kwargs):
+        super().__init__("component", element=component, **kwargs)
 
     @property
     def component(self):
