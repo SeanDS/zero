@@ -174,3 +174,21 @@ class SolutionTestCase(TestCase):
         self.assertEqual(matches, [(self.tf11, self.tf11)])
         self.assertEqual(residuals_a, [self.tf12])
         self.assertEqual(residuals_b, [self.tf13])
+
+    def test_solution_combination(self):
+        """Test method to combine solutions"""
+        sol_a = Solution(self.frequencies1)
+        sol_a.name = "Sol A"
+        sol_a.add_tf(self.tf11)
+        sol_a.add_tf(self.tf12)
+
+        sol_b = Solution(self.frequencies1)
+        sol_b.name = "Sol B"
+        sol_b.add_tf(self.tf13)
+
+        # Combine.
+        sol_c = sol_a + sol_b
+
+        self.assertCountEqual(sol_c.groups, ["Sol A", "Sol B"])
+        self.assertCountEqual(sol_c.functions["Sol A"], [self.tf11, self.tf12])
+        self.assertCountEqual(sol_c.functions["Sol B"], [self.tf13])
