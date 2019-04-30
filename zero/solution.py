@@ -39,10 +39,10 @@ class Solution:
         :param frequencies: sequence of frequencies this solution contains results for
         :type frequencies: :class:`~np.ndarray`
         """
-        # Groups of functions. The order of functions in their groups, and the groups themselves,
+        # Functions by group. The order of functions in their groups, and the groups themselves,
         # determine plotting order.
-        self._groups = defaultdict(list)
-        # Map of functions to their groups.
+        self.groups = defaultdict(list)
+        # Map of functions to their groups, for quick look-ups.
         self._function_groups = {}
 
         # Default functions in each group.
@@ -74,9 +74,9 @@ class Solution:
     def sort_functions(self, key_function):
         """Sort functions using specified callback"""
         groups = defaultdict(list)
-        for group, functions in self._groups.items():
+        for group, functions in self.groups.items():
             groups[group] = sorted(functions, key=key_function)
-        self._groups = groups
+        self.groups = groups
 
     def _merge_groups(self, *groupsets):
         """Merge grouped functions into one dict"""
@@ -265,10 +265,10 @@ class Solution:
 
         group = str(group)
 
-        if function in self._groups[group]:
+        if function in self.groups[group]:
             raise ValueError(f"duplicate function '{function}' in group '{group}'")
 
-        self._groups[group].append(function)
+        self.groups[group].append(function)
         self._function_groups[function] = group
 
     def filter_tfs(self, **kwargs):
@@ -410,17 +410,17 @@ class Solution:
     @property
     def tfs(self):
         return {group: [function for function in functions if isinstance(function, TransferFunction)]
-                for group, functions in self._groups.items()}
+                for group, functions in self.groups.items()}
 
     @property
     def noise(self):
         return {group: [function for function in functions if isinstance(function, NoiseSpectrum)]
-                for group, functions in self._groups.items()}
+                for group, functions in self.groups.items()}
 
     @property
     def noise_sums(self):
         return {group: [function for function in functions if isinstance(function, MultiNoiseSpectrum)]
-                for group, functions in self._groups.items()}
+                for group, functions in self.groups.items()}
 
     @property
     def has_tfs(self):
@@ -777,7 +777,7 @@ class Solution:
         Used to override the default style for a figure.
         """
         # Get group indices. This relies on dicts having order, as in Python 3.6+.
-        indices = list(self._groups)
+        indices = list(self.groups)
         # group index
         group_index = indices.index(group)
         # get line style according to group index
@@ -864,10 +864,10 @@ class Solution:
         if not frequencies_match(self.frequencies, other.frequencies):
             raise ValueError("specified other solution '%s' is incompatible with this one" % other)
 
-        for group, functions in self._groups.items():
-            if group in other._groups:
+        for group, functions in self.groups.items():
+            if group in other.groups:
                 for function in functions:
-                    if function in other._groups[group]:
+                    if function in other.groups[group]:
                         LOGGER.debug("function '%s' appears in both solutions (group '%s')",
                                      function, group)
 
@@ -997,8 +997,8 @@ def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
         sol_a_functions = sol_a.default_functions
         sol_b_functions = sol_b.default_functions
     else:
-        sol_a_functions = sol_a._groups
-        sol_b_functions = sol_b._groups
+        sol_a_functions = sol_a.groups
+        sol_b_functions = sol_b.groups
 
     def function_in_dict(check_item, search_dict):
         """Check for match depending on type of equivalence specified."""
