@@ -434,9 +434,9 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """
 
         if isinstance(element, Component):
-            return "i[%s]" % element.name
-        elif isinstance(element, Node):
-            return "V[%s]" % element.name
+            return f"i[{element.name}]"
+        if isinstance(element, Node):
+            return f"V[{element.name}]"
 
         raise ValueError("invalid element")
 

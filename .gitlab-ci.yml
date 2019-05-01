@@ -68,11 +68,6 @@ test unit:3.6:
   stage: test
   <<: *template-test-unit
 
-test unit:3.5:
-  image: python:3.5
-  stage: test
-  <<: *template-test-unit
-
 test integration:latest:
   image: python:latest
   stage: test
@@ -83,11 +78,6 @@ test integration:3.6:
   stage: test
   <<: *template-test-integration
 
-test integration:3.5:
-  image: python:3.5
-  stage: test
-  <<: *template-test-integration
-
 test validation:latest:
   image: python:latest
   stage: test
@@ -95,11 +85,6 @@ test validation:latest:
 
 test validation:3.6:
   image: python:3.6
-  stage: test
-  <<: *template-test-validation
-
-test validation:3.5:
-  image: python:3.5
   stage: test
   <<: *template-test-validation
 

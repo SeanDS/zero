@@ -372,9 +372,9 @@ class Circuit:
         inductor_2 = self.get_component(inductor_2)
 
         if not isinstance(inductor_1, Inductor):
-            raise TypeError("component '%s' is not an inductor" % inductor_1)
+            raise TypeError(f"component '{inductor_1}' is not an inductor")
         if not isinstance(inductor_2, Inductor):
-            raise TypeError("component '%s' is not an inductor" % inductor_2)
+            raise TypeError(f"component '{inductor_2}' is not an inductor")
 
         # check if we are overwriting something
         if inductor_1 in inductor_2.coupled_inductors or inductor_2 in inductor_1.coupled_inductors:

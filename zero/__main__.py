@@ -200,7 +200,7 @@ def library_create():
     except ConfigAlreadyExistsException as e:
         click.echo(e, err=True)
     else:
-        click.echo("Library created at %s" % LIBRARY.user_config_path)
+        click.echo(f"Library created at {LIBRARY.user_config_path}")
 
 @library.command("edit")
 def library_edit():
@@ -213,8 +213,8 @@ def library_edit():
 @library.command("remove")
 def library_remove():
     """Remove user component library file."""
-    click.confirm("Delete library file at %s?" % click.format_filename(LIBRARY.user_config_path),
-                  abort=True)
+    path = click.format_filename(LIBRARY.user_config_path)
+    click.confirm(f"Delete library file at {path}?", abort=True)
     try:
         LIBRARY.remove_user_config()
     except ConfigDoesntExistException as e:
@@ -303,7 +303,7 @@ def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax,
     else:
         opstr = "op-amps"
 
-    click.echo("%i %s found:" % (nmodel, opstr))
+    click.echo(f"{nmodel} {opstr} found:")
 
     header = ["Model"] + params
     rows = []
@@ -337,7 +337,7 @@ def config_create():
     except ConfigAlreadyExistsException as e:
         click.echo(e, err=True)
     else:
-        click.echo("Config created at %s" % CONF.user_config_path)
+        click.echo(f"Config created at {CONF.user_config_path}")
 
 @config.command("edit")
 def config_edit():
@@ -350,8 +350,8 @@ def config_edit():
 @config.command("remove")
 def config_remove():
     """Remove user config file."""
-    click.confirm("Delete config file at %s?" % click.format_filename(CONF.user_config_path),
-                  abort=True)
+    path = click.format_filename(CONF.user_config_path)
+    click.confirm(f"Delete config file at {path}?", abort=True)
     try:
         CONF.remove_user_config()
     except ConfigDoesntExistException as e:
@@ -395,7 +395,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     else:
         click.echo("Found multiple parts:")
         for index, part in enumerate(parts, 1):
-            click.echo(click.style("%d: %s" % (index, part), fg="green"))
+            click.echo(click.style(f"{index}: {part}", fg="green"))
 
         # get selection
         part_choice = click.IntRange(1, len(parts))
@@ -406,7 +406,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
 
     # get chosen part
     if part.n_datasheets == 0:
-        click.echo("No datasheets found for '%s'" % part.mpn, err=True)
+        click.echo(f"No datasheets found for '{part.mpn}'", err=True)
         sys.exit()
 
     if first or part.n_datasheets == 1:
@@ -418,7 +418,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     else:
         click.echo("Found multiple datasheets:")
         for index, ds in enumerate(part.sorted_datasheets, 1):
-            click.echo(click.style("%d: %s" % (index, ds), fg="green"))
+            click.echo(click.style(f"{index}: {ds}", fg="green"))
 
         # get selection
         datasheet_choice = click.IntRange(1, part.n_datasheets)

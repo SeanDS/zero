@@ -155,7 +155,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         except ValueError:
             pass
 
-        raise ValueError("noise output element '%s' is not in the circuit" % self.element)
+        raise ValueError(f"noise output element '{self.element}' is not in the circuit")
 
     @property
     def has_noise_input(self):

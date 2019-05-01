@@ -27,7 +27,7 @@ class LisoComparisonTest(TestCase):
 
     def runTest(self):
         # test message
-        message = "Test %s against LISO" % self.script_path
+        message = f"Test {self.script_path} against LISO"
 
         with self.subTest(msg=message + " (without prescaling)"):
             self._compare(prescale=False)

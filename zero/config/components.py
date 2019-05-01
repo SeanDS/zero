@@ -73,7 +73,7 @@ class OpAmpLibrary(BaseConfig):
         try:
             return self.data[model]
         except KeyError:
-            raise ValueError("op-amp model %s not found in library" % name)
+            raise ValueError(f"op-amp model '{name}' not found in library")
 
     def has_data(self, name):
         """Check if op-amp data exists in library
@@ -169,7 +169,7 @@ class OpAmpLibrary(BaseConfig):
         name = self.format_name(name)
 
         if name in self.opamp_names:
-            raise ValueError("Duplicate op-amp type: %s" % name)
+            raise ValueError(f"Duplicate op-amp type: '{name}'")
 
         # set data
         self.data[name] = data

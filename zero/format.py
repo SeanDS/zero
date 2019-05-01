@@ -126,7 +126,7 @@ class Quantity(float):
         unit = results.group(5)
 
         if not mantissa:
-            raise ValueError("unrecognised quantity '%s'" % quantity)
+            raise ValueError(f"unrecognised quantity '{quantity}'")
 
         # convert value to float
         value = float(mantissa)
@@ -221,10 +221,10 @@ class Quantity(float):
                 # no parsed mantissa available; use default precision
                 precision = self.DEFAULT_PRECISION
 
-            # get float value
+            # Get float value.
             number = self.real
 
-            # split number into components
+            # Split number into components.
             number = "%.*e" % (precision, number)
             mantissa, exp = number.split("e")
             exp = int(exp)

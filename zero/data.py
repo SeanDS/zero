@@ -88,7 +88,7 @@ class Series:
             # don't need to scale
             pass
         else:
-            raise ValueError("cannot handle scale %s" % mag_scale)
+            raise ValueError(f"cannot handle scale '{mag_scale}'")
 
         if phase_scale.lower() == "deg":
             phase = np.radians(phase)
@@ -96,7 +96,7 @@ class Series:
             # don't need to scale
             pass
         else:
-            raise ValueError("cannot handle scale %s" % phase_scale)
+            raise ValueError(f"cannot handle scale '{phase_scale}'")
 
         # convert magnitude and phase to complex
         complex_ = magnitude * (np.cos(phase) + 1j * np.sin(phase))
@@ -269,15 +269,15 @@ class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
     def unit_str(self):
         if self.sink_unit is None and self.source_unit is None:
             return "dimensionless"
-        elif self.sink_unit is None:
-            # only source has unit
-            return "1/%s" % self.source_unit
-        elif self.source_unit is None:
-            # only sink has unit
+        if self.sink_unit is None:
+            # Only source has unit.
+            return f"1/{self.source_unit}"
+        if self.source_unit is None:
+            # Only sink has unit.
             return self.sink_unit
 
-        # both have units
-        return "%s/%s" % (self.sink_unit, self.source_unit)
+        # Both have units.
+        return f"{self.sink_unit}/{self.source_unit}"
 
 
 class NoiseSpectrumBase(SingleSinkFunction, metaclass=abc.ABCMeta):

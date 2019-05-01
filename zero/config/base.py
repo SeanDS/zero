@@ -124,7 +124,8 @@ class BaseConfig(dict, metaclass=Singleton):
                     # don't copy anything to preserve a's structure
                     pass
                 else:
-                    raise Exception('configuration conflict at %s' % '.'.join(path + [str(key)]))
+                    dpath = '.'.join(path + [str(key)])
+                    raise Exception(f"configuration conflict at {dpath}")
             else:
                 config_a[key] = config_b[key]
 
@@ -133,9 +134,9 @@ class BaseConfig(dict, metaclass=Singleton):
 
 class ConfigDoesntExistException(Exception):
     def __init__(self, config_path, *args, **kwargs):
-        super().__init__("config file %s doesn't exist" % config_path, *args, **kwargs)
+        super().__init__(f"config file {config_path} doesn't exist", *args, **kwargs)
 
 
 class ConfigAlreadyExistsException(Exception):
     def __init__(self, config_path, *args, **kwargs):
-        super().__init__("config file already exists at %s" % config_path, *args, **kwargs)
+        super().__init__(f"config file already exists at {config_path}", *args, **kwargs)

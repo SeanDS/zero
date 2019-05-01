@@ -259,7 +259,7 @@ class LisoOutputParser(LisoParser):
         elif self.output_type == "noise":
             self._build_noise(data)
         else:
-            raise ValueError("unrecognised output type '%s'" % self.output_type)
+            raise ValueError(f"unrecognised output type '{self.output_type}'")
 
     def _build_tfs(self, data):
         # column offset
@@ -356,7 +356,7 @@ class LisoOutputParser(LisoParser):
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:
-                    self.p_error("unrecognised op-amp noise type '%s'" % noise_type_id)
+                    self.p_error(f"unrecognised op-amp noise type '{noise_type_id}'")
             else:
                 # must be a resistor
                 noise = component.johnson_noise
@@ -392,8 +392,7 @@ class LisoOutputParser(LisoParser):
             if len(definition) > 1:
                 # op-amp noise type specified
                 if not isinstance(component, OpAmp):
-                    self.p_error("op-amp noise suffix '%s' specified on a non-op-amp"
-                                 % definition[1])
+                    self.p_error(f"op-amp noise suffix '{definition[1]}' specified on a non-op-amp")
 
                 type_str = definition[1].lower()
 
@@ -406,7 +405,7 @@ class LisoOutputParser(LisoParser):
                     # inverting input current noise
                     noise = component.inv_current_noise
                 else:
-                    self.p_error("unrecognised op-amp noise suffix '%s'" % definition[1])
+                    self.p_error(f"unrecognised op-amp noise suffix '{definition[1]}'")
 
                 # add noise source
                 sources.add(noise)
@@ -747,7 +746,7 @@ class LisoOutputParser(LisoParser):
                     # compensate for mistaken newline
                     lineno -= 1
                 else:
-                    message = "'%s'" % p.value
+                    message = f"'{p.value}'"
             else:
                 # error message thrown by production
                 message = str(p)
@@ -763,13 +762,14 @@ class LisoOutputParser(LisoParser):
         raise LisoParserError(message, line=lineno)
 
     def _parse_passive(self, passive_type, component_str):
-        # split by whitespace
+        # Split by whitespace.
         tokens = component_str.split()
 
-        if len(tokens) != 5:
-            self.p_error("unexpected parameter count (%d)" % len(tokens))
+        ntokens = len(tokens)
+        if ntokens != 5:
+            self.p_error(f"unexpected parameter count ({ntokens})")
 
-        # splice together value and unit
+        # Splice together value and unit.
         tokens[1:3] = [''.join(tokens[1:3])]
 
         arg_names = ["name", "value", "node1", "node2"]
@@ -782,16 +782,17 @@ class LisoOutputParser(LisoParser):
         elif passive_type == "l":
             self.circuit.add_inductor(**kwargs)
         else:
-            self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+            self.p_error(f"unrecognised passive component '{passive_type}'")
 
     def _parse_mutual_inductance(self, mutual_indutance_str):
-        # split by whitespace
+        # Split by whitespace.
         tokens = mutual_indutance_str.split()
 
-        if len(tokens) != 4:
-            self.p_error("unexpected parameter count (%d)" % len(tokens))
+        ntoken = len(tokens)
+        if ntoken != 4:
+            self.p_error(f"unexpected parameter count ({ntoken})")
 
-        # pack tokens
+        # Pack tokens.
         couplings = tuple(tokens)
 
         self._circuit_properties["inductor_couplings"].append(couplings)

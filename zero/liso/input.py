@@ -240,7 +240,7 @@ class LisoInputParser(LisoParser):
             elif component_name == "allr":
                 # show all resistor noise sources
                 if suffix is not None:
-                    self.p_error("cannot specify suffix '%s' for 'allr'" % suffix)
+                    self.p_error(f"cannot specify suffix '{suffix}' for 'allr'")
 
                 for resistor in self.circuit.resistors:
                     sources.update(self._get_component_noise(resistor))
@@ -287,7 +287,7 @@ class LisoInputParser(LisoParser):
                         # noise not found
                         pass
                 else:
-                    self.p_error("unrecognised op-amp noise suffix '%s'" % character)
+                    self.p_error(f"unrecognised op-amp noise suffix '{character}'")
         else:
             # all noise sources
             noise = component.noise
@@ -453,7 +453,7 @@ class LisoInputParser(LisoParser):
                     # compensate for mistaken newlines
                     lineno -= p.value.count("\n")
                 else:
-                    message = "'%s'" % p.value
+                    message = f"'{p.value}'"
             else:
                 # error message thrown by production
                 message = str(p)
@@ -468,8 +468,9 @@ class LisoInputParser(LisoParser):
         raise LisoParserError(message, line=lineno)
 
     def _parse_passive(self, passive_type, *params):
-        if len(params) != 4:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam != 4:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         arg_names = ["name", "value", "node1", "node2"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -481,20 +482,21 @@ class LisoInputParser(LisoParser):
         elif passive_type == "l":
             self.circuit.add_inductor(**kwargs)
         else:
-            self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+            self.p_error(f"unrecognised passive component '{passive_type}'")
 
     def _parse_mutual_inductance(self, name, coupling_factor, inductor_1, inductor_2):
         coupling = (name, coupling_factor, inductor_1, inductor_2)
         self._circuit_properties["inductor_couplings"].append(coupling)
 
     def _parse_library_opamp(self, *params):
-        if len(params) < 5 or len(params) > 6:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam < 5 or nparam > 6:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         arg_names = ["name", "model", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
 
-        if len(params) == 6:
+        if nparam == 6:
             # parse extra arguments, e.g. "sr=38e6", into dict params
             kwargs = {**kwargs, **self._parse_op_amp_overrides(params[5])}
 
@@ -522,8 +524,9 @@ class LisoInputParser(LisoParser):
         return extra_args
 
     def _parse_frequencies(self, *params):
-        if len(params) != 4:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam != 4:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         scale = params[0]
         start = Quantity(params[1], "Hz")
@@ -537,37 +540,39 @@ class LisoInputParser(LisoParser):
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
         else:
-            self.p_error("invalid frequency scale '{scale}'".format(scale=scale))
+            self.p_error(f"invalid frequency scale '{scale}'")
 
     def _parse_voltage_input(self, *params):
-        if len(params) < 1 or len(params) > 3:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam < 1 or nparam > 3:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         self.input_type = "voltage"
 
         # we always have at least a positive node
         self.input_node_p = params[0]
 
-        if len(params) == 3:
+        if nparam == 3:
             # floating input
             self.input_node_n = params[1]
             self.input_impedance = params[2]
-        elif len(params) == 2:
+        elif nparam == 2:
             self.input_impedance = params[1]
         else:
             # default
             self.input_impedance = 50
 
     def _parse_current_input(self, *params):
-        if len(params) < 1 or len(params) > 2:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam < 1 or nparam > 2:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         self.input_type = "current"
 
         # only a positive node
         self.input_node_p = params[0]
 
-        if len(params) == 2:
+        if nparam == 2:
             self.input_impedance = params[1]
         else:
             # default

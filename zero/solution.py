@@ -148,7 +148,7 @@ class Solution:
         """
         # Dimension sanity checks.
         if not np.all(tf.frequencies == self.frequencies):
-            raise ValueError("transfer function '%s' doesn't fit this solution" % tf)
+            raise ValueError(f"transfer function '{tf}' doesn't fit this solution")
 
         self._add_function(tf, group=group)
 
@@ -180,10 +180,10 @@ class Solution:
             group = self.DEFAULT_GROUP_NAME
 
         if tf not in self.tfs[group]:
-            raise ValueError("transfer function '%s' is not in the solution" % tf)
+            raise ValueError(f"transfer function '{tf}' is not in the solution")
 
         if self.is_default_tf(tf, group):
-            raise ValueError("transfer function '%s' is already default" % tf)
+            raise ValueError(f"transfer function '{tf}' is already default")
 
         self._default_tfs[group].append(tf)
 
@@ -206,11 +206,11 @@ class Solution:
             or single-sink.
         """
         if not isinstance(spectrum, NoiseSpectrum):
-            raise ValueError("noise spectrum '%s' is not single-source and -sink type" % spectrum)
+            raise ValueError(f"noise spectrum '{spectrum}' is not single-source and -sink type")
 
         # dimension sanity checks
         if not np.all(spectrum.frequencies == self.frequencies):
-            raise ValueError("noise spectrum '%s' doesn't fit this solution" % spectrum)
+            raise ValueError(f"noise spectrum '{spectrum}' doesn't fit this solution")
 
         self._add_function(spectrum, group=group)
 
@@ -229,10 +229,10 @@ class Solution:
             group = self.DEFAULT_GROUP_NAME
 
         if spectrum not in self.noise[group]:
-            raise ValueError("noise spectrum '%s' is not in the solution" % spectrum)
+            raise ValueError(f"noise spectrum '{spectrum}' is not in the solution")
 
         if self.is_default_noise(spectrum, group):
-            raise ValueError("noise spectrum '%s' is already default" % spectrum)
+            raise ValueError(f"noise spectrum '{spectrum}' is already default")
 
         self._default_noise[group].append(spectrum)
 
@@ -254,11 +254,11 @@ class Solution:
             If the specified noise sum is incompatible with this solution or not multi-source.
         """
         if not isinstance(noise_sum, MultiNoiseSpectrum):
-            raise ValueError("noise sum '%s' is not multi-source type" % noise_sum)
+            raise ValueError(f"noise sum '{noise_sum}' is not multi-source type")
 
         # dimension sanity checks
         if not np.all(noise_sum.frequencies == self.frequencies):
-            raise ValueError("noise sum '%s' doesn't fit this solution" % noise_sum)
+            raise ValueError(f"noise sum '{noise_sum}' doesn't fit this solution")
 
         self._add_function(noise_sum, group=group)
 
@@ -277,10 +277,10 @@ class Solution:
             group = self.DEFAULT_GROUP_NAME
 
         if noise_sum not in self.noise_sums[group]:
-            raise ValueError("noise sum '%s' is not in the solution" % noise_sum)
+            raise ValueError(f"noise sum '{noise_sum}' is not in the solution")
 
         if self.is_default_noise_sum(noise_sum):
-            raise ValueError("noise sum '%s' is already default" % noise_sum)
+            raise ValueError(f"noise sum '{noise_sum}' is already default")
 
         self._default_noise_sums[group].append(noise_sum)
 
@@ -288,7 +288,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
         elif group == self.DEFAULT_GROUP_NAME:
-            raise ValueError("group '%s' is a reserved keyword" % self.DEFAULT_GROUP_NAME)
+            raise ValueError(f"group '{self.DEFAULT_GROUP_NAME}' is a reserved keyword")
 
         group = str(group)
 
@@ -327,7 +327,7 @@ class Solution:
                     source = self.get_tf_source(source)
 
                 if not isinstance(source, (Component, Node)):
-                    raise ValueError("signal source '%s' is not a component or node" % source)
+                    raise ValueError(f"signal source '{source}' is not a component or node")
 
                 filter_sources.append(source)
 
@@ -344,7 +344,7 @@ class Solution:
                     sink = self.get_tf_sink(sink)
 
                 if not isinstance(sink, (Component, Node)):
-                    raise ValueError("signal sink '%s' is not a component or node" % sink)
+                    raise ValueError(f"signal sink '{sink}' is not a component or node")
 
                 filter_sinks.append(sink)
 
@@ -396,7 +396,7 @@ class Solution:
                     source = self.get_noise_source(source)
 
                 if not isinstance(source, Noise):
-                    raise ValueError("noise source '%s' is not a noise source" % source)
+                    raise ValueError(f"noise source '{source}' is not a noise source")
 
                 filter_sources.append(source)
 
@@ -414,7 +414,7 @@ class Solution:
                     sink = self.get_noise_sink(sink)
 
                 if not isinstance(sink, Node):
-                    raise ValueError("noise sink '%s' is not a node" % sink)
+                    raise ValueError(f"noise sink '{sink}' is not a node")
 
                 filter_sinks.append(sink)
 
@@ -510,7 +510,7 @@ class Solution:
             if source_name == source.name.lower():
                 return source
 
-        raise ValueError("signal source '%s' not found" % source_name)
+        raise ValueError(f"signal source '{source_name}' not found")
 
     @property
     def tf_sink_nodes(self):
@@ -547,7 +547,7 @@ class Solution:
             if sink_name == sink.name.lower():
                 return sink
 
-        raise ValueError("signal sink '%s' not found" % sink_name)
+        raise ValueError(f"signal sink '{sink_name}' not found")
 
     @property
     def noise_sources(self):
@@ -567,7 +567,7 @@ class Solution:
             if source_name == source.label().lower():
                 return source
 
-        raise ValueError("noise source '%s' not found" % source_name)
+        raise ValueError(f"noise source '{source_name}' not found")
 
     @property
     def noise_sink_nodes(self):
@@ -606,7 +606,7 @@ class Solution:
             if sink_name == sink.name.lower():
                 return sink
 
-        raise ValueError("noise sink '%s' not found" % sink_name)
+        raise ValueError(f"noise sink '{sink_name}' not found")
 
     @property
     def n_frequencies(self):
@@ -764,7 +764,8 @@ class Solution:
             if has_amps:
                 unit_tex.append(r"$\frac{\mathrm{A}}{\sqrt{\mathrm{Hz}}}$")
 
-            ylabel = r"$\bf{Noise}$" + " (%s)" % ", ".join(unit_tex)
+            unit = ", ".join(unit_tex)
+            ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
         for group, spectra in noise.items():
             # reset axis colour wheel
@@ -844,12 +845,12 @@ class Solution:
         return self.name
 
     def __repr__(self):
-        data = "Solution '%s'" % str(self)
+        data = f"Solution '{self}'"
 
         if self.has_tfs:
             data += "\n\tTransfer functions:"
             for tf in self.tfs:
-                data += "\n\t\t%s" % tf
+                data += f"\n\t\t{tf}"
 
                 if self.is_default_tf(tf):
                     data += " (default)"
@@ -857,7 +858,7 @@ class Solution:
         if self.has_noise:
             data += "\n\tNoise spectra:"
             for noise in self.noise:
-                data += "\n\t\t%s" % noise
+                data += f"\n\t\t{noise}"
 
                 if self.is_default_noise(noise):
                     data += " (default)"
@@ -865,7 +866,7 @@ class Solution:
         if self.has_noise_sums:
             data += "\n\tNoise sums:"
             for noise_sum in self.noise_sums:
-                data += "\n\t\t%s" % noise_sum
+                data += f"\n\t\t{noise_sum}"
 
                 if self.is_default_noise_sum(noise_sum):
                     data += " (default)"
@@ -887,7 +888,7 @@ class Solution:
 
         # check frequencies match
         if not frequencies_match(self.frequencies, other.frequencies):
-            raise ValueError("specified other solution '%s' is incompatible with this one" % other)
+            raise ValueError(f"specified other solution '{other}' is incompatible with this one")
 
         for group, functions in self.functions.items():
             if group in other.functions:
@@ -896,13 +897,13 @@ class Solution:
                         LOGGER.debug("function '%s' appears in both solutions (group '%s')",
                                      function, group)
 
-        # resultant name
-        name = "%s + %s" % (self, other)
-        # resultant solution
+        # Resultant name.
+        name = f"{self} + {other}"
+        # Resultant solution.
         result = self.__class__(self.frequencies, name)
 
         def flag_functions(solution):
-            # use solution name as group name
+            # Use solution name as group name.
             new_group = str(solution)
 
             for group, tfs in solution.tfs.items():

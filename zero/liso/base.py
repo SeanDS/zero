@@ -193,7 +193,7 @@ class LisoParser(metaclass=abc.ABCMeta):
             If the specified sink is already present.
         """
         if output in self.tf_outputs:
-            raise ValueError("sink '%s' is already present" % output)
+            raise ValueError(f"sink '{output}' is already present")
 
         self._circuit_properties["tf_outputs"].append(output)
 
@@ -393,19 +393,20 @@ class LisoParser(metaclass=abc.ABCMeta):
             element = tf_output.element
 
             if not self.circuit.has_component(element) and not self.circuit.has_node(element):
-                self.p_error("output element '%s' is not present in the circuit" % element)
+                self.p_error(f"output element '{element}' is not present in the circuit")
 
         # noise output element must exist
         if self.noise_output_element is not None:
             if self.noise_output_element not in self.circuit:
-                self.p_error("noise output element '%s' is not present in the circuit" % self.noise_output_element)
+                self.p_error(f"noise output element '{self.noise_output_element}' is not present "
+                             "in the circuit")
 
         # check if noise sources exist
         try:
             _ = self.displayed_noise_objects
             _ = self.summed_noise_objects
         except ElementNotFoundError as e:
-            self.p_error("noise source '%s' is not present in the circuit" % e.name)
+            self.p_error(f"noise source '{e.name}' is not present in the circuit")
 
         # sum cannot be computed without a "noisy" command
         if self._circuit_properties["noise_sum_to_be_computed"] and not self.summed_noise_objects:
@@ -579,7 +580,7 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
                 if candidate in self.SUPPORTED_SCALES[scale_class][scale]:
                     return scale
 
-        raise ValueError("unrecognised scale: '%s'" % raw_scale)
+        raise ValueError(f"unrecognised scale: '{raw_scale}'")
 
     def _get_scale(self, scale_names):
         for index, scale in enumerate(self.scales):
@@ -650,10 +651,10 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
         return list(self.SUPPORTED_SCALES["imaginary"].keys())
 
     def __repr__(self):
-        element_str = "%s" % self.element
+        element_str = f"{self.element}"
         if self.scales is not None:
             element_str += ":".join(self.scales)
-        return "Output[%s]" % element_str
+        return f"Output[{element_str}]"
 
 
 class LisoOutputVoltage(LisoOutputElement):

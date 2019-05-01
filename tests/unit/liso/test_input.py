@@ -51,7 +51,7 @@ class OpAmpTestCase(LisoInputParserTestCase):
         self.assertEqual(op.node3, Node("n3"))
 
     def test_invalid_model(self):
-        self.assertRaisesRegex(ValueError, r"op-amp model __opinvalid__ not found in library",
+        self.assertRaisesRegex(ValueError, r"op-amp model '__opinvalid__' not found in library",
                                self.parser.parse, "op op1 __opinvalid__ n1 n2 n3")
 
     def test_opamp_override(self):
