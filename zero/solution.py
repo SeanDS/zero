@@ -30,7 +30,7 @@ class Solution:
     NOISE_TYPES_ALL = "all"
 
     # Default group name (reserved).
-    _DEFAULT_GROUP = "__default__"
+    DEFAULT_GROUP_NAME = "__default__"
 
     def __init__(self, frequencies, name=None):
         """Instantiate a new solution
@@ -73,7 +73,7 @@ class Solution:
     def get_group_functions(self, group=None):
         """Get functions by group"""
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
         elif group not in self.functions:
             raise ValueError(f"group '{group}' does not exist")
 
@@ -83,11 +83,26 @@ class Solution:
         """Get function group"""
         return self._function_groups[function]
 
-    def sort_functions(self, key_function):
-        """Sort functions using specified callback"""
+    def sort_functions(self, key_function, default_only=False):
+        """Sort functions using specified callback.
+
+        Parameters
+        ----------
+        key_function : callable
+            Function that yields a key given a :class:`.Function`.
+        default_only : bool, optional
+            Whether to sort only the default functions.
+        """
         groups = defaultdict(list)
-        for group, functions in self.functions.items():
+
+        if default_only:
+            functions = self.default_functions
+        else:
+            functions = self.functions
+
+        for group, functions in functions.items():
             groups[group] = sorted(functions, key=key_function)
+
         self.functions = groups
 
     def _merge_groups(self, *groupsets):
@@ -121,9 +136,9 @@ class Solution:
         ----------
         tf : :class:`.TransferFunction`
             The transfer function to add.
-        default : :class:`bool`, optional
+        default : `bool`, optional
             Whether this transfer function is a default.
-        group : :class:`str`, optional
+        group : `str`, optional
             Group name.
 
         Raises
@@ -142,7 +157,7 @@ class Solution:
 
     def is_default_tf(self, tf, group=None):
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
 
         return tf in self._default_tfs[group]
 
@@ -162,7 +177,7 @@ class Solution:
             If `tf` is not part of this solution or already set as a default.
         """
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
 
         if tf not in self.tfs[group]:
             raise ValueError("transfer function '%s' is not in the solution" % tf)
@@ -204,14 +219,14 @@ class Solution:
 
     def is_default_noise(self, noise, group=None):
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
 
         return noise in self._default_noise[group]
 
     def set_noise_as_default(self, spectrum, group=None):
         """Set the specified noise spectrum as a default"""
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
 
         if spectrum not in self.noise[group]:
             raise ValueError("noise spectrum '%s' is not in the solution" % spectrum)
@@ -252,14 +267,14 @@ class Solution:
 
     def is_default_noise_sum(self, noise_sum, group=None):
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
 
         return noise_sum in self._default_noise_sums[group]
 
     def set_noise_sum_as_default(self, noise_sum, group=None):
         """Set the specified noise sum as a default"""
         if group is None:
-            group = self._DEFAULT_GROUP
+            group = self.DEFAULT_GROUP_NAME
 
         if noise_sum not in self.noise_sums[group]:
             raise ValueError("noise sum '%s' is not in the solution" % noise_sum)
@@ -271,9 +286,9 @@ class Solution:
 
     def _add_function(self, function, group=None):
         if group is None:
-            group = self._DEFAULT_GROUP
-        elif group == self._DEFAULT_GROUP:
-            raise ValueError("group '%s' is a reserved keyword" % self._DEFAULT_GROUP)
+            group = self.DEFAULT_GROUP_NAME
+        elif group == self.DEFAULT_GROUP_NAME:
+            raise ValueError("group '%s' is a reserved keyword" % self.DEFAULT_GROUP_NAME)
 
         group = str(group)
 

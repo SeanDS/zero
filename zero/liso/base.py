@@ -13,7 +13,6 @@ from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
 from ..format import Quantity
 from ..misc import ChangeFlagDict
-from .util import liso_sort_key
 
 LOGGER = logging.getLogger(__name__)
 
@@ -310,9 +309,6 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         if set_default_plots:
             self._set_default_plots()
-
-        # Sort functions.
-        self._solution.sort_functions(liso_sort_key)
 
         return self._solution
 

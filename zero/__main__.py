@@ -7,6 +7,7 @@ import click
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
+from .solution import Solution
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
@@ -128,6 +129,18 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
     # determine solution to show or save
     if compare:
+        liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
+        def liso_order(function):
+            """Return order as specified in LISO file for specified function"""
+            for index, liso_function in enumerate(liso_functions):
+                if liso_function.meta_equivalent(function):
+                    return index
+
+            raise ValueError(f"{function} is not in LISO solution")
+
+        # Sort native solution in the order defined in the LISO file.
+        native_solution.sort_functions(liso_order, default_only=True)
+
         # show difference before changing labels
         if diff:
             # group by meta data
