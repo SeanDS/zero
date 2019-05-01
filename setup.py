@@ -6,7 +6,7 @@ with open("README.md") as readme_file:
 REQUIREMENTS = [
     "numpy",
     "scipy",
-    "matplotlib",
+    "matplotlib >= 3.0.3",
     "requests",
     "progressbar2",
     "tabulate",
