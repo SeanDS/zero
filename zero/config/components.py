@@ -38,9 +38,10 @@ class OpAmpLibrary(BaseConfig):
         count = 0
 
         # each section is a new op-amp
-        for opamp, data in self["op-amps"].items():
-            self._parse_lib_data(opamp, data)
-            count += 1
+        if "op-amps" in self and self["op-amps"] is not None:
+            for opamp, data in self["op-amps"].items():
+                self._parse_lib_data(opamp, data)
+                count += 1
 
         LOGGER.debug("found %i op-amps", count)
 
@@ -103,15 +104,19 @@ class OpAmpLibrary(BaseConfig):
     def _parse_lib_data(self, name, data):
         """Parse op-amp data from config file"""
         # handle poles and zeros
+        poles = []
+        zeros = []
+
         if "poles" in data and data["poles"] is not None:
-            poles = [self._parse_freq_str(freq) for freq in data["poles"]]
-        else:
-            poles = np.array([])
+            for freq in data["poles"]:
+                poles.extend(self._parse_freq_str(freq))
 
         if "zeros" in data and data["zeros"] is not None:
-            zeros = [self._parse_freq_str(freq) for freq in data["zeros"]]
-        else:
-            zeros = np.array([])
+            for freq in data["zeros"]:
+                zeros.extend(self._parse_freq_str(freq))
+
+        poles = np.array(poles)
+        zeros = np.array(zeros)
 
         # build op-amp data dict with poles and zeros as entries
         class_data = {"zeros": zeros, "poles": poles}

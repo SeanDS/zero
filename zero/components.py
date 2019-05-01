@@ -293,7 +293,8 @@ class OpAmp(LibraryOpAmp, Component):
         raise NoiseNotFoundError("inverting current noise")
 
     def __str__(self):
-        return super().__str__() + " [in+={cmp.node1}, in-={cmp.node2}, out={cmp.node3}, model={cmp.model}]".format(cmp=self)
+        suffix = " [in+={cmp.node1}, in-={cmp.node2}, out={cmp.node3}, model={cmp.model}]".format(cmp=self)
+        return Component.__str__(self) + suffix
 
 
 class Input(Component):
