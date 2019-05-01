@@ -84,7 +84,15 @@ class Solution:
         return self._function_groups[function]
 
     def sort_functions(self, key_function, default_only=False):
-        """Sort functions using specified callback"""
+        """Sort functions using specified callback.
+
+        Parameters
+        ----------
+        key_function : callable
+            Function that yields a key given a :class:`.Function`.
+        default_only : bool, optional
+            Whether to sort only the default functions.
+        """
         groups = defaultdict(list)
 
         if default_only:
@@ -128,9 +136,9 @@ class Solution:
         ----------
         tf : :class:`.TransferFunction`
             The transfer function to add.
-        default : :class:`bool`, optional
+        default : `bool`, optional
             Whether this transfer function is a default.
-        group : :class:`str`, optional
+        group : `str`, optional
             Group name.
 
         Raises
