@@ -8,7 +8,7 @@ from ply import lex, yacc
 import numpy as np
 
 from ..circuit import Circuit, ElementNotFoundError
-from ..components import Component, Node
+from ..components import Node, OpAmp
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
 from ..data import MultiNoiseSpectrum
 from ..format import Quantity
@@ -193,7 +193,7 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         Raises
         ------
-        :class:`ValueError`
+        ValueError
             If the specified sink is already present.
         """
         if output in self.tf_outputs:
@@ -216,28 +216,6 @@ class LisoParser(metaclass=abc.ABCMeta):
     @property
     def n_summed_noise(self):
         return len(self.summed_noise_objects)
-
-    @property
-    def noisy_elements(self):
-        return self._circuit_properties["noisy_elements"]
-
-    @noisy_elements.setter
-    def noisy_elements(self, noisy_elements):
-        if self.noisy_elements is not None:
-            self.p_error("cannot redefine noisy elements")
-
-        self._circuit_properties["noisy_elements"] = noisy_elements
-
-    @property
-    def noisy_sum_elements(self):
-        return self._circuit_properties["noisy_sum_elements"]
-
-    @noisy_sum_elements.setter
-    def noisy_sum_elements(self, noisy_sum_elements):
-        if self.noisy_sum_elements is not None:
-            self.p_error("cannot redefine noisy sum elements")
-
-        self._circuit_properties["noisy_sum_elements"] = noisy_sum_elements
 
     def parse(self, text=None, path=None):
         """Parse LISO file.
@@ -337,6 +315,121 @@ class LisoParser(metaclass=abc.ABCMeta):
             self._set_default_plots()
 
         return self._solution
+
+    @property
+    def noisy_elements(self):
+        return self._circuit_properties["noisy_elements"]
+
+    def add_noisy_element(self, noisy_element):
+        """Add noise source.
+
+        This stores the specified noise source for use in building the solution.
+
+        Parameters
+        ----------
+        noisy_element : :class:`LisoNoiseSource`
+            The noise source to add.
+
+        Raises
+        ------
+        ValueError
+            If the specified noise source is already present.
+        """
+        if noisy_element in self.noisy_elements:
+            raise ValueError(f"noise source '{noisy_element}' is already present")
+
+        self._circuit_properties["noisy_elements"].append(noisy_element)
+
+    @property
+    def noisy_sum_elements(self):
+        return self._circuit_properties["noisy_sum_elements"]
+
+    def add_noisy_sum_element(self, noisy_sum_element):
+        """Add noise sum source.
+
+        This stores the specified noise source for use in building the sum function in the solution.
+
+        Parameters
+        ----------
+        noisy_sum_element : :class:`LisoNoiseSource`
+            The noise source to add to sum.
+
+        Raises
+        ------
+        ValueError
+            If the specified noise sum source is already present.
+        """
+        if noisy_sum_element in self.noisy_sum_elements:
+            raise ValueError(f"noise sum source '{noisy_sum_element}' is already present")
+
+        self._circuit_properties["noisy_sum_elements"].append(noisy_sum_element)
+
+    @property
+    def displayed_noise_objects(self):
+        """Noise sources to be plotted"""
+        return self._get_noise_objects(self.noisy_elements)
+
+    @property
+    def summed_noise_objects(self):
+        """Noise sources included in the sum column"""
+        return self._get_noise_objects(self.noisy_sum_elements)
+
+    def _get_noise_objects(self, noisy_sources):
+        """Get noise objects for the specified noisy sources."""
+        sources = set()
+
+        for noisy_source in noisy_sources:
+            component_name = noisy_source.component
+
+            if component_name == "all":
+                # Show all noise sources.
+                for component in self.circuit.components:
+                    sources.update(self._get_component_noise(component, noisy_source))
+            elif component_name == "allop":
+                # Show all op-amp noise sources.
+                for opamp in self.circuit.opamps:
+                    sources.update(self._get_component_noise(opamp, noisy_source))
+            elif component_name == "allr":
+                # Show all resistor noise sources.
+                if noisy_source.has_suffix:
+                    self.p_error("cannot specify noise type for 'allr'")
+
+                for resistor in self.circuit.resistors:
+                    sources.update(self._get_component_noise(resistor, noisy_source))
+            elif component_name == "sum":
+                # Show sum of circuit noises.
+                self._circuit_properties["noise_sum_to_be_computed"] = True
+            else:
+                # This is a single component.
+                component = self.circuit[component_name]
+                sources.update(self._get_component_noise(component, noisy_source))
+
+        return sources
+
+    def _get_component_noise(self, component, noisy_source=None):
+        """Get noise list from specified component given the optionally specified noisy source.
+
+        If specified, the noisy source is used to define which noise sources are returned for
+        op-amps.
+        """
+        if noisy_source is not None and noisy_source.has_suffix:
+            if not isinstance(component, OpAmp):
+                self.p_error("noise suffices cannot be specified on non-op-amps")
+
+            noise = []
+
+            # Get user-defined noise types.
+            if noisy_source.has_opamp_voltage_noise and component.has_voltage_noise:
+                noise.append(component.voltage_noise)
+            if noisy_source.has_opamp_non_inv_current_noise and component.has_non_inv_current_noise:
+                noise.append(component.non_inv_current_noise)
+            if noisy_source.has_opamp_inv_current_noise and component.has_inv_current_noise:
+                noise.append(component.inv_current_noise)
+        else:
+            # All noise types.
+            noise = component.noise
+
+        return noise
 
     def _set_default_plots(self):
         """Set functions that are displayed by default when the solution is plotted."""
@@ -473,18 +566,6 @@ class LisoParser(metaclass=abc.ABCMeta):
     def output_components(self):
         """The output components of the transfer functions computed in the analysis"""
         return set([element.element for element in self.tf_outputs if element.type == "component"])
-
-    @property
-    @abc.abstractmethod
-    def displayed_noise_objects(self):
-        """Displayed noise objects, not including sums"""
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def summed_noise_objects(self):
-        """Noise sources included in displayed noise sum outputs"""
-        raise NotImplementedError
 
     @property
     def opamp_output_node_names(self):
@@ -709,14 +790,85 @@ class LisoOutputCurrent(LisoOutputElement):
         return self.element
 
 
-class LisoNoiseSource:
-    """LISO noise source"""
-    def __init__(self, noise, index=None):
+class LisoNoisyElement:
+    """LISO noisy element"""
+    # Op-amp noise types.
+    OPAMP_NOISE_TYPE_VOLTAGE = 0
+    OPAMP_NOISE_TYPE_NON_INV_CURRENT = 1
+    OPAMP_NOISE_TYPE_INV_CURRENT = 2
+
+    def __init__(self, component, suffix=None, index=None):
         if index is not None:
             index = int(index)
 
-        self.noise = noise
+        self._suffices = None
+        self.component = component
         self.index = index
 
+        self._parse_suffices(suffix)
+
+    def _parse_suffices(self, suffix):
+        if suffix is None:
+            return
+
+        try:
+            single_suffix = int(suffix)
+        except ValueError:
+            str_suffix = str(suffix).lower()
+            if str_suffix in ["u", "i+", "i-"]:
+                single_suffix = str_suffix
+            else:
+                # This is not an output suffix.
+                single_suffix = None
+
+        if single_suffix is not None:
+            if single_suffix in [0, "u"]:
+                self._suffices = [self.OPAMP_NOISE_TYPE_VOLTAGE]
+            elif single_suffix in [1, "i+"]:
+                self._suffices = [self.OPAMP_NOISE_TYPE_NON_INV_CURRENT]
+            elif single_suffix in [2, "i-"]:
+                self._suffices = [self.OPAMP_NOISE_TYPE_INV_CURRENT]
+            else:
+                raise ValueError(f"unrecognised noise suffix '{single_suffix}'")
+            return
+
+        # Potentially multiple suffices specified.
+        suffices = []
+
+        for char in suffix:
+            char = char.lower()
+            if char == "u":
+                suffices.append(self.OPAMP_NOISE_TYPE_VOLTAGE)
+            elif char == "+":
+                suffices.append(self.OPAMP_NOISE_TYPE_NON_INV_CURRENT)
+            elif char == "-":
+                suffices.append(self.OPAMP_NOISE_TYPE_INV_CURRENT)
+            else:
+                raise ValueError(f"unrecognised noise suffix '{char}'")
+
+        self._suffices = suffices
+
+    @property
+    def has_suffix(self):
+        """Whether a noise type suffix has been defined for this noisy element."""
+        return self._suffices is not None
+
+    @property
+    def has_opamp_voltage_noise(self):
+        return self.has_suffix and self.OPAMP_NOISE_TYPE_VOLTAGE in self._suffices
+
+    @property
+    def has_opamp_non_inv_current_noise(self):
+        return self.has_suffix and self.OPAMP_NOISE_TYPE_NON_INV_CURRENT in self._suffices
+
+    @property
+    def has_opamp_inv_current_noise(self):
+        return self.has_suffix and self.OPAMP_NOISE_TYPE_INV_CURRENT in self._suffices
+
     def __str__(self):
-        return "LISO {noise}".format(noise=self.noise)
+        if self.has_suffix:
+            suffix_list = ", ".join(self._suffices)
+            suffix_str = f", [{suffix_list}]"
+        else:
+            suffix_str = ""
+        return f"Noise[{self.component}{suffix_str}]"

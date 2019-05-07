@@ -267,6 +267,20 @@ class OpAmp(LibraryOpAmp, Component):
         return self.params["inoise"] * np.sqrt(1 + self.params["icorner"] / frequencies)
 
     @property
+    def has_voltage_noise(self):
+        return "voltage" in [noise.SUBTYPE for noise in self.noise]
+
+    @property
+    def has_non_inv_current_noise(self):
+        return "current" in [noise.SUBTYPE for noise in self.noise
+                             if hasattr(noise, "node") and noise.node == self.node1]
+
+    @property
+    def has_inv_current_noise(self):
+        return "current" in [noise.SUBTYPE for noise in self.noise
+                             if hasattr(noise, "node") and noise.node == self.node2]
+
+    @property
     def voltage_noise(self):
         for noise in self.noise:
             if noise.SUBTYPE == "voltage":
