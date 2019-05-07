@@ -89,9 +89,13 @@ class LisoParser(metaclass=abc.ABCMeta):
                 "output_type": None,
                 "noise_output_element": None,
                 "tf_outputs": [],
-                # list of (name, coupling, l1, l2) inductor coupling tuples
+                # Displayed noise.
+                "noisy_elements": [],
+                # Extra noise to include in "sum" in addition to displayed noise.
+                "noisy_sum_elements": [],
+                # List of (name, coupling, l1, l2) inductor coupling tuples.
                 "inductor_couplings": [],
-                # flag for when noise sum must be computed when building solution
+                # Flag for when noise sum must be computed when building solution.
                 "noise_sum_to_be_computed": False}
 
     @property
@@ -213,6 +217,28 @@ class LisoParser(metaclass=abc.ABCMeta):
     def n_summed_noise(self):
         return len(self.summed_noise_objects)
 
+    @property
+    def noisy_elements(self):
+        return self._circuit_properties["noisy_elements"]
+
+    @noisy_elements.setter
+    def noisy_elements(self, noisy_elements):
+        if self.noisy_elements is not None:
+            self.p_error("cannot redefine noisy elements")
+
+        self._circuit_properties["noisy_elements"] = noisy_elements
+
+    @property
+    def noisy_sum_elements(self):
+        return self._circuit_properties["noisy_sum_elements"]
+
+    @noisy_sum_elements.setter
+    def noisy_sum_elements(self, noisy_sum_elements):
+        if self.noisy_sum_elements is not None:
+            self.p_error("cannot redefine noisy sum elements")
+
+        self._circuit_properties["noisy_sum_elements"] = noisy_sum_elements
+
     def parse(self, text=None, path=None):
         """Parse LISO file.
 
@@ -313,7 +339,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         return self._solution
 
     def _set_default_plots(self):
-        # set default plots
+        """Set functions that are displayed by default when the solution is plotted."""
         if self.output_type == "tf":
             default_tfs = self._solution.filter_tfs(sources=self.default_tf_sources(),
                                                     sinks=self.default_tf_sinks())

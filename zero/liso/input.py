@@ -71,11 +71,7 @@ class LisoInputParser(LisoParser):
                  "output_all_components": False,
                  "output_all_components_scales": None,
                  "output_all_opamps": False,
-                 "output_all_opamps_scales": None,
-                 # displayed noise
-                 "noisy_elements": [],
-                 # extra noise to include in "sum" in addition to displayed noise
-                 "noisy_sum_elements": []}
+                 "output_all_opamps_scales": None}
 
         return {**super()._default_circuit_properties, **extra}
 
@@ -142,28 +138,6 @@ class LisoInputParser(LisoParser):
     @output_all_opamps_scales.setter
     def output_all_opamps_scales(self, output_all_opamps_scales):
         self._circuit_properties["output_all_opamps_scales"] = output_all_opamps_scales
-
-    @property
-    def noisy_elements(self):
-        return self._circuit_properties["noisy_elements"]
-
-    @noisy_elements.setter
-    def noisy_elements(self, noisy_elements):
-        if self.noisy_elements is not None:
-            self.p_error("cannot redefine noisy elements")
-
-        self._circuit_properties["noisy_elements"] = noisy_elements
-
-    @property
-    def noisy_sum_elements(self):
-        return self._circuit_properties["noisy_sum_elements"]
-
-    @noisy_sum_elements.setter
-    def noisy_sum_elements(self, noisy_sum_elements):
-        if self.noisy_sum_elements is not None:
-            self.p_error("cannot redefine noisy sum elements")
-
-        self._circuit_properties["noisy_sum_elements"] = noisy_sum_elements
 
     def _do_build(self):
         super()._do_build()
