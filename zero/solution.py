@@ -683,10 +683,10 @@ class Solution:
         return figure
 
     def _plot_bode(self, tfs, figure=None, legend=True, legend_loc="best", legend_groups=True,
-                   title=None, xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
-                   ylabel_mag=r"$\bf{Magnitude}$ (dB)", ylabel_phase=r"$\bf{Phase}$ ($\degree$)",
-                   mag_tick_major_step=20, mag_tick_minor_step=10, phase_tick_major_step=30,
-                   phase_tick_minor_step=15):
+                   title=None, xlim=None, mag_ylim=None, phase_ylim=None,
+                   xlabel=r"$\bf{Frequency}$ (Hz)", ylabel_mag=r"$\bf{Magnitude}$ (dB)",
+                   ylabel_phase=r"$\bf{Phase}$ ($\degree$)", mag_tick_major_step=20,
+                   mag_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
         if figure is None:
             # create figure
             figure = self.bode_figure()
@@ -723,9 +723,10 @@ class Solution:
                 if xlim:
                     ax1.set_xlim(xlim)
                     ax2.set_xlim(xlim)
-                if ylim:
-                    ax1.set_ylim(ylim)
-                    ax2.set_ylim(ylim)
+                if mag_ylim:
+                    ax1.set_ylim(mag_ylim)
+                if phase_ylim:
+                    ax2.set_ylim(phase_ylim)
 
                 # set other axis properties
                 ax2.set_xlabel(xlabel)
