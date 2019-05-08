@@ -682,7 +682,7 @@ class Solution:
 
         return figure
 
-    def _plot_bode(self, tfs, figure=None, legend=True, legend_loc="best",
+    def _plot_bode(self, tfs, figure=None, legend=True, legend_loc="best", legend_groups=True,
                    title=None, xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
                    ylabel_mag=r"$\bf{Magnitude}$ (dB)", ylabel_phase=r"$\bf{Phase}$ ($\degree$)",
                    mag_tick_major_step=20, mag_tick_minor_step=10, phase_tick_major_step=30,
@@ -702,8 +702,14 @@ class Solution:
                 ax1.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
                 ax2.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
 
+                if legend_groups and group != self.DEFAULT_GROUP_NAME:
+                    # Show group.
+                    legend_group = "(%s)" % group
+                else:
+                    legend_group = None
+
                 for tf in group_tfs:
-                    tf.draw(ax1, ax2)
+                    tf.draw(ax1, ax2, label_suffix=legend_group)
 
                 # overall figure title
                 if title:
@@ -736,8 +742,9 @@ class Solution:
 
         return figure
 
-    def _plot_spectrum(self, noise, figure=None, legend=True, legend_loc="best", title=None,
-                       xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)", ylabel=None):
+    def _plot_spectrum(self, noise, figure=None, legend=True, legend_loc="best", legend_groups=True,
+                       title=None, xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
+                       ylabel=None):
         if figure is None:
             # create figure
             figure = self.noise_figure()
@@ -775,8 +782,14 @@ class Solution:
                 # reset axes colour wheels
                 ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
 
+                if legend_groups and group != self.DEFAULT_GROUP_NAME:
+                    # Show group.
+                    legend_group = "(%s)" % group
+                else:
+                    legend_group = None
+
                 for spectrum in spectra:
-                    spectrum.draw(ax)
+                    spectrum.draw(ax, label_suffix=legend_group)
 
                 # overall figure title
                 if title:

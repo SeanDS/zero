@@ -162,7 +162,7 @@ class Function(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def label(self, tex=False):
+    def label(self, tex=False, suffix=None):
         raise NotImplementedError
 
     def __str__(self):
@@ -242,28 +242,34 @@ class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes):
+    def _draw_magnitude(self, axes, label_suffix=None):
         """Add magnitude plot to axes"""
-        axes.semilogx(self.frequencies, self.magnitude, label=self.label(tex=True))
+        label = self.label(tex=True, suffix=label_suffix)
+        axes.semilogx(self.frequencies, self.magnitude, label=label)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
         axes.semilogx(self.frequencies, self.phase)
 
-    def draw(self, *axes):
+    def draw(self, *axes, **kwargs):
         if len(axes) != 2:
             raise ValueError("two axes (magnitude and phase) must be provided")
 
-        self._draw_magnitude(axes[0])
+        self._draw_magnitude(axes[0], **kwargs)
         self._draw_phase(axes[1])
 
-    def label(self, tex=False):
+    def label(self, tex=False, suffix=None):
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)%s"
         else:
-            format_str = "%s to %s (%s)"
+            format_str = "%s to %s (%s)%s"
 
-        return format_str % (self.source.label(), self.sink.label(), self.unit_str)
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+
+        return format_str % (self.source.label(), self.sink.label(), self.unit_str, suffix)
 
     @property
     def unit_str(self):
@@ -290,13 +296,14 @@ class NoiseSpectrumBase(SingleSinkFunction, metaclass=abc.ABCMeta):
         """Checks if the specified function has an equivalent series to this one."""
         return spectra_match(self.spectrum, other.spectrum)
 
-    def draw(self, *axes):
+    def draw(self, *axes, label_suffix=None):
         if len(axes) != 1:
             raise ValueError("only one axis supported")
 
         axes = axes[0]
 
-        axes.loglog(self.frequencies, self.spectrum, label=self.label(tex=True))
+        label = self.label(tex=True, suffix=label_suffix)
+        axes.loglog(self.frequencies, self.spectrum, label=label)
 
 
 class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
@@ -313,13 +320,18 @@ class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
     def noise_subtype(self):
         return self.source.SUBTYPE
 
-    def label(self, tex=False):
+    def label(self, tex=False, suffix=None):
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$%s"
         else:
-            format_str = "%s to %s"
+            format_str = "%s to %s%s"
 
-        return format_str % (self.noise_name, self.sink.label())
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+
+        return format_str % (self.noise_name, self.sink.label(), suffix)
 
 
 class MultiNoiseSpectrum(NoiseSpectrumBase):
