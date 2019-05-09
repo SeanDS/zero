@@ -42,29 +42,30 @@ class LisoParserError(ValueError):
 class LisoParser(metaclass=abc.ABCMeta):
     """Base LISO parser"""
     def __init__(self):
-        # circuit object and the properties from which it is built
+        # Circuit object and the properties from which it is built.
         self.circuit = None
         self._circuit_properties = None
 
-        # circuit model built flag
+        # Circuit model built flag.
         self._circuit_built = False
 
-        # circuit solution
+        # Circuit solution.
         self._solution = None
 
-        # initial line and character positions
+        # Initial line and character positions.
         self.lineno = None
         self._previous_newline_position = None
 
-        # whether parser end of file has been reached
+        # Whether parser end of file has been reached.
         self._eof = None
 
-        # initialise parser properties
+        # Initialise parser properties.
         self.reset()
 
-        # create lexer and parser handlers
+        # Create lexer and parser handlers. Set yacc to not generate grammar files, for simplicity
+        # across upgrades, but at the cost of a slight speed penalty.
         self.lexer = lex.lex(module=self)
-        self.parser = yacc.yacc(module=self)
+        self.parser = yacc.yacc(module=self, write_tables=False, debug=False)
 
     def reset(self):
         """Reset parser to default state."""
