@@ -86,5 +86,5 @@ Contents
    liso/index
    cli/index
    configuration/index
-   API reference <api/modules>
+   developers/index
    contributing/index
