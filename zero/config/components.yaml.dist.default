@@ -55,6 +55,8 @@
 #
 # This will create identical, but distinct op-amp classes.
 
+schema: 1
+
 op-amps:
 
   op00:

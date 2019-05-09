@@ -41,6 +41,9 @@
 #
 # Strings starting with '#' are comments.
 
+schema: 1
+distributed_with: 0.5.7
+
 op-amps:
 
   #op00:
