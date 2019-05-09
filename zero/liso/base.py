@@ -62,9 +62,9 @@ class LisoParser(metaclass=abc.ABCMeta):
         # Initialise parser properties.
         self.reset()
 
-        # Create lexer and parser handlers. Set yacc to not generate grammar files, for simplicity
-        # across upgrades, but at the cost of a slight speed penalty.
-        self.lexer = lex.lex(module=self)
+        # Create lexer and parser handlers. Set lex and yacc to not generate grammar files, for
+        # packaging simplicity, at the cost of a slight speed penalty.
+        self.lexer = lex.lex(module=self, optimize=False, debug=False)
         self.parser = yacc.yacc(module=self, write_tables=False, debug=False)
 
     def reset(self):
