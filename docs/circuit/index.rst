@@ -15,3 +15,20 @@ connected at :class:`nodes <.Node>`. It may contain :class:`resistors <.Resistor
 :class:`capacitors <.Capacitor>`, :class:`inductors <.Inductor>` and
 :class:`op-amps <.OpAmp>`, and the circuit can be supplied with an :class:`input <.Input>`
 in order to produce a current through and voltage across these components.
+
+A circuit can be instantiated without arguments:
+
+.. code-block:: python
+
+   >>> circuit = Circuit()
+
+You can print the circuit to retrieve a list of its constituents:
+
+.. code-block:: python
+
+   >>> print(circuit)
+   Circuit with 0 component and 0 node
+
+Circuits are only useful once you add components. This is achieved using the various ``add_``
+methods, such as :meth:`.add_resistor`, :meth:`.add_capacitor`, :meth:`.add_inductor` and
+:meth:`.add_opamp`.
