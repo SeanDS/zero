@@ -13,6 +13,16 @@ PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+# Zero static directory
+STATICDIR = _static
+
+### Dynamic plot dependencies
+# Static files
+ZEROSTATICDEPS = $(STATICDIR)/liso-input-node-graph.svg
+# Zero Python files.
+ZEROPYTHONDEPS = $(STATICDIR)/liso-input-tf.svg $(STATICDIR)/solution-combination.svg
+# LISO script comparisons.
+ZEROLISODEPS = $(STATICDIR)/liso-compare-tf.svg
 
 .PHONY: help
 help:
@@ -53,14 +63,30 @@ clean:
 apidoc:
 	sphinx-apidoc -o developers/api -e ../zero
 
+.PHONY: static
+static: plots
+
+.PHONY: plots
+plots: $(ZEROSTATICDEPS) $(ZEROPYTHONDEPS) $(ZEROLISODEPS)
+
+# Generate SVG plots of Zero output using Python script.
+$(STATICDIR)/%.svg: $(STATICDIR)/zero-python/%.py
+	@echo "Generating $@ from $<"
+	python $< $@
+
+# Generate SVG plots comparing Zero to LISO using LISO files.
+$(STATICDIR)/%.svg: $(STATICDIR)/liso-compare/%.fil
+	@echo "Generating $@ from $<"
+	zero liso $< --compare --no-plot --save-figure $@
+
 .PHONY: html
-html: apidoc
+html: apidoc static
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
 .PHONY: latex
-latex: apidoc
+latex: apidoc static
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."
@@ -68,14 +94,14 @@ latex: apidoc
 	      "(use \`make latexpdf' here to do that automatically)."
 
 .PHONY: latexpdf
-latexpdf: apidoc
+latexpdf: apidoc static
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo "Running LaTeX files through pdflatex..."
 	$(MAKE) -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
 
 .PHONY: man
-man: apidoc
+man: apidoc static
 	$(SPHINXBUILD) -b man $(ALLSPHINXOPTS) $(BUILDDIR)/man
 	@echo
 	@echo "Build finished. The manual pages are in $(BUILDDIR)/man."

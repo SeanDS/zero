@@ -52,6 +52,7 @@ with two inputs and one output:
     parser.parse("r nrfsrc 5 nrf gnd")
     # calculate solution
     solutionlf = parser.solution()
+    solutionlf.name = "LF Circuit"
 
     # reset parser state
     parser.reset()
@@ -64,6 +65,7 @@ with two inputs and one output:
     parser.parse("r nlfsrc 5 nlf gnd")
     # calculate solution
     solutionrf = parser.solution()
+    solutionrf.name = "RF Circuit"
 
     # combine solutions
     solution = solutionlf.combine(solutionrf)
