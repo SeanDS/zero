@@ -108,14 +108,6 @@ they occur:
     │ nin to no (V/V)  │ 1.04e-08 (f = 79.433 kHz)     │ 9.54e-10 (f = 79.433 kHz)     │
     ╘══════════════════╧═══════════════════════════════╧═══════════════════════════════╛
 
-Prescaling
-----------
-
-|Zero| can prescale its circuit matrices in the same way that LISO does, to help improve numerical
-precision (see :ref:`Prescaling <analyses/ac/index:Prescaling>` for more details). By default,
-this behaviour is switched on, but can be disabled with the ``--no-prescale`` flag. This option is
-only available when a native simulation is being performed.
-
 Saving figures
 --------------
 

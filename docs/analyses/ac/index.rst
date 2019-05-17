@@ -60,7 +60,7 @@ Consider the following voltage divider, defined in :ref:`LISO syntax <liso/input
     uoutput n2
 
 The following circuit matrix is generated for this circuit (using
-``zero liso /path/to/script.fil --print-matrix --no-prescale``):
+``zero liso /path/to/script.fil --print-matrix``):
 
 .. code-block:: text
 
@@ -79,7 +79,7 @@ The following circuit matrix is generated for this circuit (using
     ╘═══════╧═════════╧═════════╧════════════╧═════════╧═════════╧═══════╛
 
 The entries containing ``---`` represent zero in sparse matrix form. The equations this matrix
-represents look like this (using ``zero liso /path/to/script.fil --print-equations --no-prescale``):
+represents look like this (using ``zero liso /path/to/script.fil --print-equations``):
 
 .. code-block:: text
 
@@ -111,18 +111,6 @@ its definition as an ideal source), and its right hand side equals ``1``. This m
 circuit is solved with the constraint that the voltage between ``n1`` and ground must always be
 ``1``. The solver can adjust all of the other non-zero matrix elements in the left hand side until
 this condition is met within some level of tolerance.
-
-Prescaling
-~~~~~~~~~~
-
-By default, |Zero| prescales matrices used in the computation of the solution, in order to improve
-numerical precision. This behaviour is currently only implemented for signal analyses and not for
-noise.
-
-.. warning::
-    When prescaling is switched on, any functions which output the circuit matrix (such as the
-    ``--no-prescale`` :ref:`CLI flag <cli/liso:Prescaling>`) will not match the underlying values they represent, but instead
-    those of the prescaled matrix.
 
 Available analyses
 ~~~~~~~~~~~~~~~~~~

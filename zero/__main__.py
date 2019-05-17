@@ -81,12 +81,10 @@ def cli():
               "figure.")
 @click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of figure to file. Can be specified multiple times.")
-@click.option("--prescale/--no-prescale", default=True, show_default=True,
-              help="Prescale matrices to improve numerical precision.")
 @click.option("--print-equations", is_flag=True, help="Print circuit equations.")
 @click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @click.pass_context
-def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale, print_equations,
+def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equations,
          print_matrix):
     """Parse and simulate LISO input or output file"""
     state = ctx.ensure_object(State)
@@ -118,8 +116,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
     if compute_native:
         # build argument list
-        kwargs = {"prescale": prescale,
-                  "print_progress": state.verbose,
+        kwargs = {"print_progress": state.verbose,
                   "print_equations": print_equations,
                   "print_matrix": print_matrix}
 

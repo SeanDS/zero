@@ -16,7 +16,7 @@ LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
-    def __init__(self, *args, frequencies=None, prescale=True, **kwargs):
+    def __init__(self, *args, frequencies=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         if frequencies is None:
@@ -24,7 +24,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
             frequencies = []
 
         self.frequencies = np.array(frequencies)
-        self.prescale = bool(prescale)
 
         # create solver
         self.solver = DefaultSolver()
@@ -40,10 +39,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def validate_circuit(self):
         """Validate circuit"""
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def prescale_value(self):
         raise NotImplementedError
 
     @property
@@ -125,8 +120,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         # create new sparse matrix
         matrix = self.solver.sparse((self.dim_size, self.dim_size))
 
-        scale = self.prescale_value
-
         # add sources and sinks
         self.set_up_sources_and_sinks()
 
@@ -142,9 +135,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
                     value = coefficient.value
 
                 if coefficient.TYPE == "impedance":
-                    # scale impedance
-                    value *= scale
-
                     # use target component column
                     column = self.component_matrix_index(coefficient.component)
                 elif coefficient.TYPE == "voltage":
@@ -199,9 +189,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         # right hand side to solve against
         rhs = self.right_hand_side()
-
-        # debug info
-        LOGGER.debug("Matrix prescaling: %s", self.prescale)
 
         # frequency loop
         for index, frequency in enumerate(freq_gen):

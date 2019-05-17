@@ -16,15 +16,6 @@ class AcSignalAnalysis(BaseAcAnalysis):
         if self.circuit.input_component.input_type not in ["voltage", "current"]:
             raise ValueError("circuit input type must be either 'voltage' or 'current'")
 
-    @property
-    def prescale_value(self):
-        if self.prescale:
-            scale = 1 / self.mean_resistance
-        else:
-            scale = 1
-
-        return scale
-
     def right_hand_side(self):
         """Circuit signal (input) vector.
 
@@ -70,20 +61,6 @@ class AcSignalAnalysis(BaseAcAnalysis):
         # calculate transfer functions by solving the transfer matrix for input
         # at the circuit's input node/component
         tfs = self.solve()
-
-        # scale vector, for converting units, if necessary
-        scale = self.get_empty_results_matrix(1)
-        scale[:, 0] = 1
-
-        if self.prescale:
-            # convert currents from natural units back to amperes
-            prescaler = 1 / self.mean_resistance
-
-            for component in self.circuit.components:
-                scale[self.component_matrix_index(component), 0] = prescaler
-
-        # unscale
-        tfs *= scale
 
         self._build_solution(tfs)
 

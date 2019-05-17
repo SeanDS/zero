@@ -29,11 +29,8 @@ class LisoComparisonTest(TestCase):
         # test message
         message = f"Test {self.script_path} against LISO"
 
-        with self.subTest(msg=message + " (without prescaling)"):
-            self._compare(prescale=False)
-
-        with self.subTest(msg=message + " (with prescaling)"):
-            self._compare(prescale=True)
+        with self.subTest(msg=message):
+            self._compare()
 
     def _compare(self, **native_kwargs):
         # get parsed LISO output

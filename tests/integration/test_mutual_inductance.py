@@ -27,7 +27,7 @@ class MutualInductanceTestCase(TestCase):
         self.circuit.set_inductor_coupling("l1", "l3")
 
         # get circuit matrix, with prescaling switched off so we can directly compare values
-        analysis = AcSignalAnalysis(circuit=self.circuit, prescale=False)
+        analysis = AcSignalAnalysis(circuit=self.circuit)
 
         # get inductors
         l1 = self.circuit["l1"]

@@ -20,11 +20,6 @@ class AcNoiseAnalysis(BaseAcAnalysis):
 
         self.element = element
 
-    @property
-    def prescale_value(self):
-        # switch off for noise
-        return 1
-
     def validate_circuit(self):
         """Validate circuit for noise analysis"""
         # check input
@@ -87,20 +82,6 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         # calculate noise functions by solving the transfer matrix for input
         # at the circuit's noise sources
         noise_matrix = self.solve()
-
-        # scale vector, for converting units, if necessary
-        scale = self.get_empty_results_matrix(1)
-        scale[:, 0] = 1
-
-        if self.prescale:
-            # convert currents from natural units back to amperes
-            prescale_value = self.prescale_value
-
-            for node in self.circuit.non_gnd_nodes:
-                scale[self.node_matrix_index(node), 0] = 1 / prescale_value
-
-        # unscale
-        noise_matrix *= scale
 
         self._build_solution(noise_matrix)
 
