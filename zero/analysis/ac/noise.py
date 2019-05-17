@@ -115,7 +115,8 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             self.solution.add_noise(NoiseDensity(source=noise, sink=self.element, series=series))
 
         if empty:
-            LOGGER.debug("empty noise sources: %s", ", ".join([str(response) for response in empty]))
+            empty_sources = ", ".join([str(response) for response in empty])
+            LOGGER.debug(f"empty noise sources: {empty_sources}")
 
     @property
     def noise_element_index(self):
