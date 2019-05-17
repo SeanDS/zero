@@ -286,15 +286,15 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         return f"{self.sink_unit}/{self.source_unit}"
 
 
-class NoiseSpectrumBase(SingleSinkFunction, metaclass=abc.ABCMeta):
-    """Function with a single noise spectrum."""
+class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
+    """Function with a single noise spectral density."""
     @property
-    def spectrum(self):
+    def spectral_density(self):
         return self.series.y
 
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
-        return spectra_match(self.spectrum, other.spectrum)
+        return spectra_match(self.spectral_density, other.spectral_density)
 
     def draw(self, *axes, label_suffix=None):
         if len(axes) != 1:
@@ -303,10 +303,10 @@ class NoiseSpectrumBase(SingleSinkFunction, metaclass=abc.ABCMeta):
         axes = axes[0]
 
         label = self.label(tex=True, suffix=label_suffix)
-        axes.loglog(self.frequencies, self.spectrum, label=label)
+        axes.loglog(self.frequencies, self.spectral_density, label=label)
 
 
-class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
+class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
     """Noise data series"""
     @property
     def noise_name(self):
@@ -334,7 +334,7 @@ class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
         return format_str % (self.noise_name, self.sink.label(), suffix)
 
 
-class MultiNoiseSpectrum(NoiseSpectrumBase):
+class MultiNoiseDensity(NoiseDensityBase):
     """Set of noise data series from multiple sources to a single sink"""
     def __init__(self, sources=None, series=None, constituents=None, label="incoherent sum",
                  **kwargs):
@@ -353,17 +353,18 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
             if sources is not None:
                 raise ValueError("cannot specify constituents and sources together")
 
-            # use first spectrum to get sink and frequencies
+            # Use first spectral density to get sink and frequencies.
             frequencies = constituents[0].frequencies
 
             # check frequency axes are identical
-            if not np.all([frequencies == spectrum.series.x for spectrum in constituents]):
+            if not np.all([frequencies == spectral_density.series.x
+                           for spectral_density in constituents]):
                 raise ValueError("specified spectra do not share common x-axis")
 
-            sources = [spectrum.source for spectrum in constituents]
+            sources = [spectral_density.source for spectral_density in constituents]
 
             # store constituent series
-            self.constituent_noise = [spectrum.series for spectrum in constituents]
+            self.constituent_noise = [spectral_density.series for spectral_density in constituents]
 
             # create series
             noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
@@ -376,7 +377,7 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
 
         if constituents is not None:
             # check sink agrees with those set in constituents
-            if not all([self.sink == spectrum.sink for spectrum in constituents]):
+            if not all([self.sink == spectral_density.sink for spectral_density in constituents]):
                 raise Exception("cannot handle noise for functions with different sinks")
 
     @property
@@ -384,7 +385,7 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
         if self.constituent_noise is None:
             return "unknown"
 
-        return [spectrum.noise_name for spectrum in self.constituent_noise]
+        return [spectral_density.noise_name for spectral_density in self.constituent_noise]
 
     def label(self, *args, **kwargs):
         return self._label

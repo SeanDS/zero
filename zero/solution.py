@@ -9,7 +9,7 @@ from matplotlib.ticker import MultipleLocator
 from matplotlib import cycler
 
 from .config import ZeroConfig
-from .data import Response, NoiseSpectrum, MultiNoiseSpectrum, frequencies_match
+from .data import Response, NoiseDensity, MultiNoiseDensity, frequencies_match
 from .components import Component, Node, Noise
 from .format import Quantity
 from .misc import lighten_colours
@@ -187,35 +187,36 @@ class Solution:
 
         self._default_responses[group].append(response)
 
-    def add_noise(self, spectrum, default=False, group=None):
-        """Add a noise spectrum to the solution.
+    def add_noise(self, spectral_density, default=False, group=None):
+        """Add a noise spectral density to the solution.
 
         Parameters
         ----------
-        spectrum : :class:`.NoiseSpectrum`
-            The noise spectrum to add.
+        spectral_density : :class:`.NoiseDensity`
+            The noise spectral density to add.
         default : :class:`bool`, optional
-            Whether this noise spectrum is a default.
+            Whether this noise spectral density is a default.
         group : :class:`str`, optional
             The function group. If None, the default is used.
 
         Raises
         ------
         ValueError
-            If the specified noise spectrum is incompatible with this solution or not single-source
-            or single-sink.
+            If the specified noise spectral density is incompatible with this solution or not
+            single-source or single-sink.
         """
-        if not isinstance(spectrum, NoiseSpectrum):
-            raise ValueError(f"noise spectrum '{spectrum}' is not single-source and -sink type")
+        if not isinstance(spectral_density, NoiseDensity):
+            raise ValueError(f"noise density '{spectral_density}' is not single-source and -sink "
+                             "type")
 
         # dimension sanity checks
-        if not np.all(spectrum.frequencies == self.frequencies):
-            raise ValueError(f"noise spectrum '{spectrum}' doesn't fit this solution")
+        if not np.all(spectral_density.frequencies == self.frequencies):
+            raise ValueError(f"noise density '{spectral_density}' doesn't fit this solution")
 
-        self._add_function(spectrum, group=group)
+        self._add_function(spectral_density, group=group)
 
         if default:
-            self.set_noise_as_default(spectrum, group)
+            self.set_noise_as_default(spectral_density, group)
 
     def is_default_noise(self, noise, group=None):
         if group is None:
@@ -223,25 +224,25 @@ class Solution:
 
         return noise in self._default_noise[group]
 
-    def set_noise_as_default(self, spectrum, group=None):
-        """Set the specified noise spectrum as a default"""
+    def set_noise_as_default(self, spectral_density, group=None):
+        """Set the specified noise spectral density as a default"""
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        if spectrum not in self.noise[group]:
-            raise ValueError(f"noise spectrum '{spectrum}' is not in the solution")
+        if spectral_density not in self.noise[group]:
+            raise ValueError(f"noise density '{spectral_density}' is not in the solution")
 
-        if self.is_default_noise(spectrum, group):
-            raise ValueError(f"noise spectrum '{spectrum}' is already default")
+        if self.is_default_noise(spectral_density, group):
+            raise ValueError(f"noise density '{spectral_density}' is already default")
 
-        self._default_noise[group].append(spectrum)
+        self._default_noise[group].append(spectral_density)
 
     def add_noise_sum(self, noise_sum, default=False, group=None):
         """Add a noise sum to the solution.
 
         Parameters
         ----------
-        noise_sum : :class:`.MultiNoiseSpectrum`
+        noise_sum : :class:`.MultiNoiseDensity`
             The noise sum to add.
         default : :class:`bool`, optional
             Whether this noise sum is a default.
@@ -253,7 +254,7 @@ class Solution:
         ValueError
             If the specified noise sum is incompatible with this solution or not multi-source.
         """
-        if not isinstance(noise_sum, MultiNoiseSpectrum):
+        if not isinstance(noise_sum, MultiNoiseDensity):
             raise ValueError(f"noise sum '{noise_sum}' is not multi-source type")
 
         # dimension sanity checks
@@ -333,7 +334,8 @@ class Solution:
 
             # Filter by source.
             for group, group_responses in responses.items():
-                responses[group] = [response for response in group_responses if response.source in filter_sources]
+                responses[group] = [response for response in group_responses
+                                    if response.source in filter_sources]
 
         if sinks != self.RESPONSE_SINKS_ALL:
             if isinstance(sinks, str):
@@ -350,7 +352,8 @@ class Solution:
 
             # Filter by sink.
             for group, group_responses in responses.items():
-                responses[group] = [response for response in group_responses if response.sink in filter_sinks]
+                responses[group] = [response for response in group_responses
+                                    if response.sink in filter_sinks]
 
         return responses
 
@@ -402,8 +405,8 @@ class Solution:
 
             # Filter by source.
             for group, group_spectra in spectra.items():
-                spectra[group] = [spectrum for spectrum in group_spectra
-                                  if spectrum.source in filter_sources]
+                spectra[group] = [spectral_density for spectral_density in group_spectra
+                                  if spectral_density.source in filter_sources]
 
         if sinks != self.NOISE_SINKS_ALL:
             if isinstance(sinks, str):
@@ -420,16 +423,16 @@ class Solution:
 
             # Filter by sink.
             for group, group_spectra in spectra.items():
-                spectra[group] = [spectrum for spectrum in group_spectra
-                                  if spectrum.sink in filter_sinks]
+                spectra[group] = [spectral_density for spectral_density in group_spectra
+                                  if spectral_density.sink in filter_sinks]
 
         if types != self.NOISE_TYPES_ALL:
             # Filter by noise type.
             for group, group_spectra in spectra.items():
-                for spectrum in group_spectra:
-                    if spectrum.noise_type not in types and spectrum.noise_subtype not in types:
+                for noise in group_spectra:
+                    if noise.noise_type not in types and noise.noise_subtype not in types:
                         # No match.
-                        group_spectra.remove(spectrum)
+                        group_spectra.remove(noise)
                 spectra[group] = group_spectra
 
         return spectra
@@ -441,12 +444,12 @@ class Solution:
 
     @property
     def noise(self):
-        return {group: [function for function in functions if isinstance(function, NoiseSpectrum)]
+        return {group: [function for function in functions if isinstance(function, NoiseDensity)]
                 for group, functions in self.functions.items()}
 
     @property
     def noise_sums(self):
-        return {group: [function for function in functions if isinstance(function, MultiNoiseSpectrum)]
+        return {group: [function for function in functions if isinstance(function, MultiNoiseDensity)]
                 for group, functions in self.functions.items()}
 
     @property
@@ -473,7 +476,8 @@ class Solution:
     @property
     def default_functions(self):
         """Default responses and noise spectra"""
-        return self._merge_groups(self._default_responses, self._default_noise, self._default_noise_sums)
+        return self._merge_groups(self._default_responses, self._default_noise,
+                                  self._default_noise_sums)
 
     @property
     def response_source_nodes(self):
@@ -484,7 +488,8 @@ class Solution:
         """
         nodes = set()
         for responses in self.responses.values():
-            nodes.update([response.source for response in responses if isinstance(response.source, Node)])
+            nodes.update([response.source for response in responses
+                          if isinstance(response.source, Node)])
         return nodes
 
     @property
@@ -496,7 +501,8 @@ class Solution:
         """
         components = set()
         for responses in self.responses.values():
-            components.update([response.source for response in responses if isinstance(response.source, Component)])
+            components.update([response.source for response in responses
+                               if isinstance(response.source, Component)])
         return components
 
     @property
@@ -521,7 +527,8 @@ class Solution:
         """
         nodes = set()
         for responses in self.responses.values():
-            nodes.update([response.sink for response in responses if isinstance(response.sink, Node)])
+            nodes.update([response.sink for response in responses
+                          if isinstance(response.sink, Node)])
         return nodes
 
     @property
@@ -533,7 +540,8 @@ class Solution:
         """
         components = set()
         for responses in self.responses.values():
-            components.update([response.sink for response in responses if isinstance(response.sink, Component)])
+            components.update([response.sink for response in responses
+                               if isinstance(response.sink, Component)])
         return components
 
     @property
@@ -557,7 +565,7 @@ class Solution:
         """
         sources = set()
         for spectra in self.noise.values():
-            sources.update([spectrum.source for spectrum in spectra])
+            sources.update([spectral_density.source for spectral_density in spectra])
         return sources
 
     def get_noise_source(self, source_name):
@@ -578,8 +586,8 @@ class Solution:
         """
         nodes = set()
         for spectra in self.noise.values():
-            nodes.update([spectrum.sink for spectrum in spectra
-                          if isinstance(spectrum.sink, Node)])
+            nodes.update([spectral_density.sink for spectral_density in spectra
+                          if isinstance(spectral_density.sink, Node)])
         return nodes
 
     @property
@@ -591,8 +599,8 @@ class Solution:
         """
         components = set()
         for spectra in self.noise.values():
-            components.update([spectrum.sink for spectrum in spectra
-                               if isinstance(spectrum.sink, Component)])
+            components.update([spectral_density.sink for spectral_density in spectra
+                               if isinstance(spectral_density.sink, Component)])
         return components
 
     @property
@@ -660,7 +668,7 @@ class Solution:
         if not noise:
             raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
 
-        figure = self._plot_spectrum(noise, figure=figure, title=title)
+        figure = self._plot_spectral_density(noise, figure=figure, title=title)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
 
         return figure
@@ -743,9 +751,9 @@ class Solution:
 
         return figure
 
-    def _plot_spectrum(self, noise, figure=None, legend=True, legend_loc="best", legend_groups=True,
-                       title=None, xlim=None, ylim=None, xlabel=r"$\bf{Frequency}$ (Hz)",
-                       ylabel=None):
+    def _plot_spectral_density(self, noise, figure=None, legend=True, legend_loc="best",
+                               legend_groups=True, title=None, xlim=None, ylim=None,
+                               xlabel=r"$\bf{Frequency}$ (Hz)", ylabel=None):
         if figure is None:
             # create figure
             figure = self.noise_figure()
@@ -762,9 +770,9 @@ class Solution:
 
             # Check which noise units to use.
             for spectra in noise.values():
-                if any([spectrum.sink_unit == "V" for spectrum in spectra]):
+                if any([spectral_density.sink_unit == "V" for spectral_density in spectra]):
                     has_volts = True
-                if any([spectrum.sink_unit == "A" for spectrum in spectra]):
+                if any([spectral_density.sink_unit == "A" for spectral_density in spectra]):
                     has_amps = True
 
             if has_volts:
@@ -789,8 +797,8 @@ class Solution:
                 else:
                     legend_group = None
 
-                for spectrum in spectra:
-                    spectrum.draw(ax, label_suffix=legend_group)
+                for spectral_density in spectra:
+                    spectral_density.draw(ax, label_suffix=legend_group)
 
                 # overall figure title
                 if title:
@@ -922,16 +930,16 @@ class Solution:
 
             for group, responses in solution.responses.items():
                 for response in responses:
-                    result.add_response(response, default=solution.is_default_response(response, group), group=new_group)
+                    is_default = solution.is_default_response(response, group)
+                    result.add_response(response, default=is_default, group=new_group)
             for group, spectra in solution.noise.items():
-                for spectrum in spectra:
-                    result.add_noise(spectrum, default=solution.is_default_noise(spectrum, group),
-                                     group=new_group)
+                for spectral_density in spectra:
+                    is_default = solution.is_default_noise(spectral_density, group)
+                    result.add_noise(spectral_density, default=is_default, group=new_group)
             for group, noise_sums in solution.noise_sums.items():
                 for noise_sum in noise_sums:
-                    result.add_noise_sum(noise_sum,
-                                         default=solution.is_default_noise_sum(noise_sum, group),
-                                         group=new_group)
+                    is_default = solution.is_default_noise_sum(noise_sum, group)
+                    result.add_noise_sum(noise_sum, default=is_default, group=new_group)
 
         flag_functions(self)
         flag_functions(other)

@@ -5,7 +5,7 @@ import numpy as np
 
 from zero.components import OpAmp, Node, VoltageNoise
 from zero.solution import Solution, matches_between
-from zero.data import Series, Response, NoiseSpectrum, MultiNoiseSpectrum
+from zero.data import Series, Response, NoiseDensity, MultiNoiseDensity
 
 # fixed random seed for test reproducibility
 np.random.seed(seed=2543070)
@@ -65,15 +65,15 @@ class SolutionTestCase(TestCase):
                                    series=responseseries12)
         self.response13 = Response(source=responsesource11, sink=responsesink13,
                                    series=responseseries13)
-        self.noise11 = NoiseSpectrum(source=noisesource11, sink=noisesink11, series=noiseseries11)
-        self.noise12 = NoiseSpectrum(source=noisesource11, sink=noisesink12, series=noiseseries12)
+        self.noise11 = NoiseDensity(source=noisesource11, sink=noisesink11, series=noiseseries11)
+        self.noise12 = NoiseDensity(source=noisesource11, sink=noisesink12, series=noiseseries12)
         # set 2 functions
         self.response21 = Response(source=responsesource21, sink=responsesink21,
                                    series=responseseries21)
         self.response22 = Response(source=responsesource21, sink=responsesink22,
                                    series=responseseries22)
-        self.noise21 = NoiseSpectrum(source=noisesource21, sink=noisesink21, series=noiseseries21)
-        self.noise22 = NoiseSpectrum(source=noisesource21, sink=noisesink22, series=noiseseries22)
+        self.noise21 = NoiseDensity(source=noisesource21, sink=noisesink21, series=noiseseries21)
+        self.noise22 = NoiseDensity(source=noisesource21, sink=noisesink22, series=noiseseries22)
 
     def test_solutions_equal(self):
         sol_a = Solution(self.frequencies1)
@@ -91,17 +91,17 @@ class SolutionTestCase(TestCase):
                    VoltageNoise(component=OpAmp(model="OP00", node1="n4", node2="n5", node3="n6"))]
         op = OpAmp(model="OP00", node1="n1", node2="n2", node3="n3")
         noise1 = self.noise11
-        series2 = Series(x=noise1.frequencies, y=noise1.spectrum)
+        series2 = Series(x=noise1.frequencies, y=noise1.spectral_density)
         sink = noise1.sink
-        noise2 = NoiseSpectrum(source=VoltageNoise(component=op), sink=sink, series=series2)
+        noise2 = NoiseDensity(source=VoltageNoise(component=op), sink=sink, series=series2)
         constituents = [noise1, noise2]
-        noise_sum = np.sqrt(sum([noise.spectrum ** 2 for noise in constituents]))
+        noise_sum = np.sqrt(sum([noise.spectral_density ** 2 for noise in constituents]))
         sum_series = Series(self.frequencies1, noise_sum)
 
         # sum from constituents
-        noisesum1 = MultiNoiseSpectrum(sink=sink, constituents=constituents)
+        noisesum1 = MultiNoiseDensity(sink=sink, constituents=constituents)
         # sum from total
-        noisesum2 = MultiNoiseSpectrum(sources=sources, sink=sink, series=sum_series)
+        noisesum2 = MultiNoiseDensity(sources=sources, sink=sink, series=sum_series)
 
         self.assertTrue(noisesum1.equivalent(noisesum2))
 

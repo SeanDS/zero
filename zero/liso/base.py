@@ -10,7 +10,7 @@ import numpy as np
 from ..circuit import Circuit, ElementNotFoundError
 from ..components import Node, OpAmp
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
-from ..data import MultiNoiseSpectrum
+from ..data import MultiNoiseDensity
 from ..format import Quantity
 from ..misc import ChangeFlagDict
 
@@ -236,7 +236,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 raise ValueError("cannot specify both text and a file to parse")
 
             if not os.path.isfile(path):
-                raise FileNoresponseoundError("cannot read '{path}'".format(path=path))
+                raise FileNotFoundError("cannot read '{path}'".format(path=path))
 
             with open(path, "r") as obj:
                 text = obj.read()
@@ -303,14 +303,14 @@ class LisoParser(metaclass=abc.ABCMeta):
             if self._circuit_properties["noise_sum_to_be_computed"]:
                 # Find spectra in solution.
                 sum_spectra_groups = self._solution.filter_noise(sources=self.summed_noise_objects)
-                sum_spectra = [spectrum for group_spectra in sum_spectra_groups.values()
-                               for spectrum in group_spectra]
-                # get sink element
+                sum_spectra = [spectral_density for group_spectra in sum_spectra_groups.values()
+                               for spectral_density in group_spectra]
+                # Get sink element.
                 sum_sink = self.circuit[self.noise_output_element]
-                # create overall spectrum
-                sum_spectrum = MultiNoiseSpectrum(sink=sum_sink, constituents=sum_spectra)
-                # build noise sum and show by default
-                self._solution.add_noise_sum(sum_spectrum, default=True)
+                # Create overall spectral density.
+                sum_spectral_density = MultiNoiseDensity(sink=sum_sink, constituents=sum_spectra)
+                # Build noise sum and show by default.
+                self._solution.add_noise_sum(sum_spectral_density, default=True)
 
         if set_default_plots:
             self._set_default_plots()
@@ -435,8 +435,9 @@ class LisoParser(metaclass=abc.ABCMeta):
     def _set_default_plots(self):
         """Set functions that are displayed by default when the solution is plotted."""
         if self.output_type == "response":
-            default_responses = self._solution.filter_responses(sources=self.default_response_sources(),
-                                                                sinks=self.default_response_sinks())
+            sources = self.default_response_sources()
+            sinks = self.default_response_sinks()
+            default_responses = self._solution.filter_responses(sources=sources, sinks=sinks)
 
             for group, responses in default_responses.items():
                 for response in responses:
@@ -446,16 +447,17 @@ class LisoParser(metaclass=abc.ABCMeta):
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
 
             for group, spectra in default_spectra.items():
-                for spectrum in spectra:
-                    if not self._solution.is_default_noise(spectrum, group):
-                        self._solution.set_noise_as_default(spectrum, group)
+                for spectral_density in spectra:
+                    if not self._solution.is_default_noise(spectral_density, group):
+                        self._solution.set_noise_as_default(spectral_density, group)
 
     def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
         # build circuit if necessary
         self.build()
 
         if self.output_type == "response":
-            analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
+            analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies,
+                                        **kwargs)
         elif self.output_type == "noise":
             # get noise output element
             element = self.circuit[self.noise_output_element]
@@ -561,12 +563,14 @@ class LisoParser(metaclass=abc.ABCMeta):
     @property
     def output_nodes(self):
         """The output nodes of the responses computed in the analysis"""
-        return set([element.element for element in self.response_outputs if element.type == "node"])
+        return set([element.element for element in self.response_outputs
+                    if element.type == "node"])
 
     @property
     def output_components(self):
         """The output components of the responses computed in the analysis"""
-        return set([element.element for element in self.response_outputs if element.type == "component"])
+        return set([element.element for element in self.response_outputs
+                    if element.type == "component"])
 
     @property
     def opamp_output_node_names(self):

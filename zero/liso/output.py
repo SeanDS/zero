@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from ..solution import Solution
-from ..data import Series, Response, NoiseSpectrum, MultiNoiseSpectrum
+from ..data import Series, Response, NoiseDensity, MultiNoiseDensity
 from ..format import Quantity
 from ..components import OpAmp
 from .base import (LisoParser, LisoParserError, LisoOutputVoltage, LisoOutputCurrent,
@@ -334,10 +334,10 @@ class LisoOutputParser(LisoParser):
                 # Must be a resistor.
                 noise = component.johnson_noise
 
-            # Create noise spectrum.
-            spectrum = NoiseSpectrum(source=noise, sink=sink, series=series)
+            # Create noise spectral density.
+            spectral_density = NoiseDensity(source=noise, sink=sink, series=series)
 
-            self._solution.add_noise(spectrum)
+            self._solution.add_noise(spectral_density)
 
         # Generate sum if present.
         if self.source_sum_index is not None:
@@ -348,7 +348,7 @@ class LisoOutputParser(LisoParser):
             series = Series(x=self.frequencies, y=data[:, self.source_sum_index])
 
             # Create and store sum noise.
-            sum_noise = MultiNoiseSpectrum(sources=sources, sink=sink, series=series)
+            sum_noise = MultiNoiseDensity(sources=sources, sink=sink, series=series)
             self._solution.add_noise_sum(sum_noise, default=True)
 
             # Flag that noise sum must be generated for any future native runs of this circuit.

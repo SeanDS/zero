@@ -2,7 +2,7 @@ import logging
 import numpy as np
 
 from .base import BaseAcAnalysis
-from ...data import NoiseSpectrum, Series
+from ...data import NoiseDensity, Series
 
 LOGGER = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             series = Series(x=self.frequencies, y=projected_noise)
 
             # add noise function to solution
-            self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.element, series=series))
+            self.solution.add_noise(NoiseDensity(source=noise, sink=self.element, series=series))
 
         if empty:
             LOGGER.debug("empty noise sources: %s", ", ".join([str(response) for response in empty]))
