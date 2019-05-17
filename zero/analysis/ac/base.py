@@ -92,8 +92,29 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """Calculate solution."""
         raise NotImplementedError
 
-    @abc.abstractmethod
     def right_hand_side(self):
+        """Circuit signal excitation vector.
+
+        This creates a vector of size nx1, where n is the number of elements in the circuit, with
+        all elements zero except for the excitation component, which is set to 1.
+
+        Returns
+        -------
+        :class:`np.ndarray`
+            The circuit's excitation vector.
+        """
+        # Create column vector.
+        y = self.get_empty_results_matrix(1)
+
+        # Set input to input component.
+        y[self.right_hand_side_index, 0] = 1
+
+        return y
+
+    @property
+    @abc.abstractmethod
+    def right_hand_side_index(self):
+        """Right hand side excitation component index"""
         raise NotImplementedError
 
     def circuit_matrix(self, frequency):

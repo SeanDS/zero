@@ -9,7 +9,6 @@ LOGGER = logging.getLogger(__name__)
 
 class AcNoiseAnalysis(BaseAcAnalysis):
     """Small signal circuit analysis"""
-
     def __init__(self, element, **kwargs):
         # call parent constructor
         super().__init__(**kwargs)
@@ -33,26 +32,10 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         # Return the transpose of the response matrix.
         return super().circuit_matrix(*args, **kwargs).T
 
-    def right_hand_side(self):
-        """Circuit noise (output) vector
-
-        This creates a vector of size nx1, where n is the number of elements in
-        the circuit, and sets the noise element's coefficient to 1 before
-        returning it.
-
-        Returns
-        -------
-        :class:`~np.ndarray`
-            circuit's noise output vector
-        """
-
-        # create column vector
-        e_n = self.get_empty_results_matrix(1)
-
-        # set input to noise element
-        e_n[self.noise_element_index, 0] = 1
-
-        return e_n
+    @property
+    def right_hand_side_index(self):
+        """Right hand side excitation component index"""
+        return self.noise_element_index
 
     def calculate(self):
         """Calculate noise from circuit elements at a particular element.

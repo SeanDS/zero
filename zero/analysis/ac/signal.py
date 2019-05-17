@@ -10,26 +10,10 @@ LOGGER = logging.getLogger(__name__)
 
 class AcSignalAnalysis(BaseAcAnalysis):
     """AC signal analysis"""
-    def right_hand_side(self):
-        """Circuit signal (input) vector.
-
-        This creates a vector of size nx1, where n is the number of elements in
-        the circuit, and sets the input component's coefficient to 1 before
-        returning it.
-
-        Returns
-        -------
-        :class:`~np.ndarray`
-            circuit's input vector
-        """
-
-        # create column vector
-        y = self.get_empty_results_matrix(1)
-
-        # set input to input component
-        y[self.input_component_index, 0] = 1
-
-        return y
+    @property
+    def right_hand_side_index(self):
+        """Right hand side excitation component index"""
+        return self.input_component_index
 
     def calculate(self):
         """Calculate circuit response from input component or node to output component or node.
@@ -46,7 +30,6 @@ class AcSignalAnalysis(BaseAcAnalysis):
         ValueError
             if neither output components nor nodes are specified
         """
-
         if not self.circuit.has_input:
             raise Exception("circuit must contain an input")
 
