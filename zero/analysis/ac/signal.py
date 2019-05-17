@@ -15,30 +15,6 @@ class AcSignalAnalysis(BaseAcAnalysis):
         """Right hand side excitation component index"""
         return self.input_component_index
 
-    def calculate(self):
-        """Calculate circuit response from input component or node to output component or node.
-
-        Returns
-        -------
-        :class:`~.solution.Solution`
-            solution
-
-        Raises
-        ------
-        Exception
-            if no input is present within the circuit
-        ValueError
-            if neither output components nor nodes are specified
-        """
-        if not self.circuit.has_input:
-            raise Exception("circuit must contain an input")
-
-        # Calculate responses by solving the transfer matrix for input at the circuit's input
-        # node/component.
-        responses = self.solve()
-
-        self._build_solution(responses)
-
     def _build_solution(self, responses):
         # Empty responses.
         empty = []

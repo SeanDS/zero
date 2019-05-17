@@ -87,9 +87,25 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """
         return self.solver.full((self.dim_size, *depth))
 
-    @abc.abstractmethod
     def calculate(self):
-        """Calculate solution."""
+        """Calculate solution.
+
+        Returns
+        -------
+        :class:`.Solution`
+            The requested analysis solution.
+        """
+        if not self.circuit.has_input:
+            raise Exception("circuit must contain an input")
+
+        # Solving the transfer matrix for the circuit's excitation.
+        results_matrix = self.solve()
+
+        self._build_solution(results_matrix)
+
+    @abc.abstractmethod
+    def _build_solution(self, results_matrix):
+        """Build solution with the given results matrix."""
         raise NotImplementedError
 
     def right_hand_side(self):

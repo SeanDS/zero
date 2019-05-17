@@ -28,7 +28,6 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         :class:`scipy.sparse.spmatrix`
             The circuit matrix.
         """
-
         # Return the transpose of the response matrix.
         return super().circuit_matrix(*args, **kwargs).T
 
@@ -36,31 +35,6 @@ class AcNoiseAnalysis(BaseAcAnalysis):
     def right_hand_side_index(self):
         """Right hand side excitation component index"""
         return self.noise_element_index
-
-    def calculate(self):
-        """Calculate noise from circuit elements at a particular element.
-
-        Returns
-        -------
-        :class:`~.solution.Solution`
-            solution
-
-        Raises
-        ------
-        Exception
-            If no input is present within the circuit.
-        Exception
-            If no noise sources are defined.
-        """
-
-        if not self.circuit.has_input:
-            raise Exception("circuit must contain an input")
-
-        # calculate noise functions by solving the transfer matrix for input
-        # at the circuit's noise sources
-        noise_matrix = self.solve()
-
-        self._build_solution(noise_matrix)
 
     def _build_solution(self, noise_matrix):
         # empty noise sources
