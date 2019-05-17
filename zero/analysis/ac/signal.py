@@ -10,12 +10,6 @@ LOGGER = logging.getLogger(__name__)
 
 class AcSignalAnalysis(BaseAcAnalysis):
     """AC signal analysis"""
-    def validate_circuit(self):
-        """Validate circuit for signal analysis"""
-        # check input
-        if self.circuit.input_component.input_type not in ["voltage", "current"]:
-            raise ValueError("circuit input type must be either 'voltage' or 'current'")
-
     def right_hand_side(self):
         """Circuit signal (input) vector.
 

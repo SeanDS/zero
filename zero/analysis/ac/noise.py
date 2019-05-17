@@ -20,10 +20,6 @@ class AcNoiseAnalysis(BaseAcAnalysis):
 
         self.element = element
 
-    def validate_circuit(self):
-        """Validate circuit for noise analysis"""
-        pass
-
     def circuit_matrix(self, *args, **kwargs):
         """Calculate and return matrix used to solve for circuit noise at a \
         given frequency.

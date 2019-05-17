@@ -36,10 +36,11 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         # validate the circuit for the current analysis
         self.validate_circuit()
 
-    @abc.abstractmethod
     def validate_circuit(self):
         """Validate circuit"""
-        raise NotImplementedError
+        # Check input type.
+        if self.circuit.input_component.input_type not in ["voltage", "current"]:
+            raise ValueError("circuit input type must be either 'voltage' or 'current'")
 
     @property
     def dim_size(self):
