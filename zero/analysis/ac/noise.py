@@ -131,8 +131,3 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             pass
 
         raise ValueError(f"noise output element '{self.element}' is not in the circuit")
-
-    @property
-    def has_noise_input(self):
-        """Check if circuit has a noise input."""
-        return self.circuit.input_component.is_noise
