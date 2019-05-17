@@ -1,13 +1,13 @@
 import logging
 import numpy as np
 
-from .base import BaseAcAnalysis
+from .signal import AcSignalAnalysis
 from ...data import NoiseDensity, Series
 
 LOGGER = logging.getLogger(__name__)
 
 
-class AcNoiseAnalysis(BaseAcAnalysis):
+class AcNoiseAnalysis(AcSignalAnalysis):
     """Small signal circuit analysis"""
     def __init__(self, element, **kwargs):
         # call parent constructor
