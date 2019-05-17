@@ -22,9 +22,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
 
     def validate_circuit(self):
         """Validate circuit for noise analysis"""
-        # check input
-        if self.circuit.input_component.input_type != "noise":
-            raise ValueError("circuit input type must be 'noise'")
+        pass
 
     def circuit_matrix(self, *args, **kwargs):
         """Calculate and return matrix used to solve for circuit noise at a \
@@ -141,4 +139,4 @@ class AcNoiseAnalysis(BaseAcAnalysis):
     @property
     def has_noise_input(self):
         """Check if circuit has a noise input."""
-        return self.circuit.input_component.input_type == "noise"
+        return self.circuit.input_component.is_noise

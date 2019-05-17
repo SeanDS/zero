@@ -27,12 +27,6 @@ class AcNoiseAnalysisTestCase(TestCase):
 
     def test_input(self):
         """Test set noise input"""
-        self.circuit.add_input(input_type="noise", node="nin", impedance=152.6)
+        self.circuit.add_input(input_type="voltage", node="nin", impedance=152.6, is_noise=True)
         analysis = self.default_analysis()
         self.assertEqual(analysis.element, self.default_element)
-
-    def test_invalid_input(self):
-        """Test input type must be 'noise' for noise analysis"""
-        self.circuit.add_input(input_type="voltage", node="nin")
-        self.assertRaisesRegex(ValueError, r"circuit input type must be 'noise'",
-                               self.default_analysis)

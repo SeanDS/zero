@@ -257,12 +257,12 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         if hasattr(component, "input_type"):
             # this is an input component
-            if component.input_type in ["noise", "current"]:
+            if component.input_type == "current" or (hasattr(component, "is_noise") and component.is_noise):
                 # set source impedance
                 coefficients.append(ImpedanceCoefficient(component=component,
                                                          value=component.impedance))
 
-            if component.input_type in ["noise", "voltage"]:
+            if component.input_type == "voltage" or (hasattr(component, "is_noise") and component.is_noise):
                 # set sink node coefficient
                 if component.node_n is not Node("gnd"):
                     # voltage

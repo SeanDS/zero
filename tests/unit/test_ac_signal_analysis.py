@@ -31,10 +31,3 @@ class AcSignalAnalysisTestCase(TestCase):
         """Test set current input"""
         self.circuit.add_input(input_type="current", node="nin")
         self.default_analysis()
-
-    def test_invalid_input(self):
-        """Test input type must be 'voltage' or 'current' for noise analysis"""
-        self.circuit.add_input(input_type="noise", node="nin", impedance=10)
-        self.assertRaisesRegex(ValueError,
-                               r"circuit input type must be either 'voltage' or 'current'",
-                               self.default_analysis)

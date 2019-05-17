@@ -613,12 +613,13 @@ class LisoParser(metaclass=abc.ABCMeta):
         if self.circuit.has_component("input"):
             return
 
-        # add input
+        # Add input.
         input_type = self.input_type
         node = None
         node_p = None
         node_n = None
         impedance = None
+        is_noise = False
 
         if self.input_node_n is None:
             # fixed input
@@ -631,14 +632,13 @@ class LisoParser(metaclass=abc.ABCMeta):
         # Input type depends on whether we calculate noise or responses.
         if self.noise_output_element is not None:
             # We're calculating noise.
-            input_type = "noise"
+            is_noise = True
 
             # Set input impedance.
             impedance = self.input_impedance
 
-        self.circuit.add_input(input_type=input_type, node=node,
-                                node_p=node_p, node_n=node_n,
-                                impedance=impedance)
+        self.circuit.add_input(input_type=input_type, node=node, node_p=node_p, node_n=node_n,
+                               impedance=impedance, is_noise=is_noise)
 
     def _set_inductor_couplings(self):
         # discard name (not used in circuit mode)
