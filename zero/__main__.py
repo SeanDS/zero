@@ -161,8 +161,8 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equ
     generate_plot = plot or save_figure
 
     if generate_plot:
-        if solution.has_tfs:
-            figure = solution.plot_tfs()
+        if solution.has_responses:
+            figure = solution.plot_responses()
         else:
             figure = solution.plot_noise()
 

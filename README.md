@@ -1,6 +1,6 @@
 # Zero
-Linear electronic circuit utility. This package provides tools to simulate transfer functions and
-noise in linear electronic circuits, SI unit parsing and formatting, datasheet grabbing, and more.
+Linear electronic circuit utility. This package provides tools to simulate responses and noise in
+linear electronic circuits, SI unit parsing and formatting, datasheet grabbing, and more.
 
 This tool's simulator is inspired by [LISO](https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso),
 and comes bundled with its op-amp library ([including tools to search it](https://docs.ligo.org/sean-leavey/zero/cli/library.html#search-queries)).
@@ -37,8 +37,8 @@ project's [issue tracker](https://git.ligo.org/sean-leavey/zero/issues).
   - Allow arbitrary op-amp noise spectra (interpolate to the frequency vector actually used)
   - Split op-amp families into their own library files
   - Some sort of system for sharing op-amp, regulator, resistor, etc. library data across the web
-  - Breakout data classes into separate project (TFs, noise and data handling are probably useful
-    for other purposes)
+  - Breakout data classes into separate project (responses, noise and data handling are probably
+    useful for other purposes)
   - A standardised export file format (XML?)
   - Other types of noise, e.g. resistor excess noise
   - SciPy/Matlab system object export?

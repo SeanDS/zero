@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from ..solution import Solution
-from ..data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
+from ..data import Series, Response, NoiseSpectrum, MultiNoiseSpectrum
 from ..format import Quantity
 from ..components import OpAmp
 from .base import (LisoParser, LisoParserError, LisoOutputVoltage, LisoOutputCurrent,
@@ -229,22 +229,22 @@ class LisoOutputParser(LisoParser):
     def _build_solution(self, data):
         self._solution = Solution(self.frequencies)
 
-        if self.output_type == "tf":
-            self._build_tfs(data)
+        if self.output_type == "response":
+            self._build_responses(data)
         elif self.output_type == "noise":
             self._build_noise(data)
         else:
             raise ValueError(f"unrecognised output type '{self.output_type}'")
 
-    def _build_tfs(self, data):
+    def _build_responses(self, data):
         # column offset
         offset = 0
 
-        for tf_output in self.tf_outputs:
+        for response_output in self.response_outputs:
             # get data
-            if tf_output.has_real and tf_output.has_imag:
-                real_index, _ = tf_output.real_index
-                imag_index, _ = tf_output.imag_index
+            if response_output.has_real and response_output.has_imag:
+                real_index, _ = response_output.real_index
+                imag_index, _ = response_output.imag_index
 
                 # get data
                 real_data = data[:, offset + real_index]
@@ -252,19 +252,19 @@ class LisoOutputParser(LisoParser):
 
                 # create data series
                 series = Series.from_re_im(x=self.frequencies, re=real_data, im=imag_data)
-            elif tf_output.has_magnitude or tf_output.has_phase:
+            elif response_output.has_magnitude or response_output.has_phase:
                 # dict to contain Series arguments
                 series_data = {}
 
-                if tf_output.has_magnitude:
-                    mag_index, mag_scale = tf_output.magnitude_index
+                if response_output.has_magnitude:
+                    mag_index, mag_scale = response_output.magnitude_index
 
                     # get magnitude data
                     series_data["magnitude"] = data[:, offset + mag_index]
                     series_data["mag_scale"] = mag_scale
 
-                if tf_output.has_phase:
-                    phase_index, phase_scale = tf_output.phase_index
+                if response_output.has_phase:
+                    phase_index, phase_scale = response_output.phase_index
 
                     # get phase data
                     series_data["phase"] = data[:, offset + phase_index]
@@ -276,34 +276,34 @@ class LisoOutputParser(LisoParser):
                 raise ValueError("cannot build solution without either magnitude or phase, or "
                                  "both real and imaginary data columns present")
 
-            # create appropriate transfer function depending on analysis
+            # Create appropriate response depending on analysis.
             if self.input_type == "voltage":
                 source = self.input_node_p
 
-                if tf_output.OUTPUT_TYPE == "voltage":
-                    sink = self.circuit.get_node(tf_output.node)
-                elif tf_output.OUTPUT_TYPE == "current":
-                    sink = self.circuit[tf_output.component]
+                if response_output.OUTPUT_TYPE == "voltage":
+                    sink = self.circuit.get_node(response_output.node)
+                elif response_output.OUTPUT_TYPE == "current":
+                    sink = self.circuit[response_output.component]
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self.circuit.input_component
 
-                if tf_output.OUTPUT_TYPE == "voltage":
-                    sink = self.circuit.get_node(tf_output.node)
-                elif tf_output.OUTPUT_TYPE == "current":
-                    sink = self.circuit[tf_output.component]
+                if response_output.OUTPUT_TYPE == "voltage":
+                    sink = self.circuit.get_node(response_output.node)
+                elif response_output.OUTPUT_TYPE == "current":
+                    sink = self.circuit[response_output.component]
                 else:
                     raise ValueError("invalid output type")
             else:
                 raise ValueError("invalid input type")
 
-            function = TransferFunction(series=series, source=source, sink=sink)
+            function = Response(series=series, source=source, sink=sink)
 
-            self._solution.add_tf(function)
+            self._solution.add_response(function)
 
             # increment offset
-            offset += tf_output.n_scales
+            offset += response_output.n_scales
 
     def _build_noise(self, data):
         """Build noise outputs"""
@@ -421,14 +421,14 @@ class LisoOutputParser(LisoParser):
     def t_ANY_voltageoutputnodes(self, t):
         # match start of voltage output section
         r'\#OUTPUT\s(?P<nout>\d+)\svoltage\soutputs?:'
-        self.output_type = "tf"
+        self.output_type = "response"
         self.n_voltage_outputs = t.lexer.lexmatch.group('nout')
         t.lexer.begin('voltageoutputnodes')
 
     def t_ANY_currentoutputcomponents(self, t):
         # match start of current output section
         r'\#OUTPUT\s(?P<nout>\d+)\scurrent\soutputs?:'
-        self.output_type = "tf"
+        self.output_type = "response"
         self.n_current_outputs = t.lexer.lexmatch.group('nout')
         t.lexer.begin('currentoutputcomponents')
 
@@ -875,7 +875,7 @@ class LisoOutputParser(LisoParser):
         sink = LisoOutputVoltage(node=node, scales=scales, index=index)
 
         try:
-            self.add_tf_output(sink)
+            self.add_response_output(sink)
         except ValueError:
             self.p_error("voltage output '{sink}' already specified".format(sink=sink))
 
@@ -895,7 +895,7 @@ class LisoOutputParser(LisoParser):
         sink = LisoOutputCurrent(component=component, scales=scales, index=index)
 
         try:
-            self.add_tf_output(sink)
+            self.add_response_output(sink)
         except ValueError:
             self.p_error(f"current output '{sink}' already specified")
 

@@ -2,7 +2,7 @@ import logging
 import numpy as np
 
 from .base import BaseAcAnalysis
-from ...data import TransferFunction, Series
+from ...data import Response, Series
 from ...components import Component, Node
 
 LOGGER = logging.getLogger(__name__)
@@ -38,9 +38,7 @@ class AcSignalAnalysis(BaseAcAnalysis):
         return y
 
     def calculate(self):
-        """Calculate circuit transfer functions from input \
-        :class:`component <.Component>` / :class:`node <.Node>` to output \
-        :class:`components <.Component>` / :class:`nodes <.Node>`.
+        """Calculate circuit response from input component or node to output component or node.
 
         Returns
         -------
@@ -58,29 +56,29 @@ class AcSignalAnalysis(BaseAcAnalysis):
         if not self.circuit.has_input:
             raise Exception("circuit must contain an input")
 
-        # calculate transfer functions by solving the transfer matrix for input
-        # at the circuit's input node/component
-        tfs = self.solve()
+        # Calculate responses by solving the transfer matrix for input at the circuit's input
+        # node/component.
+        responses = self.solve()
 
-        self._build_solution(tfs)
+        self._build_solution(responses)
 
-    def _build_solution(self, tfs):
-        # empty tfs
+    def _build_solution(self, responses):
+        # Empty responses.
         empty = []
 
-        # output component indices
+        # Output component indices.
         for component in self.circuit.components:
-            # extract transfer function for this component
-            tf = tfs[self.component_matrix_index(component), :]
+            # Extract response for this component.
+            response = responses[self.component_matrix_index(component), :]
 
-            if np.all(tf) == 0:
-                # null transfer function
+            if np.all(response) == 0:
+                # Null response.
                 empty.append(component)
 
-            # create data series
-            series = Series(x=self.frequencies, y=tf)
+            # Create data series.
+            series = Series(x=self.frequencies, y=response)
 
-            # create appropriate transfer function depending on input type
+            # Create appropriate response function depending on input type.
             if self.has_voltage_input:
                 source = self.circuit.input_component.node_p
             elif self.has_current_input:
@@ -88,24 +86,24 @@ class AcSignalAnalysis(BaseAcAnalysis):
             else:
                 raise ValueError("specify either a current or voltage input")
 
-            function = TransferFunction(source=source, sink=component, series=series)
+            function = Response(source=source, sink=component, series=series)
 
-            # add transfer function to solution
-            self.solution.add_tf(function)
+            # Add response to solution.
+            self.solution.add_response(function)
 
-        # output node indices
+        # Output node indices.
         for node in self.circuit.non_gnd_nodes:
-            # extract transfer function for this node
-            tf = tfs[self.node_matrix_index(node), :]
+            # Extract response for this node.
+            response = responses[self.node_matrix_index(node), :]
 
-            if np.all(tf) == 0:
-                # null transfer function
+            if np.all(response) == 0:
+                # Null response.
                 empty.append(node)
 
-            # create series
-            series = Series(x=self.frequencies, y=tf)
+            # Create series.
+            series = Series(x=self.frequencies, y=response)
 
-            # create appropriate transfer function depending on input type
+            # Create appropriate response function depending on input type.
             if self.has_voltage_input:
                 source = self.circuit.input_component.node_p
             elif self.has_current_input:
@@ -113,13 +111,13 @@ class AcSignalAnalysis(BaseAcAnalysis):
             else:
                 raise ValueError("specify either a current or voltage input")
 
-            function = TransferFunction(source=source, sink=node, series=series)
+            function = Response(source=source, sink=node, series=series)
 
-            # add transfer function to solution
-            self.solution.add_tf(function)
+            # Add response to solution.
+            self.solution.add_response(function)
 
         if len(empty):
-            LOGGER.debug("empty transfer functions: %s", ", ".join([str(tf) for tf in empty]))
+            LOGGER.debug("empty responses: %s", ", ".join([str(response) for response in empty]))
 
     @property
     def input_component_index(self):

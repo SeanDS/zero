@@ -48,5 +48,5 @@ solutionrf.name = "RF Circuit"
 solution = solutionlf.combine(solutionrf)
 
 # plot
-plot = solution.plot_tfs()
+plot = solution.plot_responses()
 solution.save_figure(plot, sys.argv[1])

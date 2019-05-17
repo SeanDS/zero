@@ -47,7 +47,7 @@ Get the solution with :meth:`~.LisoParser.solution` and plot and show it with
     solution.plot()
     solution.show()
 
-.. image:: /_static/liso-input-tf.svg
+.. image:: /_static/liso-input-response.svg
 
 You can at any time list the circuit's constituent components:
 

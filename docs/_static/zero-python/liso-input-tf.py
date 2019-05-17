@@ -19,5 +19,5 @@ uoutput nout:db:deg
 """)
 
 solution = parser.solution()
-plot = solution.plot_tfs()
+plot = solution.plot_responses()
 solution.save_figure(plot, sys.argv[1])

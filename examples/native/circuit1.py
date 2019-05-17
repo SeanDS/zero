@@ -1,7 +1,6 @@
 """Native circuit construction and simulation
 
-This simulates a simple non-inverting whitening filter's transfer functions for
-a voltage input.
+This simulates a simple non-inverting whitening filter's responses for a voltage input.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
@@ -34,5 +33,5 @@ if __name__ == "__main__":
     solution = analysis.solution
 
     # plot
-    solution.plot_tfs(sinks=["nm", "nout", "op1"])
+    solution.plot_responses(sinks=["nm", "nout", "op1"])
     solution.show()

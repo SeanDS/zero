@@ -36,7 +36,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             The circuit matrix.
         """
 
-        # return the transpose of the transfer function matrix
+        # Return the transpose of the response matrix.
         return super().circuit_matrix(*args, **kwargs).T
 
     def right_hand_side(self):
@@ -121,7 +121,7 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.element, series=series))
 
         if empty:
-            LOGGER.debug("empty noise sources: %s", ", ".join([str(tf) for tf in empty]))
+            LOGGER.debug("empty noise sources: %s", ", ".join([str(response) for response in empty]))
 
     @property
     def noise_element_index(self):

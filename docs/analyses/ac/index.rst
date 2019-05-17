@@ -18,8 +18,8 @@ circumstances it is possible to approximate a linear relationship between a comp
 current around the operating point, allowing the component to be simulated in the LTI regime, and
 this property is exploited in the case of :class:`op-amps <.OpAmp>`.
 
-The small-signal AC transfer function of a circuit input to any of its components or nodes can
-be computed with the :ref:`AC small signal analysis <analyses/ac/signal:Small AC signal analysis>`.
+The small-signal AC response of a circuit input to any of its components or nodes can be computed
+with the :ref:`AC small signal analysis <analyses/ac/signal:Small AC signal analysis>`.
 The noise spectral density at a node arising from components and nodes elsewhere in the circuit can
 be computed using the :ref:`AC small signal noise analysis <analyses/ac/noise:Small AC noise analysis>`.
 
@@ -128,7 +128,7 @@ Noise
 Noise analysis requires an essentially identical approach to building the circuit matrix, except
 that the matrix is transposed and the right hand side is given a ``1`` in the row corresponding to
 the chosen noise output node instead of the input. This results in the solution ``x`` in the matrix
-equation ``Ax = b`` instead providing what amounts to the reverse transfer functions between the
-component and nodes in the circuit and the chosen noise output node. These reverse transfer
-functions are as a last step multiplied by the noise at each component and node to infer the noise
-at the noise output node.
+equation ``Ax = b`` instead providing what amounts to the reverse responses between the component
+component and nodes in the circuit and the chosen noise output node. These reverse responses are
+as a last step multiplied by the noise at each component and node to infer the noise at the noise
+output node.

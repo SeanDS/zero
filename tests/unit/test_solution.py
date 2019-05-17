@@ -5,7 +5,7 @@ import numpy as np
 
 from zero.components import OpAmp, Node, VoltageNoise
 from zero.solution import Solution, matches_between
-from zero.data import Series, TransferFunction, NoiseSpectrum, MultiNoiseSpectrum
+from zero.data import Series, Response, NoiseSpectrum, MultiNoiseSpectrum
 
 # fixed random seed for test reproducibility
 np.random.seed(seed=2543070)
@@ -24,60 +24,65 @@ class SolutionTestCase(TestCase):
         self.frequencies1 = np.logspace(0, 5, count1)
         self.frequencies2 = np.logspace(0, 5, count2)
         # data
-        tfdata11 = np.random.random((count1))
-        tfdata12 = np.random.random((count1))
-        tfdata13 = np.random.random((count1))
-        tfdata21 = np.random.random((count2))
-        tfdata22 = np.random.random((count2))
+        responsedata11 = np.random.random((count1))
+        responsedata12 = np.random.random((count1))
+        responsedata13 = np.random.random((count1))
+        responsedata21 = np.random.random((count2))
+        responsedata22 = np.random.random((count2))
         noisedata11 = np.random.random((count1))
         noisedata12 = np.random.random((count1))
         noisedata21 = np.random.random((count2))
         noisedata22 = np.random.random((count2))
         # sources
-        tfsource11 = Node("nso11")
-        tfsource21 = Node("ns21")
+        responsesource11 = Node("nso11")
+        responsesource21 = Node("ns21")
         noisesource11 = VoltageNoise(component=op11)
         noisesource21 = VoltageNoise(component=op21)
         # sinks
-        tfsink11 = Node("ntfs11")
-        tfsink12 = Node("ntfs12")
-        tfsink13 = Node("ntfs13")
-        tfsink21 = Node("ntfs21")
-        tfsink22 = Node("ntfs22")
+        responsesink11 = Node("ntfs11")
+        responsesink12 = Node("ntfs12")
+        responsesink13 = Node("ntfs13")
+        responsesink21 = Node("ntfs21")
+        responsesink22 = Node("ntfs22")
         noisesink11 = Node("nns11")
         noisesink12 = Node("nns12")
         noisesink21 = Node("nns21")
         noisesink22 = Node("nns22")
         # series
-        tfseries11 = Series(x=self.frequencies1, y=tfdata11)
-        tfseries12 = Series(x=self.frequencies1, y=tfdata12)
-        tfseries13 = Series(x=self.frequencies1, y=tfdata13)
-        tfseries21 = Series(x=self.frequencies2, y=tfdata21)
-        tfseries22 = Series(x=self.frequencies2, y=tfdata22)
+        responseseries11 = Series(x=self.frequencies1, y=responsedata11)
+        responseseries12 = Series(x=self.frequencies1, y=responsedata12)
+        responseseries13 = Series(x=self.frequencies1, y=responsedata13)
+        responseseries21 = Series(x=self.frequencies2, y=responsedata21)
+        responseseries22 = Series(x=self.frequencies2, y=responsedata22)
         noiseseries11 = Series(x=self.frequencies1, y=noisedata11)
         noiseseries12 = Series(x=self.frequencies1, y=noisedata12)
         noiseseries21 = Series(x=self.frequencies2, y=noisedata21)
         noiseseries22 = Series(x=self.frequencies2, y=noisedata22)
         # set 1 functions
-        self.tf11 = TransferFunction(source=tfsource11, sink=tfsink11, series=tfseries11)
-        self.tf12 = TransferFunction(source=tfsource11, sink=tfsink12, series=tfseries12)
-        self.tf13 = TransferFunction(source=tfsource11, sink=tfsink13, series=tfseries13)
+        self.response11 = Response(source=responsesource11, sink=responsesink11,
+                                   series=responseseries11)
+        self.response12 = Response(source=responsesource11, sink=responsesink12,
+                                   series=responseseries12)
+        self.response13 = Response(source=responsesource11, sink=responsesink13,
+                                   series=responseseries13)
         self.noise11 = NoiseSpectrum(source=noisesource11, sink=noisesink11, series=noiseseries11)
         self.noise12 = NoiseSpectrum(source=noisesource11, sink=noisesink12, series=noiseseries12)
         # set 2 functions
-        self.tf21 = TransferFunction(source=tfsource21, sink=tfsink21, series=tfseries21)
-        self.tf22 = TransferFunction(source=tfsource21, sink=tfsink22, series=tfseries22)
+        self.response21 = Response(source=responsesource21, sink=responsesink21,
+                                   series=responseseries21)
+        self.response22 = Response(source=responsesource21, sink=responsesink22,
+                                   series=responseseries22)
         self.noise21 = NoiseSpectrum(source=noisesource21, sink=noisesink21, series=noiseseries21)
         self.noise22 = NoiseSpectrum(source=noisesource21, sink=noisesink22, series=noiseseries22)
 
     def test_solutions_equal(self):
         sol_a = Solution(self.frequencies1)
-        sol_a.add_tf(self.tf11)
-        sol_a.add_tf(self.tf12)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
 
         sol_b = Solution(self.frequencies1)
-        sol_b.add_tf(self.tf11)
-        sol_b.add_tf(self.tf12)
+        sol_b.add_response(self.response11)
+        sol_b.add_response(self.response12)
 
         self.assertTrue(sol_a.equivalent_to(sol_b))
 
@@ -100,14 +105,14 @@ class SolutionTestCase(TestCase):
 
         self.assertTrue(noisesum1.equivalent(noisesum2))
 
-    def test_solutions_not_equal_tf_frequencies(self):
+    def test_solutions_not_equal_response_frequencies(self):
         sol_a = Solution(self.frequencies1)
-        sol_a.add_tf(self.tf11)
-        sol_a.add_tf(self.tf12)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
 
         sol_b = Solution(self.frequencies2)
-        sol_b.add_tf(self.tf21)
-        sol_b.add_tf(self.tf22)
+        sol_b.add_response(self.response21)
+        sol_b.add_response(self.response22)
 
         self.assertFalse(sol_a.equivalent_to(sol_b))
 
@@ -122,23 +127,23 @@ class SolutionTestCase(TestCase):
 
         self.assertFalse(sol_c.equivalent_to(sol_d))
 
-    def test_solutions_not_equal_tfs(self):
+    def test_solutions_not_equal_responses(self):
         sol_a = Solution(self.frequencies1)
-        sol_a.add_tf(self.tf11)
-        sol_a.add_tf(self.tf12)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
 
         sol_b = Solution(self.frequencies1)
-        sol_b.add_tf(self.tf11)
+        sol_b.add_response(self.response11)
 
         self.assertFalse(sol_a.equivalent_to(sol_b))
 
     def test_solutions_not_equal_noise(self):
         sol_c = Solution(self.frequencies1)
-        sol_c.add_tf(self.noise11)
-        sol_c.add_tf(self.noise12)
+        sol_c.add_response(self.noise11)
+        sol_c.add_response(self.noise12)
 
         sol_d = Solution(self.frequencies1)
-        sol_d.add_tf(self.noise11)
+        sol_d.add_response(self.noise11)
 
         self.assertFalse(sol_c.equivalent_to(sol_d))
 
@@ -154,41 +159,41 @@ class SolutionTestCase(TestCase):
 
         # one shared match, one non-shared in first
         sol_a = Solution(self.frequencies1)
-        sol_a.add_tf(self.tf11)
-        sol_a.add_tf(self.tf12)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
         sol_b = Solution(self.frequencies1)
-        sol_b.add_tf(self.tf11)
+        sol_b.add_response(self.response11)
         matches, residuals_a, residuals_b = matches_between(sol_a, sol_b)
-        self.assertEqual(matches, [(self.tf11, self.tf11)])
-        self.assertEqual(residuals_a, [self.tf12])
+        self.assertEqual(matches, [(self.response11, self.response11)])
+        self.assertEqual(residuals_a, [self.response12])
         self.assertFalse(residuals_b)
 
         # one shared match, one non-shared in both
         sol_a = Solution(self.frequencies1)
-        sol_a.add_tf(self.tf11)
-        sol_a.add_tf(self.tf12)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
         sol_b = Solution(self.frequencies1)
-        sol_b.add_tf(self.tf11)
-        sol_b.add_tf(self.tf13)
+        sol_b.add_response(self.response11)
+        sol_b.add_response(self.response13)
         matches, residuals_a, residuals_b = matches_between(sol_a, sol_b)
-        self.assertEqual(matches, [(self.tf11, self.tf11)])
-        self.assertEqual(residuals_a, [self.tf12])
-        self.assertEqual(residuals_b, [self.tf13])
+        self.assertEqual(matches, [(self.response11, self.response11)])
+        self.assertEqual(residuals_a, [self.response12])
+        self.assertEqual(residuals_b, [self.response13])
 
     def test_solution_combination(self):
         """Test method to combine solutions"""
         sol_a = Solution(self.frequencies1)
         sol_a.name = "Sol A"
-        sol_a.add_tf(self.tf11)
-        sol_a.add_tf(self.tf12)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
 
         sol_b = Solution(self.frequencies1)
         sol_b.name = "Sol B"
-        sol_b.add_tf(self.tf13)
+        sol_b.add_response(self.response13)
 
         # Combine.
         sol_c = sol_a + sol_b
 
         self.assertCountEqual(sol_c.groups, ["Sol A", "Sol B"])
-        self.assertCountEqual(sol_c.functions["Sol A"], [self.tf11, self.tf12])
-        self.assertCountEqual(sol_c.functions["Sol B"], [self.tf13])
+        self.assertCountEqual(sol_c.functions["Sol A"], [self.response11, self.response12])
+        self.assertCountEqual(sol_c.functions["Sol B"], [self.response13])

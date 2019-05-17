@@ -91,7 +91,7 @@ input file itself and with LISO, then it will parse the LISO results and combine
 The resulting plot then contains each function, with the native results with solid lines and the
 LISO results with dashed lines:
 
-.. image:: /_static/liso-compare-tf.svg
+.. image:: /_static/liso-compare-response.svg
 
 A textual representation of the differences can also be displayed by specifying ``--diff``. This
 must be provided in addition to ``--compare``. When specified, this prints a table containing
@@ -113,14 +113,14 @@ Saving figures
 
 Figures can be saved using the ``--save-figure`` option, which must be followed by a file path.
 The format of the figure is controlled by the specified file extension. For example, save PNGs, PDFs
-and SVGs with ``--save-figure tf.png``, ``--save-figure tf.pdf`` and ``--save-figure tf.svg``,
+and SVGs with ``--save-figure response.png``, ``--save-figure response.pdf`` and ``--save-figure response.svg``,
 respectively.
 
 The ``--save-figure`` option can be specified multiple times to save multiple figures, e.g.:
 
 .. code-block:: bash
 
-    $ zero liso /path/to/liso/script.fil --save-figure tf.png --save-figure tf.pdf
+    $ zero liso /path/to/liso/script.fil --save-figure response.png --save-figure response.pdf
 
 Command reference
 -----------------

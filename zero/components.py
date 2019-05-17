@@ -355,7 +355,7 @@ class Input(Component):
                 self.input_type = "voltage"
             elif input_type == "current":
                 self.input_type = "current"
-                # assume 1 ohm impedance for transfer functions
+                # Assume 1 ohm impedance for responses.
                 impedance = 1
             else:
                 raise ValueError("unrecognised input type")

@@ -151,7 +151,7 @@ class LisoInputParser(LisoParser):
                     continue
 
                 sink = LisoOutputVoltage(node=node.name, scales=self.output_all_nodes_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
         elif self.output_all_opamp_nodes:
             # show all op-amp nodes
             for node in self.circuit.opamp_output_nodes:
@@ -160,7 +160,7 @@ class LisoInputParser(LisoParser):
                     continue
 
                 sink = LisoOutputVoltage(node=node.name, scales=self.output_all_opamp_nodes_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
 
         # add extra component outputs
         if self.output_all_components:
@@ -172,7 +172,7 @@ class LisoInputParser(LisoParser):
 
                 sink = LisoOutputCurrent(component=component.name,
                                          scales=self.output_all_components_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
         elif self.output_all_opamps:
             # show all op-amps
             for component in self.circuit.opamps:
@@ -182,7 +182,7 @@ class LisoInputParser(LisoParser):
 
                 sink = LisoOutputCurrent(component=component.name,
                                          scales=self.output_all_opamps_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
 
     @property
     def summed_noise_objects(self):
@@ -465,8 +465,8 @@ class LisoInputParser(LisoParser):
             self.input_impedance = 50
 
     def _parse_voltage_output(self, output_str):
-        # transfer function output
-        self.output_type = "tf"
+        # Response output.
+        self.output_type = "response"
 
         for param in output_str.split():
             # split option by colon
@@ -487,11 +487,11 @@ class LisoInputParser(LisoParser):
             self.output_all_opamp_nodes_scales = scales
         else:
             # add output
-            self.add_tf_output(LisoOutputVoltage(node=node_name, scales=scales))
+            self.add_response_output(LisoOutputVoltage(node=node_name, scales=scales))
 
     def _parse_current_output(self, output_str):
-        # transfer function output
-        self.output_type = "tf"
+        # Response output.
+        self.output_type = "response"
 
         for param in output_str.split():
             # split option by colon
@@ -512,7 +512,7 @@ class LisoInputParser(LisoParser):
             self.output_all_opamps_scales = scales
         else:
             # add output
-            self.add_tf_output(LisoOutputCurrent(component=component_name, scales=scales))
+            self.add_response_output(LisoOutputCurrent(component=component_name, scales=scales))
 
     def _parse_noise_output(self, noise_str):
         # split by whitespace

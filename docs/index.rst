@@ -11,7 +11,7 @@
 
 |Zero| is a linear circuit simulation library and command line tool. It is able to
 perform small signal AC analysis on collections of components such as resistors, capacitors,
-inductors and op-amps to predict transfer functions and noise.
+inductors and op-amps to predict responses and noise.
 
 ===========
 Why |Zero|?

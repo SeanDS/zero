@@ -147,7 +147,7 @@ uoutput no all
 """)
         self.parser.build()
         # there should be 8 outputs
-        self.assertEqual(8, self.parser.n_tf_outputs)
+        self.assertEqual(8, self.parser.n_response_outputs)
 
     def test_output_allop(self):
         """Test output all op-amp node and component voltages"""
@@ -173,7 +173,7 @@ uoutput no ni allop
 """)
         self.parser.build()
         # 3 op-amp outputs, one of which is no, plus ni
-        self.assertEqual(4, self.parser.n_tf_outputs)
+        self.assertEqual(4, self.parser.n_response_outputs)
 
 
 class CurrentOutputTestCase(LisoInputParserTestCase):
@@ -215,7 +215,7 @@ ioutput load all
 """)
         self.parser.build()
         # there should be 16 outputs (15 components above plus input component)
-        self.assertEqual(16, self.parser.n_tf_outputs)
+        self.assertEqual(16, self.parser.n_response_outputs)
 
     def test_output_allop(self):
         """Test output all op-amp currents"""
@@ -241,7 +241,7 @@ ioutput load ri1 allop
 """)
         self.parser.build()
         # 3 op-amp outputs, plus two independent
-        self.assertEqual(5, self.parser.n_tf_outputs)
+        self.assertEqual(5, self.parser.n_response_outputs)
 
 
 class NoiseOutputTestCase(LisoInputParserTestCase):

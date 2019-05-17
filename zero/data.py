@@ -15,8 +15,8 @@ def frequencies_match(vector_a, vector_b):
 
 def vectors_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
-                       rtol=float(CONF["data"]["tf_rel_tol"]),
-                       atol=float(CONF["data"]["tf_abs_tol"]))
+                       rtol=float(CONF["data"]["response_rel_tol"]),
+                       atol=float(CONF["data"]["response_abs_tol"]))
 
 def spectra_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
@@ -228,8 +228,8 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
         return self.sink.SOURCE_SINK_UNIT
 
 
-class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
-    """Transfer function data series"""
+class Response(SingleSourceFunction, SingleSinkFunction, Function):
+    """Response data series"""
     @property
     def magnitude(self):
         return db(np.abs(self.series.y))

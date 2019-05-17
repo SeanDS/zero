@@ -89,7 +89,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 "input_impedance": None,
                 "output_type": None,
                 "noise_output_element": None,
-                "tf_outputs": [],
+                "response_outputs": [],
                 # Displayed noise.
                 "noisy_elements": [],
                 # Extra noise to include in "sum" in addition to displayed noise.
@@ -179,11 +179,11 @@ class LisoParser(metaclass=abc.ABCMeta):
         self._circuit_properties["noise_output_element"] = noise_output_element
 
     @property
-    def tf_outputs(self):
-        return self._circuit_properties["tf_outputs"]
+    def response_outputs(self):
+        return self._circuit_properties["response_outputs"]
 
-    def add_tf_output(self, output):
-        """Add transfer function output.
+    def add_response_output(self, output):
+        """Add response output.
 
         This stores the specified sink for use in building the solution.
 
@@ -197,18 +197,18 @@ class LisoParser(metaclass=abc.ABCMeta):
         ValueError
             If the specified sink is already present.
         """
-        if output in self.tf_outputs:
+        if output in self.response_outputs:
             raise ValueError(f"sink '{output}' is already present")
 
-        self._circuit_properties["tf_outputs"].append(output)
+        self._circuit_properties["response_outputs"].append(output)
 
     @property
     def inductor_couplings(self):
         return self._circuit_properties["inductor_couplings"]
 
     @property
-    def n_tf_outputs(self):
-        return len(self.tf_outputs)
+    def n_response_outputs(self):
+        return len(self.response_outputs)
 
     @property
     def n_displayed_noise(self):
@@ -236,7 +236,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 raise ValueError("cannot specify both text and a file to parse")
 
             if not os.path.isfile(path):
-                raise FileNotFoundError("cannot read '{path}'".format(path=path))
+                raise FileNoresponseoundError("cannot read '{path}'".format(path=path))
 
             with open(path, "r") as obj:
                 text = obj.read()
@@ -259,8 +259,8 @@ class LisoParser(metaclass=abc.ABCMeta):
         """Child classes must implement error handler"""
         raise NotImplementedError
 
-    def default_tf_sources(self):
-        """Default transfer function sources"""
+    def default_response_sources(self):
+        """Default response sources"""
         # note: this cannot be a property, otherwise lex will execute the property before
         # input_type is set.
         if self.input_type == "voltage":
@@ -272,14 +272,14 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         return sources
 
-    def default_tf_sinks(self):
-        """Default transfer function sinks.
+    def default_response_sinks(self):
+        """Default response sinks.
 
         Returns
         -------
         :class:`list` of :class:`Component` or :class:`Node`
         """
-        return [element.element for element in self.tf_outputs]
+        return [element.element for element in self.response_outputs]
 
     def solution(self, force=False, set_default_plots=True, **kwargs):
         """Get the solution to the analysis defined in the parsed file.
@@ -434,14 +434,14 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     def _set_default_plots(self):
         """Set functions that are displayed by default when the solution is plotted."""
-        if self.output_type == "tf":
-            default_tfs = self._solution.filter_tfs(sources=self.default_tf_sources(),
-                                                    sinks=self.default_tf_sinks())
+        if self.output_type == "response":
+            default_responses = self._solution.filter_responses(sources=self.default_response_sources(),
+                                                                sinks=self.default_response_sinks())
 
-            for group, tfs in default_tfs.items():
-                for tf in tfs:
-                    if not self._solution.is_default_tf(tf, group):
-                        self._solution.set_tf_as_default(tf, group)
+            for group, responses in default_responses.items():
+                for response in responses:
+                    if not self._solution.is_default_response(response, group):
+                        self._solution.set_response_as_default(response, group)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
 
@@ -454,7 +454,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         # build circuit if necessary
         self.build()
 
-        if self.output_type == "tf":
+        if self.output_type == "response":
             analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
         elif self.output_type == "noise":
             # get noise output element
@@ -503,14 +503,14 @@ class LisoParser(metaclass=abc.ABCMeta):
         elif self.input_node_n is None and self.input_node_p is None:
             # no input nodes found
             self.p_error("no input nodes found")
-        elif not self.tf_outputs and self.noise_output_element is None:
+        elif not self.response_outputs and self.noise_output_element is None:
             # no output requested
             self.p_error("no output requested")
 
         # check for invalid output nodes
-        for tf_output in self.tf_outputs:
+        for response_output in self.response_outputs:
             # get element
-            element = tf_output.element
+            element = response_output.element
 
             if not self.circuit.has_component(element) and not self.circuit.has_node(element):
                 self.p_error(f"output element '{element}' is not present in the circuit")
@@ -534,18 +534,18 @@ class LisoParser(metaclass=abc.ABCMeta):
             self.p_error("noise sum requires noisy components to be defined")
 
     @property
-    def will_calc_tfs(self):
-        """Whether the analysis will calculate transfer functions"""
-        return self.will_calc_node_tfs or self.will_calc_component_tfs
+    def will_calc_responses(self):
+        """Whether the analysis will calculate responses"""
+        return self.will_calc_node_responses or self.will_calc_component_responses
 
     @property
-    def will_calc_node_tfs(self):
-        """Whether the analysis will calculate transfer functions to nodes"""
+    def will_calc_node_responses(self):
+        """Whether the analysis will calculate responses to nodes"""
         return len(self.output_nodes) > 0
 
     @property
-    def will_calc_component_tfs(self):
-        """Whether the analysis will calculate transfer functions to components"""
+    def will_calc_component_responses(self):
+        """Whether the analysis will calculate responses to components"""
         return len(self.output_components) > 0
 
     @property
@@ -556,17 +556,17 @@ class LisoParser(metaclass=abc.ABCMeta):
     @property
     def plottable(self):
         """Whether the analysis will calculate something that can be plotted"""
-        return self.will_calc_tfs or self.will_calc_noise
+        return self.will_calc_responses or self.will_calc_noise
 
     @property
     def output_nodes(self):
-        """The output nodes of the transfer functions computed in the analysis"""
-        return set([element.element for element in self.tf_outputs if element.type == "node"])
+        """The output nodes of the responses computed in the analysis"""
+        return set([element.element for element in self.response_outputs if element.type == "node"])
 
     @property
     def output_components(self):
-        """The output components of the transfer functions computed in the analysis"""
-        return set([element.element for element in self.tf_outputs if element.type == "component"])
+        """The output components of the responses computed in the analysis"""
+        return set([element.element for element in self.response_outputs if element.type == "component"])
 
     @property
     def opamp_output_node_names(self):
@@ -586,7 +586,7 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     @property
     def output_type(self):
-        """Transfer function output type"""
+        """Response output type"""
         return self._circuit_properties["output_type"]
 
     @output_type.setter
@@ -597,10 +597,9 @@ class LisoParser(metaclass=abc.ABCMeta):
                 return
 
             # output type changed
-            self.p_error("output file contains both transfer functions and noise, which is not"
-                         "supported")
+            self.p_error("output file contains both responses and noise, which is not supported")
 
-        if output_type not in ["tf", "noise"]:
+        if output_type not in ["response", "noise"]:
             raise ValueError("unknown output type")
 
         self._circuit_properties["output_type"] = output_type
@@ -625,12 +624,12 @@ class LisoParser(metaclass=abc.ABCMeta):
             node_p = self.input_node_p
             node_n = self.input_node_n
 
-        # input type depends on whether we calculate noise or transfer functions
+        # Input type depends on whether we calculate noise or responses.
         if self.noise_output_element is not None:
-            # we're calculating noise
+            # We're calculating noise.
             input_type = "noise"
 
-            # set input impedance
+            # Set input impedance.
             impedance = self.input_impedance
 
         self.circuit.add_input(input_type=input_type, node=node,
