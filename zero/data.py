@@ -387,5 +387,9 @@ class MultiNoiseDensity(NoiseDensityBase):
 
         return [spectral_density.noise_name for spectral_density in self.constituent_noise]
 
-    def label(self, *args, **kwargs):
-        return self._label
+    def label(self, *args, suffix=None, **kwargs):
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+        return f"{self._label}{suffix}"

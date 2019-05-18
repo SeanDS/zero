@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 from .config import ZeroConfig, OpAmpLibrary
-from .components import (Resistor, Capacitor, Inductor, OpAmp, Input, Node)
+from .components import Resistor, Capacitor, Inductor, OpAmp, Node
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -126,9 +126,9 @@ class Circuit:
             self._set_default_name(component)
 
         if component.name in self:
-            raise ValueError("element with name '{name}' already in circuit".format(name=component.name))
+            raise ValueError(f"element with name '{component.name}' already in circuit")
         elif component.name in self.RESERVED_NAMES:
-            raise ValueError("component name '{name}' is reserved".format(name=component.name))
+            raise ValueError(f"component name '{component.name}' is reserved")
 
         # add component to end of list
         self.components.append(component)
@@ -136,13 +136,9 @@ class Circuit:
         # add nodes
         for node in component.nodes:
             if node.name in self.component_names:
-                raise ValueError("node '{name}' is the same as existing circuit component".format(name=node.name))
+                raise ValueError(f"node '{node.name}' is the same as existing circuit component")
 
             self.nodes.add(node)
-
-    def add_input(self, *args, **kwargs):
-        """Add input to circuit."""
-        self.add_component(Input(*args, **kwargs))
 
     def add_resistor(self, *args, **kwargs):
         """Add resistor to circuit."""
@@ -610,25 +606,24 @@ class Circuit:
         """
         try:
             self.input_component
-        except ValueError:
+        except ComponentNotFoundError:
             return False
 
         return True
 
     def __repr__(self):
         """Circuit text representation"""
-        if self.n_components > 1:
-            cmp_str = "components"
-        else:
+        if self.n_components == 1:
             cmp_str = "component"
-
-        if self.n_nodes > 1:
-            node_str = "nodes"
         else:
-            node_str = "node"
+            cmp_str = "components"
 
-        text = "Circuit with {n_cmps} {cmp_str} and {n_nodes} {node_str}".format(
-            n_cmps=self.n_components, cmp_str=cmp_str, n_nodes=self.n_nodes, node_str=node_str)
+        if self.n_nodes == 1:
+            node_str = "node"
+        else:
+            node_str = "nodes"
+
+        text = f"Circuit with {self.n_components} {cmp_str} and {self.n_nodes} {node_str}"
 
         if self.n_components > 0:
             text += "\n"
@@ -640,6 +635,6 @@ class Circuit:
             ordered = sorted(self.components, key=lambda cmp: (cmp.__class__.__name__, cmp.name))
 
             for index, component in enumerate(ordered, start=1):
-                text += "\n\t{index:{iw}}. {cmp}".format(index=index, iw=iw, cmp=component)
+                text += f"\n\t{index:{iw}}. {component}"
 
         return text

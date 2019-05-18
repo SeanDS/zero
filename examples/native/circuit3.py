@@ -1,6 +1,6 @@
 """Native circuit construction and simulation
 
-This simulates a simple non-inverting whitening filter's responses for a current input.
+This simulates a simple non-inverting whitening filter's output noise.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
@@ -9,10 +9,10 @@ Sean Leavey
 
 import numpy as np
 from zero import Circuit
-from zero.analysis import AcSignalAnalysis
+from zero.analysis import AcNoiseAnalysis
 
 if __name__ == "__main__":
-    # 1000 frequencies between 1 Hz to 1 MHz.
+    # 1000 frequencies between 1 Hz to 1 MHz
     frequencies = np.logspace(0, 6, 1000)
 
     # Create circuit object.
@@ -26,9 +26,9 @@ if __name__ == "__main__":
     circuit.add_library_opamp(model="LT1124", node1="gnd", node2="nm", node3="nout")
 
     # Solve circuit.
-    analysis = AcSignalAnalysis(circuit=circuit, frequencies=frequencies)
-    solution = analysis.calculate(input_type="current", node="n1")
+    analysis = AcNoiseAnalysis(circuit=circuit, frequencies=frequencies)
+    solution = analysis.calculate(input_type="voltage", node="n1", sink="nout")
 
     # Plot.
-    solution.plot_responses(sinks=["nout"])
+    solution.plot_noise(sinks=["nout"])
     solution.show()

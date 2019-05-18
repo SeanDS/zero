@@ -264,9 +264,9 @@ class LisoParser(metaclass=abc.ABCMeta):
         # note: this cannot be a property, otherwise lex will execute the property before
         # input_type is set.
         if self.input_type == "voltage":
-            sources = [self.circuit.input_component.node2]
+            sources = [self.input_node_p]
         elif self.input_type == "current":
-            sources = [self.circuit.input_component]
+            sources = ["input"]
         else:
             raise ValueError("unrecognised input type")
 
@@ -309,7 +309,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 sum_sink = self.circuit[self.noise_output_element]
                 # Create overall spectral density.
                 sum_spectral_density = MultiNoiseDensity(sink=sum_sink, constituents=sum_spectra)
-                # Build noise sum and show by default.
+                # Build noise sum. Sums are always shown by default.
                 self._solution.add_noise_sum(sum_spectral_density, default=True)
 
         if set_default_plots:
@@ -438,43 +438,44 @@ class LisoParser(metaclass=abc.ABCMeta):
             sources = self.default_response_sources()
             sinks = self.default_response_sinks()
             default_responses = self._solution.filter_responses(sources=sources, sinks=sinks)
-
             for group, responses in default_responses.items():
                 for response in responses:
                     if not self._solution.is_default_response(response, group):
                         self._solution.set_response_as_default(response, group)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
-
             for group, spectra in default_spectra.items():
                 for spectral_density in spectra:
                     if not self._solution.is_default_noise(spectral_density, group):
                         self._solution.set_noise_as_default(spectral_density, group)
 
-    def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
-        # build circuit if necessary
+    def _get_analysis(self, **kwargs):
+        if self.output_type == "response":
+            return AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
+        elif self.output_type == "noise":
+            return AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
+        self.p_error("no outputs requested")
+
+    def _run(self, print_progress=False, stream=None, **kwargs):
+        # Build circuit if necessary.
         self.build()
 
-        if self.output_type == "response":
-            analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies,
-                                        **kwargs)
-        elif self.output_type == "noise":
-            # get noise output element
-            element = self.circuit[self.noise_output_element]
-            analysis = AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies,
-                                       element=element, **kwargs)
+        analysis = self._get_analysis(print_progress=print_progress, stream=stream)
+        analysis_args = {}
+
+        if self.input_node_n is None:
+            # Grounded input.
+            analysis_args['node'] = self.input_node_p
         else:
-            self.p_error("no outputs requested")
+            # Floating input.
+            analysis_args['node_n'] = self.input_node_n
+            analysis_args['node_p'] = self.input_node_p
 
-        if print_equations:
-            print(analysis.circuit_equation_display(), file=stream)
+        if self.output_type == "noise":
+            analysis_args['sink'] = self.circuit[self.noise_output_element]
+            analysis_args['impedance'] = self.input_impedance
 
-        if print_matrix:
-            print(analysis.circuit_matrix_display(), file=stream)
-
-        analysis.calculate()
-
-        return analysis.solution
+        return analysis.calculate(self.input_type, **analysis_args, **kwargs)
 
     def build(self):
         """Build circuit if not yet built"""
@@ -488,14 +489,10 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     def _do_build(self):
         """Build circuit"""
-
-        # unset lineno to avoid using the last line in subsequent errors
+        # Unset lineno to avoid using the last line in subsequent errors.
         self.lineno = None
 
-        # add input component, if not yet present
-        self._set_circuit_input()
-
-        # coupling between inductors
+        # Coupling between inductors.
         self._set_inductor_couplings()
 
     def _validate(self):
@@ -607,38 +604,6 @@ class LisoParser(metaclass=abc.ABCMeta):
             raise ValueError("unknown output type")
 
         self._circuit_properties["output_type"] = output_type
-
-    def _set_circuit_input(self):
-        # create input component if necessary
-        if self.circuit.has_component("input"):
-            return
-
-        # Add input.
-        input_type = self.input_type
-        node = None
-        node_p = None
-        node_n = None
-        impedance = None
-        is_noise = False
-
-        if self.input_node_n is None:
-            # fixed input
-            node = self.input_node_p
-        else:
-            # floating input
-            node_p = self.input_node_p
-            node_n = self.input_node_n
-
-        # Input type depends on whether we calculate noise or responses.
-        if self.noise_output_element is not None:
-            # We're calculating noise.
-            is_noise = True
-
-            # Set input impedance.
-            impedance = self.input_impedance
-
-        self.circuit.add_input(input_type=input_type, node=node, node_p=node_p, node_n=node_n,
-                               impedance=impedance, is_noise=is_noise)
 
     def _set_inductor_couplings(self):
         # discard name (not used in circuit mode)

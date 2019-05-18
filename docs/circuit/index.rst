@@ -27,7 +27,7 @@ You can print the circuit to retrieve a list of its constituents:
 .. code-block:: python
 
    >>> print(circuit)
-   Circuit with 0 component and 0 node
+   Circuit with 0 components and 0 nodes
 
 Circuits are only useful once you add components. This is achieved using the various ``add_``
 methods, such as :meth:`.add_resistor`, :meth:`.add_capacitor`, :meth:`.add_inductor` and

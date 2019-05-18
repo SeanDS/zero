@@ -21,13 +21,3 @@ class AcSignalAnalysisTestCase(TestCase):
     def default_analysis(self):
         """Default analysis"""
         return AcSignalAnalysis(**self.default_params)
-
-    def test_voltage_input(self):
-        """Test set voltage input"""
-        self.circuit.add_input(input_type="voltage", node="nin")
-        self.default_analysis()
-
-    def test_current_input(self):
-        """Test set current input"""
-        self.circuit.add_input(input_type="current", node="nin")
-        self.default_analysis()

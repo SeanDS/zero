@@ -24,9 +24,3 @@ class AcNoiseAnalysisTestCase(TestCase):
     def default_analysis(self):
         """Default analysis"""
         return AcNoiseAnalysis(**self.default_params)
-
-    def test_input(self):
-        """Test set noise input"""
-        self.circuit.add_input(input_type="voltage", node="nin", impedance=152.6, is_noise=True)
-        analysis = self.default_analysis()
-        self.assertEqual(analysis.element, self.default_element)

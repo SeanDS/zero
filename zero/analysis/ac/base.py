@@ -1,5 +1,6 @@
 """Base AC analysis tools"""
 
+import sys
 import abc
 import logging
 from collections import defaultdict
@@ -7,7 +8,7 @@ import numpy as np
 
 from ..base import BaseAnalysis
 from ...solve import DefaultSolver
-from ...components import Component, Node
+from ...components import Component, Input, Node
 from ...solution import Solution
 from ...display import MatrixDisplay, EquationDisplay
 
@@ -32,9 +33,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         self._solution = None
         self._node_sources = None
         self._node_sinks = None
-
-        # validate the circuit for the current analysis
-        self.validate_circuit()
 
     def validate_circuit(self):
         """Validate circuit"""
@@ -87,21 +85,75 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """
         return self.solver.full((self.dim_size, *depth))
 
+    @abc.abstractmethod
     def calculate(self):
-        """Calculate solution.
+        """Calculate solution."""
+        raise NotImplementedError
 
-        Returns
-        -------
-        :class:`.Solution`
-            The requested analysis solution.
+    def _do_calculate(self, input_type, print_equations=False, print_matrix=False, stream=None,
+                      **inputs):
+        """Calculate analysis results."""
+        self._set_input(input_type, **inputs)
+
+        # Validate the circuit.
+        self.validate_circuit()
+
+        if stream is None:
+            stream = sys.stdout
+
+        if print_equations:
+            print(self.circuit_equation_display(), file=stream)
+
+        if print_matrix:
+            print(self.circuit_matrix_display(), file=stream)
+
+        # Calculate transfer functions by solving the transfer matrix for input at the circuit's
+        # input node/component.
+        responses = self.solve()
+
+        self._build_solution(responses)
+
+    def _set_input(self, input_type, impedance=None, is_noise=False, node=None, node_p=None,
+                   node_n=None):
+        """Set circuit input.
+
+        Supports either a single node (for grounded voltage input) or a pair of nodes (for floating
+        voltage inputs).
         """
-        if not self.circuit.has_input:
-            raise Exception("circuit must contain an input")
+        # Handle nodes.
+        if node is not None:
+            if node_p is not None or node_n is not None:
+                raise ValueError("node cannot be specified alongside node_p or node_n")
 
-        # Solving the transfer matrix for the circuit's excitation.
-        results_matrix = self.solve()
+            node_n = Node("gnd")
+            node_p = node
+        else:
+            if node_p is None and node_n is None:
+                # No nodes specified.
+                raise ValueError("input node(s) must be specified")
+            elif node_p is None or node_n is None:
+                # Only one of node_p or node_n specified.
+                raise ValueError("node_p and node_n must both be specified")
 
-        self._build_solution(results_matrix)
+        input_type = input_type.lower()
+
+        if input_type == "voltage":
+            self.input_type = "voltage"
+        elif input_type == "current":
+            self.input_type = "current"
+        else:
+            raise ValueError("unrecognised input type")
+
+        # Create input component.
+        self._create_input_component(node_n, node_p, impedance, is_noise)
+
+    def _create_input_component(self, node_n, node_p, impedance, is_noise):
+        """Create circuit input component."""
+        if self.circuit.has_input:
+            raise Exception("circuit already has input")
+
+        self.circuit.add_component(Input([node_n, node_p], self.input_type, impedance=impedance,
+                                         is_noise=is_noise))
 
     @abc.abstractmethod
     def _build_solution(self, results_matrix):

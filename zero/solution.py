@@ -705,6 +705,10 @@ class Solution:
         ax1, ax2 = figure.axes
 
         for group, group_responses in responses.items():
+            if not group_responses:
+                # Skip empty group.
+                continue
+
             with self._figure_style_context(group):
                 # reset axes colour wheels
                 ax1.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
@@ -784,6 +788,10 @@ class Solution:
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
         for group, spectra in noise.items():
+            if not spectra:
+                # Skip empty group.
+                continue
+
             # reset axis colour wheel
             ax.set_prop_cycle(None)
 

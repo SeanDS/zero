@@ -313,55 +313,28 @@ class OpAmp(LibraryOpAmp, Component):
 
 class Input(Component):
     """Represents the circuit's voltage input"""
-
     TYPE = "input"
     BASE_NAME = "in"
 
-    def __init__(self, input_type, *args, node=None, node_p=None, node_n=None, impedance=None,
-                 is_noise=False, **kwargs):
-        # Default input nodes.
-        nodes = None
-
-        # Handle nodes.
-        if node is not None:
-            if node_p is not None or node_n is not None:
-                raise ValueError("node cannot be specified alongside node_p or node_n")
-
-            nodes = [Node("gnd"), node]
-        else:
-            if node_p is None and node_n is None:
-                # No nodes specified.
-                raise ValueError("input node(s) must be specified")
-            elif node_p is None or node_n is None:
-                # Only one of node_p or node_n specified.
-                raise ValueError("node_p and node_n must both be specified")
-
-            nodes = [node_n, node_p]
-
-        input_type = input_type.lower()
-        is_noise = bool(is_noise)
-
-        if input_type not in ["voltage", "current"]:
-            raise ValueError("unrecognised input type")
-
-        if is_noise:
-            if impedance is None:
-                raise ValueError("impedance must be specified for noise input")
-
-            impedance = Quantity(impedance, "Ω")
-        else:
-            if impedance is not None:
-                raise ValueError("impedance cannot be specified for non-noise input")
-
-            if input_type == "current":
-                # Assume 1 ohm impedance for responses.
-                impedance = 1
+    def __init__(self, nodes, input_type, impedance=None, is_noise=False, **kwargs):
+        self._impedance = None
 
         self.input_type = input_type
+        self.is_noise = bool(is_noise)
         self.impedance = impedance
-        self.is_noise = is_noise
 
-        super().__init__(*args, name="input", nodes=nodes, **kwargs)
+        # Call parent constructor.
+        super().__init__(name="input", nodes=nodes, **kwargs)
+
+    @property
+    def impedance(self):
+        return self._impedance
+
+    @impedance.setter
+    def impedance(self, impedance):
+        if impedance is None:
+            return
+        self._impedance = Quantity(impedance, "Ω")
 
     @property
     def node1(self):

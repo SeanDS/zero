@@ -6,7 +6,7 @@ import numpy as np
 from ..solution import Solution
 from ..data import Series, Response, NoiseDensity, MultiNoiseDensity
 from ..format import Quantity
-from ..components import OpAmp
+from ..components import OpAmp, Input, Node
 from .base import (LisoParser, LisoParserError, LisoOutputVoltage, LisoOutputCurrent,
                    LisoNoisyElement)
 
@@ -93,6 +93,13 @@ class LisoOutputParser(LisoParser):
 
     # ignore spaces and tabs (always)
     t_ignore = ' \t'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Circuit input component, created using the output file, necessary for building solution
+        # functions.
+        self._input_component = None
 
     @property
     def _default_circuit_properties(self):
@@ -211,19 +218,27 @@ class LisoOutputParser(LisoParser):
         self._circuit_properties["source_sum_index"] = int(source_sum_index)
 
     def _do_build(self):
-        # call parent
         super()._do_build()
 
-        # parse data
+        # Parse data.
         data = np.array(self._circuit_properties["raw_data"])
 
-        # frequencies are the first data column
+        # Frequencies are the first data column.
         self.frequencies = data[:, 0]
 
-        # the rest is data
+        # The rest is data.
         data = data[:, 1:]
 
-        # create solution
+        # Create input component.
+        if self.input_node_n is None:
+            # Grounded input.
+            nodes = [Node("gnd"), self.input_node_p]
+        else:
+            # Floating input.
+            nodes = [self.input_node_n, self.input_node_p]
+        self._input_component = Input(nodes, input_type=self.input_type)
+
+        # Create solution.
         self._build_solution(data)
 
     def _build_solution(self, data):
@@ -287,7 +302,7 @@ class LisoOutputParser(LisoParser):
                 else:
                     raise ValueError("invalid output type")
             elif self.input_type == "current":
-                source = self.circuit.input_component
+                source = self._input_component
 
                 if response_output.OUTPUT_TYPE == "voltage":
                     sink = self.circuit.get_node(response_output.node)

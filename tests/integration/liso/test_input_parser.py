@@ -214,8 +214,8 @@ uinput nii 0
 ioutput load all
 """)
         self.parser.build()
-        # there should be 16 outputs (15 components above plus input component)
-        self.assertEqual(16, self.parser.n_response_outputs)
+        # There should be 15 outputs corresponding to the 15 components in the circuit.
+        self.assertEqual(15, self.parser.n_response_outputs)
 
     def test_output_allop(self):
         """Test output all op-amp currents"""
