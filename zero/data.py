@@ -138,8 +138,20 @@ class Series:
 
         return cls(x=x, y=complex_)
 
-    def __mul__(self, factor):
-        return Series(self.x, self.y * factor)
+    def __mul__(self, other):
+        if hasattr(other, "y"):
+            # Extract data.
+            other = other.y
+        return Series(self.x, self.y * other)
+
+    def __div__(self, other):
+        if hasattr(other, "y"):
+            # Extract data.
+            other = other.y
+        return Series(self.x, self.y / other)
+
+    def __truediv__(self, other):
+        return self.__div__(other)
 
     def __eq__(self, other):
         """Checks if the specified series is identical to this one, within tolerance"""

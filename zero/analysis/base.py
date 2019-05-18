@@ -1,10 +1,9 @@
+"""Base analysis"""
+
 import sys
 import os
 import abc
-import statistics
 import progressbar
-
-from ..components import Node
 
 
 class BaseAnalysis(metaclass=abc.ABCMeta):
@@ -19,106 +18,31 @@ class BaseAnalysis(metaclass=abc.ABCMeta):
     stream : :class:`io.IOBase`, optional
         Stream to print analysis output to.
     """
+    def __init__(self, circuit, print_progress=False, stream=None):
+        if stream is None:
+            stream = sys.stdout
 
-    def __init__(self, circuit, print_progress=False, stream=sys.stdout):
         self.circuit = circuit
         self.print_progress = bool(print_progress)
         self.stream = stream
 
-    def component_index(self, component):
-        """Get component serial number.
-
-        Parameters
-        ----------
-        component : :class:`~.Component`
-            component
-
-        Returns
-        -------
-        :class:`int`
-            component serial number
-
-        Raises
-        ------
-        ValueError
-            if component not found
-        """
-
-        return self.circuit.components.index(component)
-
-    def node_index(self, node):
-        """Get node serial number.
-
-        This does not include the ground node, so the first non-ground node
-        has serial number 0.
-
-        Parameters
-        ----------
-        node : :class:`~.Node`
-            node
-
-        Returns
-        -------
-        :class:`int`
-            node serial number
-
-        Raises
-        ------
-        ValueError
-            if ground node is specified or specified node is not found
-        """
-
-        if node == Node("gnd"):
-            raise ValueError("ground node does not have an index")
-
-        return list(self.circuit.non_gnd_nodes).index(node)
-
-    @property
-    def elements(self):
-        """Matrix elements.
-
-        Returns a sequence of elements - either components or nodes - in the
-        order in which they appear in the matrix
-
-        Yields
-        ------
-        :class:`~.components.Component`, :class:`~.components.Node`
-            matrix elements
-        """
-
-        yield from self.circuit.components
-        yield from self.circuit.non_gnd_nodes
-
-    @property
-    def element_names(self):
-        """Names of elements (components and nodes) within the circuit.
-
-        Yields
-        ------
-        :class:`str`
-            matrix element names
-        """
-
-        return [element.name for element in self.elements]
-
-    @property
-    def mean_resistance(self):
-        """Average circuit resistance"""
-        return statistics.mean([resistor.resistance for resistor in self.circuit.resistors])
-
     def progress(self, sequence, total, update=100000):
-        """Print progress of generator with known length
+        """Print progress of generator with known length.
 
-        :param sequence: sequence to report iteration progress for
-        :type sequence: Sequence[Any]
-        :param total: number of items generator will produce
-        :type total: int
-        :param update: number of items to yield before next updating display
-        :type update: float or int
-        :return: input sequence
-        :rtype: Generator[Any]
+        Parameters
+        ----------
+        sequence : array_like
+            Sequence to report iteration progress for.
+        total : int
+            The number of items the sequence will contain.
+        update : float or int
+            The number of items to yield before next updating display.
+
+        Returns
+        -------
+        array_like
+            The input sequence.
         """
-
         total = int(total)
         update = float(update)
 
@@ -131,10 +55,10 @@ class BaseAnalysis(metaclass=abc.ABCMeta):
         if self.print_progress:
             stream = self.stream
         else:
-            # null file
+            # Null file.
             stream = open(os.devnull, "w")
 
-        # set up progress bar
+        # Set up progress bar.
         pbar = progressbar.ProgressBar(widgets=['Calculating: ',
                                                 progressbar.Percentage(),
                                                 progressbar.Bar(),

@@ -2,8 +2,9 @@
 
 import sys
 import abc
-from copy import copy
 import logging
+import statistics
+from copy import copy
 from collections import defaultdict
 import numpy as np
 
@@ -50,6 +51,84 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         # Check input type.
         if self._current_circuit.input_component.input_type not in ["voltage", "current"]:
             raise ValueError("circuit input type must be either 'voltage' or 'current'")
+
+    def component_index(self, component):
+        """Get component serial number.
+
+        Parameters
+        ----------
+        component : :class:`~.Component`
+            component
+
+        Returns
+        -------
+        :class:`int`
+            component serial number
+
+        Raises
+        ------
+        ValueError
+            if component not found
+        """
+        return self._current_circuit.components.index(component)
+
+    def node_index(self, node):
+        """Get node serial number.
+
+        This does not include the ground node, so the first non-ground node
+        has serial number 0.
+
+        Parameters
+        ----------
+        node : :class:`~.Node`
+            node
+
+        Returns
+        -------
+        :class:`int`
+            node serial number
+
+        Raises
+        ------
+        ValueError
+            if ground node is specified or specified node is not found
+        """
+        if node == Node("gnd"):
+            raise ValueError("ground node does not have an index")
+
+        return list(self._current_circuit.non_gnd_nodes).index(node)
+
+    @property
+    def elements(self):
+        """Matrix elements.
+
+        Returns a sequence of elements - either components or nodes - in the
+        order in which they appear in the matrix
+
+        Yields
+        ------
+        :class:`~.components.Component`, :class:`~.components.Node`
+            matrix elements
+        """
+        yield from self._current_circuit.components
+        yield from self._current_circuit.non_gnd_nodes
+
+    @property
+    def element_names(self):
+        """Names of elements (components and nodes) within the circuit.
+
+        Yields
+        ------
+        :class:`str`
+            matrix element names
+        """
+        return [element.name for element in self.elements]
+
+    @property
+    def mean_resistance(self):
+        """Average circuit resistance"""
+        return statistics.mean([resistor.resistance
+                                for resistor in self._current_circuit.resistors])
 
     @property
     def dim_size(self):
@@ -106,7 +185,8 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """Calculate analysis results."""
         # Reset state.
         self.reset()
-        # Make a copy of the circuit.
+        # Make a copy of the circuit. This allows us to call calculate(), which adds an input
+        # component, multiple times.
         self._current_circuit = copy(self.circuit)
         # Add input.
         self._set_input(input_type, **inputs)
@@ -127,9 +207,6 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         responses = self.solve()
 
         self._build_solution(responses)
-
-        # Unset the current circuit.
-        self._current_circuit = None
 
     def _set_input(self, input_type, impedance=None, is_noise=False, node=None, node_p=None,
                    node_n=None):
