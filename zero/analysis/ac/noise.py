@@ -24,7 +24,7 @@ class AcNoiseAnalysis(AcSignalAnalysis):
     def noise_sink(self, sink):
         if not hasattr(sink, "name"):
             # This is an element name. Get the object.
-            sink = self.circuit.get_element(sink)
+            sink = self._current_circuit.get_element(sink)
         self._noise_sink = sink
 
     def calculate(self, input_type, sink, impedance=None, project_to=None, **kwargs):
@@ -76,7 +76,7 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         empty = []
 
         # loop over circuit's noise sources
-        for noise in self.circuit.noise_sources:
+        for noise in self._current_circuit.noise_sources:
             # get this element's noise spectral density
             spectral_density = noise.spectral_density(frequencies=self.frequencies)
 
