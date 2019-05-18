@@ -475,9 +475,7 @@ class LisoParser(metaclass=abc.ABCMeta):
             analysis_args['sink'] = self.circuit[self.noise_output_element]
             analysis_args['impedance'] = self.input_impedance
 
-        analysis.calculate(self.input_type, **analysis_args, **kwargs)
-
-        return analysis.solution
+        return analysis.calculate(self.input_type, **analysis_args, **kwargs)
 
     def build(self):
         """Build circuit if not yet built"""

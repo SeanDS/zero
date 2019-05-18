@@ -27,9 +27,8 @@ if __name__ == "__main__":
 
     # Solve circuit.
     analysis = AcSignalAnalysis(circuit=circuit, frequencies=frequencies)
-    analysis.calculate(input_type="voltage", node="n1")
+    solution = analysis.calculate(input_type="voltage", node="n1")
 
     # Plot.
-    solution = analysis.solution
     solution.plot_responses(sinks=["nm", "nout", "op1"])
     solution.show()

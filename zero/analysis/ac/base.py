@@ -109,9 +109,9 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         # Calculate transfer functions by solving the transfer matrix for input at the circuit's
         # input node/component.
-        tfs = self.solve()
+        responses = self.solve()
 
-        self._build_solution(tfs)
+        self._build_solution(responses)
 
     def _set_input(self, input_type, impedance=None, is_noise=False, node=None, node_p=None,
                    node_n=None):

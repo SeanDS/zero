@@ -52,6 +52,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             impedance = self.DEFAULT_INPUT_IMPEDANCE
         self._do_calculate(input_type, impedance=impedance, is_noise=True, **kwargs)
 
+        return self.solution
+
     def circuit_matrix(self, *args, **kwargs):
         """Calculate and return matrix used to solve for circuit noise at a \
         given frequency.
