@@ -4,10 +4,10 @@ with open("README.md") as readme_file:
     README = readme_file.read()
 
 REQUIREMENTS = [
-    "numpy >= 1.15",
-    "scipy >= 1.1",
+    "numpy >= 1.15.2",
+    "scipy >= 1.1.0",
     "matplotlib >= 3.0.3",
-    "requests >= 2.19",
+    "requests >= 2.19.1",
     "progressbar2 >= 3.38.0",
     "tabulate >= 0.8.2",
     "setuptools_scm >= 3.1.0",
