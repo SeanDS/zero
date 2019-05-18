@@ -47,6 +47,14 @@ stages:
 
 .template:deploy:docs: &template-deploy-docs
   script:
+    - mkdir liso
+    - cd liso
+    - wget -O liso.tar.gz ${LISO_GIT_ARCHIVE_URL}
+    - tar -xvf liso.tar.gz -C . --wildcards liso-linux*/ --strip-components=1
+    - chmod +x fil_static
+    - cd ..
+    - export LISO_DIR=$(pwd)/liso
+    - export LISO_PATH=$LISO_DIR/fil_static
     - python --version
     - apt update -qy
     - apt install --assume-yes python-pip
