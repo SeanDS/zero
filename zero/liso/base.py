@@ -309,7 +309,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 sum_sink = self.circuit[self.noise_output_element]
                 # Create overall spectral density.
                 sum_spectral_density = MultiNoiseDensity(sink=sum_sink, constituents=sum_spectra)
-                # Build noise sum and show by default.
+                # Build noise sum. Sums are always shown by default.
                 self._solution.add_noise_sum(sum_spectral_density, default=True)
 
         if set_default_plots:
@@ -438,14 +438,12 @@ class LisoParser(metaclass=abc.ABCMeta):
             sources = self.default_response_sources()
             sinks = self.default_response_sinks()
             default_responses = self._solution.filter_responses(sources=sources, sinks=sinks)
-
             for group, responses in default_responses.items():
                 for response in responses:
                     if not self._solution.is_default_response(response, group):
                         self._solution.set_response_as_default(response, group)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
-
             for group, spectra in default_spectra.items():
                 for spectral_density in spectra:
                     if not self._solution.is_default_noise(spectral_density, group):
