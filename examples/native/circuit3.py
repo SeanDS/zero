@@ -26,8 +26,9 @@ if __name__ == "__main__":
     circuit.add_library_opamp(model="LT1124", node1="gnd", node2="nm", node3="nout")
 
     # Solve circuit.
-    analysis = AcNoiseAnalysis(circuit=circuit, frequencies=frequencies)
-    solution = analysis.calculate(input_type="voltage", node="n1", sink="nout")
+    analysis = AcNoiseAnalysis(circuit=circuit)
+    solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1",
+                                  sink="nout")
 
     # Plot.
     solution.plot_noise(sinks=["nout"])

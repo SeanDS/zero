@@ -140,8 +140,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""
-        return AcSignalAnalysis(self.circuit, frequencies=self.frequencies,
-                                print_progress=self.print_progress, stream=self.stream)
+        return AcSignalAnalysis(self.circuit, print_progress=self.print_progress,
+                                stream=self.stream)
 
     @property
     def noise_element_index(self):

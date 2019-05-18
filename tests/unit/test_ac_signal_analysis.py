@@ -16,7 +16,7 @@ class AcSignalAnalysisTestCase(TestCase):
     @property
     def default_params(self):
         """Default analysis parameters"""
-        return {"circuit": self.circuit, "frequencies": self.default_f}
+        return {"circuit": self.circuit}
 
     def default_analysis(self):
         """Default analysis"""

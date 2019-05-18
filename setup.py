@@ -4,19 +4,19 @@ with open("README.md") as readme_file:
     README = readme_file.read()
 
 REQUIREMENTS = [
-    "numpy",
-    "scipy",
-    "matplotlib >= 3.0.3",
-    "requests",
-    "progressbar2",
-    "tabulate",
-    "setuptools_scm",
-    "ply",
-    "click",
-    "PyYAML"
+    "numpy >= 1.15",
+    "scipy >= 1.1",
+    "matplotlib >= 3.0",
+    "requests >= 2.19",
+    "progressbar2 >= 3.38",
+    "tabulate >= 0.8",
+    "setuptools_scm >= 3.1",
+    "ply >= 3.11",
+    "click == 7.0",
+    "PyYAML >= 3.13"
 ]
 
-# extra dependencies
+# Extra dependencies.
 EXTRAS = {
     "dev": [
         "pylint",
@@ -26,7 +26,7 @@ EXTRAS = {
         "sphinx_rtd_theme",
         "numpydoc",
         "nbsphinx",
-        "graphviz"
+        "graphviz == 0.9"
     ]
 }
 
@@ -61,6 +61,7 @@ setup(
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7"
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ]
 )
