@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 from .config import ZeroConfig, OpAmpLibrary
-from .components import (Resistor, Capacitor, Inductor, OpAmp, Input, Node)
+from .components import Resistor, Capacitor, Inductor, OpAmp, Node
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -126,9 +126,9 @@ class Circuit:
             self._set_default_name(component)
 
         if component.name in self:
-            raise ValueError("element with name '{name}' already in circuit".format(name=component.name))
+            raise ValueError(f"element with name '{component.name}' already in circuit")
         elif component.name in self.RESERVED_NAMES:
-            raise ValueError("component name '{name}' is reserved".format(name=component.name))
+            raise ValueError(f"component name '{component.name}' is reserved")
 
         # add component to end of list
         self.components.append(component)
@@ -136,13 +136,9 @@ class Circuit:
         # add nodes
         for node in component.nodes:
             if node.name in self.component_names:
-                raise ValueError("node '{name}' is the same as existing circuit component".format(name=node.name))
+                raise ValueError(f"node '{node.name}' is the same as existing circuit component")
 
             self.nodes.add(node)
-
-    def add_input(self, *args, **kwargs):
-        """Add input to circuit."""
-        self.add_component(Input(*args, **kwargs))
 
     def add_resistor(self, *args, **kwargs):
         """Add resistor to circuit."""
