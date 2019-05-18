@@ -28,7 +28,7 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             sink = self.circuit.get_element(sink)
         self._noise_sink = sink
 
-    def calculate(self, input_type, sink, impedance=None, **kwargs):
+    def calculate(self, input_type, sink, impedance=None, input_refer=False, **kwargs):
         """Calculate noise from circuit elements at a particular element.
 
         Parameters
@@ -39,6 +39,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             The element to calculate noise at.
         impedance : float or :class:`.Quantity`, optional
             Input impedance. If None, the default is used.
+        input_refer : bool, optional
+            Refer the noise to the input.
 
         Returns
         -------
@@ -50,6 +52,9 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             LOGGER.warning(f"assuming default input impedance of {self.DEFAULT_INPUT_IMPEDANCE}")
             impedance = self.DEFAULT_INPUT_IMPEDANCE
         self._do_calculate(input_type, impedance=impedance, is_noise=True, **kwargs)
+
+        if input_refer:
+            self._refer_sink_noise_to_input()
 
         return self.solution
 
@@ -108,6 +113,30 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         if empty:
             empty_sources = ", ".join([str(response) for response in empty])
             LOGGER.debug(f"empty noise sources: {empty_sources}")
+
+    def _refer_sink_noise_to_input(self):
+        """Project the calculated noise to the input."""
+        input_component = self._current_circuit.input_component
+        if self.input_type == "voltage":
+            input_element = input_component.node2
+        else:
+            input_element = input_component
+        projection_analysis = self.to_signal_analysis()
+        # Grab the input nodes from the noise circuit.
+        node_n, node_p = input_component.nodes
+        projection = projection_analysis.calculate(self.input_type, node_n=node_n, node_p=node_p)
+        # Transfer function from input to noise sink.
+        input_response_group = projection.filter_responses(sources=[input_element],
+                                                           sinks=[self.noise_sink])
+        input_response = list(input_response_group.values())[0][0]
+
+        for __, noise_spectra in self.solution.noise.items():
+            for noise in noise_spectra:
+                noise.series /= input_response.magnitude
+
+        for __, noise_sums in self.solution.noise_sums.items():
+            for noise in noise_sums:
+                noise.series /= input_response.magnitude
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""
