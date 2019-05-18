@@ -613,18 +613,17 @@ class Circuit:
 
     def __repr__(self):
         """Circuit text representation"""
-        if self.n_components > 1:
-            cmp_str = "components"
-        else:
+        if self.n_components == 1:
             cmp_str = "component"
-
-        if self.n_nodes > 1:
-            node_str = "nodes"
         else:
-            node_str = "node"
+            cmp_str = "components"
 
-        text = "Circuit with {n_cmps} {cmp_str} and {n_nodes} {node_str}".format(
-            n_cmps=self.n_components, cmp_str=cmp_str, n_nodes=self.n_nodes, node_str=node_str)
+        if self.n_nodes == 1:
+            node_str = "node"
+        else:
+            node_str = "nodes"
+
+        text = f"Circuit with {self.n_components} {cmp_str} and {self.n_nodes} {node_str}"
 
         if self.n_components > 0:
             text += "\n"
@@ -636,6 +635,6 @@ class Circuit:
             ordered = sorted(self.components, key=lambda cmp: (cmp.__class__.__name__, cmp.name))
 
             for index, component in enumerate(ordered, start=1):
-                text += "\n\t{index:{iw}}. {cmp}".format(index=index, iw=iw, cmp=component)
+                text += f"\n\t{index:{iw}}. {component}"
 
         return text
