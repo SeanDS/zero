@@ -83,7 +83,7 @@ class Component(metaclass=abc.ABCMeta):
             If specified noise is already present.
         """
         if noise in self.noise:
-            raise ValueError("specified noise '%s' already exists in '%s'" % (noise, self))
+            raise ValueError(f"specified noise '{noise}' already exists in '{self}'")
 
         self.noise.append(noise)
 
@@ -98,8 +98,8 @@ class Component(metaclass=abc.ABCMeta):
         name = self.name
 
         if name is None:
-            # name not set
-            name = "%s (no name)" % self.__class__.__name__
+            # Name not set.
+            name = f"{self.__class__.__name__} (no name)"
 
         return name
 
@@ -267,6 +267,20 @@ class OpAmp(LibraryOpAmp, Component):
         return self.params["inoise"] * np.sqrt(1 + self.params["icorner"] / frequencies)
 
     @property
+    def has_voltage_noise(self):
+        return "voltage" in [noise.SUBTYPE for noise in self.noise]
+
+    @property
+    def has_non_inv_current_noise(self):
+        return "current" in [noise.SUBTYPE for noise in self.noise
+                             if hasattr(noise, "node") and noise.node == self.node1]
+
+    @property
+    def has_inv_current_noise(self):
+        return "current" in [noise.SUBTYPE for noise in self.noise
+                             if hasattr(noise, "node") and noise.node == self.node2]
+
+    @property
     def voltage_noise(self):
         for noise in self.noise:
             if noise.SUBTYPE == "voltage":
@@ -299,57 +313,28 @@ class OpAmp(LibraryOpAmp, Component):
 
 class Input(Component):
     """Represents the circuit's voltage input"""
-
     TYPE = "input"
     BASE_NAME = "in"
 
-    def __init__(self, input_type, node=None, node_p=None, node_n=None,
-                 impedance=None, *args, **kwargs):
-        # default input nodes
-        nodes = None
+    def __init__(self, nodes, input_type, impedance=None, is_noise=False, **kwargs):
+        self._impedance = None
 
-        # handle nodes
-        if node is not None:
-            if node_p is not None or node_n is not None:
-                raise ValueError("node cannot be specified alongside node_p or node_n")
-
-            nodes = [Node("gnd"), node]
-        else:
-            if node_p is None and node_n is None:
-                # no nodes specified
-                raise ValueError("input node(s) must be specified")
-            elif node_p is None or node_n is None:
-                # only one of node_p or node_n specified
-                raise ValueError("node_p and node_n must both be specified")
-
-            nodes = [node_n, node_p]
-
-        input_type = input_type.lower()
-
-        if input_type == "noise":
-            self.input_type = "noise"
-
-            if impedance is None:
-                raise ValueError("impedance must be specified for noise input")
-
-            impedance = Quantity(impedance, "Ω")
-        else:
-            if impedance is not None:
-                raise ValueError("impedance cannot be specified for non-noise input")
-
-            if input_type == "voltage":
-                self.input_type = "voltage"
-            elif input_type == "current":
-                self.input_type = "current"
-                # assume 1 ohm impedance for transfer functions
-                impedance = 1
-            else:
-                raise ValueError("unrecognised input type")
-
+        self.input_type = input_type
+        self.is_noise = bool(is_noise)
         self.impedance = impedance
 
-        # call parent constructor
-        super().__init__(name="input", nodes=nodes, *args, **kwargs)
+        # Call parent constructor.
+        super().__init__(name="input", nodes=nodes, **kwargs)
+
+    @property
+    def impedance(self):
+        return self._impedance
+
+    @impedance.setter
+    def impedance(self, impedance):
+        if impedance is None:
+            return
+        self._impedance = Quantity(impedance, "Ω")
 
     @property
     def node1(self):
@@ -526,7 +511,7 @@ class Inductor(PassiveComponent):
             If the specified inductor is not of type :class:`Inductor`
         """
         if not isinstance(other, self.__class__):
-            raise TypeError("specified component '%s' is not an inductor" % other)
+            raise TypeError(f"specified component '{other}' is not an inductor")
 
         coupling_factor = self.coupling_factors[other]
         mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
@@ -691,7 +676,7 @@ class VoltageNoise(ComponentNoise):
     SUBTYPE = "voltage"
 
     def label(self):
-        return "V(%s)" % self.component.name
+        return f"V({self.component.name})"
 
 
 class JohnsonNoise(VoltageNoise):
@@ -710,7 +695,7 @@ class JohnsonNoise(VoltageNoise):
         return np.ones(frequencies.shape) * white_noise
 
     def label(self):
-        return "R(%s)" % self.component.name
+        return f"R({self.component.name})"
 
     def _meta_data(self):
         """Meta data used to provide hash."""
@@ -721,12 +706,12 @@ class CurrentNoise(NodeNoise):
     SUBTYPE = "current"
 
     def label(self):
-        return "I(%s, %s)" % (self.component.name, self.node.name)
+        return f"I({self.component.name}, {self.node.name})"
 
 
 class NoiseNotFoundError(ValueError):
     def __init__(self, noise_description, *args, **kwargs):
-        message = "%s not found" % noise_description
+        message = f"{noise_description} not found"
         super().__init__(message, *args, **kwargs)
 
 
@@ -762,7 +747,7 @@ class CouplingFactorDict(MutableMapping):
             If the specified component is not an inductor.
         """
         if not isinstance(inductor, Inductor):
-            raise TypeError("specified component, '%s', is not an inductor" % inductor)
+            raise TypeError(f"specified component, '{inductor}', is not an inductor")
 
         return self._couplings.get(inductor, 0)
 
@@ -784,7 +769,7 @@ class CouplingFactorDict(MutableMapping):
             If the specified coupling factor is outside the range [0, 1].
         """
         if not isinstance(inductor, Inductor):
-            raise TypeError("specified component, '%s', is not an inductor" % inductor)
+            raise TypeError(f"specified component, '{inductor}', is not an inductor")
 
         # parse value
         coupling_factor = Quantity(coupling_factor)

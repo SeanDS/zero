@@ -72,7 +72,7 @@ class PartRequest(Downloadable, list):
         """Search query JSON string"""
         keyword = self.keyword
         if self.partial:
-            keyword = "*%s*" % keyword
+            keyword = f"*{keyword}*"
 
         return json.dumps([{"mpn": keyword}])
 

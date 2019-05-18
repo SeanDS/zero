@@ -8,9 +8,9 @@ from ply import lex, yacc
 import numpy as np
 
 from ..circuit import Circuit, ElementNotFoundError
-from ..components import Node
+from ..components import Node, OpAmp
 from ..analysis import AcSignalAnalysis, AcNoiseAnalysis
-from ..data import MultiNoiseSpectrum
+from ..data import MultiNoiseDensity
 from ..format import Quantity
 from ..misc import ChangeFlagDict
 
@@ -42,29 +42,30 @@ class LisoParserError(ValueError):
 class LisoParser(metaclass=abc.ABCMeta):
     """Base LISO parser"""
     def __init__(self):
-        # circuit object and the properties from which it is built
+        # Circuit object and the properties from which it is built.
         self.circuit = None
         self._circuit_properties = None
 
-        # circuit model built flag
+        # Circuit model built flag.
         self._circuit_built = False
 
-        # circuit solution
+        # Circuit solution.
         self._solution = None
 
-        # initial line and character positions
+        # Initial line and character positions.
         self.lineno = None
         self._previous_newline_position = None
 
-        # whether parser end of file has been reached
+        # Whether parser end of file has been reached.
         self._eof = None
 
-        # initialise parser properties
+        # Initialise parser properties.
         self.reset()
 
-        # create lexer and parser handlers
-        self.lexer = lex.lex(module=self)
-        self.parser = yacc.yacc(module=self)
+        # Create lexer and parser handlers. Set lex and yacc to not generate grammar files, for
+        # packaging simplicity, at the cost of a slight speed penalty.
+        self.lexer = lex.lex(module=self, optimize=False, debug=False)
+        self.parser = yacc.yacc(module=self, write_tables=False, debug=False)
 
     def reset(self):
         """Reset parser to default state."""
@@ -88,10 +89,14 @@ class LisoParser(metaclass=abc.ABCMeta):
                 "input_impedance": None,
                 "output_type": None,
                 "noise_output_element": None,
-                "tf_outputs": [],
-                # list of (name, coupling, l1, l2) inductor coupling tuples
+                "response_outputs": [],
+                # Displayed noise.
+                "noisy_elements": [],
+                # Extra noise to include in "sum" in addition to displayed noise.
+                "noisy_sum_elements": [],
+                # List of (name, coupling, l1, l2) inductor coupling tuples.
                 "inductor_couplings": [],
-                # flag for when noise sum must be computed when building solution
+                # Flag for when noise sum must be computed when building solution.
                 "noise_sum_to_be_computed": False}
 
     @property
@@ -174,11 +179,11 @@ class LisoParser(metaclass=abc.ABCMeta):
         self._circuit_properties["noise_output_element"] = noise_output_element
 
     @property
-    def tf_outputs(self):
-        return self._circuit_properties["tf_outputs"]
+    def response_outputs(self):
+        return self._circuit_properties["response_outputs"]
 
-    def add_tf_output(self, output):
-        """Add transfer function output.
+    def add_response_output(self, output):
+        """Add response output.
 
         This stores the specified sink for use in building the solution.
 
@@ -189,21 +194,21 @@ class LisoParser(metaclass=abc.ABCMeta):
 
         Raises
         ------
-        :class:`ValueError`
+        ValueError
             If the specified sink is already present.
         """
-        if output in self.tf_outputs:
-            raise ValueError("sink '%s' is already present" % output)
+        if output in self.response_outputs:
+            raise ValueError(f"sink '{output}' is already present")
 
-        self._circuit_properties["tf_outputs"].append(output)
+        self._circuit_properties["response_outputs"].append(output)
 
     @property
     def inductor_couplings(self):
         return self._circuit_properties["inductor_couplings"]
 
     @property
-    def n_tf_outputs(self):
-        return len(self.tf_outputs)
+    def n_response_outputs(self):
+        return len(self.response_outputs)
 
     @property
     def n_displayed_noise(self):
@@ -254,27 +259,27 @@ class LisoParser(metaclass=abc.ABCMeta):
         """Child classes must implement error handler"""
         raise NotImplementedError
 
-    def default_tf_sources(self):
-        """Default transfer function sources"""
+    def default_response_sources(self):
+        """Default response sources"""
         # note: this cannot be a property, otherwise lex will execute the property before
         # input_type is set.
         if self.input_type == "voltage":
-            sources = [self.circuit.input_component.node2]
+            sources = [self.input_node_p]
         elif self.input_type == "current":
-            sources = [self.circuit.input_component]
+            sources = ["input"]
         else:
             raise ValueError("unrecognised input type")
 
         return sources
 
-    def default_tf_sinks(self):
-        """Default transfer function sinks.
+    def default_response_sinks(self):
+        """Default response sinks.
 
         Returns
         -------
         :class:`list` of :class:`Component` or :class:`Node`
         """
-        return [element.element for element in self.tf_outputs]
+        return [element.element for element in self.response_outputs]
 
     def solution(self, force=False, set_default_plots=True, **kwargs):
         """Get the solution to the analysis defined in the parsed file.
@@ -296,59 +301,181 @@ class LisoParser(metaclass=abc.ABCMeta):
             self._solution = self._run(**kwargs)
 
             if self._circuit_properties["noise_sum_to_be_computed"]:
-                # find spectra in solution
-                sum_spectra = self._solution.filter_noise(sources=self.summed_noise_objects)
-                # get sink element
+                # Find spectra in solution.
+                sum_spectra_groups = self._solution.filter_noise(sources=self.summed_noise_objects)
+                sum_spectra = [spectral_density for group_spectra in sum_spectra_groups.values()
+                               for spectral_density in group_spectra]
+                # Get sink element.
                 sum_sink = self.circuit[self.noise_output_element]
-                # create overall spectrum
-                sum_spectrum = MultiNoiseSpectrum(sink=sum_sink, constituents=sum_spectra)
-                # build noise sum and show by default
-                self._solution.add_noise_sum(sum_spectrum, default=True)
+                # Create overall spectral density.
+                sum_spectral_density = MultiNoiseDensity(sink=sum_sink, constituents=sum_spectra)
+                # Build noise sum. Sums are always shown by default.
+                self._solution.add_noise_sum(sum_spectral_density, default=True)
 
         if set_default_plots:
             self._set_default_plots()
 
         return self._solution
 
-    def _set_default_plots(self):
-        # set default plots
-        if self.output_type == "tf":
-            default_tfs = self._solution.filter_tfs(sources=self.default_tf_sources(),
-                                                    sinks=self.default_tf_sinks())
+    @property
+    def noisy_elements(self):
+        return self._circuit_properties["noisy_elements"]
 
-            for tf in default_tfs:
-                if not self._solution.is_default_tf(tf):
-                    self._solution.set_tf_as_default(tf)
+    def add_noisy_element(self, noisy_element):
+        """Add noise source.
+
+        This stores the specified noise source for use in building the solution.
+
+        Parameters
+        ----------
+        noisy_element : :class:`LisoNoiseSource`
+            The noise source to add.
+
+        Raises
+        ------
+        ValueError
+            If the specified noise source is already present.
+        """
+        if noisy_element in self.noisy_elements:
+            raise ValueError(f"noise source '{noisy_element}' is already present")
+
+        self._circuit_properties["noisy_elements"].append(noisy_element)
+
+    @property
+    def noisy_sum_elements(self):
+        return self._circuit_properties["noisy_sum_elements"]
+
+    def add_noisy_sum_element(self, noisy_sum_element):
+        """Add noise sum source.
+
+        This stores the specified noise source for use in building the sum function in the solution.
+
+        Parameters
+        ----------
+        noisy_sum_element : :class:`LisoNoiseSource`
+            The noise source to add to sum.
+
+        Raises
+        ------
+        ValueError
+            If the specified noise sum source is already present.
+        """
+        if noisy_sum_element in self.noisy_sum_elements:
+            raise ValueError(f"noise sum source '{noisy_sum_element}' is already present")
+
+        self._circuit_properties["noisy_sum_elements"].append(noisy_sum_element)
+
+    @property
+    def displayed_noise_objects(self):
+        """Noise sources to be plotted"""
+        return self._get_noise_objects(self.noisy_elements)
+
+    @property
+    def summed_noise_objects(self):
+        """Noise sources included in the sum column"""
+        return self._get_noise_objects(self.noisy_sum_elements)
+
+    def _get_noise_objects(self, noisy_sources):
+        """Get noise objects for the specified noisy sources."""
+        sources = set()
+
+        for noisy_source in noisy_sources:
+            component_name = noisy_source.component
+
+            if component_name == "all":
+                # Show all noise sources.
+                for component in self.circuit.components:
+                    sources.update(self._get_component_noise(component, noisy_source))
+            elif component_name == "allop":
+                # Show all op-amp noise sources.
+                for opamp in self.circuit.opamps:
+                    sources.update(self._get_component_noise(opamp, noisy_source))
+            elif component_name == "allr":
+                # Show all resistor noise sources.
+                if noisy_source.has_suffix:
+                    self.p_error("cannot specify noise type for 'allr'")
+
+                for resistor in self.circuit.resistors:
+                    sources.update(self._get_component_noise(resistor, noisy_source))
+            elif component_name == "sum":
+                # Show sum of circuit noises.
+                self._circuit_properties["noise_sum_to_be_computed"] = True
+            else:
+                # This is a single component.
+                component = self.circuit[component_name]
+                sources.update(self._get_component_noise(component, noisy_source))
+
+        return sources
+
+    def _get_component_noise(self, component, noisy_source=None):
+        """Get noise list from specified component given the optionally specified noisy source.
+
+        If specified, the noisy source is used to define which noise sources are returned for
+        op-amps.
+        """
+        if noisy_source is not None and noisy_source.has_suffix:
+            if not isinstance(component, OpAmp):
+                self.p_error("noise suffices cannot be specified on non-op-amps")
+
+            noise = []
+
+            # Get user-defined noise types.
+            if noisy_source.has_opamp_voltage_noise and component.has_voltage_noise:
+                noise.append(component.voltage_noise)
+            if noisy_source.has_opamp_non_inv_current_noise and component.has_non_inv_current_noise:
+                noise.append(component.non_inv_current_noise)
+            if noisy_source.has_opamp_inv_current_noise and component.has_inv_current_noise:
+                noise.append(component.inv_current_noise)
+        else:
+            # All noise types.
+            noise = component.noise
+
+        return noise
+
+    def _set_default_plots(self):
+        """Set functions that are displayed by default when the solution is plotted."""
+        if self.output_type == "response":
+            sources = self.default_response_sources()
+            sinks = self.default_response_sinks()
+            default_responses = self._solution.filter_responses(sources=sources, sinks=sinks)
+            for group, responses in default_responses.items():
+                for response in responses:
+                    if not self._solution.is_default_response(response, group):
+                        self._solution.set_response_as_default(response, group)
         elif self.output_type == "noise":
             default_spectra = self._solution.filter_noise(sources=self.displayed_noise_objects)
+            for group, spectra in default_spectra.items():
+                for spectral_density in spectra:
+                    if not self._solution.is_default_noise(spectral_density, group):
+                        self._solution.set_noise_as_default(spectral_density, group)
 
-            for spectrum in default_spectra:
-                if not self._solution.is_default_noise(spectrum):
-                    self._solution.set_noise_as_default(spectrum)
+    def _get_analysis(self, **kwargs):
+        if self.output_type == "response":
+            return AcSignalAnalysis(circuit=self.circuit, **kwargs)
+        elif self.output_type == "noise":
+            return AcNoiseAnalysis(circuit=self.circuit, **kwargs)
+        self.p_error("no outputs requested")
 
-    def _run(self, print_equations=False, print_matrix=False, stream=sys.stdout, **kwargs):
-        # build circuit if necessary
+    def _run(self, print_progress=False, stream=None, **kwargs):
+        # Build circuit if necessary.
         self.build()
 
-        if self.output_type == "tf":
-            analysis = AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
-        elif self.output_type == "noise":
-            # get noise output element
-            element = self.circuit[self.noise_output_element]
-            analysis = AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies,
-                                       element=element, **kwargs)
+        analysis = self._get_analysis(print_progress=print_progress, stream=stream)
+        analysis_args = {'frequencies': self.frequencies}
+
+        if self.input_node_n is None:
+            # Grounded input.
+            analysis_args['node'] = self.input_node_p
         else:
-            self.p_error("no outputs requested")
+            # Floating input.
+            analysis_args['node_n'] = self.input_node_n
+            analysis_args['node_p'] = self.input_node_p
 
-        if print_equations:
-            print(analysis.circuit_equation_display(), file=stream)
+        if self.output_type == "noise":
+            analysis_args['sink'] = self.circuit[self.noise_output_element]
+            analysis_args['impedance'] = self.input_impedance
 
-        if print_matrix:
-            print(analysis.circuit_matrix_display(), file=stream)
-
-        analysis.calculate()
-
-        return analysis.solution
+        return analysis.calculate(self.input_type, **analysis_args, **kwargs)
 
     def build(self):
         """Build circuit if not yet built"""
@@ -362,14 +489,10 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     def _do_build(self):
         """Build circuit"""
-
-        # unset lineno to avoid using the last line in subsequent errors
+        # Unset lineno to avoid using the last line in subsequent errors.
         self.lineno = None
 
-        # add input component, if not yet present
-        self._set_circuit_input()
-
-        # coupling between inductors
+        # Coupling between inductors.
         self._set_inductor_couplings()
 
     def _validate(self):
@@ -379,29 +502,30 @@ class LisoParser(metaclass=abc.ABCMeta):
         elif self.input_node_n is None and self.input_node_p is None:
             # no input nodes found
             self.p_error("no input nodes found")
-        elif not self.tf_outputs and self.noise_output_element is None:
+        elif not self.response_outputs and self.noise_output_element is None:
             # no output requested
             self.p_error("no output requested")
 
         # check for invalid output nodes
-        for tf_output in self.tf_outputs:
+        for response_output in self.response_outputs:
             # get element
-            element = tf_output.element
+            element = response_output.element
 
             if not self.circuit.has_component(element) and not self.circuit.has_node(element):
-                self.p_error("output element '%s' is not present in the circuit" % element)
+                self.p_error(f"output element '{element}' is not present in the circuit")
 
         # noise output element must exist
         if self.noise_output_element is not None:
             if self.noise_output_element not in self.circuit:
-                self.p_error("noise output element '%s' is not present in the circuit" % self.noise_output_element)
+                self.p_error(f"noise output element '{self.noise_output_element}' is not present "
+                             "in the circuit")
 
         # check if noise sources exist
         try:
             _ = self.displayed_noise_objects
             _ = self.summed_noise_objects
         except ElementNotFoundError as e:
-            self.p_error("noise source '%s' is not present in the circuit" % e.name)
+            self.p_error(f"noise source '{e.name}' is not present in the circuit")
 
         # sum cannot be computed without a "noisy" command
         if self._circuit_properties["noise_sum_to_be_computed"] and not self.summed_noise_objects:
@@ -409,18 +533,18 @@ class LisoParser(metaclass=abc.ABCMeta):
             self.p_error("noise sum requires noisy components to be defined")
 
     @property
-    def will_calc_tfs(self):
-        """Whether the analysis will calculate transfer functions"""
-        return self.will_calc_node_tfs or self.will_calc_component_tfs
+    def will_calc_responses(self):
+        """Whether the analysis will calculate responses"""
+        return self.will_calc_node_responses or self.will_calc_component_responses
 
     @property
-    def will_calc_node_tfs(self):
-        """Whether the analysis will calculate transfer functions to nodes"""
+    def will_calc_node_responses(self):
+        """Whether the analysis will calculate responses to nodes"""
         return len(self.output_nodes) > 0
 
     @property
-    def will_calc_component_tfs(self):
-        """Whether the analysis will calculate transfer functions to components"""
+    def will_calc_component_responses(self):
+        """Whether the analysis will calculate responses to components"""
         return len(self.output_components) > 0
 
     @property
@@ -431,29 +555,19 @@ class LisoParser(metaclass=abc.ABCMeta):
     @property
     def plottable(self):
         """Whether the analysis will calculate something that can be plotted"""
-        return self.will_calc_tfs or self.will_calc_noise
+        return self.will_calc_responses or self.will_calc_noise
 
     @property
     def output_nodes(self):
-        """The output nodes of the transfer functions computed in the analysis"""
-        return set([element.element for element in self.tf_outputs if element.type == "node"])
+        """The output nodes of the responses computed in the analysis"""
+        return set([element.element for element in self.response_outputs
+                    if element.type == "node"])
 
     @property
     def output_components(self):
-        """The output components of the transfer functions computed in the analysis"""
-        return set([element.element for element in self.tf_outputs if element.type == "component"])
-
-    @property
-    @abc.abstractmethod
-    def displayed_noise_objects(self):
-        """Displayed noise objects, not including sums"""
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def summed_noise_objects(self):
-        """Noise sources included in displayed noise sum outputs"""
-        raise NotImplementedError
+        """The output components of the responses computed in the analysis"""
+        return set([element.element for element in self.response_outputs
+                    if element.type == "component"])
 
     @property
     def opamp_output_node_names(self):
@@ -473,7 +587,7 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     @property
     def output_type(self):
-        """Transfer function output type"""
+        """Response output type"""
         return self._circuit_properties["output_type"]
 
     @output_type.setter
@@ -484,45 +598,12 @@ class LisoParser(metaclass=abc.ABCMeta):
                 return
 
             # output type changed
-            self.p_error("output file contains both transfer functions and noise, which is not"
-                         "supported")
+            self.p_error("output file contains both responses and noise, which is not supported")
 
-        if output_type not in ["tf", "noise"]:
+        if output_type not in ["response", "noise"]:
             raise ValueError("unknown output type")
 
         self._circuit_properties["output_type"] = output_type
-
-    def _set_circuit_input(self):
-        # create input component if necessary
-        if self.circuit.has_component("input"):
-            return
-
-        # add input
-        input_type = self.input_type
-        node = None
-        node_p = None
-        node_n = None
-        impedance = None
-
-        if self.input_node_n is None:
-            # fixed input
-            node = self.input_node_p
-        else:
-            # floating input
-            node_p = self.input_node_p
-            node_n = self.input_node_n
-
-        # input type depends on whether we calculate noise or transfer functions
-        if self.noise_output_element is not None:
-            # we're calculating noise
-            input_type = "noise"
-
-            # set input impedance
-            impedance = self.input_impedance
-
-        self.circuit.add_input(input_type=input_type, node=node,
-                                node_p=node_p, node_n=node_n,
-                                impedance=impedance)
 
     def _set_inductor_couplings(self):
         # discard name (not used in circuit mode)
@@ -539,7 +620,9 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
                         "real": {"real": ["re", "real"]},
                         "imaginary": {"imag": ["im", "imag"]}}
 
-    def __init__(self, type_, element=None, scales=None, index=None, output_type=None):
+    OUTPUT_TYPE = None
+
+    def __init__(self, type_, element=None, scales=None, index=None):
         if scales is None:
             scales = []
 
@@ -552,7 +635,6 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
         self.element = element
         self.scales = scales
         self.index = index
-        self.output_type = output_type
 
     @property
     def scales(self):
@@ -574,7 +656,7 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
                 if candidate in self.SUPPORTED_SCALES[scale_class][scale]:
                     return scale
 
-        raise ValueError("unrecognised scale: '%s'" % raw_scale)
+        raise ValueError(f"unrecognised scale: '{raw_scale}'")
 
     def _get_scale(self, scale_names):
         for index, scale in enumerate(self.scales):
@@ -645,16 +727,18 @@ class LisoOutputElement(metaclass=abc.ABCMeta):
         return list(self.SUPPORTED_SCALES["imaginary"].keys())
 
     def __repr__(self):
-        element_str = "%s" % self.element
+        element_str = f"{self.element}"
         if self.scales is not None:
             element_str += ":".join(self.scales)
-        return "Output[%s]" % element_str
+        return f"Output[{element_str}]"
 
 
 class LisoOutputVoltage(LisoOutputElement):
     """LISO output voltage"""
-    def __init__(self, *args, node=None, **kwargs):
-        super().__init__(type_="node", element=node, output_type="voltage", *args, **kwargs)
+    OUTPUT_TYPE = "voltage"
+
+    def __init__(self, node=None, **kwargs):
+        super().__init__("node", element=node, **kwargs)
 
     @property
     def node(self):
@@ -664,9 +748,10 @@ class LisoOutputVoltage(LisoOutputElement):
 
 class LisoOutputCurrent(LisoOutputElement):
     """LISO output current"""
-    def __init__(self, *args, component=None, **kwargs):
-        super().__init__(type_="component", element=component, output_type="current", *args,
-                         **kwargs)
+    OUTPUT_TYPE = "current"
+
+    def __init__(self, component=None, **kwargs):
+        super().__init__("component", element=component, **kwargs)
 
     @property
     def component(self):
@@ -674,14 +759,85 @@ class LisoOutputCurrent(LisoOutputElement):
         return self.element
 
 
-class LisoNoiseSource:
-    """LISO noise source"""
-    def __init__(self, noise, index=None):
+class LisoNoisyElement:
+    """LISO noisy element"""
+    # Op-amp noise types.
+    OPAMP_NOISE_TYPE_VOLTAGE = 0
+    OPAMP_NOISE_TYPE_NON_INV_CURRENT = 1
+    OPAMP_NOISE_TYPE_INV_CURRENT = 2
+
+    def __init__(self, component, suffix=None, index=None):
         if index is not None:
             index = int(index)
 
-        self.noise = noise
+        self._suffices = None
+        self.component = component
         self.index = index
 
+        self._parse_suffices(suffix)
+
+    def _parse_suffices(self, suffix):
+        if suffix is None:
+            return
+
+        try:
+            single_suffix = int(suffix)
+        except ValueError:
+            str_suffix = str(suffix).lower()
+            if str_suffix in ["u", "i+", "i-"]:
+                single_suffix = str_suffix
+            else:
+                # This is not an output suffix.
+                single_suffix = None
+
+        if single_suffix is not None:
+            if single_suffix in [0, "u"]:
+                self._suffices = [self.OPAMP_NOISE_TYPE_VOLTAGE]
+            elif single_suffix in [1, "i+"]:
+                self._suffices = [self.OPAMP_NOISE_TYPE_NON_INV_CURRENT]
+            elif single_suffix in [2, "i-"]:
+                self._suffices = [self.OPAMP_NOISE_TYPE_INV_CURRENT]
+            else:
+                raise ValueError(f"unrecognised noise suffix '{single_suffix}'")
+            return
+
+        # Potentially multiple suffices specified.
+        suffices = []
+
+        for char in suffix:
+            char = char.lower()
+            if char == "u":
+                suffices.append(self.OPAMP_NOISE_TYPE_VOLTAGE)
+            elif char == "+":
+                suffices.append(self.OPAMP_NOISE_TYPE_NON_INV_CURRENT)
+            elif char == "-":
+                suffices.append(self.OPAMP_NOISE_TYPE_INV_CURRENT)
+            else:
+                raise ValueError(f"unrecognised noise suffix '{char}'")
+
+        self._suffices = suffices
+
+    @property
+    def has_suffix(self):
+        """Whether a noise type suffix has been defined for this noisy element."""
+        return self._suffices is not None
+
+    @property
+    def has_opamp_voltage_noise(self):
+        return self.has_suffix and self.OPAMP_NOISE_TYPE_VOLTAGE in self._suffices
+
+    @property
+    def has_opamp_non_inv_current_noise(self):
+        return self.has_suffix and self.OPAMP_NOISE_TYPE_NON_INV_CURRENT in self._suffices
+
+    @property
+    def has_opamp_inv_current_noise(self):
+        return self.has_suffix and self.OPAMP_NOISE_TYPE_INV_CURRENT in self._suffices
+
     def __str__(self):
-        return "LISO {noise}".format(noise=self.noise)
+        if self.has_suffix:
+            suffix_list = ", ".join(self._suffices)
+            suffix_str = f", [{suffix_list}]"
+        else:
+            suffix_str = ""
+        return f"Noise[{self.component}{suffix_str}]"

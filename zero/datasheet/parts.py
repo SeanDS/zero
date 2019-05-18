@@ -137,7 +137,7 @@ class Datasheet(Downloadable):
             return
 
         filename, _ = self.fetch_file(url=self.url, filename=self.path,
-                                      label="Downloading %s" % self.part_name)
+                                      label=f"Downloading {self.part_name}")
 
         # update path, if necessary
         self.path = filename
@@ -159,7 +159,7 @@ class Datasheet(Downloadable):
         else:
             pages = "unknown"
 
-        return "Datasheet (created %s, %s pages)" % (created, pages)
+        return f"Datasheet (created {created}, {pages} pages)"
 
 
 def nonesorter(datasheet):

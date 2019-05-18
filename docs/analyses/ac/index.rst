@@ -18,8 +18,8 @@ circumstances it is possible to approximate a linear relationship between a comp
 current around the operating point, allowing the component to be simulated in the LTI regime, and
 this property is exploited in the case of :class:`op-amps <.OpAmp>`.
 
-The small-signal AC transfer function of a circuit input to any of its components or nodes can
-be computed with the :ref:`AC small signal analysis <analyses/ac/signal:Small AC signal analysis>`.
+The small-signal AC response of a circuit input to any of its components or nodes can be computed
+with the :ref:`AC small signal analysis <analyses/ac/signal:Small AC signal analysis>`.
 The noise spectral density at a node arising from components and nodes elsewhere in the circuit can
 be computed using the :ref:`AC small signal noise analysis <analyses/ac/noise:Small AC noise analysis>`.
 
@@ -60,7 +60,7 @@ Consider the following voltage divider, defined in :ref:`LISO syntax <liso/input
     uoutput n2
 
 The following circuit matrix is generated for this circuit (using
-``zero liso /path/to/script.fil --print-matrix --no-prescale``):
+``zero liso /path/to/script.fil --print-matrix``):
 
 .. code-block:: text
 
@@ -79,7 +79,7 @@ The following circuit matrix is generated for this circuit (using
     ╘═══════╧═════════╧═════════╧════════════╧═════════╧═════════╧═══════╛
 
 The entries containing ``---`` represent zero in sparse matrix form. The equations this matrix
-represents look like this (using ``zero liso /path/to/script.fil --print-equations --no-prescale``):
+represents look like this (using ``zero liso /path/to/script.fil --print-equations``):
 
 .. code-block:: text
 
@@ -112,18 +112,6 @@ circuit is solved with the constraint that the voltage between ``n1`` and ground
 ``1``. The solver can adjust all of the other non-zero matrix elements in the left hand side until
 this condition is met within some level of tolerance.
 
-Prescaling
-~~~~~~~~~~
-
-By default, |Zero| prescales matrices used in the computation of the solution, in order to improve
-numerical precision. This behaviour is currently only implemented for signal analyses and not for
-noise.
-
-.. warning::
-    When prescaling is switched on, any functions which output the circuit matrix (such as the
-    ``--no-prescale`` :ref:`CLI flag <cli/liso:Prescaling>`) will not match the underlying values they represent, but instead
-    those of the prescaled matrix.
-
 Available analyses
 ~~~~~~~~~~~~~~~~~~
 
@@ -140,7 +128,7 @@ Noise
 Noise analysis requires an essentially identical approach to building the circuit matrix, except
 that the matrix is transposed and the right hand side is given a ``1`` in the row corresponding to
 the chosen noise output node instead of the input. This results in the solution ``x`` in the matrix
-equation ``Ax = b`` instead providing what amounts to the reverse transfer functions between the
-component and nodes in the circuit and the chosen noise output node. These reverse transfer
-functions are as a last step multiplied by the noise at each component and node to infer the noise
-at the noise output node.
+equation ``Ax = b`` instead providing what amounts to the reverse responses between the component
+component and nodes in the circuit and the chosen noise output node. These reverse responses are
+as a last step multiplied by the noise at each component and node to infer the noise at the noise
+output node.

@@ -68,8 +68,8 @@ test unit:3.6:
   stage: test
   <<: *template-test-unit
 
-test unit:3.5:
-  image: python:3.5
+test unit:3.7:
+  image: python:3.7
   stage: test
   <<: *template-test-unit
 
@@ -83,8 +83,8 @@ test integration:3.6:
   stage: test
   <<: *template-test-integration
 
-test integration:3.5:
-  image: python:3.5
+test integration:3.7:
+  image: python:3.7
   stage: test
   <<: *template-test-integration
 
@@ -98,14 +98,14 @@ test validation:3.6:
   stage: test
   <<: *template-test-validation
 
-test validation:3.5:
-  image: python:3.5
+test validation:3.7:
+  image: python:3.7
   stage: test
   <<: *template-test-validation
 
-# generate the documentation only on creation of new tags or pushes to master branch
+# Generate the documentation only on creation of new tags or pushes to master branch.
 pages:
-  image: python:3.6
+  image: python:3.7
   stage: deploy
   only:
     - tag

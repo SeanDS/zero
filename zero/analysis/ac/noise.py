@@ -1,35 +1,57 @@
 import logging
 import numpy as np
 
-from .base import BaseAcAnalysis
-from ...data import NoiseSpectrum, Series
+from .signal import AcSignalAnalysis
+from ...data import NoiseDensity, Series
 
 LOGGER = logging.getLogger(__name__)
 
 
-class AcNoiseAnalysis(BaseAcAnalysis):
+class AcNoiseAnalysis(AcSignalAnalysis):
     """Small signal circuit analysis"""
+    DEFAULT_INPUT_IMPEDANCE = 50
 
-    def __init__(self, element, **kwargs):
-        # call parent constructor
-        super().__init__(**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        if not hasattr(element, "name"):
-            # get element name from circuit
-            element = self.circuit[element]
-
-        self.element = element
+        self._noise_sink = None
 
     @property
-    def prescale_value(self):
-        # switch off for noise
-        return 1
+    def noise_sink(self):
+        return self._noise_sink
 
-    def validate_circuit(self):
-        """Validate circuit for noise analysis"""
-        # check input
-        if self.circuit.input_component.input_type != "noise":
-            raise ValueError("circuit input type must be 'noise'")
+    @noise_sink.setter
+    def noise_sink(self, sink):
+        if not hasattr(sink, "name"):
+            # This is an element name. Get the object. We use the user-supplied circuit here because
+            # the copy may not have been created by this point.
+            sink = self.circuit.get_element(sink)
+        self._noise_sink = sink
+
+    def calculate(self, input_type, sink, impedance=None, **kwargs):
+        """Calculate noise from circuit elements at a particular element.
+
+        Parameters
+        ----------
+        input_type : str
+            Input type, either "voltage" or "current".
+        sink : str or :class:`.Component` or :class:`.Node`
+            The element to calculate noise at.
+        impedance : float or :class:`.Quantity`, optional
+            Input impedance. If None, the default is used.
+
+        Returns
+        -------
+        :class:`~.solution.Solution`
+            Solution containing noise spectra at the specified sink (or projected sink).
+        """
+        self.noise_sink = sink
+        if impedance is None:
+            LOGGER.warning(f"assuming default input impedance of {self.DEFAULT_INPUT_IMPEDANCE}")
+            impedance = self.DEFAULT_INPUT_IMPEDANCE
+        self._do_calculate(input_type, impedance=impedance, is_noise=True, **kwargs)
+
+        return self.solution
 
     def circuit_matrix(self, *args, **kwargs):
         """Calculate and return matrix used to solve for circuit noise at a \
@@ -40,76 +62,20 @@ class AcNoiseAnalysis(BaseAcAnalysis):
         :class:`scipy.sparse.spmatrix`
             The circuit matrix.
         """
-
-        # return the transpose of the transfer function matrix
+        # Return the transpose of the response matrix.
         return super().circuit_matrix(*args, **kwargs).T
 
-    def right_hand_side(self):
-        """Circuit noise (output) vector
-
-        This creates a vector of size nx1, where n is the number of elements in
-        the circuit, and sets the noise element's coefficient to 1 before
-        returning it.
-
-        Returns
-        -------
-        :class:`~np.ndarray`
-            circuit's noise output vector
-        """
-
-        # create column vector
-        e_n = self.get_empty_results_matrix(1)
-
-        # set input to noise element
-        e_n[self.noise_element_index, 0] = 1
-
-        return e_n
-
-    def calculate(self):
-        """Calculate noise from circuit elements at a particular element.
-
-        Returns
-        -------
-        :class:`~.solution.Solution`
-            solution
-
-        Raises
-        ------
-        Exception
-            If no input is present within the circuit.
-        Exception
-            If no noise sources are defined.
-        """
-
-        if not self.circuit.has_input:
-            raise Exception("circuit must contain an input")
-
-        # calculate noise functions by solving the transfer matrix for input
-        # at the circuit's noise sources
-        noise_matrix = self.solve()
-
-        # scale vector, for converting units, if necessary
-        scale = self.get_empty_results_matrix(1)
-        scale[:, 0] = 1
-
-        if self.prescale:
-            # convert currents from natural units back to amperes
-            prescale_value = self.prescale_value
-
-            for node in self.circuit.non_gnd_nodes:
-                scale[self.node_matrix_index(node), 0] = 1 / prescale_value
-
-        # unscale
-        noise_matrix *= scale
-
-        self._build_solution(noise_matrix)
+    @property
+    def right_hand_side_index(self):
+        """Right hand side excitation component index"""
+        return self.noise_element_index
 
     def _build_solution(self, noise_matrix):
         # empty noise sources
         empty = []
 
         # loop over circuit's noise sources
-        for noise in self.circuit.noise_sources:
+        for noise in self._current_circuit.noise_sources:
             # get this element's noise spectral density
             spectral_density = noise.spectral_density(frequencies=self.frequencies)
 
@@ -137,27 +103,28 @@ class AcNoiseAnalysis(BaseAcAnalysis):
             series = Series(x=self.frequencies, y=projected_noise)
 
             # add noise function to solution
-            self.solution.add_noise(NoiseSpectrum(source=noise, sink=self.element, series=series))
+            self.solution.add_noise(NoiseDensity(source=noise, sink=self.noise_sink, series=series))
 
         if empty:
-            LOGGER.debug("empty noise sources: %s", ", ".join([str(tf) for tf in empty]))
+            empty_sources = ", ".join([str(response) for response in empty])
+            LOGGER.debug(f"empty noise sources: {empty_sources}")
+
+    def to_signal_analysis(self):
+        """Return a new signal analysis using the settings defined in the current analysis."""
+        return AcSignalAnalysis(self.circuit, print_progress=self.print_progress,
+                                stream=self.stream)
 
     @property
     def noise_element_index(self):
         """Noise element matrix index"""
         try:
-            return self.component_matrix_index(self.element)
+            return self.component_matrix_index(self.noise_sink)
         except ValueError:
             pass
 
         try:
-            return self.node_matrix_index(self.element)
+            return self.node_matrix_index(self.noise_sink)
         except ValueError:
             pass
 
-        raise ValueError("noise output element '%s' is not in the circuit" % self.element)
-
-    @property
-    def has_noise_input(self):
-        """Check if circuit has a noise input."""
-        return self.circuit.input_component.input_type == "noise"
+        raise ValueError(f"noise output element '{self.noise_sink}' is not in the circuit")

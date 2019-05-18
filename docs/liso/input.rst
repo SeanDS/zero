@@ -37,9 +37,9 @@ Root mode
 ~~~~~~~~~
 
 |Zero| does not support LISO's root mode, meaning that the fitting tools provided in LISO for
-transfer functions and noise spectra are not replicated. It is suggested to instead use |Zero|
-with a Python optimisation library such as `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/optimize.html>`_.
-Note that it is very important for circuit transfer function and noise fitting to use a well-suited
+responses and noise spectra are not replicated. It is suggested to instead use |Zero| with a Python
+optimisation library such as `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/optimize.html>`_.
+Note that it is very important for circuit responses and noise fitting to use a well-suited
 optimiser, particularly one that can fit in log space. LISO's fitting library performs very well for
 this purpose.
 

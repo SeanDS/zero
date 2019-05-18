@@ -62,13 +62,12 @@ def run(suite_names, verbose):
     try:
         test_suites = [TESTS[suite_name] for suite_name in suite_names]
     except KeyError as e:
-        click.echo("Suite name %s is invalid (use \"suites\" to list available suites)" % e,
-                   err=True)
+        click.echo(f"Suite name {e} is invalid (use \"suites\" to list available suites)", err=True)
         sys.exit()
 
     suite = TestSuite(test_suites)
-
-    click.echo("Running %i tests" % suite.countTestCases())
+    ntests = suite.countTestCases()
+    click.echo(f"Running {ntests} tests")
     run_and_exit(suite, verbosity=verbose)
 
 @tests.command()

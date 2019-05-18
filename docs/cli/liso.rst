@@ -91,7 +91,7 @@ input file itself and with LISO, then it will parse the LISO results and combine
 The resulting plot then contains each function, with the native results with solid lines and the
 LISO results with dashed lines:
 
-.. image:: /_static/liso-compare-tf.svg
+.. image:: /_static/liso-compare-response.svg
 
 A textual representation of the differences can also be displayed by specifying ``--diff``. This
 must be provided in addition to ``--compare``. When specified, this prints a table containing
@@ -108,27 +108,19 @@ they occur:
     │ nin to no (V/V)  │ 1.04e-08 (f = 79.433 kHz)     │ 9.54e-10 (f = 79.433 kHz)     │
     ╘══════════════════╧═══════════════════════════════╧═══════════════════════════════╛
 
-Prescaling
-----------
-
-|Zero| can prescale its circuit matrices in the same way that LISO does, to help improve numerical
-precision (see :ref:`Prescaling <analyses/ac/index:Prescaling>` for more details). By default,
-this behaviour is switched on, but can be disabled with the ``--no-prescale`` flag. This option is
-only available when a native simulation is being performed.
-
 Saving figures
 --------------
 
 Figures can be saved using the ``--save-figure`` option, which must be followed by a file path.
 The format of the figure is controlled by the specified file extension. For example, save PNGs, PDFs
-and SVGs with ``--save-figure tf.png``, ``--save-figure tf.pdf`` and ``--save-figure tf.svg``,
+and SVGs with ``--save-figure response.png``, ``--save-figure response.pdf`` and ``--save-figure response.svg``,
 respectively.
 
 The ``--save-figure`` option can be specified multiple times to save multiple figures, e.g.:
 
 .. code-block:: bash
 
-    $ zero liso /path/to/liso/script.fil --save-figure tf.png --save-figure tf.pdf
+    $ zero liso /path/to/liso/script.fil --save-figure response.png --save-figure response.pdf
 
 Command reference
 -----------------

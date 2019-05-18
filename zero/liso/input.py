@@ -4,8 +4,8 @@ import logging
 import numpy as np
 
 from ..format import Quantity
-from ..components import OpAmp, NoiseNotFoundError
-from .base import LisoParser, LisoOutputVoltage, LisoOutputCurrent, LisoParserError
+from .base import (LisoParser, LisoParserError, LisoOutputVoltage, LisoOutputCurrent,
+                   LisoNoisyElement)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -71,11 +71,7 @@ class LisoInputParser(LisoParser):
                  "output_all_components": False,
                  "output_all_components_scales": None,
                  "output_all_opamps": False,
-                 "output_all_opamps_scales": None,
-                 # displayed noise
-                 "noisy_elements": [],
-                 # extra noise to include in "sum" in addition to displayed noise
-                 "noisy_sum_elements": []}
+                 "output_all_opamps_scales": None}
 
         return {**super()._default_circuit_properties, **extra}
 
@@ -143,28 +139,6 @@ class LisoInputParser(LisoParser):
     def output_all_opamps_scales(self, output_all_opamps_scales):
         self._circuit_properties["output_all_opamps_scales"] = output_all_opamps_scales
 
-    @property
-    def noisy_elements(self):
-        return self._circuit_properties["noisy_elements"]
-
-    @noisy_elements.setter
-    def noisy_elements(self, noisy_elements):
-        if self.noisy_elements is not None:
-            self.p_error("cannot redefine noisy elements")
-
-        self._circuit_properties["noisy_elements"] = noisy_elements
-
-    @property
-    def noisy_sum_elements(self):
-        return self._circuit_properties["noisy_sum_elements"]
-
-    @noisy_sum_elements.setter
-    def noisy_sum_elements(self, noisy_sum_elements):
-        if self.noisy_sum_elements is not None:
-            self.p_error("cannot redefine noisy sum elements")
-
-        self._circuit_properties["noisy_sum_elements"] = noisy_sum_elements
-
     def _do_build(self):
         super()._do_build()
 
@@ -177,7 +151,7 @@ class LisoInputParser(LisoParser):
                     continue
 
                 sink = LisoOutputVoltage(node=node.name, scales=self.output_all_nodes_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
         elif self.output_all_opamp_nodes:
             # show all op-amp nodes
             for node in self.circuit.opamp_output_nodes:
@@ -186,7 +160,7 @@ class LisoInputParser(LisoParser):
                     continue
 
                 sink = LisoOutputVoltage(node=node.name, scales=self.output_all_opamp_nodes_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
 
         # add extra component outputs
         if self.output_all_components:
@@ -198,7 +172,7 @@ class LisoInputParser(LisoParser):
 
                 sink = LisoOutputCurrent(component=component.name,
                                          scales=self.output_all_components_scales)
-                self.add_tf_output(sink)
+                self.add_response_output(sink)
         elif self.output_all_opamps:
             # show all op-amps
             for component in self.circuit.opamps:
@@ -208,107 +182,19 @@ class LisoInputParser(LisoParser):
 
                 sink = LisoOutputCurrent(component=component.name,
                                          scales=self.output_all_opamps_scales)
-                self.add_tf_output(sink)
-
-    def _get_noise_objects(self, definitions):
-        """Get noise objects for the specified raw noise defintions"""
-        sources = set()
-
-        for definition in definitions:
-            if len(definition) > 2:
-                self.p_error("unexpected extra ':'")
-
-            component_name = definition[0].lower()
-
-            if len(definition) > 1:
-                suffix = definition[1]
-            else:
-                # no suffices specified
-                suffix = None
-
-            if component_name == "all":
-                # show all noise sources
-                for component in self.circuit.components:
-                    if isinstance(component, OpAmp):
-                        sources.update(self._get_component_noise(component, suffix))
-                    else:
-                        sources.update(self._get_component_noise(component))
-            elif component_name == "allop":
-                # show all op-amp noise sources
-                for opamp in self.circuit.opamps:
-                    sources.update(self._get_component_noise(opamp, suffix))
-            elif component_name == "allr":
-                # show all resistor noise sources
-                if suffix is not None:
-                    self.p_error("cannot specify suffix '%s' for 'allr'" % suffix)
-
-                for resistor in self.circuit.resistors:
-                    sources.update(self._get_component_noise(resistor))
-            elif component_name == "sum":
-                # show sum of circuit noises
-                self._circuit_properties["noise_sum_to_be_computed"] = True
-            else:
-                # individual component
-                component = self.circuit[component_name]
-                sources.update(self._get_component_noise(component, suffix))
-
-        return sources
-
-    def _get_component_noise(self, component, suffix=None):
-        """Get noise list from specified component given the optionally specified suffix"""
-        if suffix is not None:
-            if not isinstance(component, OpAmp):
-                self.p_error("noise suffices cannot be specified on non-op-amps")
-
-            noise = []
-
-            for character in suffix:
-                lchar = character.lower()
-
-                if lchar == "u":
-                    # voltage noise source
-                    try:
-                        noise.append(component.voltage_noise)
-                    except NoiseNotFoundError:
-                        # noise not found
-                        pass
-                elif lchar == "+":
-                    # non-inverting input current noise
-                    try:
-                        noise.append(component.non_inv_current_noise)
-                    except NoiseNotFoundError:
-                        # noise not found
-                        pass
-                elif lchar == "-":
-                    # inverting input current noise
-                    try:
-                        noise.append(component.inv_current_noise)
-                    except NoiseNotFoundError:
-                        # noise not found
-                        pass
-                else:
-                    self.p_error("unrecognised op-amp noise suffix '%s'" % character)
-        else:
-            # all noise sources
-            noise = component.noise
-
-        return noise
-
-    @property
-    def displayed_noise_objects(self):
-        """Noise sources to be plotted"""
-        return self._get_noise_objects(self.noisy_elements)
+                self.add_response_output(sink)
 
     @property
     def summed_noise_objects(self):
-        """Noise sources included in the sum column"""
-        # check "sum" is not present in noisy definitions
-        if "sum" in [definition[0].split(":")[0] for definition in self.noisy_sum_elements]:
+        """Noise sources included in the sum column.
+
+        Overrides parent.
+        """
+        if "sum" in [noisy_element.component for noisy_element in self.noisy_sum_elements]:
             self.p_error("cannot specify 'sum' as noisy source")
 
-        sum_sources = self._get_noise_objects(self.noisy_sum_elements)
-
-        # add displayed noise sources if not already present
+        sum_sources = super().summed_noise_objects
+        # Add displayed noise sources if not already present.
         sum_sources.update(self.displayed_noise_objects)
 
         return sum_sources
@@ -453,7 +339,7 @@ class LisoInputParser(LisoParser):
                     # compensate for mistaken newlines
                     lineno -= p.value.count("\n")
                 else:
-                    message = "'%s'" % p.value
+                    message = f"'{p.value}'"
             else:
                 # error message thrown by production
                 message = str(p)
@@ -468,8 +354,9 @@ class LisoInputParser(LisoParser):
         raise LisoParserError(message, line=lineno)
 
     def _parse_passive(self, passive_type, *params):
-        if len(params) != 4:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam != 4:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         arg_names = ["name", "value", "node1", "node2"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
@@ -481,20 +368,21 @@ class LisoInputParser(LisoParser):
         elif passive_type == "l":
             self.circuit.add_inductor(**kwargs)
         else:
-            self.p_error("unrecognised passive component '{cmp}'".format(cmp=passive_type))
+            self.p_error(f"unrecognised passive component '{passive_type}'")
 
     def _parse_mutual_inductance(self, name, coupling_factor, inductor_1, inductor_2):
         coupling = (name, coupling_factor, inductor_1, inductor_2)
         self._circuit_properties["inductor_couplings"].append(coupling)
 
     def _parse_library_opamp(self, *params):
-        if len(params) < 5 or len(params) > 6:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam < 5 or nparam > 6:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         arg_names = ["name", "model", "node1", "node2", "node3"]
         kwargs = {name: value for name, value in zip(arg_names, params)}
 
-        if len(params) == 6:
+        if nparam == 6:
             # parse extra arguments, e.g. "sr=38e6", into dict params
             kwargs = {**kwargs, **self._parse_op_amp_overrides(params[5])}
 
@@ -522,8 +410,9 @@ class LisoInputParser(LisoParser):
         return extra_args
 
     def _parse_frequencies(self, *params):
-        if len(params) != 4:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam != 4:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         scale = params[0]
         start = Quantity(params[1], "Hz")
@@ -537,45 +426,47 @@ class LisoInputParser(LisoParser):
             self.frequencies = np.logspace(np.log10(start), np.log10(stop),
                                            count)
         else:
-            self.p_error("invalid frequency scale '{scale}'".format(scale=scale))
+            self.p_error(f"invalid frequency scale '{scale}'")
 
     def _parse_voltage_input(self, *params):
-        if len(params) < 1 or len(params) > 3:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam < 1 or nparam > 3:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         self.input_type = "voltage"
 
         # we always have at least a positive node
         self.input_node_p = params[0]
 
-        if len(params) == 3:
+        if nparam == 3:
             # floating input
             self.input_node_n = params[1]
             self.input_impedance = params[2]
-        elif len(params) == 2:
+        elif nparam == 2:
             self.input_impedance = params[1]
         else:
             # default
             self.input_impedance = 50
 
     def _parse_current_input(self, *params):
-        if len(params) < 1 or len(params) > 2:
-            self.p_error("unexpected parameter count (%d)" % len(params))
+        nparam = len(params)
+        if nparam < 1 or nparam > 2:
+            self.p_error(f"unexpected parameter count ({nparam})")
 
         self.input_type = "current"
 
         # only a positive node
         self.input_node_p = params[0]
 
-        if len(params) == 2:
+        if nparam == 2:
             self.input_impedance = params[1]
         else:
             # default
             self.input_impedance = 50
 
     def _parse_voltage_output(self, output_str):
-        # transfer function output
-        self.output_type = "tf"
+        # Response output.
+        self.output_type = "response"
 
         for param in output_str.split():
             # split option by colon
@@ -596,11 +487,11 @@ class LisoInputParser(LisoParser):
             self.output_all_opamp_nodes_scales = scales
         else:
             # add output
-            self.add_tf_output(LisoOutputVoltage(node=node_name, scales=scales))
+            self.add_response_output(LisoOutputVoltage(node=node_name, scales=scales))
 
     def _parse_current_output(self, output_str):
-        # transfer function output
-        self.output_type = "tf"
+        # Response output.
+        self.output_type = "response"
 
         for param in output_str.split():
             # split option by colon
@@ -621,7 +512,7 @@ class LisoInputParser(LisoParser):
             self.output_all_opamps_scales = scales
         else:
             # add output
-            self.add_tf_output(LisoOutputCurrent(component=component_name, scales=scales))
+            self.add_response_output(LisoOutputCurrent(component=component_name, scales=scales))
 
     def _parse_noise_output(self, noise_str):
         # split by whitespace
@@ -645,8 +536,16 @@ class LisoInputParser(LisoParser):
                 # too many colons
                 self.p_error("unexpected extra ':'")
 
-            # add raw noise definition and any suffices
-            self._circuit_properties["noisy_elements"].append(source_pieces)
+            component_name = source_pieces[0]
+
+            if len(source_pieces) > 1:
+                # Op-amp port name(s).
+                ports = source_pieces[1]
+            else:
+                ports = None
+
+            # Add noise definition.
+            self.add_noisy_element(LisoNoisyElement(component=component_name, suffix=ports))
 
     def _parse_noisy_source(self, noisy_str):
         """Set contributions to "sum" noise curve"""
@@ -661,5 +560,17 @@ class LisoInputParser(LisoParser):
             # split off op-amp port settings
             source_pieces = source_str.split(":")
 
-            # add raw noise definition and any suffices
-            self._circuit_properties["noisy_sum_elements"].append(source_pieces)
+            if len(source_pieces) > 2:
+                # too many colons
+                self.p_error("unexpected extra ':'")
+
+            component_name = source_pieces[0]
+
+            if len(source_pieces) > 1:
+                # Op-amp port name(s).
+                ports = source_pieces[1]
+            else:
+                ports = None
+
+            # Add noise definition.
+            self.add_noisy_sum_element(LisoNoisyElement(component=component_name, suffix=ports))

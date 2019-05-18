@@ -15,8 +15,8 @@ def frequencies_match(vector_a, vector_b):
 
 def vectors_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
-                       rtol=float(CONF["data"]["tf_rel_tol"]),
-                       atol=float(CONF["data"]["tf_abs_tol"]))
+                       rtol=float(CONF["data"]["response_rel_tol"]),
+                       atol=float(CONF["data"]["response_abs_tol"]))
 
 def spectra_match(vector_a, vector_b):
     return np.allclose(vector_a, vector_b,
@@ -88,7 +88,7 @@ class Series:
             # don't need to scale
             pass
         else:
-            raise ValueError("cannot handle scale %s" % mag_scale)
+            raise ValueError(f"cannot handle scale '{mag_scale}'")
 
         if phase_scale.lower() == "deg":
             phase = np.radians(phase)
@@ -96,7 +96,7 @@ class Series:
             # don't need to scale
             pass
         else:
-            raise ValueError("cannot handle scale %s" % phase_scale)
+            raise ValueError(f"cannot handle scale '{phase_scale}'")
 
         # convert magnitude and phase to complex
         complex_ = magnitude * (np.cos(phase) + 1j * np.sin(phase))
@@ -138,8 +138,20 @@ class Series:
 
         return cls(x=x, y=complex_)
 
-    def __mul__(self, factor):
-        return Series(self.x, self.y * factor)
+    def __mul__(self, other):
+        if hasattr(other, "y"):
+            # Extract data.
+            other = other.y
+        return Series(self.x, self.y * other)
+
+    def __div__(self, other):
+        if hasattr(other, "y"):
+            # Extract data.
+            other = other.y
+        return Series(self.x, self.y / other)
+
+    def __truediv__(self, other):
+        return self.__div__(other)
 
     def __eq__(self, other):
         """Checks if the specified series is identical to this one, within tolerance"""
@@ -153,9 +165,6 @@ class Function(metaclass=abc.ABCMeta):
         self.sinks = list(sinks)
         self.series = series
 
-        # text to add in brackets after label
-        self.label_suffix = ""
-
     @property
     def frequencies(self):
         return self.series.x
@@ -164,17 +173,8 @@ class Function(metaclass=abc.ABCMeta):
     def draw(self, *axes):
         raise NotImplementedError
 
-    def label(self, tex=False):
-        label_str = self._label_base(tex)
-
-        if self.label_suffix:
-            label_str += " (%s)" % self.label_suffix
-
-        return label_str
-
     @abc.abstractmethod
-    def _label_base(self, tex):
-        """Data set label, without suffix."""
+    def label(self, tex=False, suffix=None):
         raise NotImplementedError
 
     def __str__(self):
@@ -240,8 +240,8 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
         return self.sink.SOURCE_SINK_UNIT
 
 
-class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
-    """Transfer function data series"""
+class Response(SingleSourceFunction, SingleSinkFunction, Function):
+    """Response data series"""
     @property
     def magnitude(self):
         return db(np.abs(self.series.y))
@@ -254,64 +254,71 @@ class TransferFunction(SingleSourceFunction, SingleSinkFunction, Function):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes):
+    def _draw_magnitude(self, axes, label_suffix=None):
         """Add magnitude plot to axes"""
-        axes.semilogx(self.frequencies, self.magnitude, label=self.label(tex=True))
+        label = self.label(tex=True, suffix=label_suffix)
+        axes.semilogx(self.frequencies, self.magnitude, label=label)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
         axes.semilogx(self.frequencies, self.phase)
 
-    def draw(self, *axes):
+    def draw(self, *axes, **kwargs):
         if len(axes) != 2:
             raise ValueError("two axes (magnitude and phase) must be provided")
 
-        self._draw_magnitude(axes[0])
+        self._draw_magnitude(axes[0], **kwargs)
         self._draw_phase(axes[1])
 
-    def _label_base(self, tex=False):
+    def label(self, tex=False, suffix=None):
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)%s"
         else:
-            format_str = "%s to %s (%s)"
+            format_str = "%s to %s (%s)%s"
 
-        return format_str % (self.source.label(), self.sink.label(), self.unit_str)
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+
+        return format_str % (self.source.label(), self.sink.label(), self.unit_str, suffix)
 
     @property
     def unit_str(self):
         if self.sink_unit is None and self.source_unit is None:
             return "dimensionless"
-        elif self.sink_unit is None:
-            # only source has unit
-            return "1/%s" % self.source_unit
-        elif self.source_unit is None:
-            # only sink has unit
+        if self.sink_unit is None:
+            # Only source has unit.
+            return f"1/{self.source_unit}"
+        if self.source_unit is None:
+            # Only sink has unit.
             return self.sink_unit
 
-        # both have units
-        return "%s/%s" % (self.sink_unit, self.source_unit)
+        # Both have units.
+        return f"{self.sink_unit}/{self.source_unit}"
 
 
-class NoiseSpectrumBase(SingleSinkFunction, metaclass=abc.ABCMeta):
-    """Function with a single noise spectrum."""
+class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
+    """Function with a single noise spectral density."""
     @property
-    def spectrum(self):
+    def spectral_density(self):
         return self.series.y
 
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
-        return spectra_match(self.spectrum, other.spectrum)
+        return spectra_match(self.spectral_density, other.spectral_density)
 
-    def draw(self, *axes):
+    def draw(self, *axes, label_suffix=None):
         if len(axes) != 1:
             raise ValueError("only one axis supported")
 
         axes = axes[0]
 
-        axes.loglog(self.frequencies, self.spectrum, label=self.label(tex=True))
+        label = self.label(tex=True, suffix=label_suffix)
+        axes.loglog(self.frequencies, self.spectral_density, label=label)
 
 
-class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
+class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
     """Noise data series"""
     @property
     def noise_name(self):
@@ -325,16 +332,21 @@ class NoiseSpectrum(SingleSourceFunction, NoiseSpectrumBase):
     def noise_subtype(self):
         return self.source.SUBTYPE
 
-    def _label_base(self, tex=False):
+    def label(self, tex=False, suffix=None):
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$%s"
         else:
-            format_str = "%s to %s"
+            format_str = "%s to %s%s"
 
-        return format_str % (self.noise_name, self.sink.label())
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+
+        return format_str % (self.noise_name, self.sink.label(), suffix)
 
 
-class MultiNoiseSpectrum(NoiseSpectrumBase):
+class MultiNoiseDensity(NoiseDensityBase):
     """Set of noise data series from multiple sources to a single sink"""
     def __init__(self, sources=None, series=None, constituents=None, label="incoherent sum",
                  **kwargs):
@@ -353,17 +365,18 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
             if sources is not None:
                 raise ValueError("cannot specify constituents and sources together")
 
-            # use first spectrum to get sink and frequencies
+            # Use first spectral density to get sink and frequencies.
             frequencies = constituents[0].frequencies
 
             # check frequency axes are identical
-            if not np.all([frequencies == spectrum.series.x for spectrum in constituents]):
+            if not np.all([frequencies == spectral_density.series.x
+                           for spectral_density in constituents]):
                 raise ValueError("specified spectra do not share common x-axis")
 
-            sources = [spectrum.source for spectrum in constituents]
+            sources = [spectral_density.source for spectral_density in constituents]
 
             # store constituent series
-            self.constituent_noise = [spectrum.series for spectrum in constituents]
+            self.constituent_noise = [spectral_density.series for spectral_density in constituents]
 
             # create series
             noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
@@ -376,7 +389,7 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
 
         if constituents is not None:
             # check sink agrees with those set in constituents
-            if not all([self.sink == spectrum.sink for spectrum in constituents]):
+            if not all([self.sink == spectral_density.sink for spectral_density in constituents]):
                 raise Exception("cannot handle noise for functions with different sinks")
 
     @property
@@ -384,7 +397,11 @@ class MultiNoiseSpectrum(NoiseSpectrumBase):
         if self.constituent_noise is None:
             return "unknown"
 
-        return [spectrum.noise_name for spectrum in self.constituent_noise]
+        return [spectral_density.noise_name for spectral_density in self.constituent_noise]
 
-    def _label_base(self, *args, **kwargs):
-        return self._label
+    def label(self, *args, suffix=None, **kwargs):
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+        return f"{self._label}{suffix}"

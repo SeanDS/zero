@@ -6,12 +6,14 @@ import numpy as np
 from zero.liso import LisoInputParser, LisoParserError
 from zero.components import Node, NoiseNotFoundError
 
+
 class LisoInputParserTestCase(unittest.TestCase):
     def setUp(self):
         self.reset()
 
     def reset(self):
         self.parser = LisoInputParser()
+
 
 class ResistorTestCase(LisoInputParserTestCase):
     def test_resistor(self):
@@ -22,6 +24,7 @@ class ResistorTestCase(LisoInputParserTestCase):
         self.assertEqual(r.node1, Node("n1"))
         self.assertEqual(r.node2, Node("n2"))
 
+
 class CapacitorTestCase(LisoInputParserTestCase):
     def test_capacitor(self):
         self.parser.parse("c c1 10n n1 n2")
@@ -31,6 +34,7 @@ class CapacitorTestCase(LisoInputParserTestCase):
         self.assertEqual(c.node1, Node("n1"))
         self.assertEqual(c.node2, Node("n2"))
 
+
 class InductorTestCase(LisoInputParserTestCase):
     def test_inductor(self):
         self.parser.parse("l l1 10u n1 n2")
@@ -39,6 +43,7 @@ class InductorTestCase(LisoInputParserTestCase):
         self.assertAlmostEqual(l.inductance, 10e-6)
         self.assertEqual(l.node1, Node("n1"))
         self.assertEqual(l.node2, Node("n2"))
+
 
 class OpAmpTestCase(LisoInputParserTestCase):
     def test_opamp(self):
@@ -51,7 +56,7 @@ class OpAmpTestCase(LisoInputParserTestCase):
         self.assertEqual(op.node3, Node("n3"))
 
     def test_invalid_model(self):
-        self.assertRaisesRegex(ValueError, r"op-amp model __opinvalid__ not found in library",
+        self.assertRaisesRegex(ValueError, r"op-amp model '__opinvalid__' not found in library",
                                self.parser.parse, "op op1 __opinvalid__ n1 n2 n3")
 
     def test_opamp_override(self):
@@ -81,6 +86,7 @@ c c1 10u gnd n1
         self.assertRaisesRegex(LisoParserError,
                                r"unknown op-amp override parameter 'a1' \(line 3\)",
                                self.parser.parse, text=text)
+
 
 class FrequencyTestCase(LisoInputParserTestCase):
     def test_frequencies(self):
@@ -115,6 +121,7 @@ c c1 10u gnd n1
         self.assertRaisesRegex(LisoParserError, r"cannot redefine frequencies \(line 2\)",
                                self.parser.parse, "freq lin 0.1 100k 1000")
 
+
 class VoltageInputTestCase(LisoInputParserTestCase):
     def test_input(self):
         self.parser.parse("uinput nin")
@@ -143,6 +150,7 @@ class VoltageInputTestCase(LisoInputParserTestCase):
 
         self.parser.parse("uinput nin 1e3")
         self.assertAlmostEqual(self.parser.input_impedance, 1e3)
+
 
 class CurrentInputTestCase(LisoInputParserTestCase):
     def test_input(self):
@@ -173,6 +181,7 @@ class CurrentInputTestCase(LisoInputParserTestCase):
 
         self.parser.parse("iinput nin 1e3")
         self.assertAlmostEqual(self.parser.input_impedance, 1e3)
+
 
 class NoiseOutputNodeTestCase(LisoInputParserTestCase):
     def test_noise(self):
@@ -259,6 +268,7 @@ op op1 op00 gnd n2 n3
         self.assertRaisesRegex(LisoParserError,
                                r"cannot specify 'sum' as noisy source \(line 6\)",
                                getattr, self.parser, "summed_noise_objects")
+
 
 class SyntaxErrorTestCase(LisoInputParserTestCase):
     """Syntax error tests that don't fit into individual components or commands"""

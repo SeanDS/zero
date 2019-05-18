@@ -16,25 +16,8 @@ class AcSignalAnalysisTestCase(TestCase):
     @property
     def default_params(self):
         """Default analysis parameters"""
-        return {"circuit": self.circuit, "frequencies": self.default_f}
+        return {"circuit": self.circuit}
 
     def default_analysis(self):
         """Default analysis"""
         return AcSignalAnalysis(**self.default_params)
-
-    def test_voltage_input(self):
-        """Test set voltage input"""
-        self.circuit.add_input(input_type="voltage", node="nin")
-        self.default_analysis()
-
-    def test_current_input(self):
-        """Test set current input"""
-        self.circuit.add_input(input_type="current", node="nin")
-        self.default_analysis()
-
-    def test_invalid_input(self):
-        """Test input type must be 'voltage' or 'current' for noise analysis"""
-        self.circuit.add_input(input_type="noise", node="nin", impedance=10)
-        self.assertRaisesRegex(ValueError,
-                               r"circuit input type must be either 'voltage' or 'current'",
-                               self.default_analysis)

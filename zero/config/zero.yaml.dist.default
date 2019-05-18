@@ -32,8 +32,8 @@ algebra:
 data:
   # Absolute and relative tolerances for comparisons between transfer
   # functions and noise spectra.
-  tf_abs_tol: 1e-4
-  tf_rel_tol: 1e-4
+  response_abs_tol: 1e-4
+  response_rel_tol: 1e-4
   noise_abs_tol: 1e-5
   noise_rel_tol: 1e-5
 

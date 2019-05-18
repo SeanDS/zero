@@ -54,7 +54,7 @@ class LisoRunner:
 
             if liso_path is None:
                 raise ValueError("LISO path cannot be determined. Set the environment variable "
-                                 "'%s' to the LISO binary path." % LISO_PATH_ENV_VAR)
+                                 f"'{LISO_PATH_ENV_VAR}' to the LISO binary path.")
 
         if output_path is None:
             # use temporary file
@@ -79,16 +79,16 @@ class LisoRunner:
         input_path = os.path.abspath(self.script_path)
 
         if not os.path.exists(input_path):
-            raise Exception("input file %s does not exist" % input_path)
+            raise Exception(f"input file {input_path} does not exist")
 
-        # LISO flags
+        # LISO flags.
         flags = [input_path, output_path]
 
-        # plotting
+        # Plotting.
         if not plot:
             flags.append("-n")
 
-        LOGGER.debug("running LISO binary at %s", liso_path)
+        LOGGER.debug(f"running LISO binary at {liso_path}")
 
         # run LISO
         result = subprocess.run([liso_path, *flags], stdout=subprocess.DEVNULL,
@@ -112,14 +112,14 @@ class LisoError(Exception):
             The path to the script that caused the error (used to check for common mistakes).
         """
         if isinstance(message, bytes):
-            # decode stderr bytes
+            # Decode stderr bytes.
             message = self._parse_liso_error(message.decode("utf-8"))
 
         if script_path is not None:
             if os.path.isfile(script_path):
                 parser = LisoOutputParser()
 
-                # attempt to parse as input
+                # Attempt to parse as input.
                 try:
                     parser.parse(script_path)
 
@@ -128,8 +128,8 @@ class LisoError(Exception):
                     is_output = False
 
                 if is_output:
-                    # add message
-                    message = "{message} (this appears to be a LISO output file)".format(message=message)
+                    # Add message.
+                    message = f"{message} (this appears to be a LISO output file)"
 
         super().__init__(message, *args, **kwargs)
 
@@ -143,4 +143,6 @@ class LisoError(Exception):
                 # return error
                 return line.lstrip("*** Error:")
 
-        return "[error message not detected] LISO output:\n%s" % "\n".join(lines)
+        msg = "\n".join(lines)
+
+        return f"[error message not detected] LISO output:\n{msg}"

@@ -123,10 +123,10 @@ class LibraryQueryParser:
         r'\n+'
         t.lexer.lineno += t.value.count("\n")
 
-    # error handling
+    # Error handling.
     def t_error(self, t):
-        # anything that gets past the other filters
-        raise ValueError("illegal character '%s' on line %i" % (t.value[0], t.lexer.lineno))
+        # Anything that gets past the other filters.
+        raise ValueError(f"illegal character '{t.value[0]}' on line {t.lexer.linenp}")
 
     def t_eof(self, t):
         return None
@@ -155,7 +155,7 @@ class LibraryQueryParser:
                     # compensate for mistaken newlines
                     lineno -= p.value.count("\n")
                 else:
-                    message = "'%s'" % p.value
+                    message = f"'{p.value}'"
             else:
                 # error message thrown by production
                 message = str(p)

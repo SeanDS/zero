@@ -27,15 +27,12 @@ class LisoComparisonTest(TestCase):
 
     def runTest(self):
         # test message
-        message = "Test %s against LISO" % self.script_path
+        message = f"Test {self.script_path} against LISO"
 
-        with self.subTest(msg=message + " (without prescaling)"):
-            self._compare(prescale=False)
+        with self.subTest(msg=message):
+            self._compare()
 
-        with self.subTest(msg=message + " (with prescaling)"):
-            self._compare(prescale=True)
-
-    def _compare(self, **native_kwargs):
+    def _compare(self):
         # get parsed LISO output
         liso_output = self._liso_result()
 
@@ -43,7 +40,7 @@ class LisoComparisonTest(TestCase):
         liso_solution = liso_output.solution()
 
         # run native
-        native_solution = liso_output.solution(force=True, **native_kwargs)
+        native_solution = liso_output.solution(force=True)
 
         # check if they match (only check defaults as LISO only generates defaults)
         self.assertTrue(liso_solution.equivalent_to(native_solution, defaults_only=True))

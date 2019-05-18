@@ -7,6 +7,7 @@ import click
 from tabulate import tabulate
 
 from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
+from .solution import Solution
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
@@ -80,12 +81,10 @@ def cli():
               "figure.")
 @click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of figure to file. Can be specified multiple times.")
-@click.option("--prescale/--no-prescale", default=True, show_default=True,
-              help="Prescale matrices to improve numerical precision.")
 @click.option("--print-equations", is_flag=True, help="Print circuit equations.")
 @click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @click.pass_context
-def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale, print_equations,
+def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equations,
          print_matrix):
     """Parse and simulate LISO input or output file"""
     state = ctx.ensure_object(State)
@@ -99,6 +98,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
         runner = LisoRunner(script_path=file.name)
         parser = runner.run(liso_path, plot=False)
         liso_solution = parser.solution()
+        liso_solution.name = "LISO"
     else:
         # parse specified file
         try:
@@ -116,19 +116,27 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
 
     if compute_native:
         # build argument list
-        kwargs = {"prescale": prescale,
-                  "print_progress": state.verbose,
+        kwargs = {"print_progress": state.verbose,
                   "print_equations": print_equations,
                   "print_matrix": print_matrix}
 
         # get native solution
         native_solution = parser.solution(force=True, **kwargs)
+        native_solution.name = "Native"
 
     # determine solution to show or save
     if compare:
-        # make LISO solution plots dashed
-        for function in liso_solution.functions:
-            liso_solution.function_plot_styles[function] = {'lines.linestyle': "--"}
+        liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
+        def liso_order(function):
+            """Return order as specified in LISO file for specified function"""
+            for index, liso_function in enumerate(liso_functions):
+                if liso_function.meta_equivalent(function):
+                    return index
+
+            raise ValueError(f"{function} is not in LISO solution")
+
+        # Sort native solution in the order defined in the LISO file.
+        native_solution.sort_functions(liso_order, default_only=True)
 
         # show difference before changing labels
         if diff:
@@ -137,10 +145,6 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
                                                       meta_only=True)
 
             click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
-
-        # apply suffix to LISO function labels
-        for function in liso_solution.functions:
-            function.label_suffix = "LISO"
 
         # combine results from LISO and native simulations
         solution = native_solution + liso_solution
@@ -157,8 +161,8 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, prescale,
     generate_plot = plot or save_figure
 
     if generate_plot:
-        if solution.has_tfs:
-            figure = solution.plot_tfs()
+        if solution.has_responses:
+            figure = solution.plot_responses()
         else:
             figure = solution.plot_noise()
 
@@ -193,7 +197,7 @@ def library_create():
     except ConfigAlreadyExistsException as e:
         click.echo(e, err=True)
     else:
-        click.echo("Library created at %s" % LIBRARY.user_config_path)
+        click.echo(f"Library created at {LIBRARY.user_config_path}")
 
 @library.command("edit")
 def library_edit():
@@ -206,8 +210,8 @@ def library_edit():
 @library.command("remove")
 def library_remove():
     """Remove user component library file."""
-    click.confirm("Delete library file at %s?" % click.format_filename(LIBRARY.user_config_path),
-                  abort=True)
+    path = click.format_filename(LIBRARY.user_config_path)
+    click.confirm(f"Delete library file at {path}?", abort=True)
     try:
         LIBRARY.remove_user_config()
     except ConfigDoesntExistException as e:
@@ -296,7 +300,7 @@ def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax,
     else:
         opstr = "op-amps"
 
-    click.echo("%i %s found:" % (nmodel, opstr))
+    click.echo(f"{nmodel} {opstr} found:")
 
     header = ["Model"] + params
     rows = []
@@ -330,7 +334,7 @@ def config_create():
     except ConfigAlreadyExistsException as e:
         click.echo(e, err=True)
     else:
-        click.echo("Config created at %s" % CONF.user_config_path)
+        click.echo(f"Config created at {CONF.user_config_path}")
 
 @config.command("edit")
 def config_edit():
@@ -343,8 +347,8 @@ def config_edit():
 @config.command("remove")
 def config_remove():
     """Remove user config file."""
-    click.confirm("Delete config file at %s?" % click.format_filename(CONF.user_config_path),
-                  abort=True)
+    path = click.format_filename(CONF.user_config_path)
+    click.confirm(f"Delete config file at {path}?", abort=True)
     try:
         CONF.remove_user_config()
     except ConfigDoesntExistException as e:
@@ -388,7 +392,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     else:
         click.echo("Found multiple parts:")
         for index, part in enumerate(parts, 1):
-            click.echo(click.style("%d: %s" % (index, part), fg="green"))
+            click.echo(click.style(f"{index}: {part}", fg="green"))
 
         # get selection
         part_choice = click.IntRange(1, len(parts))
@@ -399,7 +403,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
 
     # get chosen part
     if part.n_datasheets == 0:
-        click.echo("No datasheets found for '%s'" % part.mpn, err=True)
+        click.echo(f"No datasheets found for '{part.mpn}'", err=True)
         sys.exit()
 
     if first or part.n_datasheets == 1:
@@ -411,7 +415,7 @@ def datasheet(ctx, term, first, partial, display, path, timeout):
     else:
         click.echo("Found multiple datasheets:")
         for index, ds in enumerate(part.sorted_datasheets, 1):
-            click.echo(click.style("%d: %s" % (index, ds), fg="green"))
+            click.echo(click.style(f"{index}: {ds}", fg="green"))
 
         # get selection
         datasheet_choice = click.IntRange(1, part.n_datasheets)

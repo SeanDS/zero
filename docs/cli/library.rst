@@ -67,7 +67,7 @@ arbitrarily long and complex, e.g.:
 
 The expression must be defined on one line. Whitespace is ignored. Where values are specified,
 such as "1n", these are parsed by :class:`.Quantity`
-(see :ref:`Formatting and parsing quantities <format/index:Formatting and parsing quantities>`).
+(see :ref:`Parsing and displaying quantities <format/index:Parsing and displaying quantities>`).
 
 Where a string comparison is made, e.g. with ``model``, wildcards are supported:
 
