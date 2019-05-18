@@ -19,19 +19,14 @@ LOGGER = logging.getLogger(__name__)
 
 class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     """Small signal circuit analysis"""
-    def __init__(self, *args, frequencies=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        if frequencies is None:
-            # Default to empty list.
-            frequencies = []
-
-        self.frequencies = np.array(frequencies)
 
         # Create solver.
         self.solver = DefaultSolver()
 
         # Empty fields.
+        self.frequencies = None
         self.input_type = None
         self._current_circuit = None
         self._solution = None
@@ -40,6 +35,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
     def reset(self):
         """Reset state of the analysis"""
+        self.frequencies = None
         self.input_type = None
         self._current_circuit = None
         self._solution = None
@@ -180,11 +176,18 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """Calculate solution."""
         raise NotImplementedError
 
-    def _do_calculate(self, input_type, print_equations=False, print_matrix=False, stream=None,
-                      **inputs):
+    def _do_calculate(self, input_type, frequencies=None, print_equations=False, print_matrix=False,
+                      stream=None, **inputs):
         """Calculate analysis results."""
         # Reset state.
         self.reset()
+
+        if frequencies is None:
+            # Default to empty list.
+            frequencies = []
+
+        self.frequencies = np.array(frequencies)
+
         # Make a copy of the circuit. This allows us to call calculate(), which adds an input
         # component, multiple times.
         self._current_circuit = copy(self.circuit)

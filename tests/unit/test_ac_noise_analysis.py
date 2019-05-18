@@ -18,8 +18,7 @@ class AcNoiseAnalysisTestCase(TestCase):
     @property
     def default_params(self):
         """Default analysis parameters"""
-        return {"circuit": self.circuit, "frequencies": self.default_f,
-                "element": self.default_element}
+        return {"circuit": self.circuit, "element": self.default_element}
 
     def default_analysis(self):
         """Default analysis"""

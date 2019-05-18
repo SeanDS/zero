@@ -451,9 +451,9 @@ class LisoParser(metaclass=abc.ABCMeta):
 
     def _get_analysis(self, **kwargs):
         if self.output_type == "response":
-            return AcSignalAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
+            return AcSignalAnalysis(circuit=self.circuit, **kwargs)
         elif self.output_type == "noise":
-            return AcNoiseAnalysis(circuit=self.circuit, frequencies=self.frequencies, **kwargs)
+            return AcNoiseAnalysis(circuit=self.circuit, **kwargs)
         self.p_error("no outputs requested")
 
     def _run(self, print_progress=False, stream=None, **kwargs):
@@ -461,7 +461,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         self.build()
 
         analysis = self._get_analysis(print_progress=print_progress, stream=stream)
-        analysis_args = {}
+        analysis_args = {'frequencies': self.frequencies}
 
         if self.input_node_n is None:
             # Grounded input.

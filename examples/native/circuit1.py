@@ -26,8 +26,8 @@ if __name__ == "__main__":
     circuit.add_library_opamp(name="op1", model="LT1124", node1="gnd", node2="nm", node3="nout")
 
     # Solve circuit.
-    analysis = AcSignalAnalysis(circuit=circuit, frequencies=frequencies)
-    solution = analysis.calculate(input_type="voltage", node="n1")
+    analysis = AcSignalAnalysis(circuit=circuit)
+    solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1")
 
     # Plot.
     solution.plot_responses(sinks=["nm", "nout", "op1"])
