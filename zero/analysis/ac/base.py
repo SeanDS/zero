@@ -2,6 +2,7 @@
 
 import sys
 import abc
+from copy import copy
 import logging
 from collections import defaultdict
 import numpy as np
@@ -21,15 +22,25 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         super().__init__(*args, **kwargs)
 
         if frequencies is None:
-            # default to empty list
+            # Default to empty list.
             frequencies = []
 
         self.frequencies = np.array(frequencies)
 
-        # create solver
+        # Create solver.
         self.solver = DefaultSolver()
 
-        # empty fields
+        # Empty fields.
+        self.input_type = None
+        self._current_circuit = None
+        self._solution = None
+        self._node_sources = None
+        self._node_sinks = None
+
+    def reset(self):
+        """Reset state of the analysis"""
+        self.input_type = None
+        self._current_circuit = None
         self._solution = None
         self._node_sources = None
         self._node_sinks = None
@@ -37,7 +48,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     def validate_circuit(self):
         """Validate circuit"""
         # Check input type.
-        if self.circuit.input_component.input_type not in ["voltage", "current"]:
+        if self._current_circuit.input_component.input_type not in ["voltage", "current"]:
             raise ValueError("circuit input type must be either 'voltage' or 'current'")
 
     @property
@@ -50,9 +61,9 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
             number of rows/columns in circuit matrix
         """
 
-        # dimension size is the number of components added to circuit, including
-        # the input, plus the number of non-ground nodes
-        return self.circuit.n_components + len(list(self.circuit.non_gnd_nodes))
+        # Dimension size is the number of components added to circuit, including the input, plus the
+        # number of non-ground nodes.
+        return self._current_circuit.n_components + len(list(self._current_circuit.non_gnd_nodes))
 
     @property
     def n_freqs(self):
@@ -93,9 +104,13 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
     def _do_calculate(self, input_type, print_equations=False, print_matrix=False, stream=None,
                       **inputs):
         """Calculate analysis results."""
+        # Reset state.
+        self.reset()
+        # Make a copy of the circuit.
+        self._current_circuit = copy(self.circuit)
+        # Add input.
         self._set_input(input_type, **inputs)
-
-        # Validate the circuit.
+        # Validate.
         self.validate_circuit()
 
         if stream is None:
@@ -112,6 +127,9 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         responses = self.solve()
 
         self._build_solution(responses)
+
+        # Unset the current circuit.
+        self._current_circuit = None
 
     def _set_input(self, input_type, impedance=None, is_noise=False, node=None, node_p=None,
                    node_n=None):
@@ -149,11 +167,11 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
     def _create_input_component(self, node_n, node_p, impedance, is_noise):
         """Create circuit input component."""
-        if self.circuit.has_input:
+        if self._current_circuit.has_input:
             raise Exception("circuit already has input")
 
-        self.circuit.add_component(Input([node_n, node_p], self.input_type, impedance=impedance,
-                                         is_noise=is_noise))
+        self._current_circuit.add_component(Input([node_n, node_p], self.input_type,
+                                                  impedance=impedance, is_noise=is_noise))
 
     @abc.abstractmethod
     def _build_solution(self, results_matrix):
@@ -308,7 +326,8 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         self.reset_sources_and_sinks()
 
         # list of single-input, single-output components
-        siso_components = list(self.circuit.passive_components) + [self.circuit.input_component]
+        siso_components = list(self._current_circuit.passive_components)
+        siso_components += [self._current_circuit.input_component]
 
         # single-input, single-output components sink to their first node and source from
         # their second
@@ -320,7 +339,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         # op-amps source current from their third (output) node (their input nodes are
         # ideal and therefore don't source or sink current)
-        for component in self.circuit.opamps:
+        for component in self._current_circuit.opamps:
             self._node_sources[component.node3].add(component) # current flows out of here
 
     def component_equation(self, component):
@@ -347,35 +366,33 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
 
         if hasattr(component, "input_type"):
             # this is an input component
-            if component.input_type == "current" or (hasattr(component, "is_noise") and component.is_noise):
+            if (component.input_type == "current"
+                or (hasattr(component, "is_noise") and component.is_noise)):
                 # set source impedance
                 coefficients.append(ImpedanceCoefficient(component=component,
                                                          value=component.impedance))
 
-            if component.input_type == "voltage" or (hasattr(component, "is_noise") and component.is_noise):
+            if (component.input_type == "voltage"
+                or (hasattr(component, "is_noise") and component.is_noise)):
                 # set sink node coefficient
                 if component.node_n is not Node("gnd"):
                     # voltage
-                    coefficients.append(VoltageCoefficient(node=component.node_n,
-                                                           value=-1))
+                    coefficients.append(VoltageCoefficient(node=component.node_n, value=-1))
 
                 # set source node coefficient
                 if component.node_p is not Node("gnd"):
                     # voltage
-                    coefficients.append(VoltageCoefficient(node=component.node_p,
-                                                           value=1))
+                    coefficients.append(VoltageCoefficient(node=component.node_p, value=1))
         else:
             # add input node coefficient
             if component.node1 is not Node("gnd"):
                 # voltage
-                coefficients.append(VoltageCoefficient(node=component.node1,
-                                                       value=-1))
+                coefficients.append(VoltageCoefficient(node=component.node1, value=-1))
 
             # add output node coefficient
             if component.node2 is not Node("gnd"):
                 # voltage
-                coefficients.append(VoltageCoefficient(node=component.node2,
-                                                       value=1))
+                coefficients.append(VoltageCoefficient(node=component.node2, value=1))
 
             if hasattr(component, "gain"):
                 # this is an op-amp
@@ -442,7 +459,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
             component equation
         """
 
-        return [self.component_equation(component) for component in self.circuit.components]
+        return [self.component_equation(component) for component in self._current_circuit.components]
 
     @property
     def node_equations(self):
@@ -454,7 +471,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
             sequence of node equations
         """
 
-        return [self.node_equation(node) for node in self.circuit.non_gnd_nodes]
+        return [self.node_equation(node) for node in self._current_circuit.non_gnd_nodes]
 
     def component_matrix_index(self, component):
         """Circuit matrix index corresponding to a component
@@ -486,7 +503,7 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
             node index
         """
 
-        return self.circuit.n_components + self.node_index(node)
+        return self._current_circuit.n_components + self.node_index(node)
 
     def format_element(self, element):
         """Format matrix element for pretty printing.

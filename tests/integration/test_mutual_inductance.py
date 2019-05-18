@@ -1,6 +1,7 @@
 """Mutual inductance integration tests"""
 
 from unittest import TestCase
+from copy import copy
 import numpy as np
 
 from zero import Circuit
@@ -10,6 +11,9 @@ from zero.analysis import AcSignalAnalysis
 class MockMutualInductanceAcSignalAnalysis(AcSignalAnalysis):
     """AC signal analysis where the circuit matrix can be retrieved directly."""
     def set_input(self, **kwargs):
+        # Make a copy of the circuit and set its input. This is normally performed by
+        # _do_calculate().
+        self._current_circuit = copy(self.circuit)
         self._set_input(**kwargs)
 
     def circuit_matrix(self, frequency):

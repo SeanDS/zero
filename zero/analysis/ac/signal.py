@@ -41,7 +41,7 @@ class AcSignalAnalysis(BaseAcAnalysis):
         empty = []
 
         # Output component indices.
-        for component in self.circuit.components:
+        for component in self._current_circuit.components:
             # Extract response for this component.
             response = responses[self.component_matrix_index(component), :]
 
@@ -54,9 +54,9 @@ class AcSignalAnalysis(BaseAcAnalysis):
 
             # Create appropriate response function depending on input type.
             if self.has_voltage_input:
-                source = self.circuit.input_component.node_p
+                source = self._current_circuit.input_component.node_p
             elif self.has_current_input:
-                source = self.circuit.input_component
+                source = self._current_circuit.input_component
             else:
                 raise ValueError("specify either a current or voltage input")
 
@@ -66,7 +66,7 @@ class AcSignalAnalysis(BaseAcAnalysis):
             self.solution.add_response(function)
 
         # Output node indices.
-        for node in self.circuit.non_gnd_nodes:
+        for node in self._current_circuit.non_gnd_nodes:
             # Extract response for this node.
             response = responses[self.node_matrix_index(node), :]
 
@@ -79,9 +79,9 @@ class AcSignalAnalysis(BaseAcAnalysis):
 
             # Create appropriate response function depending on input type.
             if self.has_voltage_input:
-                source = self.circuit.input_component.node_p
+                source = self._current_circuit.input_component.node_p
             elif self.has_current_input:
-                source = self.circuit.input_component
+                source = self._current_circuit.input_component
             else:
                 raise ValueError("specify either a current or voltage input")
 
@@ -96,19 +96,19 @@ class AcSignalAnalysis(BaseAcAnalysis):
     @property
     def input_component_index(self):
         """Input component's matrix index"""
-        return self.component_matrix_index(self.circuit.input_component)
+        return self.component_matrix_index(self._current_circuit.input_component)
 
     @property
     def input_node_index(self):
         """Input node's matrix index"""
-        return self.node_matrix_index(self.circuit.input_component.node2)
+        return self.node_matrix_index(self._current_circuit.input_component.node2)
 
     @property
     def has_voltage_input(self):
         """Check if circuit has a voltage input."""
-        return self.circuit.input_component.input_type == "voltage"
+        return self._current_circuit.input_component.input_type == "voltage"
 
     @property
     def has_current_input(self):
         """Check if circuit has a current input."""
-        return self.circuit.input_component.input_type == "current"
+        return self._current_circuit.input_component.input_type == "current"
