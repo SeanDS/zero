@@ -606,7 +606,7 @@ class Circuit:
         """
         try:
             self.input_component
-        except ValueError:
+        except ComponentNotFoundError:
             return False
 
         return True
