@@ -10,6 +10,15 @@ LOGGER = logging.getLogger(__name__)
 
 class AcSignalAnalysis(BaseAcAnalysis):
     """AC signal analysis"""
+    def calculate(self, input_type, **kwargs):
+        """Calculate responses."""
+        if input_type == "current":
+            # Set impedance to give correct scaling.
+            impedance = 1
+        else:
+            impedance = None
+        self._do_calculate(input_type, impedance=impedance, **kwargs)
+
     @property
     def right_hand_side_index(self):
         """Right hand side excitation component index"""
