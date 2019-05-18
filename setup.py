@@ -8,11 +8,11 @@ REQUIREMENTS = [
     "scipy >= 1.1",
     "matplotlib >= 3.0",
     "requests >= 2.19",
-    "progressbar2 >= 3.38",
-    "tabulate >= 0.8",
-    "setuptools_scm >= 3.1",
+    "progressbar2 >= 3.38.0",
+    "tabulate >= 0.8.2",
+    "setuptools_scm >= 3.1.0",
     "ply >= 3.11",
-    "click == 7.0",
+    "Click == 7.0",
     "PyYAML >= 3.13"
 ]
 
