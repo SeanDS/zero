@@ -32,7 +32,7 @@ class LisoComparisonTest(TestCase):
         with self.subTest(msg=message):
             self._compare()
 
-    def _compare(self, **native_kwargs):
+    def _compare(self):
         # get parsed LISO output
         liso_output = self._liso_result()
 
@@ -40,7 +40,7 @@ class LisoComparisonTest(TestCase):
         liso_solution = liso_output.solution()
 
         # run native
-        native_solution = liso_output.solution(force=True, **native_kwargs)
+        native_solution = liso_output.solution(force=True)
 
         # check if they match (only check defaults as LISO only generates defaults)
         self.assertTrue(liso_solution.equivalent_to(native_solution, defaults_only=True))
