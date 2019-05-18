@@ -19,6 +19,9 @@ class MockMutualInductanceAcSignalAnalysis(AcSignalAnalysis):
     def circuit_matrix(self, frequency):
         return super().circuit_matrix(frequency)
 
+    def get_component_from_current_circuit(self, name):
+        return self._current_circuit[name]
+
 
 class MutualInductanceTestCase(TestCase):
     """Mutual inductance tests"""
@@ -42,18 +45,18 @@ class MutualInductanceTestCase(TestCase):
         # Get circuit matrix, with prescaling switched off so we can directly compare values.
         analysis = MockMutualInductanceAcSignalAnalysis(circuit=self.circuit)
 
+        # Add circuit input.
+        analysis.set_input(input_type="voltage", node="n1")
+
         # Get inductors.
-        l1 = self.circuit["l1"]
-        l2 = self.circuit["l2"]
-        l3 = self.circuit["l3"]
+        l1 = analysis.get_component_from_current_circuit("l1")
+        l2 = analysis.get_component_from_current_circuit("l2")
+        l3 = analysis.get_component_from_current_circuit("l3")
 
         # Get inductor current indices.
         l1_index = analysis.component_matrix_index(l1)
         l2_index = analysis.component_matrix_index(l2)
         l3_index = analysis.component_matrix_index(l3)
-
-        # Add circuit input.
-        analysis.set_input(input_type="voltage", node="n1")
 
         # Check at various frequency decades.
         for frequency in np.logspace(-3, 6, 10):

@@ -23,11 +23,12 @@ class AcNoiseAnalysis(AcSignalAnalysis):
     @noise_sink.setter
     def noise_sink(self, sink):
         if not hasattr(sink, "name"):
-            # This is an element name. Get the object.
-            sink = self._current_circuit.get_element(sink)
+            # This is an element name. Get the object. We use the user-supplied circuit here because
+            # the copy may not have been created by this point.
+            sink = self.circuit.get_element(sink)
         self._noise_sink = sink
 
-    def calculate(self, input_type, sink, impedance=None, project_to=None, **kwargs):
+    def calculate(self, input_type, sink, impedance=None, **kwargs):
         """Calculate noise from circuit elements at a particular element.
 
         Parameters
@@ -38,8 +39,6 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             The element to calculate noise at.
         impedance : float or :class:`.Quantity`, optional
             Input impedance. If None, the default is used.
-        project_to : bool, optional
-            The element to project the noise at the specified sink.
 
         Returns
         -------
@@ -109,6 +108,11 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         if empty:
             empty_sources = ", ".join([str(response) for response in empty])
             LOGGER.debug(f"empty noise sources: {empty_sources}")
+
+    def to_signal_analysis(self):
+        """Return a new signal analysis using the settings defined in the current analysis."""
+        return AcSignalAnalysis(self.circuit, frequencies=self.frequencies,
+                                print_progress=self.print_progress, stream=self.stream)
 
     @property
     def noise_element_index(self):
