@@ -3,23 +3,22 @@
 Input file parsing
 ==================
 
-|Zero| is capable of parsing some LISO input files. First, import the LISO input parser:
+.. code:: python
+
+    >>> from zero.liso import LisoInputParser
+
+|Zero| is capable of parsing :ref:`most <liso/input:Known incompatibilities>` LISO input files.
+To start, create a new parser:
 
 .. code:: python
 
-    from zero.liso import LisoInputParser
-
-then create a parser object:
-
-.. code:: python
-
-    parser = LisoInputParser()
+    >>> parser = LisoInputParser()
 
 To parse a LISO circuit, either call the :meth:`~.LisoParser.parse` method with text:
 
 .. code:: python
 
-    parser.parse("""
+    >>> parser.parse("""
     c c1 10u gnd n1
     r r1 430 n1 nm
     r r2 43k nm nout
@@ -36,27 +35,24 @@ Or point it to a file using the :code:`path` parameter:
 
 .. code:: python
 
-    parser.parse(path="/path/to/liso/script.fil")
+    >>> parser.parse(path="/path/to/liso/script.fil")
 
 Get the solution with :meth:`~.LisoParser.solution` and plot and show it with
 :meth:`.Solution.plot` and :meth:`.Solution.show`:
 
 .. code:: python
 
-    solution = parser.solution()
-    solution.plot()
-    solution.show()
+    >>> solution = parser.solution()
+    >>> solution.plot()
+    >>> solution.show()
 
 .. image:: /_static/liso-input-response.svg
 
 You can at any time list the circuit's constituent components:
 
-.. code:: python
+.. code-block:: python
 
-    parser.circuit
-
-.. code-block:: text
-
+    >>> parser.circuit
     Circuit with 6 components and 5 nodes
 
     	1. c1 [in=gnd, out=n1, C=1e-05]
@@ -70,8 +66,8 @@ You can also plot the circuit's node network using Graphviz, if installed:
 
 .. code:: python
 
-    from zero.display import NodeGraph
-    NodeGraph(parser.circuit)
+    >>> from zero.display import NodeGraph
+    >>> NodeGraph(parser.circuit)
 
 .. image:: /_static/liso-input-node-graph.svg
 

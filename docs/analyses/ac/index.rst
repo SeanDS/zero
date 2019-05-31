@@ -129,6 +129,5 @@ Noise analysis requires an essentially identical approach to building the circui
 that the matrix is transposed and the right hand side is given a ``1`` in the row corresponding to
 the chosen noise output node instead of the input. This results in the solution ``x`` in the matrix
 equation ``Ax = b`` instead providing what amounts to the reverse responses between the component
-component and nodes in the circuit and the chosen noise output node. These reverse responses are
-as a last step multiplied by the noise at each component and node to infer the noise at the noise
-output node.
+and nodes in the circuit and the chosen noise output node. These reverse responses are as a last
+step multiplied by the noise at each component and node to infer the noise at the noise output node.
