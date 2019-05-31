@@ -16,17 +16,23 @@ Components
 What is a 'component'?
 ----------------------
 
-A :class:`component <.Component>` represents a circuit device which sources or
-sinks current, and produces voltage drops between its :class:`nodes <.Node>`.
-:class:`Passive <.PassiveComponent>` components such as :class:`resistors <.Resistor>`,
-:class:`capacitors <.Capacitor>` and :class:`inductors <.Inductor>` do not produce or
-amplify signals, but only apply an impedance to their input. Active components such as
-:class:`op-amps <.OpAmp>` can source current.
+A :class:`component <.Component>` represents a circuit device which sources or sinks current, and
+produces voltage drops between its :class:`nodes <.Node>`. :class:`Passive <.PassiveComponent>`
+components such as :class:`resistors <.Resistor>`, :class:`capacitors <.Capacitor>` and
+:class:`inductors <.Inductor>` do not produce or amplify signals, but only apply an impedance to
+their input. Active components such as :class:`op-amps <.OpAmp>` can source current.
 
-Instantiated components may be added to :class:`circuits <.Circuit>` using
-:meth:`.add_component`; however, the methods :meth:`.add_resistor`, :meth:`.add_capacitor`,
-:meth:`.add_inductor` and :meth:`.add_opamp` allow components to be created and added to
-a circuit at the same time.
+Instantiated components may be added to :class:`circuits <.Circuit>` using :meth:`.add_component`;
+however, the methods :meth:`.add_resistor`, :meth:`.add_capacitor`, :meth:`.add_inductor` and
+:meth:`.add_opamp` allow components to be created and added to a circuit at the same time, and avoid
+the need to import them directly.
+
+.. note::
+
+    The recommended way to add components to a circuit is using the :meth:`.add_resistor`,
+    :meth:`.add_capacitor`, :meth:`.add_inductor` and :meth:`.add_opamp` methods. This offers the
+    same functionality as creating component objects directly, but avoids the need to import the
+    component classes in your script.
 
 Component noise sources
 -----------------------
