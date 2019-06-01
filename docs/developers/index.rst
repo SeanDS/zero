@@ -49,6 +49,36 @@ The steps below should be followed when creating a new release:
 #. Delete the release branch: ``git branch -d release/x.x.x``.
 #. Push all changes to ``master`` and ``develop`` and the new tag to origin.
 
+Updating PyPI (pip) package
+---------------------------
+
+This requires `twine <https://packaging.python.org/key_projects/#twine>`__ and the credentials for
+the Zero PyPI project.
+
+#. Go to the source root directory.
+#. Checkout the ``master`` branch (so the release uses the correct tag).
+#. Remove previously generated distribution files:
+   ``rm -rf build dist``
+
+#. Create new distribution files:
+   ``python setup.py sdist bdist_wheel``
+
+#. (Optional) Upload distribution files to PyPI test server, entering the required credentials when
+   prompted:
+   ``python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*``
+
+   You can then check the package is uploaded properly by viewing the `Zero project on the PyPI test server`_.
+   You can also check that it installs correctly with:
+   ``pip install --index-url https://test.pypi.org/simple/ --no-deps zero``
+
+   Note: even if everything installs correctly, the test package will not work correctly due to lack
+   of dependencies (forced by the ``--no-deps`` flag, since they are not all available on the PyPI
+   test server).
+#. Upload distribution files to PyPI, entering the required credentials when prompted:
+   ``python -m twine upload dist/*``
+
+#. Verify everything is up-to-date on `PyPI <https://pypi.org/project/zero/>`__.
+
 API documentation
 ~~~~~~~~~~~~~~~~~
 
@@ -57,9 +87,9 @@ API documentation
 
     api/modules
 
-
 .. _PEP 8: https://www.python.org/dev/peps/pep-0008/
 .. _NumPy docstring format: https://numpydoc.readthedocs.io/en/latest/example.html
 .. _Google style: https://developers.google.com/style/
 .. _merge request: https://git.ligo.org/sean-leavey/zero/merge_requests
 .. _A successful Git branching model: https://nvie.com/posts/a-successful-git-branching-model/
+.. _Zero project on the PyPI test server: https://test.pypi.org/project/zero/
