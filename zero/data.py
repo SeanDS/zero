@@ -43,7 +43,6 @@ class Series:
     def __init__(self, x, y):
         if x.shape != y.shape:
             raise ValueError("specified x and y vectors do not have the same shape")
-
         self.x = x
         self.y = y
 
@@ -243,12 +242,16 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
 class Response(SingleSourceFunction, SingleSinkFunction, Function):
     """Response data series"""
     @property
+    def complex_magnitude(self):
+        return self.series.y
+
+    @property
     def magnitude(self):
-        return db(np.abs(self.series.y))
+        return db(np.abs(self.complex_magnitude))
 
     @property
     def phase(self):
-        return np.angle(self.series.y) * 180 / np.pi
+        return np.angle(self.complex_magnitude) * 180 / np.pi
 
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
