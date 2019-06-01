@@ -582,7 +582,7 @@ class Node(metaclass=NamedInstance):
 
 
 class Noise(metaclass=abc.ABCMeta):
-    """Noise spectral density.
+    """Noise source.
 
     Parameters
     ----------
@@ -622,7 +622,7 @@ class Noise(metaclass=abc.ABCMeta):
 
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
-    """Component noise spectral density.
+    """Component noise source.
 
     Parameters
     ----------
@@ -646,7 +646,7 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
 
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
-    """Node noise spectral density.
+    """Node noise source.
 
     Parameters
     ----------
@@ -673,6 +673,7 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
 
 
 class VoltageNoise(ComponentNoise):
+    """Component voltage noise source."""
     SUBTYPE = "voltage"
 
     def label(self):
@@ -680,6 +681,7 @@ class VoltageNoise(ComponentNoise):
 
 
 class JohnsonNoise(VoltageNoise):
+    """Resistor Johnson-Nyquist noise source."""
     SUBTYPE = "johnson"
 
     def __init__(self, resistance, *args, **kwargs):
@@ -703,6 +705,7 @@ class JohnsonNoise(VoltageNoise):
 
 
 class CurrentNoise(NodeNoise):
+    """Node current noise source."""
     SUBTYPE = "current"
 
     def label(self):

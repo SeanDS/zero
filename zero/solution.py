@@ -315,9 +315,9 @@ class Solution:
 
         if groups != self.RESPONSE_GROUPS_ALL:
             # Filter by group.
-            for group in responses:
+            for group in list(responses):
                 if group not in groups:
-                    del responses[groups]
+                    del responses[group]
 
         if sources != self.RESPONSE_SOURCES_ALL:
             if isinstance(sources, str):
@@ -357,6 +357,52 @@ class Solution:
 
         return responses
 
+    def get_response(self, source, sink, group=None):
+        """Get response from specified source to specified sink.
+
+        This is a convenience method for :meth:`.filter_responses` for when only a single response
+        is required.
+
+        Parameters
+        ----------
+        source : :class:`str` or :class:`.Node` or :class:`.Component`
+            The response source element.
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`
+            The response sink element.
+        group : :class:`str`, optional
+            The response group. If `None`, the default group is assumed.
+
+        Raises
+        ------
+        ValueError
+            If no response is found, or if more than one matching response is found.
+
+        Examples
+        --------
+        Get response from node `nin` to node `nout` using string specifiers:
+
+        >>> get_response("nin", "nout")
+
+        Get response from node `nin` to component `op1` using objects:
+
+        >>> get_response(Node("nin"), op1)
+
+        Get response from node `nin` to node `nout`, searching only in group `b`:
+
+        >>> get_response("nin", "nout", group="b")
+        """
+        if group is None:
+            group = self.DEFAULT_GROUP_NAME
+        response_groups = self.filter_responses(sources=[source], sinks=[sink], groups=[group])
+        if not response_groups:
+            raise ValueError("no response found")
+        responses = list(response_groups.values())[0]
+        if not responses:
+            raise ValueError("no response found")
+        if len(response_groups) > 1 or len(responses) > 1:
+            raise ValueError("degenerate responses for the specified source, sink, and group")
+        return responses[0]
+
     def filter_noise(self, **kwargs):
         """Filter for noise spectra.
 
@@ -386,9 +432,9 @@ class Solution:
 
         if groups != self.NOISE_GROUPS_ALL:
             # Filter by group.
-            for group in spectra:
+            for group in list(spectra):
                 if group not in groups:
-                    del spectra[groups]
+                    del spectra[group]
 
         if sources != self.NOISE_SOURCES_ALL:
             if isinstance(sources, str):
@@ -436,6 +482,55 @@ class Solution:
                 spectra[group] = group_spectra
 
         return spectra
+
+    def get_noise(self, source, sink, group=None):
+        """Get noise spectral density from specified source to specified sink.
+
+        This is a convenience method for :meth:`.filter_noise` for when only a single noise spectral
+        density is required.
+
+        Parameters
+        ----------
+        source : :class:`str` or :class:`~.components.Noise`
+            The noise source element.
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`
+            The noise sink element.
+        group : :class:`str`, optional
+            The noise group. If `None`, the default group is assumed.
+
+        Raises
+        ------
+        ValueError
+            If no noise spectral density is found, or if more than one matching noise spectral
+            density is found.
+
+        Examples
+        --------
+        Get noise arising from op-amp `op1`'s voltage noise at node `nout` using string specifiers:
+
+        >>> get_noise("V(op1)", "nout")
+
+        Get noise arising from op-amp `op1`'s voltage noise at component `op2` using objects:
+
+        >>> get_noise(op1.voltage_noise, op2)
+
+        Get noise arising from op-amp `op1`'s voltage noise at node `nout`, searching only in group
+        `b`:
+
+        >>> get_noise("V(op1)", "nout", group="b")
+        """
+        if group is None:
+            group = self.DEFAULT_GROUP_NAME
+        noise_groups = self.filter_noise(sources=[source], sinks=[sink], groups=[group])
+        if not noise_groups:
+            raise ValueError("no noise found")
+        noise_densities = list(noise_groups.values())[0]
+        if not noise_densities:
+            raise ValueError("no noise found")
+        if len(noise_groups) > 1 or len(noise_densities) > 1:
+            raise ValueError("degenerate noise spectral densities for the specified source, sink, "
+                             "and group")
+        return noise_densities[0]
 
     @property
     def responses(self):

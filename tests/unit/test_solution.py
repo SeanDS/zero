@@ -15,8 +15,8 @@ class SolutionTestCase(TestCase):
     """Solution tests"""
     def setUp(self):
         # components
-        op11 = OpAmp(model="OP00", node1="n11", node2="n12", node3="n13")
-        op21 = OpAmp(model="OP00", node1="n21", node2="n22", node3="n23")
+        op11 = OpAmp(name="op1", model="OP00", node1="n11", node2="n12", node3="n13")
+        op21 = OpAmp(name="op2", model="OP00", node1="n21", node2="n22", node3="n23")
         # data points in each set
         count1 = 100
         count2 = 101
@@ -87,9 +87,12 @@ class SolutionTestCase(TestCase):
         self.assertTrue(sol_a.equivalent_to(sol_b))
 
     def test_constituent_noise_sum_equal_total_noise_sum(self):
-        sources = [VoltageNoise(component=OpAmp(model="OP00", node1="n1", node2="n2", node3="n3")),
-                   VoltageNoise(component=OpAmp(model="OP00", node1="n4", node2="n5", node3="n6"))]
-        op = OpAmp(model="OP00", node1="n1", node2="n2", node3="n3")
+        # Names op1 and op2 are required for meta equivalency.
+        sources = [VoltageNoise(component=OpAmp(name="op1", model="OP00", node1="n1", node2="n2",
+                                                node3="n3")),
+                   VoltageNoise(component=OpAmp(name="op2", model="OP00", node1="n4", node2="n5",
+                                                node3="n6"))]
+        op = OpAmp(name="op2", model="OP00", node1="n1", node2="n2", node3="n3")
         noise1 = self.noise11
         series2 = Series(x=noise1.frequencies, y=noise1.spectral_density)
         sink = noise1.sink
@@ -98,9 +101,9 @@ class SolutionTestCase(TestCase):
         noise_sum = np.sqrt(sum([noise.spectral_density ** 2 for noise in constituents]))
         sum_series = Series(self.frequencies1, noise_sum)
 
-        # sum from constituents
+        # Sum from constituents.
         noisesum1 = MultiNoiseDensity(sink=sink, constituents=constituents)
-        # sum from total
+        # Sum from total.
         noisesum2 = MultiNoiseDensity(sources=sources, sink=sink, series=sum_series)
 
         self.assertTrue(noisesum1.equivalent(noisesum2))
@@ -197,3 +200,48 @@ class SolutionTestCase(TestCase):
         self.assertCountEqual(sol_c.groups, ["Sol A", "Sol B"])
         self.assertCountEqual(sol_c.functions["Sol A"], [self.response11, self.response12])
         self.assertCountEqual(sol_c.functions["Sol B"], [self.response13])
+
+    def test_get_response(self):
+        """Test method to retrieve individual response"""
+        # Default group.
+        sol_a = Solution(self.frequencies1)
+        sol_a.add_response(self.response11)
+        sol_a.add_response(self.response12)
+        self.assertEqual(sol_a.get_response(source="nso11", sink="ntfs11"), self.response11)
+        self.assertEqual(sol_a.get_response(source="nso11", sink="ntfs12"), self.response12)
+
+        # With group.
+        sol_b = Solution(self.frequencies1)
+        sol_b.add_response(self.response11, group="b")
+        sol_b.add_response(self.response12, group="b")
+        self.assertEqual(sol_b.get_response(source="nso11", sink="ntfs11", group="b"),
+                         self.response11)
+        self.assertEqual(sol_b.get_response(source="nso11", sink="ntfs12", group="b"),
+                         self.response12)
+        # Default groups shouldn't have the response.
+        self.assertRaises(ValueError, sol_b.get_response, source="nso11", sink="ntfs11")
+        self.assertRaises(ValueError, sol_b.get_response, source="nso11", sink="ntfs12")
+
+    def test_get_noise(self):
+        """Test method to retrieve individual noise spectral density"""
+        # Default group.
+        sol_a = Solution(self.frequencies1)
+        sol_a.add_noise(self.noise11)
+        sol_a.add_noise(self.noise12)
+        self.assertEqual(sol_a.get_noise(source="V(op1)", sink="nns11"), self.noise11)
+        self.assertEqual(sol_a.get_noise(source="V(op1)", sink="nns12"), self.noise12)
+
+        # With group.
+        sol_b = Solution(self.frequencies1)
+        sol_b.add_noise(self.noise11, group="b")
+        sol_b.add_noise(self.noise12, group="b")
+        self.assertEqual(sol_b.get_noise(source="V(op1)", sink="nns11", group="b"), self.noise11)
+        self.assertEqual(sol_b.get_noise(source="V(op1)", sink="nns12", group="b"), self.noise12)
+        # Default groups shouldn't have the noise.
+        self.assertRaises(ValueError, sol_b.get_noise, source="V(op1)", sink="ntfs11")
+        self.assertRaises(ValueError, sol_b.get_noise, source="V(op1)", sink="ntfs12")
+
+        # Using objects.
+        noise11_cmp = self.noise11.source.component
+        self.assertEqual(sol_a.get_noise(source=noise11_cmp.voltage_noise, sink=Node("nns11")),
+                         self.noise11)
