@@ -23,11 +23,11 @@ Responses
 :class:`Responses <.data.Response>` contain the response of a component or node to another component
 or node. Each response contains references to the source and sink component or node, and its units.
 
-Noise spectra
--------------
+Noise spectral densities
+------------------------
 
-:class:`Noise spectra <.data.NoiseDensity>` contain the noise at a particular component or node
-arising from noise produced by another component or node. They contain the :class:`noise source <.components.Noise>`
+:class:`Noise spectral densities <.data.NoiseDensity>` contain the noise at a particular component
+or node arising from noise produced by another component or node. They contain the :class:`noise source <.components.Noise>`
 that produces the noise and a reference to the component or node that the noise is measured at, and
 its units. :class:`Multi-noise spectra <.data.MultiNoiseDensity>` contain a list of multiple noise
 sources; these are used to represent noise sums.

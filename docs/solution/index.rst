@@ -6,14 +6,48 @@ Solutions
    >>> from zero.solution import Solution
 
 The :class:`.Solution` class provides a mechanism for storing, displaying and saving
-the output of an :ref:`analysis <analyses/index:Analyses>`.
+the output of an :ref:`analysis <analyses/index:Analyses>`; these are usually
+:ref:`responses <data/index:Responses>` and :ref:`noise spectral densities <data/index:Noise spectral densities>`.
+
+Retrieving functions
+--------------------
+
+Functions can be retrieved by matching against sources, sinks, groups and (in the case of noise)
+types using :meth:`.filter_responses` and :meth:`.filter_noise`. These methods return a :class:`dict`
+containing the matched functions in lists keyed by their group names.
+
+To retrieve an individual function, two convenience methods are provided: :meth:`.get_response` and
+:meth:`~.Solution.get_noise`. These take as arguments the source and sink of the :class:`~.data.Response`
+or :class:`~.data.NoiseDensity` to retrieve, plus the optional group name. The source and sink in
+:meth:`.get_response` and the sink in :meth:`~.Solution.get_noise` can be :class:`components <.Component>`
+or :class:`nodes <.Node>` or names, while the source in :meth:`~.Solution.get_noise` can be a
+:class:`~.components.Noise` or noise string such as ``V(op1)``.
+
+.. code-block:: python
+
+   >>> import numpy as np
+   >>> from zero import Circuit
+   >>> from zero.analysis import AcNoiesAnalysis
+   >>> circuit = Circuit()
+   >>> circuit.add_opamp(name="op1", model="OP27", node1="gnd", node2="nin", node3="nout")
+   >>> circuit.add_resistor(name="r1", value="1k", node1="nin", node2="nout")
+   >>> op1 = circuit["op1"]
+   # Perform noise analysis.
+   >>> noise_analysis = AcNoiseAnalysis(circuit)
+   >>> solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="nin", sink="nout")
+   # Get voltage noise from op-amp at the output node.
+   >>> str(solution.get_noise(op1.voltage_noise, "nout"))
+   'V(op1) to nout'
+   # Alternatively retrieve using string.
+   >>> str(solution.get_noise("V(op1)", "nout"))
+   'V(op1) to nout'
+
 
 Combining solutions
 -------------------
 
 Solutions from different analyses can be combined and plotted together. The method :meth:`.Solution.combine`
 takes as an argument another solution, and returns a new solution containing functions from both.
-
 
 .. warning::
 
