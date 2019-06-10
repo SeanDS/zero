@@ -16,15 +16,33 @@ Documentation style
 
 Use `NumPy docstring format`_. Language and grammar should follow `Google style`_.
 
+Development environment
+~~~~~~~~~~~~~~~~~~~~~~~
+
+A Visual Studio Code configuration file is provided in the project root when checked out via
+``git``, which sets some code format settings which should be followed. This configuration file is
+used automatically if the project is opened in Visual Studio Code from its root directory.
+
+It may be useful to run |Zero| within a ``conda`` or ``pipenv`` environment to allow for separation
+of dependencies from your system and from other projects. In both cases it is still recommended to
+install |Zero| via ``pip``. For rapid development, it is highly recommended to make the project
+`editable` so changes to project files reflect immediately in the library and CLI, and to install
+the extra `dev` dependencies to allow you to build the documentation and run code linting tools:
+
+.. code-block:: bash
+
+   pip install -e .[dev]
+
 Merge requests
 ~~~~~~~~~~~~~~
 
-Please open a `merge request`_ on GitLab, targeting |Zero|'s `develop` branch. To keep the git
-repository's merge graph clean, ideally you should make your changes on a branch with one of the
-following conventions depending on what kind of change you make:
+If you have code to submit for inclusion in |Zero|, please open a `merge request`_ on GitLab
+targeting the ``develop`` branch. To keep the git repository's merge graph clean, ideally you should
+make your changes on a branch with one of the following conventions depending on what kind of change
+you make:
 
 - ``feature/my-feature`` for new features
-- ``fix/my-fix`` for bug fixes
+- ``hotfix/my-fix`` for bug fixes
 
 Replace ``my-feature`` or ``my-fix`` with an appropriate short description. This naming scheme
 roughly follows that presented in `A successful Git branching model`_.
@@ -53,7 +71,7 @@ Updating PyPI (pip) package
 ---------------------------
 
 This requires `twine <https://packaging.python.org/key_projects/#twine>`__ and the credentials for
-the Zero PyPI project.
+the |Zero| PyPI project.
 
 #. Go to the source root directory.
 #. Checkout the ``master`` branch (so the release uses the correct tag).
