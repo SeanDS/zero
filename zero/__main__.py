@@ -86,7 +86,7 @@ def cli():
 @click.pass_context
 def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equations,
          print_matrix):
-    """Parse and simulate LISO input or output file"""
+    """Parse and simulate LISO input or output file."""
     state = ctx.ensure_object(State)
 
     # check which solutions must be computed
