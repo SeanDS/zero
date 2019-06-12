@@ -31,19 +31,21 @@ class NodeGraph:
         graph = self.graphviz.Digraph(engine=CONF["graphviz"]["engine"])
         graph.attr("node", style=CONF["graphviz"]["node_style"],
                    fontname=CONF["graphviz"]["node_font_name"],
-                   fontsize=CONF["graphviz"]["node_font_size"])
+                   # For some reason, font size must be suppied as string.
+                   fontsize=str(CONF["graphviz"]["node_font_size"]))
         graph.attr("edge", arrowhead=CONF["graphviz"]["edge_arrowhead"])
         graph.attr("graph", splines=CONF["graphviz"]["graph_splines"],
                    label="Made with graphviz and Zero",
                    fontname=CONF["graphviz"]["graph_font_name"],
-                   fontsize=CONF["graphviz"]["graph_font_size"])
+                   # For some reason, font size must be suppied as string.
+                   fontsize=str(CONF["graphviz"]["graph_font_size"]))
         node_map = {}
 
         def add_connection(component, conn, node):
             if node == 'gnd':
                 graph.node("%s_%s" % (component, node), shape='point', style='invis')
                 graph.edge('%s_%s' % (component, node), component+conn, dir='both', arrowtail='tee',
-                       len='0.0', weight='10')
+                           len='0.0', weight='10')
             else:
                 if not node in node_map:
                     graph.node(node, shape='point', xlabel=node, width='0.1', fillcolor='Red')
