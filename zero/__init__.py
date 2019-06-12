@@ -31,9 +31,6 @@ from .circuit import Circuit
 # suppress warnings when the user code does not include a handler
 logging.getLogger().addHandler(logging.NullHandler())
 
-# use default locale (required for number formatting in log warnings)
-locale.setlocale(locale.LC_ALL, "")
-
 def add_log_handler(logger, handler=None, format_str="%(name)-25s - %(levelname)-8s - %(message)s"):
     if handler is None:
         handler = logging.StreamHandler()

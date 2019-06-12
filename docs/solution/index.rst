@@ -27,20 +27,20 @@ or :class:`nodes <.Node>` or names, while the source in :meth:`~.Solution.get_no
 
    >>> import numpy as np
    >>> from zero import Circuit
-   >>> from zero.analysis import AcNoiesAnalysis
+   >>> from zero.analysis import AcNoiseAnalysis
    >>> circuit = Circuit()
    >>> circuit.add_opamp(name="op1", model="OP27", node1="gnd", node2="nin", node3="nout")
    >>> circuit.add_resistor(name="r1", value="1k", node1="nin", node2="nout")
    >>> op1 = circuit["op1"]
    # Perform noise analysis.
    >>> noise_analysis = AcNoiseAnalysis(circuit)
-   >>> solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="nin", sink="nout")
+   >>> solution = noise_analysis.calculate(frequencies=np.logspace(0, 4, 1001), input_type="voltage", node="nin", sink="nout")
    # Get voltage noise from op-amp at the output node.
-   >>> str(solution.get_noise(op1.voltage_noise, "nout"))
-   'V(op1) to nout'
+   >>> print(solution.get_noise(op1.voltage_noise, "nout"))
+   V(op1) to nout
    # Alternatively retrieve using string.
-   >>> str(solution.get_noise("V(op1)", "nout"))
-   'V(op1) to nout'
+   >>> print(solution.get_noise("V(op1)", "nout"))
+   V(op1) to nout
 
 
 Combining solutions
