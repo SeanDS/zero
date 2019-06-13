@@ -257,10 +257,10 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes, label_suffix=None, dB = True):
+    def _draw_magnitude(self, axes, label_suffix=None, plot_dB = True):
         """Add magnitude plot to axes"""
         label = self.label(tex=True, suffix=label_suffix)
-        if dB:
+        if plot_dB:
             axes.semilogx(self.frequencies, self.magnitude, label=label)
         else:
             mag = np.abs(self.complex_magnitude)
