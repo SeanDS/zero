@@ -3,7 +3,7 @@
 import sys
 import os
 import abc
-import progressbar
+from progressbar import ProgressBar, Percentage, Bar, ETA
 
 
 class BaseAnalysis(metaclass=abc.ABCMeta):
@@ -59,11 +59,8 @@ class BaseAnalysis(metaclass=abc.ABCMeta):
             stream = open(os.devnull, "w")
 
         # Set up progress bar.
-        pbar = progressbar.ProgressBar(widgets=['Calculating: ',
-                                                progressbar.Percentage(),
-                                                progressbar.Bar(),
-                                                progressbar.ETA()],
-                                       max_value=100, fd=stream).start()
+        widgets = ['Calculating: ', Percentage(), Bar(), ETA()]
+        pbar = ProgressBar(widgets=widgets, max_value=100, fd=stream).start()
 
         count = 0
 
@@ -79,3 +76,5 @@ class BaseAnalysis(metaclass=abc.ABCMeta):
                 pbar.update(fraction)
 
             yield item
+
+        pbar.finish()
