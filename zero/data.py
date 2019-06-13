@@ -257,10 +257,14 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes, label_suffix=None):
+    def _draw_magnitude(self, axes, label_suffix=None, dB = True):
         """Add magnitude plot to axes"""
         label = self.label(tex=True, suffix=label_suffix)
-        axes.semilogx(self.frequencies, self.magnitude, label=label)
+        if dB:
+            axes.semilogx(self.frequencies, self.magnitude, label=label)
+        else:
+            mag = np.abs(self.complex_magnitude)
+            axes.loglog(self.frequencies, mag, label=label)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""

@@ -787,7 +787,7 @@ class Solution:
 
     def _plot_bode(self, responses, figure=None, legend=True, legend_loc="best", legend_groups=True,
                    title=None, xlim=None, mag_ylim=None, phase_ylim=None,
-                   xlabel=r"$\bf{Frequency}$ (Hz)", ylabel_mag=r"$\bf{Magnitude}$ (dB)",
+                   xlabel=r"$\bf{Frequency}$ (Hz)", ylabel_mag=None, dB=True,
                    ylabel_phase=r"$\bf{Phase}$ ($\degree$)", mag_tick_major_step=20,
                    mag_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
         if figure is None:
@@ -816,7 +816,13 @@ class Solution:
                     legend_group = None
 
                 for response in group_responses:
-                    response.draw(ax1, ax2, label_suffix=legend_group)
+                    response.draw(ax1, ax2, label_suffix=legend_group, dB=dB)
+
+                if ylabel_mag is None:
+                    if dB:
+                        ylabel_mag = r"$\bf{Magnitude}$ [dB]"
+                    else:
+                        ylabel_mag = r"$\bf{Magnitude}$ [%s]" % response.unit_str
 
                 # overall figure title
                 if title:
@@ -843,8 +849,9 @@ class Solution:
                 ax2.grid(True)
 
                 # magnitude and phase tick locators
-                ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
-                ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
+                if dB:
+                    ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
+                    ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
                 ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
                 ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
 
