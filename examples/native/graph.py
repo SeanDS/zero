@@ -3,7 +3,6 @@
 Sean Leavey
 """
 
-import numpy as np
 from zero import Circuit
 from zero.display import NodeGraph
 
