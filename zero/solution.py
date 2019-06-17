@@ -726,6 +726,41 @@ class Solution:
 
         Note: if only one of "sources" or "sinks" is specified, the other defaults to "all" as per
         the behaviour of :meth:`.filter_responses`.
+
+        Parameters
+        ----------
+        figure : :class:`~matplotlib.figure.Figure`, optional
+            Figure to plot to. If not specified, a new figure is created.
+        sources, sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`
+            The sources and sinks to plot responses between.
+
+        Other Parameters
+        ----------------
+        legend : :class:`bool`, optional
+            Display legend.
+        legend_loc : :class:`str`, optional
+            Legend display location. Defaults to "best".
+        legend_groups : :class:`bool`, optional
+            Display function group names in legends, if the group is not the default.
+        title : :class:`str`, optional
+            The plot title.
+        scale_db : :class:`bool`, optional
+            Scale the magnitude y-axis values in decibels. If False, absolute scaling is used.
+        xlim, mag_ylim, phase_ylim : sequence of :class:`float`, optional
+            The lower and upper limits for the x- and y-axes for the magnitude and phase plots.
+        xlabel, ylabel_mag, ylabel_phase : :class:`str`, optional
+            The x- and y-axis labels for the magnitude and phase plots.
+        db_tick_major_step, db_tick_minor_step : :class:`float`, optional
+            The magnitude y axis tick step sizes when ``scale_db`` is enabled. Defaults to 20 and 10
+            for the major and minor steps, respectively.
+        phase_tick_major_step, phase_tick_minor_step : :class:`float`, optional
+            The phase y axis tick step sizes when ``scale_db`` is enabled. Defaults to 30 and 15 for
+            the major and minor steps, respectively.
+
+        Returns
+        -------
+        :class:`~matplotlib.figure.Figure`
+            The plotted figure.
         """
         if sources is None and sinks is None:
             responses = self._default_responses
@@ -742,11 +777,44 @@ class Solution:
         return figure
 
     def plot_noise(self, figure=None, groups=None, sources=None, sinks=None, types=None,
-                   show_sums=True, title=None):
+                   show_sums=True, **kwargs):
         """Plot noise.
 
         Note: if only some of "groups", "sources", "sinks", "types" are specified, the others
         default to "all" as per the behaviour of :meth:`.filter_noise`.
+
+        Parameters
+        ----------
+        figure : :class:`~matplotlib.figure.Figure`, optional
+            Figure to plot to. If not specified, a new figure is created.
+        sources : list of :class:`str` or :class:`.Noise`, optional
+            The noise sources to plot at the specified ``sinks``. If None, all sources are plotted.
+        sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`, optional
+            The sinks to plot noise at. If None, all sinks are plotted.
+        types : list of :class:`str`, optional
+            The noise types to plot. If None, all noise types are plotted.
+        show_sums : :class:`bool`, optional
+            Plot any sums contained in this solution.
+
+        Other Parameters
+        ----------------
+        legend : :class:`bool`, optional
+            Display legend.
+        legend_loc : :class:`str`, optional
+            Legend display location. Defaults to "best".
+        legend_groups : :class:`bool`, optional
+            Display function group names in legends, if the group is not the default.
+        title : :class:`str`, optional
+            The plot title.
+        xlim, ylim : sequence of :class:`float`, optional
+            The lower and upper limits for the x- and y-axes.
+        xlabel, ylabel : :class:`str`, optional
+            The x- and y-axis labels.
+
+        Returns
+        -------
+        :class:`~matplotlib.figure.Figure`
+            The plotted figure.
         """
         if groups is None and sources is None and sinks is None and types is None:
             # Filter against sum flag.
@@ -763,7 +831,7 @@ class Solution:
         if not noise:
             raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
 
-        figure = self._plot_spectral_density(noise, figure=figure, title=title)
+        figure = self._plot_spectral_density(noise, figure=figure, **kwargs)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
 
         return figure
@@ -861,14 +929,17 @@ class Solution:
         return figure
 
     def _plot_spectral_density(self, noise, figure=None, legend=True, legend_loc="best",
-                               legend_groups=True, title=None, xlim=None, ylim=None,
-                               xlabel=r"$\bf{Frequency}$ (Hz)", ylabel=None):
+                               legend_groups=True, title=None, xlim=None, ylim=None, xlabel=None,
+                               ylabel=None):
         if figure is None:
             # create figure
             figure = self.noise_figure()
 
         if len(figure.axes) != 1:
             raise ValueError("specified figure must contain one axis")
+
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
 
         ax = figure.axes[0]
 

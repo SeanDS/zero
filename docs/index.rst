@@ -80,6 +80,7 @@ Contents
    components/index
    analyses/index
    solution/index
+   plotting/index
    data/index
    format/index
    examples/index

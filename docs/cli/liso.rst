@@ -108,6 +108,13 @@ they occur:
     │ nin to no (V/V)  │ 1.04e-08 (f = 79.433 kHz)     │ 9.54e-10 (f = 79.433 kHz)     │
     ╘══════════════════╧═══════════════════════════════╧═══════════════════════════════╛
 
+Scaling response plots
+----------------------
+
+Responses can be scaled in either decibels or absolute values. The default is to scale in decibels
+(``--resp-scale-db``, on by default), but this can be switched off with the ``--resp-scale-abs``
+flag.
+
 Saving figures
 --------------
 
