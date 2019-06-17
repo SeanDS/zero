@@ -29,6 +29,6 @@ if __name__ == "__main__":
     analysis = AcSignalAnalysis(circuit=circuit)
     solution = analysis.calculate(frequencies=frequencies, input_type="current", node="n1")
 
-    # Plot.
-    solution.plot_responses(sinks=["nout"])
+    # Plot, scaling in absolute units.
+    solution.plot_responses(sinks=["nout"], scale_db=False)
     solution.show()
