@@ -252,7 +252,11 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
 
     @property
     def db_magnitude(self):
-        """Magnitude scaled in units of decibel."""
+        r"""Magnitude scaled in units of decibel.
+
+        The response is power scaled such that the response is :math:`20 \log_{10} \left| x \right|`
+        where :math:`x` is the complex response provided by :attr:`.complex_magnitude`.
+        """
         return db(self.magnitude)
 
     @property
