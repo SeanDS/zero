@@ -55,7 +55,7 @@ class Series:
         x : :class:`np.array`
             The x vector.
         magnitude : :class:`np.array`
-            The magnitude.
+            The magnitude. This magnitude's scaling is determined by `mag_scale`.
         phase : :class:`np.array`, optional
             The phase. If `None`, the magnitude is assumed to have zero phase.
         mag_scale : :class:`str`, optional
@@ -111,7 +111,7 @@ class Series:
         x : :class:`np.array`
             The x vector.
         magnitude : :class:`np.array`
-            The magnitude.
+            The magnitude. This magnitude's scaling is determined by `mag_scale`.
         phase : :class:`np.array`
             The phase.
         magnitude_scale : :class:`str`, optional
