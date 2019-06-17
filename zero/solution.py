@@ -786,13 +786,22 @@ class Solution:
         return figure
 
     def _plot_bode(self, responses, figure=None, legend=True, legend_loc="best", legend_groups=True,
-                   title=None, xlim=None, mag_ylim=None, phase_ylim=None,
-                   xlabel=r"$\bf{Frequency}$ (Hz)", ylabel_mag=r"$\bf{Magnitude}$ (dB)",
-                   ylabel_phase=r"$\bf{Phase}$ ($\degree$)", mag_tick_major_step=20,
-                   mag_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
+                   title=None, scale_db=True, xlim=None, mag_ylim=None, phase_ylim=None,
+                   xlabel=None, ylabel_mag=None, ylabel_phase=None, db_tick_major_step=20,
+                   db_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
         if figure is None:
             # create figure
             figure = self.bode_figure()
+
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
+        if ylabel_mag is None:
+            if scale_db:
+                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
+            else:
+                ylabel_mag = r"$\bf{Magnitude}$"
+        if ylabel_phase is None:
+            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
 
         if len(figure.axes) != 2:
             raise ValueError("specified figure must contain two axes")
@@ -816,7 +825,7 @@ class Solution:
                     legend_group = None
 
                 for response in group_responses:
-                    response.draw(ax1, ax2, label_suffix=legend_group)
+                    response.draw(ax1, ax2, label_suffix=legend_group, scale_db=scale_db)
 
                 # overall figure title
                 if title:
@@ -843,8 +852,9 @@ class Solution:
                 ax2.grid(True)
 
                 # magnitude and phase tick locators
-                ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
-                ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
+                if scale_db:
+                    ax1.yaxis.set_major_locator(MultipleLocator(base=db_tick_major_step))
+                    ax1.yaxis.set_minor_locator(MultipleLocator(base=db_tick_minor_step))
                 ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
                 ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
 

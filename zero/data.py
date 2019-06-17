@@ -247,20 +247,32 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
 
     @property
     def magnitude(self):
-        return db(np.abs(self.complex_magnitude))
+        """Absolute magnitude."""
+        return np.abs(self.complex_magnitude)
+
+    @property
+    def db_magnitude(self):
+        """Magnitude scaled in units of decibel."""
+        return db(self.magnitude)
 
     @property
     def phase(self):
+        """Phase in degrees."""
         return np.angle(self.complex_magnitude) * 180 / np.pi
 
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes, label_suffix=None):
+    def _draw_magnitude(self, axes, label_suffix=None, scale_db=True):
         """Add magnitude plot to axes"""
         label = self.label(tex=True, suffix=label_suffix)
-        axes.semilogx(self.frequencies, self.magnitude, label=label)
+        if scale_db:
+            # Decibel y-axis scaling.
+            axes.semilogx(self.frequencies, self.db_magnitude, label=label)
+        else:
+            # Linear y-axis scaling.
+            axes.loglog(self.frequencies, self.magnitude, label=label)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
