@@ -5,37 +5,12 @@ import logging
 import numpy as np
 
 from .config import ZeroConfig, OpAmpLibrary
-from .components import Resistor, Capacitor, Inductor, OpAmp, Node
+from .components import (Resistor, Capacitor, Inductor, OpAmp, Node, ElementNotFoundError,
+                         ComponentNotFoundError, NodeNotFoundError, NoiseNotFoundError)
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
 LIBRARY = OpAmpLibrary()
-
-
-class ElementNotFoundError(Exception):
-    def __init__(self, name, message="element '%s' not found", *args, **kwargs):
-        # apply name to message
-        message = message % name
-
-        # call parent constructor
-        super().__init__(message, *args, **kwargs)
-
-        self.name = name
-
-
-class ComponentNotFoundError(ElementNotFoundError):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
-
-
-class NodeNotFoundError(ElementNotFoundError):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
-
-
-class NoiseNotFoundError(ElementNotFoundError):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, message="noise '%s' not found", *args, **kwargs)
 
 
 class Circuit:
