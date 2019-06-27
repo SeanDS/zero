@@ -2,7 +2,7 @@ import logging
 import numpy as np
 
 from .signal import AcSignalAnalysis
-from ...data import NoiseDensity, Series
+from ...data import NoiseDensity, MultiNoiseDensity, Series
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             sink = self.circuit.get_element(sink)
         self._noise_sink = sink
 
-    def calculate(self, input_type, sink, impedance=None, **kwargs):
+    def calculate(self, input_type, sink, impedance=None, incoherent_sum=False, **kwargs):
         """Calculate noise from circuit elements at a particular element.
 
         Parameters
@@ -39,6 +39,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             The element to calculate noise at.
         impedance : float or :class:`.Quantity`, optional
             Input impedance. If None, the default is used.
+        incoherent_sum : :class:`bool`, optional
+            Compute the incoherent sum of all noise in the circuit at the sink.
 
         Returns
         -------
@@ -50,6 +52,11 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             LOGGER.warning(f"assuming default input impedance of {self.DEFAULT_INPUT_IMPEDANCE}")
             impedance = self.DEFAULT_INPUT_IMPEDANCE
         self._do_calculate(input_type, impedance=impedance, is_noise=True, **kwargs)
+
+        if incoherent_sum:
+            # The calculated noies is stored in the default group.
+            self._compute_incoherent_sum(self.solution.noise[self.solution.DEFAULT_GROUP_NAME],
+                                         self.noise_sink)
 
         return self.solution
 
@@ -108,6 +115,18 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         if empty:
             empty_sources = ", ".join([str(response) for response in empty])
             LOGGER.debug(f"empty noise sources: {empty_sources}")
+
+    def _compute_incoherent_sum(self, noise, sink):
+        """Compute the incoherent sum of the specified noise and add it to the solution.
+
+        Parameters
+        ----------
+        noise : sequence of :class:`.Noise`
+            The noise to add incoherently.
+        sink : :class:`.Component` or :class:`.Node`
+            The noise sink.
+        """
+        self.solution.add_noise_sum(MultiNoiseDensity(constituents=noise, sink=sink))
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""
