@@ -41,13 +41,13 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             Input impedance. If None, the default is used.
         incoherent_sum : :class:`bool` or :class:`dict`, optional
             Incoherent sum specification. If True, the incoherent sum of all noise in the circuit at
-            the sink is calculated and added to the solution. Alternatively, this can be a dict
-            containing labels as keys and sequences of noise sources as values. The noise sources
-            can be either :class:`.Noise` objects or strings as supported by
-            :meth:`.Solution.get_noise`. The values may alternatively be strings containing "all",
-            "allop" or "allr" to compute noise from all components, all op-amps and all resistors,
-            respectively. Sums are plotted in shades of grey determined by the plotting
-            configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
+            the sink is calculated and added to the solution. Alternatively, this parameter can be
+            specified as a dict containing labels as keys and sequences of noise sources as values.
+            The noise sources can be either :class:`.NoiseDensity` objects or noise specifier
+            strings as supported by :meth:`.Solution.get_noise`. The values may alternatively be the
+            strings "all", "allop" or "allr" to compute noise from all components, all op-amps and
+            all resistors, respectively. Sums are plotted in shades of grey determined by the
+            plotting configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
             ``sum_greyscale_cycle_count`` values.
 
         Returns
@@ -129,13 +129,13 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         ----------
         sum_spec : :class:`bool` or :class:`dict`
             Incoherent sum specification. If True, the incoherent sum of all noise in the circuit at
-            the sink is calculated and added to the solution. Alternatively, this can be a dict
-            containing labels as keys and sequences of noise sources as values. The noise sources
-            can be either :class:`.Noise` objects or strings as supported by
-            :meth:`.Solution.get_noise`. The values may alternatively be strings containing "all",
-            "allop" or "allr" to compute noise from all components, all op-amps and all resistors,
-            respectively. Sums are plotted in shades of grey determined by the plotting
-            configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
+            the sink is calculated and added to the solution. Alternatively, this parameter can be
+            specified as a dict containing labels as keys and sequences of noise sources as values.
+            The noise sources can be either :class:`.NoiseDensity` objects or noise specifier
+            strings as supported by :meth:`.Solution.get_noise`. The values may alternatively be the
+            strings "all", "allop" or "allr" to compute noise from all components, all op-amps and
+            all resistors, respectively. Sums are plotted in shades of grey determined by the
+            plotting configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
             ``sum_greyscale_cycle_count`` values.
         """
         if sum_spec is True:
