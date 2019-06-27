@@ -56,8 +56,8 @@ The steps below should be followed when creating a new release:
    up-to-date.
 #. Create a new release branch from ``develop``, where ``x.x.x`` is the intended new version number:
    ``git checkout -b release/x.x.x develop``.
-#. Update default user component library ``distributed_with`` key to match the new intended version
-   number.
+#. Update default user config and component library ``distributed_with`` keys to match the new
+   intended version number.
 #. Commit changes and checkout ``develop``.
 #. Checkout ``develop`` branch then merge release without fast-forwarding:
    ``git merge --no-ff release/x.x.x``.

@@ -3,6 +3,8 @@
 #
 # Strings starting with '#' are comments.
 
+distributed_with: 0.6.6
+
 # Example of overriding plot options:
 #plot:
 #  # Default plot size, in inches.
