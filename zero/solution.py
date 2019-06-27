@@ -45,9 +45,9 @@ class Solution:
         self._function_groups = {}
 
         # Default functions in each group.
-        self._default_responses = defaultdict(list)
-        self._default_noise = defaultdict(list)
-        self._default_noise_sums = defaultdict(list)
+        self.default_responses = defaultdict(list)
+        self.default_noise = defaultdict(list)
+        self.default_noise_sums = defaultdict(list)
 
         self._name = None
 
@@ -159,7 +159,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        return response in self._default_responses[group]
+        return response in self.default_responses[group]
 
     def set_response_as_default(self, response, group=None):
         """Set the specified response as a default.
@@ -185,7 +185,7 @@ class Solution:
         if self.is_default_response(response, group):
             raise ValueError(f"response '{response}' is already default")
 
-        self._default_responses[group].append(response)
+        self.default_responses[group].append(response)
 
     def add_noise(self, spectral_density, default=False, group=None):
         """Add a noise spectral density to the solution.
@@ -222,7 +222,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        return noise in self._default_noise[group]
+        return noise in self.default_noise[group]
 
     def set_noise_as_default(self, spectral_density, group=None):
         """Set the specified noise spectral density as a default"""
@@ -235,7 +235,7 @@ class Solution:
         if self.is_default_noise(spectral_density, group):
             raise ValueError(f"noise density '{spectral_density}' is already default")
 
-        self._default_noise[group].append(spectral_density)
+        self.default_noise[group].append(spectral_density)
 
     def add_noise_sum(self, noise_sum, default=False, group=None):
         """Add a noise sum to the solution.
@@ -270,7 +270,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        return noise_sum in self._default_noise_sums[group]
+        return noise_sum in self.default_noise_sums[group]
 
     def set_noise_sum_as_default(self, noise_sum, group=None):
         """Set the specified noise sum as a default"""
@@ -283,7 +283,7 @@ class Solution:
         if self.is_default_noise_sum(noise_sum):
             raise ValueError(f"noise sum '{noise_sum}' is already default")
 
-        self._default_noise_sums[group].append(noise_sum)
+        self.default_noise_sums[group].append(noise_sum)
 
     def _add_function(self, function, group=None):
         if group is None:
@@ -415,7 +415,7 @@ class Solution:
 
         This does not include default sums.
         """
-        return self._apply_noise_filters(self._default_noise, **kwargs)
+        return self._apply_noise_filters(self.default_noise, **kwargs)
 
     def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, types=None):
         filter_sources = []
@@ -571,8 +571,8 @@ class Solution:
     @property
     def default_functions(self):
         """Default responses and noise spectra"""
-        return self._merge_groups(self._default_responses, self._default_noise,
-                                  self._default_noise_sums)
+        return self._merge_groups(self.default_responses, self.default_noise,
+                                  self.default_noise_sums)
 
     @property
     def response_source_nodes(self):
@@ -728,7 +728,7 @@ class Solution:
         the behaviour of :meth:`.filter_responses`.
         """
         if sources is None and sinks is None:
-            responses = self._default_responses
+            responses = self.default_responses
         else:
             responses = self.filter_responses(sources=sources, sinks=sinks)
 
@@ -753,7 +753,7 @@ class Solution:
             noise = self._filter_default_noise()
 
             if show_sums:
-                noise = self._merge_groups(noise, self._default_noise_sums)
+                noise = self._merge_groups(noise, self.default_noise_sums)
         else:
             noise = self.filter_noise(sources=sources, sinks=sinks, groups=groups, types=types)
 
