@@ -159,10 +159,30 @@ class Series:
 
 class Function(metaclass=abc.ABCMeta):
     """Data set"""
-    def __init__(self, sources, sinks, series):
+    def __init__(self, sources, sinks, series, plot_options=None):
+        if plot_options is None:
+            plot_options = {}
         self.sources = list(sources)
         self.sinks = list(sinks)
         self.series = series
+        self.plot_options = dict(plot_options)
+
+        self._set_fallback_plot_options()
+
+    def _set_fallback_plot_options(self):
+        """Set plot options in cases where user-specified options are not provided."""
+        if "alpha" not in self.plot_options:
+            self._set_plot_option("alpha", CONF["plot"]["alpha"])
+        if "linestyle" not in self.plot_options and "ls" not in self.plot_options:
+            self._set_plot_option("linestyle", CONF["plot"]["linestyle"])
+        if "linewidth" not in self.plot_options and "lw" not in self.plot_options:
+            self._set_plot_option("linewidth", CONF["plot"]["linewidth"])
+
+    def _set_plot_option(self, key, value):
+        if value is None:
+            # Ignore empty values, to allow the user to ignore options in the configuration.
+            return
+        self.plot_options[key] = value
 
     @property
     def frequencies(self):
@@ -260,11 +280,11 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
     def _draw_magnitude(self, axes, label_suffix=None):
         """Add magnitude plot to axes"""
         label = self.label(tex=True, suffix=label_suffix)
-        axes.semilogx(self.frequencies, self.magnitude, label=label)
+        axes.semilogx(self.frequencies, self.magnitude, label=label, **self.plot_options)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
-        axes.semilogx(self.frequencies, self.phase)
+        axes.semilogx(self.frequencies, self.phase, **self.plot_options)
 
     def draw(self, *axes, **kwargs):
         if len(axes) != 2:
@@ -318,7 +338,7 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
         axes = axes[0]
 
         label = self.label(tex=True, suffix=label_suffix)
-        axes.loglog(self.frequencies, self.spectral_density, label=label)
+        axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
 
 
 class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
@@ -394,6 +414,19 @@ class MultiNoiseDensity(NoiseDensityBase):
             # check sink agrees with those set in constituents
             if not all([self.sink == spectral_density.sink for spectral_density in constituents]):
                 raise Exception("cannot handle noise for functions with different sinks")
+
+    def _set_fallback_plot_options(self):
+        """Set plot options in cases where user-specified options are not provided."""
+        if "alpha" not in self.plot_options:
+            self._set_plot_option("alpha", CONF["plot"]["sum_alpha"])
+        if "color" not in self.plot_options and "c" not in self.plot_options:
+            self._set_plot_option("color", CONF["plot"]["sum_color"])
+        if "linestyle" not in self.plot_options and "ls" not in self.plot_options:
+            self._set_plot_option("linestyle", CONF["plot"]["sum_linestyle"])
+        if "linewidth" not in self.plot_options and "lw" not in self.plot_options:
+            self._set_plot_option("linewidth", CONF["plot"]["sum_linewidth"])
+        # Call parent after setting these options so they don't get overridden.
+        super()._set_fallback_plot_options()
 
     @property
     def noise_names(self):

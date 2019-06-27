@@ -9,6 +9,7 @@
 #  size_x: 10
 #  size_y: 8
 #
-#  # Matplotlib configuration overrides.
-#  matplotlib:
-#    legend.fontsize: 10
+#  # Default plot options. These are only used if the corresponding parameter is not directly
+#  # specified.
+#  alpha: 0.5
+#  linestyle: -.
