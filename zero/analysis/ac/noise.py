@@ -39,8 +39,16 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             The element to calculate noise at.
         impedance : float or :class:`.Quantity`, optional
             Input impedance. If None, the default is used.
-        incoherent_sum : :class:`bool`, optional
-            Compute the incoherent sum of all noise in the circuit at the sink.
+        incoherent_sum : :class:`bool` or :class:`dict`, optional
+            Incoherent sum specification. If True, the incoherent sum of all noise in the circuit at
+            the sink is calculated and added to the solution. Alternatively, this can be a dict
+            containing labels as keys and sequences of noise sources as values. The noise sources
+            can be either :class:`.Noise` objects or strings as supported by
+            :meth:`.Solution.get_noise`. The values may alternatively be strings containing "all",
+            "allop" or "allr" to compute noise from all components, all op-amps and all resistors,
+            respectively. Sums are plotted in shades of grey determined by the plotting
+            configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
+            ``sum_greyscale_cycle_count`` values.
 
         Returns
         -------
@@ -54,9 +62,7 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         self._do_calculate(input_type, impedance=impedance, is_noise=True, **kwargs)
 
         if incoherent_sum:
-            # The calculated noies is stored in the default group.
-            self._compute_incoherent_sum(self.solution.noise[self.solution.DEFAULT_GROUP_NAME],
-                                         self.noise_sink)
+            self._compute_sums(incoherent_sum)
 
         return self.solution
 
@@ -116,17 +122,47 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             empty_sources = ", ".join([str(response) for response in empty])
             LOGGER.debug(f"empty noise sources: {empty_sources}")
 
-    def _compute_incoherent_sum(self, noise, sink):
-        """Compute the incoherent sum of the specified noise and add it to the solution.
+    def _compute_sums(self, sum_spec):
+        """Compute incoherent noise sums and add them to the solution.
 
         Parameters
         ----------
-        noise : sequence of :class:`.Noise`
-            The noise to add incoherently.
-        sink : :class:`.Component` or :class:`.Node`
-            The noise sink.
+        sum_spec : :class:`bool` or :class:`dict`
+            Incoherent sum specification. If True, the incoherent sum of all noise in the circuit at
+            the sink is calculated and added to the solution. Alternatively, this can be a dict
+            containing labels as keys and sequences of noise sources as values. The noise sources
+            can be either :class:`.Noise` objects or strings as supported by
+            :meth:`.Solution.get_noise`. The values may alternatively be strings containing "all",
+            "allop" or "allr" to compute noise from all components, all op-amps and all resistors,
+            respectively. Sums are plotted in shades of grey determined by the plotting
+            configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
+            ``sum_greyscale_cycle_count`` values.
         """
-        self.solution.add_noise_sum(MultiNoiseDensity(constituents=noise, sink=sink))
+        if sum_spec is True:
+            # Sum using all noise and the default MultiNoiseDensity label.
+            sum_spec = {None: self.solution.noise[self.solution.DEFAULT_GROUP_NAME]}
+        for label, spectra in sum_spec.items():
+            if spectra is None:
+                raise ValueError("noise sum spectra cannot be empty")
+            if isinstance(spectra, str):
+                identifier = spectra.lower()
+                if identifier == "all":
+                    constituents = self.solution.noise[self.solution.DEFAULT_GROUP_NAME]
+                elif identifier == "allop":
+                    constituents = self.solution.opamp_noise[self.solution.DEFAULT_GROUP_NAME]
+                elif identifier == "allr":
+                    constituents = self.solution.resistor_noise[self.solution.DEFAULT_GROUP_NAME]
+                else:
+                    raise ValueError(f"unrecognised noise collection '{spectra}'")
+            else:
+                constituents = []
+                for spectrum in spectra:
+                    if not isinstance(spectrum, NoiseDensity):
+                        spectrum = self.solution.get_noise(source=spectrum, sink=self.noise_sink)
+                    constituents.append(spectrum)
+
+            self.solution.add_noise_sum(MultiNoiseDensity(constituents=constituents,
+                                                          sink=self.noise_sink, label=label))
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""

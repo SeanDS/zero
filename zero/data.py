@@ -173,10 +173,14 @@ class Function(metaclass=abc.ABCMeta):
         """Set plot options in cases where user-specified options are not provided."""
         if "alpha" not in self.plot_options:
             self._set_plot_option("alpha", CONF["plot"]["alpha"])
+        if "dash_capstyle" not in self.plot_options:
+            self._set_plot_option("dash_capstyle", CONF["plot"]["dash_capstyle"])
         if "linestyle" not in self.plot_options and "ls" not in self.plot_options:
             self._set_plot_option("linestyle", CONF["plot"]["linestyle"])
         if "linewidth" not in self.plot_options and "lw" not in self.plot_options:
             self._set_plot_option("linewidth", CONF["plot"]["linewidth"])
+        if "zorder" not in self.plot_options:
+            self._set_plot_option("zorder", CONF["plot"]["zorder"])
 
     def _set_plot_option(self, key, value):
         if value is None:
@@ -371,8 +375,7 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
 
 class MultiNoiseDensity(NoiseDensityBase):
     """Set of noise data series from multiple sources to a single sink"""
-    def __init__(self, sources=None, series=None, constituents=None, label="incoherent sum",
-                 **kwargs):
+    def __init__(self, sources=None, series=None, constituents=None, label=None, **kwargs):
         if series is None and constituents is None:
             raise ValueError("one of series or constituents must be specified")
         elif series is not None and constituents is not None:
@@ -405,6 +408,9 @@ class MultiNoiseDensity(NoiseDensityBase):
             noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
             series = Series(frequencies, noise_sum)
 
+        if label is None:
+            label = "incoherent sum"
+
         self._label = label
 
         # call parent constructor
@@ -419,12 +425,14 @@ class MultiNoiseDensity(NoiseDensityBase):
         """Set plot options in cases where user-specified options are not provided."""
         if "alpha" not in self.plot_options:
             self._set_plot_option("alpha", CONF["plot"]["sum_alpha"])
-        if "color" not in self.plot_options and "c" not in self.plot_options:
-            self._set_plot_option("color", CONF["plot"]["sum_color"])
+        if "dash_capstyle" not in self.plot_options:
+            self._set_plot_option("dash_capstyle", CONF["plot"]["sum_dash_capstyle"])
         if "linestyle" not in self.plot_options and "ls" not in self.plot_options:
             self._set_plot_option("linestyle", CONF["plot"]["sum_linestyle"])
         if "linewidth" not in self.plot_options and "lw" not in self.plot_options:
             self._set_plot_option("linewidth", CONF["plot"]["sum_linewidth"])
+        if "zorder" not in self.plot_options:
+            self._set_plot_option("zorder", CONF["plot"]["sum_zorder"])
         # Call parent after setting these options so they don't get overridden.
         super()._set_fallback_plot_options()
 

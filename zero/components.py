@@ -644,6 +644,10 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
         """Meta data used to provide hash."""
         return super()._meta_data(), self.component
 
+    @property
+    def component_type(self):
+        return self.component.TYPE
+
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
     """Node noise source.

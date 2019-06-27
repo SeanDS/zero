@@ -20,13 +20,19 @@ plot:
 
   # Default plot options. These are only used if the corresponding parameter is not directly
   # specified.
-  alpha: ~
+  alpha: 1
+  dash_capstyle: ~
   linestyle: ~
-  linewidth: ~
-  sum_alpha: 0.75
-  sum_color: black
+  linewidth: 1.5
+  zorder: 1
+  sum_alpha: 0.8
+  sum_dash_capstyle: round
   sum_linestyle: --
-  sum_linewidth: ~
+  sum_linewidth: 2
+  sum_zorder: 2
+  sum_greyscale_cycle_start: 1  # black
+  sum_greyscale_cycle_stop: 0.2 # light grey
+  sum_greyscale_cycle_count: 4  # number of steps
 
   # Matplotlib configuration overrides.
   matplotlib:

@@ -5,8 +5,8 @@ from collections import defaultdict
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
 from matplotlib import cycler
+from matplotlib.ticker import MultipleLocator
 
 from .config import ZeroConfig
 from .data import Response, NoiseDensity, MultiNoiseDensity, frequencies_match
@@ -543,6 +543,23 @@ class Solution:
                 for group, functions in self.functions.items()}
 
     @property
+    def component_noise(self):
+        return {group: [function for function in functions if function.noise_type == "component"]
+                for group, functions in self.noise.items()}
+
+    @property
+    def opamp_noise(self):
+        return {group: [function for function in functions
+                        if function.source.component_type == "op-amp"]
+                for group, functions in self.component_noise.items()}
+
+    @property
+    def resistor_noise(self):
+        return {group: [function for function in functions
+                        if function.source.component_type == "resistor"]
+                for group, functions in self.component_noise.items()}
+
+    @property
     def noise_sums(self):
         return {group: [function for function in functions if isinstance(function, MultiNoiseDensity)]
                 for group, functions in self.functions.items()}
@@ -900,8 +917,20 @@ class Solution:
                 else:
                     legend_group = None
 
+                sums = []
+
                 for spectral_density in spectra:
+                    if isinstance(spectral_density, MultiNoiseDensity):
+                        # Leave to end as we need to set a new prop cycler on the axis.
+                        sums.append(spectral_density)
+                        continue
+
                     spectral_density.draw(ax, label_suffix=legend_group)
+
+                with self._sum_context():
+                    ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
+                    for sum_spectral_density in sums:
+                        sum_spectral_density.draw(ax, label_suffix=legend_group)
 
                 # overall figure title
                 if title:
@@ -924,6 +953,14 @@ class Solution:
 
         return figure
 
+    @property
+    def _grayscale_colours(self):
+        """Grayscale colour palette."""
+        greys = plt.get_cmap('Greys')
+        return greys(np.linspace(CONF["plot"]["sum_greyscale_cycle_start"],
+                                 CONF["plot"]["sum_greyscale_cycle_stop"],
+                                 CONF["plot"]["sum_greyscale_cycle_count"]))
+
     def _figure_style_context(self, group):
         """Figure style context manager.
 
@@ -945,6 +982,10 @@ class Solution:
                     "axes.prop_cycle": prop_cycler}
 
         return plt.rc_context(settings)
+
+    def _sum_context(self):
+        """Sum figure style context manager. This sets the sum colors to greyscale."""
+        return plt.rc_context({"axes.prop_cycle": cycler(color=self._grayscale_colours)})
 
     @staticmethod
     def save_figure(figure, path, **kwargs):
