@@ -73,6 +73,8 @@ def cli():
 @click.option("--liso-path", type=click.Path(exists=True, dir_okay=False), envvar='LISO_PATH',
               help="Path to LISO binary. If not specified, the environment variable LISO_PATH is "
               "searched.")
+@click.option("--resp-scale-db/--resp-scale-abs", default=True, show_default=True,
+              help="Scale response y-axes in decibels.")
 @click.option("--compare", is_flag=True, default=False,
               help="Simulate using both this tool and LISO binary, and overlay results.")
 @click.option("--diff", is_flag=True, default=False,
@@ -84,8 +86,8 @@ def cli():
 @click.option("--print-equations", is_flag=True, help="Print circuit equations.")
 @click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @click.pass_context
-def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equations,
-         print_matrix):
+def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
+         print_equations, print_matrix):
     """Parse and simulate LISO input or output file."""
     state = ctx.ensure_object(State)
 
@@ -162,7 +164,7 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equ
 
     if generate_plot:
         if solution.has_responses:
-            figure = solution.plot_responses()
+            figure = solution.plot_responses(scale_db=resp_scale_db)
         else:
             figure = solution.plot_noise()
 

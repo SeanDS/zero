@@ -27,13 +27,13 @@ or node. Each response contains references to the source and sink component or n
 
 The response's underlying complex data is stored in its :attr:`~.Response.complex_magnitude`
 property. The magnitude and phase can be retrieved using the :attr:`~.Response.magnitude` and
-:attr:`~.Response.phase` properties, respectively.
+:attr:`~.Response.phase` properties, respectively. The decibel-scaled magnitude can be retrieved
+using :attr:`~.Response.db_magnitude`.
 
 .. note::
 
-   The :attr:`~.Response.magnitude` is returned with decibel (power) scaling, i.e. :math:`20 \log_{10} \left| x \right|`
-   where :math:`x` is the complex response. The :attr:`~.Response.phase` is returned in units of
-   (unwrapped) degrees.
+   :attr:`~.Response.db_magnitude` is returned with power scaling, i.e.
+   :math:`20 \log_{10} \left| x \right|` where :math:`x` is the complex response.
 
 .. code-block:: python
 
@@ -43,7 +43,7 @@ property. The magnitude and phase can be retrieved using the :attr:`~.Response.m
           -8.66146537e+04+349885.52751013j, -1.95460509e+04+170108.87173014j,
           -4.25456479e+03 +79773.08987768j, -9.18662496e+02 +37109.9690498j ,
           -1.98014980e+02 +17233.2022651j , -4.26654531e+01  +7999.77245092j])
-   >>> response.magnitude
+   >>> response.db_magnitude
    array([123.37176609, 122.86535272, 121.07307338, 116.97464649,
           111.13682633, 104.67150284,  98.04946401,  91.39247246,
           84.72789306,  78.06167621])

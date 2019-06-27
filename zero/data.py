@@ -55,7 +55,7 @@ class Series:
         x : :class:`np.array`
             The x vector.
         magnitude : :class:`np.array`
-            The magnitude.
+            The magnitude. This magnitude's scaling is determined by `mag_scale`.
         phase : :class:`np.array`, optional
             The phase. If `None`, the magnitude is assumed to have zero phase.
         mag_scale : :class:`str`, optional
@@ -111,7 +111,7 @@ class Series:
         x : :class:`np.array`
             The x vector.
         magnitude : :class:`np.array`
-            The magnitude.
+            The magnitude. This magnitude's scaling is determined by `mag_scale`.
         phase : :class:`np.array`
             The phase.
         magnitude_scale : :class:`str`, optional
@@ -271,20 +271,36 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
 
     @property
     def magnitude(self):
-        return db(np.abs(self.complex_magnitude))
+        """Absolute magnitude."""
+        return np.abs(self.complex_magnitude)
+
+    @property
+    def db_magnitude(self):
+        r"""Magnitude scaled in units of decibel.
+
+        The response is power scaled such that the response is :math:`20 \log_{10} \left| x \right|`
+        where :math:`x` is the complex response provided by :attr:`.complex_magnitude`.
+        """
+        return db(self.magnitude)
 
     @property
     def phase(self):
+        """Phase in degrees."""
         return np.angle(self.complex_magnitude) * 180 / np.pi
 
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes, label_suffix=None):
+    def _draw_magnitude(self, axes, label_suffix=None, scale_db=True):
         """Add magnitude plot to axes"""
         label = self.label(tex=True, suffix=label_suffix)
-        axes.semilogx(self.frequencies, self.magnitude, label=label, **self.plot_options)
+        if scale_db:
+            # Decibel y-axis scaling.
+            axes.semilogx(self.frequencies, self.db_magnitude, label=label, **self.plot_options)
+        else:
+            # Linear y-axis scaling.
+            axes.loglog(self.frequencies, self.magnitude, label=label, **self.plot_options)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""

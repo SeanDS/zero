@@ -11,6 +11,17 @@ from .config import ZeroConfig, LibraryOpAmp
 CONF = ZeroConfig()
 
 
+class ElementNotFoundError(Exception):
+    def __init__(self, name, message="element '%s' not found", *args, **kwargs):
+        # apply name to message
+        message = message % name
+
+        # call parent constructor
+        super().__init__(message, *args, **kwargs)
+
+        self.name = name
+
+
 class Component(metaclass=abc.ABCMeta):
     """Represents a circuit component.
 
@@ -544,6 +555,11 @@ class Inductor(PassiveComponent):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
 
 
+class ComponentNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
+
+
 class Node(metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
 
@@ -579,6 +595,11 @@ class Node(metaclass=NamedInstance):
 
     def __repr__(self):
         return str(self)
+
+
+class NodeNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
 
 
 class Noise(metaclass=abc.ABCMeta):
