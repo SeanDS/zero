@@ -172,6 +172,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
 
     def _refer_sink_noise_to_input(self):
         """Project the calculated noise to the input."""
+        LOGGER.info("projecting noise to input")
+
         input_component = self._current_circuit.input_component
         if self.input_type == "voltage":
             input_element = input_component.node2
@@ -180,11 +182,11 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         projection_analysis = self.to_signal_analysis()
         # Grab the input nodes from the noise circuit.
         node_n, node_p = input_component.nodes
-        projection = projection_analysis.calculate(self.input_type, node_n=node_n, node_p=node_p)
+        projection = projection_analysis.calculate(frequencies=self.frequencies,
+                                                   input_type=self.input_type, node_n=node_n,
+                                                   node_p=node_p)
         # Transfer function from input to noise sink.
-        input_response_group = projection.filter_responses(sources=[input_element],
-                                                           sinks=[self.noise_sink])
-        input_response = list(input_response_group.values())[0][0]
+        input_response = projection.get_response(source=input_element, sink=self.noise_sink)
 
         for __, noise_spectra in self.solution.noise.items():
             for noise in noise_spectra:
