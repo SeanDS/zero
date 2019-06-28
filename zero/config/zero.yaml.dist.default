@@ -24,15 +24,16 @@ plot:
   dash_capstyle: ~
   linestyle: ~
   linewidth: 1.5
-  zorder: 1
+  zorder: 2
   sum_alpha: 0.8
   sum_dash_capstyle: round
   sum_linestyle: --
   sum_linewidth: 2
-  sum_zorder: 2
+  sum_zorder: 3
   sum_greyscale_cycle_start: 1  # black
   sum_greyscale_cycle_stop: 0.2 # light grey
   sum_greyscale_cycle_count: 4  # number of steps
+  grid_zorder: 1
 
   # Matplotlib configuration overrides.
   matplotlib:

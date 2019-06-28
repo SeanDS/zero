@@ -1087,8 +1087,8 @@ class Solution:
                     ax1.set_ylabel(ylabel_mag)
                 if ylabel_phase is not None:
                     ax2.set_ylabel(ylabel_phase)
-                ax1.grid(True)
-                ax2.grid(True)
+                ax1.grid(zorder=CONF["plot"]["grid_zorder"])
+                ax2.grid(zorder=CONF["plot"]["grid_zorder"])
 
                 # Magnitude and phase tick locators.
                 if scale_db:
@@ -1163,7 +1163,7 @@ class Solution:
                     ax.set_xlabel(xlabel)
                 if ylabel is not None:
                     ax.set_ylabel(ylabel)
-                ax.grid(True)
+                ax.grid(zorder=CONF["plot"]["grid_zorder"])
 
         return figure
 
