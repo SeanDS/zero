@@ -66,7 +66,15 @@ class SolutionTestCase(TestCase):
         self.response13 = Response(source=responsesource11, sink=responsesink13,
                                    series=responseseries13)
         self.noise11 = NoiseDensity(source=noisesource11, sink=noisesink11, series=noiseseries11)
+        self.noise11a = NoiseDensity(source=noisesource21, sink=noisesink11, series=noiseseries12)
         self.noise12 = NoiseDensity(source=noisesource11, sink=noisesink12, series=noiseseries12)
+        self.noisesum11 = MultiNoiseDensity(sink=noisesink11,
+                                            constituents=[self.noise11, self.noise11a],
+                                            label="incoherent noise 1")
+        # same as above, with swapped constituents
+        self.noisesum12 = MultiNoiseDensity(sink=noisesink11,
+                                            constituents=[self.noise11a, self.noise11],
+                                            label="incoherent noise 2")
         # set 2 functions
         self.response21 = Response(source=responsesource21, sink=responsesink21,
                                    series=responseseries21)
@@ -222,8 +230,12 @@ class SolutionTestCase(TestCase):
         self.assertRaises(ValueError, sol_b.get_response, source="nso11", sink="ntfs11")
         self.assertRaises(ValueError, sol_b.get_response, source="nso11", sink="ntfs12")
 
+        # With labels.
+        self.assertEqual(sol_a.get_response(label="nso11 to ntfs11 (V/V)"), self.response11)
+        self.assertRaises(ValueError, sol_a.get_response, label="nso11 to ntfs11") # Without units.
+
     def test_get_noise(self):
-        """Test method to retrieve individual noise spectral density"""
+        """Test method to retrieve individual noise spectral density."""
         # Default group.
         sol_a = Solution(self.frequencies1)
         sol_a.add_noise(self.noise11)
@@ -245,3 +257,37 @@ class SolutionTestCase(TestCase):
         noise11_cmp = self.noise11.source.component
         self.assertEqual(sol_a.get_noise(source=noise11_cmp.voltage_noise, sink=Node("nns11")),
                          self.noise11)
+
+        # With labels.
+        self.assertEqual(sol_a.get_noise(label="V(op1) to nns11"), self.noise11)
+
+    def test_get_noise_sum(self):
+        """Test method to retrieve individual noise sums."""
+        # Default group.
+        sol_a = Solution(self.frequencies1)
+        sol_a.add_noise_sum(self.noisesum11)
+        self.assertEqual(sol_a.get_noise_sum(sink="nns11"), self.noisesum11)
+        # Add another sum, making the sink degenerate.
+        sol_a.add_noise_sum(self.noisesum12)
+        self.assertRaises(ValueError, sol_a.get_noise_sum, sink="nns11")
+
+        # With groups.
+        sol_b = Solution(self.frequencies1)
+        sol_b.add_noise_sum(self.noisesum11, group="b")
+        sol_b.add_noise_sum(self.noisesum11, group="c")
+        self.assertEqual(sol_b.get_noise_sum(sink="nns11", group="b"), self.noisesum11)
+        self.assertEqual(sol_b.get_noise_sum(sink="nns11", group="c"), self.noisesum11)
+        # Add another sum, making the sink and group degenerate.
+        sol_b.add_noise_sum(self.noisesum12, group="b")
+        self.assertRaises(ValueError, sol_b.get_noise_sum, sink="nns11", group="b")
+        # Default groups shouldn't have the noise.
+        self.assertRaises(ValueError, sol_b.get_noise_sum, sink="ntfs11")
+        self.assertRaises(ValueError, sol_b.get_noise_sum, sink="ntfs12")
+
+        # With labels.
+        self.assertEqual(sol_a.get_noise_sum(label="incoherent noise 1"), self.noisesum11)
+        self.assertRaises(ValueError, sol_a.get_noise_sum, label="non-present noise")
+        self.assertEqual(sol_b.get_noise_sum(label="incoherent noise 1", group="b"),
+                         self.noisesum11)
+        self.assertEqual(sol_b.get_noise_sum(label="incoherent noise 1", group="c"),
+                         self.noisesum11)

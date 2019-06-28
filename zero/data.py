@@ -365,13 +365,21 @@ class Response(SingleSourceFunction, SingleSinkFunction, BaseFunction):
         return f"{self.sink_unit}/{self.source_unit}"
 
     def __mul__(self, other):
-        if not isinstance(other, Response):
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.series
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                                 f"this response's sink unit, {self.sink_unit}")
+        elif isinstance(other, NoiseDensityBase):
             raise ValueError(f"cannot multiply response by {type(other)}")
-        if self.sink_unit != other.source_unit:
-            raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                             f"this response's sink unit, {self.sink_unit}")
-        scaled_series = self.series * other.series
-        return self.__class__(source=self.source, sink=other.sink, series=scaled_series)
+        else:
+            # Assume number.
+            other_sink = self.sink
+            other_value = other
+
+        scaled_series = self.series * other_value
+        return self.__class__(source=self.source, sink=other_sink, series=scaled_series)
 
     def inverse(self):
         """Inverse response."""
@@ -434,13 +442,21 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
         return format_str % (self.noise_name, self.sink.label(), suffix)
 
     def __mul__(self, other):
-        if not isinstance(other, Response):
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.series
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                                 f"this response's sink unit, {self.sink_unit}")
+        elif isinstance(other, NoiseDensityBase):
             raise ValueError(f"cannot multiply noise by {type(other)}")
-        if self.sink_unit != other.source_unit:
-            raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                             f"this response's sink unit, {self.sink_unit}")
-        scaled_series = self.series * other.magnitude
-        return self.__class__(source=self.source, sink=other.sink, series=scaled_series)
+        else:
+            # Assume number.
+            other_sink = self.sink
+            other_value = other
+
+        scaled_series = self.series * other_value
+        return self.__class__(source=self.source, sink=other_sink, series=scaled_series)
 
 
 class MultiNoiseDensity(NoiseDensityBase):
@@ -521,13 +537,21 @@ class MultiNoiseDensity(NoiseDensityBase):
         return f"{self._label}{suffix}"
 
     def __mul__(self, other):
-        if not isinstance(other, Response):
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.series
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                                 f"this response's sink unit, {self.sink_unit}")
+        elif isinstance(other, NoiseDensityBase):
             raise ValueError(f"cannot multiply noise by {type(other)}")
-        if self.sink_unit != other.source_unit:
-            raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                             f"{self} sink unit, {self.sink_unit}")
-        scaled_series = self.series * other.magnitude
-        return self.__class__(sources=self.sources, sink=other.sink, series=scaled_series)
+        else:
+            # Assume number.
+            other_sink = self.sink
+            other_value = other
+
+        scaled_series = self.series * other_value
+        return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series)
 
 
 class Reference(metaclass=abc.ABCMeta):

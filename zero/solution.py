@@ -25,9 +25,11 @@ class Solution:
     RESPONSE_SOURCES_ALL = "all"
     RESPONSE_SINKS_ALL = "all"
     RESPONSE_GROUPS_ALL = "all"
+    RESPONSE_LABELS_ALL = "all"
     NOISE_SOURCES_ALL = "all"
     NOISE_SINKS_ALL = "all"
     NOISE_GROUPS_ALL = "all"
+    NOISE_LABELS_ALL = "all"
     NOISE_TYPES_ALL = "all"
 
     # Default group names (reserved).
@@ -320,7 +322,8 @@ class Solution:
     def filter_responses(self, **kwargs):
         return self._apply_response_filters(self.responses, **kwargs)
 
-    def _apply_response_filters(self, responses, groups=None, sources=None, sinks=None):
+    def _apply_response_filters(self, responses, groups=None, sources=None, sinks=None,
+                                labels=None):
         filter_sources = []
         filter_sinks = []
 
@@ -330,6 +333,8 @@ class Solution:
             sources = self.RESPONSE_SOURCES_ALL
         if sinks is None:
             sinks = self.RESPONSE_SINKS_ALL
+        if labels is None:
+            labels = self.RESPONSE_LABELS_ALL
 
         if groups != self.RESPONSE_GROUPS_ALL:
             # Filter by group.
@@ -373,9 +378,20 @@ class Solution:
                 responses[group] = [response for response in group_responses
                                     if response.sink in filter_sinks]
 
+        if labels != self.RESPONSE_LABELS_ALL:
+            # Filter by label.
+            if isinstance(labels, str):
+                labels = [labels]
+            for group, group_responses in responses.items():
+                for response in list(group_responses): # List required to allow item removal.
+                    if response.label() not in labels:
+                        # No match.
+                        group_responses.remove(response)
+                responses[group] = group_responses
+
         return responses
 
-    def get_response(self, source, sink, group=None):
+    def get_response(self, source=None, sink=None, group=None, label=None):
         """Get response from specified source to specified sink.
 
         This is a convenience method for :meth:`.filter_responses` for when only a single response
@@ -383,12 +399,19 @@ class Solution:
 
         Parameters
         ----------
-        source : :class:`str` or :class:`.Node` or :class:`.Component`
+        source : :class:`str` or :class:`.Node` or :class:`.Component`, optional
             The response source element.
-        sink : :class:`str` or :class:`.Node` or :class:`.Component`
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`, optional
             The response sink element.
         group : :class:`str`, optional
             The response group. If `None`, the default group is assumed.
+        label : :class:`str`, optional
+            The response label.
+
+        Returns
+        -------
+        :class:`.Response`
+            The matched response.
 
         Raises
         ------
@@ -409,9 +432,12 @@ class Solution:
 
         >>> get_response("nin", "nout", group="b")
         """
-        if group is None:
-            group = self.DEFAULT_GROUP_NAME
-        response_groups = self.filter_responses(sources=[source], sinks=[sink], groups=[group])
+        sources = None if source is None else [source]
+        sinks = None if sink is None else [sink]
+        groups = [self.DEFAULT_GROUP_NAME] if group is None else [group]
+        labels = None if label is None else [label]
+        response_groups = self.filter_responses(sources=sources, sinks=sinks, groups=groups,
+                                                labels=labels)
         if not response_groups:
             raise ValueError("no response found")
         responses = list(response_groups.values())[0]
@@ -435,6 +461,10 @@ class Solution:
         """
         return self._apply_noise_filters(self.default_noise, **kwargs)
 
+    def filter_noise_sums(self, **kwargs):
+        """Filter for noise sums."""
+        return self._apply_noise_filters(self.noise_sums, **kwargs)
+
     def replace(self, current_function, new_function, group=None):
         """Replace existing function with the specified function."""
         if group is None:
@@ -442,7 +472,8 @@ class Solution:
         index = self.functions[group].index(current_function)
         self.functions[group][index] = new_function
 
-    def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, types=None):
+    def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, labels=None,
+                             types=None):
         filter_sources = []
         filter_sinks = []
 
@@ -452,6 +483,8 @@ class Solution:
             sources = self.NOISE_SOURCES_ALL
         if sinks is None:
             sinks = self.NOISE_SINKS_ALL
+        if labels is None:
+            labels = self.NOISE_LABELS_ALL
         if types is None:
             types = self.NOISE_TYPES_ALL
 
@@ -497,10 +530,21 @@ class Solution:
                 spectra[group] = [spectral_density for spectral_density in group_spectra
                                   if spectral_density.sink in filter_sinks]
 
+        if labels != self.NOISE_LABELS_ALL:
+            # Filter by label.
+            if isinstance(labels, str):
+                labels = [labels]
+            for group, group_spectra in spectra.items():
+                for noise in list(group_spectra): # List required to allow item removal.
+                    if noise.label() not in labels:
+                        # No match.
+                        group_spectra.remove(noise)
+                spectra[group] = group_spectra
+
         if types != self.NOISE_TYPES_ALL:
             # Filter by noise type.
             for group, group_spectra in spectra.items():
-                for noise in group_spectra:
+                for noise in list(group_spectra): # List required to allow item removal.
                     if noise.noise_type not in types and noise.noise_subtype not in types:
                         # No match.
                         group_spectra.remove(noise)
@@ -508,7 +552,7 @@ class Solution:
 
         return spectra
 
-    def get_noise(self, source, sink, group=None):
+    def get_noise(self, source=None, sink=None, group=None, label=None):
         """Get noise spectral density from specified source to specified sink.
 
         This is a convenience method for :meth:`.filter_noise` for when only a single noise spectral
@@ -516,12 +560,19 @@ class Solution:
 
         Parameters
         ----------
-        source : :class:`str` or :class:`~.components.Noise`
+        source : :class:`str` or :class:`~.components.Noise`, optional
             The noise source element.
-        sink : :class:`str` or :class:`.Node` or :class:`.Component`
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`, optional
             The noise sink element.
         group : :class:`str`, optional
             The noise group. If `None`, the default group is assumed.
+        label : :class:`str`, optional
+            The noise label.
+
+        Returns
+        -------
+        :class:`.NoiseDensity`
+            The matched noise spectral density.
 
         Raises
         ------
@@ -544,9 +595,12 @@ class Solution:
 
         >>> get_noise("V(op1)", "nout", group="b")
         """
-        if group is None:
-            group = self.DEFAULT_GROUP_NAME
-        noise_groups = self.filter_noise(sources=[source], sinks=[sink], groups=[group])
+        sources = None if source is None else [source]
+        sinks = None if sink is None else [sink]
+        groups = [self.DEFAULT_GROUP_NAME] if group is None else [group]
+        labels = None if label is None else [label]
+        noise_groups = self.filter_noise(sources=sources, sinks=sinks, groups=groups,
+                                         labels=labels)
         if not noise_groups:
             raise ValueError("no noise found")
         noise_densities = list(noise_groups.values())[0]
@@ -554,7 +608,42 @@ class Solution:
             raise ValueError("no noise found")
         if len(noise_groups) > 1 or len(noise_densities) > 1:
             raise ValueError("degenerate noise spectral densities for the specified source, sink, "
-                             "and group")
+                             "group and label")
+        return noise_densities[0]
+
+    def get_noise_sum(self, sink=None, group=None, label=None):
+        """Get noise sum with the specified label.
+
+        Parameters
+        ----------
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`, optional
+            The noise sink element.
+        group : :class:`str`, optional
+            The noise group. If `None`, the default group is assumed.
+        label : :class:`str`, optional
+            The noise label.
+
+        Returns
+        -------
+        :class:`.MultiNoiseDensity`
+            The matched noise sum.
+
+        Raises
+        ------
+        ValueError
+            If no noise sum is found.
+        """
+        sinks = None if sink is None else [sink]
+        groups = [self.DEFAULT_GROUP_NAME] if group is None else [group]
+        labels = None if label is None else [label]
+        noise_groups = self.filter_noise_sums(sinks=sinks, groups=groups, labels=labels)
+        if not noise_groups:
+            raise ValueError("no noise sums found")
+        noise_densities = list(noise_groups.values())[0]
+        if not noise_densities:
+            raise ValueError("no noise sums found")
+        if len(noise_groups) > 1 or len(noise_densities) > 1:
+            raise ValueError("degenerate noise sums for the specified sink, group and label")
         return noise_densities[0]
 
     @property
@@ -703,6 +792,9 @@ class Solution:
         sources = set()
         for spectra in self.noise.values():
             sources.update([spectral_density.source for spectral_density in spectra])
+        for sum_spectra in self.noise_sums.values():
+            for sum_spectral_density in sum_spectra:
+                sources.update(sum_spectral_density.sources)
         return sources
 
     def get_noise_source(self, source_name):
@@ -722,7 +814,7 @@ class Solution:
         :rtype: Set[:class:`Node`]
         """
         nodes = set()
-        for spectra in self.noise.values():
+        for spectra in list(self.noise.values()) + list(self.noise_sums.values()):
             nodes.update([spectral_density.sink for spectral_density in spectra
                           if isinstance(spectral_density.sink, Node)])
         return nodes
@@ -735,7 +827,7 @@ class Solution:
         :rtype: Sequence[:class:`Component`]
         """
         components = set()
-        for spectra in self.noise.values():
+        for spectra in list(self.noise.values()) + list(self.noise_sums.values()):
             components.update([spectral_density.sink for spectral_density in spectra
                                if isinstance(spectral_density.sink, Component)])
         return components

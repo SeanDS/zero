@@ -57,6 +57,8 @@ following ways:
    nin to nout (V/V)
    >>> print(solution.get_response("nin", "r1")) # response between input node and resistor current (note the units)
    n1 to r1 (A/V)
+   >>> print(solution.get_response(label="nin to r1 (A/V)")) # label specifier
+   n1 to r1 (A/V)
 
 Specifying noise sources and sinks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,6 +112,9 @@ Assuming that a circuit is built in the following way...
    >>> print(solution.get_noise(op1.non_inv_current_noise, "nout")) # current noise at op1's non-inverting input
    I(op1, nin) to nout
    >>> print(solution.get_noise("I(op1, nin", "nout")) # alternative string specifier
+   I(op1, nin) to nout
+   >>> print(solution.get_noise(label="I(op1, nin) to nout")) # label specifier
+   I(op1, nin) to nout
 
 Combining solutions
 -------------------
