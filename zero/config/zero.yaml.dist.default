@@ -8,9 +8,8 @@ constants:
 # Formatting options.
 format:
   # Table format. Choose from:
-  #   plain, simple, grid, fancy_grid, pipe, orgtbl, jira, presto, psql,
-  #   rst, mediawiki, moinmoin, youtrack, html, latex, latex_raw,
-  #   latex_booktabs, texile
+  #   plain, simple, grid, fancy_grid, pipe, orgtbl, jira, presto, psql, rst, mediawiki, moinmoin,
+  #   youtrack, html, latex, latex_raw, latex_booktabs, texile
   table: fancy_grid
 
 # Plot options.
@@ -18,6 +17,22 @@ plot:
   # Default plot size, in inches.
   size_x: 8
   size_y: 6
+
+  # Default plot options. These are only used if the corresponding parameter is not directly
+  # specified.
+  alpha: 1
+  dash_capstyle: ~
+  linestyle: ~
+  linewidth: 1.5
+  zorder: 1
+  sum_alpha: 0.8
+  sum_dash_capstyle: round
+  sum_linestyle: --
+  sum_linewidth: 2
+  sum_zorder: 2
+  sum_greyscale_cycle_start: 1  # black
+  sum_greyscale_cycle_stop: 0.2 # light grey
+  sum_greyscale_cycle_count: 4  # number of steps
 
   # Matplotlib configuration overrides.
   matplotlib:
@@ -30,8 +45,7 @@ algebra:
 
 # Data options.
 data:
-  # Absolute and relative tolerances for comparisons between transfer
-  # functions and noise spectra.
+  # Absolute and relative tolerances for comparisons between transfer functions and noise spectra.
   response_abs_tol: 1e-4
   response_rel_tol: 1e-4
   noise_abs_tol: 1e-5
@@ -52,6 +66,5 @@ graphviz:
 octopart:
   # HTTP endpoint used to access the Octopart API.
   api_endpoint: https://octopart.com/api/v3/parts/match
-  # API key. Replace this key with your own if the one below stops
-  # working.
+  # API key. Replace this key with your own if the one below stops working.
   api_key: ebdc07fc

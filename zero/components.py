@@ -11,6 +11,17 @@ from .config import ZeroConfig, LibraryOpAmp
 CONF = ZeroConfig()
 
 
+class ElementNotFoundError(Exception):
+    def __init__(self, name, message="element '%s' not found", *args, **kwargs):
+        # apply name to message
+        message = message % name
+
+        # call parent constructor
+        super().__init__(message, *args, **kwargs)
+
+        self.name = name
+
+
 class Component(metaclass=abc.ABCMeta):
     """Represents a circuit component.
 
@@ -544,6 +555,11 @@ class Inductor(PassiveComponent):
         return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
 
 
+class ComponentNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
+
+
 class Node(metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
 
@@ -581,8 +597,13 @@ class Node(metaclass=NamedInstance):
         return str(self)
 
 
+class NodeNotFoundError(ElementNotFoundError):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
+
+
 class Noise(metaclass=abc.ABCMeta):
-    """Noise spectral density.
+    """Noise source.
 
     Parameters
     ----------
@@ -622,7 +643,7 @@ class Noise(metaclass=abc.ABCMeta):
 
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
-    """Component noise spectral density.
+    """Component noise source.
 
     Parameters
     ----------
@@ -644,9 +665,13 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
         """Meta data used to provide hash."""
         return super()._meta_data(), self.component
 
+    @property
+    def component_type(self):
+        return self.component.TYPE
+
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):
-    """Node noise spectral density.
+    """Node noise source.
 
     Parameters
     ----------
@@ -673,6 +698,7 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
 
 
 class VoltageNoise(ComponentNoise):
+    """Component voltage noise source."""
     SUBTYPE = "voltage"
 
     def label(self):
@@ -680,6 +706,7 @@ class VoltageNoise(ComponentNoise):
 
 
 class JohnsonNoise(VoltageNoise):
+    """Resistor Johnson-Nyquist noise source."""
     SUBTYPE = "johnson"
 
     def __init__(self, resistance, *args, **kwargs):
@@ -703,6 +730,7 @@ class JohnsonNoise(VoltageNoise):
 
 
 class CurrentNoise(NodeNoise):
+    """Node current noise source."""
     SUBTYPE = "current"
 
     def label(self):

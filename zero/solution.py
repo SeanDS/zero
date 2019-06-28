@@ -5,8 +5,8 @@ from collections import defaultdict
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
 from matplotlib import cycler
+from matplotlib.ticker import MultipleLocator
 
 from .config import ZeroConfig
 from .data import Response, NoiseDensity, MultiNoiseDensity, frequencies_match
@@ -45,9 +45,9 @@ class Solution:
         self._function_groups = {}
 
         # Default functions in each group.
-        self._default_responses = defaultdict(list)
-        self._default_noise = defaultdict(list)
-        self._default_noise_sums = defaultdict(list)
+        self.default_responses = defaultdict(list)
+        self.default_noise = defaultdict(list)
+        self.default_noise_sums = defaultdict(list)
 
         self._name = None
 
@@ -159,7 +159,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        return response in self._default_responses[group]
+        return response in self.default_responses[group]
 
     def set_response_as_default(self, response, group=None):
         """Set the specified response as a default.
@@ -185,7 +185,7 @@ class Solution:
         if self.is_default_response(response, group):
             raise ValueError(f"response '{response}' is already default")
 
-        self._default_responses[group].append(response)
+        self.default_responses[group].append(response)
 
     def add_noise(self, spectral_density, default=False, group=None):
         """Add a noise spectral density to the solution.
@@ -222,7 +222,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        return noise in self._default_noise[group]
+        return noise in self.default_noise[group]
 
     def set_noise_as_default(self, spectral_density, group=None):
         """Set the specified noise spectral density as a default"""
@@ -235,7 +235,7 @@ class Solution:
         if self.is_default_noise(spectral_density, group):
             raise ValueError(f"noise density '{spectral_density}' is already default")
 
-        self._default_noise[group].append(spectral_density)
+        self.default_noise[group].append(spectral_density)
 
     def add_noise_sum(self, noise_sum, default=False, group=None):
         """Add a noise sum to the solution.
@@ -270,7 +270,7 @@ class Solution:
         if group is None:
             group = self.DEFAULT_GROUP_NAME
 
-        return noise_sum in self._default_noise_sums[group]
+        return noise_sum in self.default_noise_sums[group]
 
     def set_noise_sum_as_default(self, noise_sum, group=None):
         """Set the specified noise sum as a default"""
@@ -283,7 +283,7 @@ class Solution:
         if self.is_default_noise_sum(noise_sum):
             raise ValueError(f"noise sum '{noise_sum}' is already default")
 
-        self._default_noise_sums[group].append(noise_sum)
+        self.default_noise_sums[group].append(noise_sum)
 
     def _add_function(self, function, group=None):
         if group is None:
@@ -315,9 +315,9 @@ class Solution:
 
         if groups != self.RESPONSE_GROUPS_ALL:
             # Filter by group.
-            for group in responses:
+            for group in list(responses):
                 if group not in groups:
-                    del responses[groups]
+                    del responses[group]
 
         if sources != self.RESPONSE_SOURCES_ALL:
             if isinstance(sources, str):
@@ -357,6 +357,52 @@ class Solution:
 
         return responses
 
+    def get_response(self, source, sink, group=None):
+        """Get response from specified source to specified sink.
+
+        This is a convenience method for :meth:`.filter_responses` for when only a single response
+        is required.
+
+        Parameters
+        ----------
+        source : :class:`str` or :class:`.Node` or :class:`.Component`
+            The response source element.
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`
+            The response sink element.
+        group : :class:`str`, optional
+            The response group. If `None`, the default group is assumed.
+
+        Raises
+        ------
+        ValueError
+            If no response is found, or if more than one matching response is found.
+
+        Examples
+        --------
+        Get response from node `nin` to node `nout` using string specifiers:
+
+        >>> get_response("nin", "nout")
+
+        Get response from node `nin` to component `op1` using objects:
+
+        >>> get_response(Node("nin"), op1)
+
+        Get response from node `nin` to node `nout`, searching only in group `b`:
+
+        >>> get_response("nin", "nout", group="b")
+        """
+        if group is None:
+            group = self.DEFAULT_GROUP_NAME
+        response_groups = self.filter_responses(sources=[source], sinks=[sink], groups=[group])
+        if not response_groups:
+            raise ValueError("no response found")
+        responses = list(response_groups.values())[0]
+        if not responses:
+            raise ValueError("no response found")
+        if len(response_groups) > 1 or len(responses) > 1:
+            raise ValueError("degenerate responses for the specified source, sink, and group")
+        return responses[0]
+
     def filter_noise(self, **kwargs):
         """Filter for noise spectra.
 
@@ -369,7 +415,7 @@ class Solution:
 
         This does not include default sums.
         """
-        return self._apply_noise_filters(self._default_noise, **kwargs)
+        return self._apply_noise_filters(self.default_noise, **kwargs)
 
     def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, types=None):
         filter_sources = []
@@ -386,9 +432,9 @@ class Solution:
 
         if groups != self.NOISE_GROUPS_ALL:
             # Filter by group.
-            for group in spectra:
+            for group in list(spectra):
                 if group not in groups:
-                    del spectra[groups]
+                    del spectra[group]
 
         if sources != self.NOISE_SOURCES_ALL:
             if isinstance(sources, str):
@@ -437,6 +483,55 @@ class Solution:
 
         return spectra
 
+    def get_noise(self, source, sink, group=None):
+        """Get noise spectral density from specified source to specified sink.
+
+        This is a convenience method for :meth:`.filter_noise` for when only a single noise spectral
+        density is required.
+
+        Parameters
+        ----------
+        source : :class:`str` or :class:`~.components.Noise`
+            The noise source element.
+        sink : :class:`str` or :class:`.Node` or :class:`.Component`
+            The noise sink element.
+        group : :class:`str`, optional
+            The noise group. If `None`, the default group is assumed.
+
+        Raises
+        ------
+        ValueError
+            If no noise spectral density is found, or if more than one matching noise spectral
+            density is found.
+
+        Examples
+        --------
+        Get noise arising from op-amp `op1`'s voltage noise at node `nout` using string specifiers:
+
+        >>> get_noise("V(op1)", "nout")
+
+        Get noise arising from op-amp `op1`'s voltage noise at component `op2` using objects:
+
+        >>> get_noise(op1.voltage_noise, op2)
+
+        Get noise arising from op-amp `op1`'s voltage noise at node `nout`, searching only in group
+        `b`:
+
+        >>> get_noise("V(op1)", "nout", group="b")
+        """
+        if group is None:
+            group = self.DEFAULT_GROUP_NAME
+        noise_groups = self.filter_noise(sources=[source], sinks=[sink], groups=[group])
+        if not noise_groups:
+            raise ValueError("no noise found")
+        noise_densities = list(noise_groups.values())[0]
+        if not noise_densities:
+            raise ValueError("no noise found")
+        if len(noise_groups) > 1 or len(noise_densities) > 1:
+            raise ValueError("degenerate noise spectral densities for the specified source, sink, "
+                             "and group")
+        return noise_densities[0]
+
     @property
     def responses(self):
         return {group: [function for function in functions if isinstance(function, Response)]
@@ -446,6 +541,23 @@ class Solution:
     def noise(self):
         return {group: [function for function in functions if isinstance(function, NoiseDensity)]
                 for group, functions in self.functions.items()}
+
+    @property
+    def component_noise(self):
+        return {group: [function for function in functions if function.noise_type == "component"]
+                for group, functions in self.noise.items()}
+
+    @property
+    def opamp_noise(self):
+        return {group: [function for function in functions
+                        if function.source.component_type == "op-amp"]
+                for group, functions in self.component_noise.items()}
+
+    @property
+    def resistor_noise(self):
+        return {group: [function for function in functions
+                        if function.source.component_type == "resistor"]
+                for group, functions in self.component_noise.items()}
 
     @property
     def noise_sums(self):
@@ -476,8 +588,8 @@ class Solution:
     @property
     def default_functions(self):
         """Default responses and noise spectra"""
-        return self._merge_groups(self._default_responses, self._default_noise,
-                                  self._default_noise_sums)
+        return self._merge_groups(self.default_responses, self.default_noise,
+                                  self.default_noise_sums)
 
     @property
     def response_source_nodes(self):
@@ -631,9 +743,44 @@ class Solution:
 
         Note: if only one of "sources" or "sinks" is specified, the other defaults to "all" as per
         the behaviour of :meth:`.filter_responses`.
+
+        Parameters
+        ----------
+        figure : :class:`~matplotlib.figure.Figure`, optional
+            Figure to plot to. If not specified, a new figure is created.
+        sources, sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`
+            The sources and sinks to plot responses between.
+
+        Other Parameters
+        ----------------
+        legend : :class:`bool`, optional
+            Display legend.
+        legend_loc : :class:`str`, optional
+            Legend display location. Defaults to "best".
+        legend_groups : :class:`bool`, optional
+            Display function group names in legends, if the group is not the default.
+        title : :class:`str`, optional
+            The plot title.
+        scale_db : :class:`bool`, optional
+            Scale the magnitude y-axis values in decibels. If False, absolute scaling is used.
+        xlim, mag_ylim, phase_ylim : sequence of :class:`float`, optional
+            The lower and upper limits for the x- and y-axes for the magnitude and phase plots.
+        xlabel, ylabel_mag, ylabel_phase : :class:`str`, optional
+            The x- and y-axis labels for the magnitude and phase plots.
+        db_tick_major_step, db_tick_minor_step : :class:`float`, optional
+            The magnitude y axis tick step sizes when ``scale_db`` is enabled. Defaults to 20 and 10
+            for the major and minor steps, respectively.
+        phase_tick_major_step, phase_tick_minor_step : :class:`float`, optional
+            The phase y axis tick step sizes when ``scale_db`` is enabled. Defaults to 30 and 15 for
+            the major and minor steps, respectively.
+
+        Returns
+        -------
+        :class:`~matplotlib.figure.Figure`
+            The plotted figure.
         """
         if sources is None and sinks is None:
-            responses = self._default_responses
+            responses = self.default_responses
         else:
             responses = self.filter_responses(sources=sources, sinks=sinks)
 
@@ -647,18 +794,51 @@ class Solution:
         return figure
 
     def plot_noise(self, figure=None, groups=None, sources=None, sinks=None, types=None,
-                   show_sums=True, title=None):
+                   show_sums=True, **kwargs):
         """Plot noise.
 
         Note: if only some of "groups", "sources", "sinks", "types" are specified, the others
         default to "all" as per the behaviour of :meth:`.filter_noise`.
+
+        Parameters
+        ----------
+        figure : :class:`~matplotlib.figure.Figure`, optional
+            Figure to plot to. If not specified, a new figure is created.
+        sources : list of :class:`str` or :class:`.Noise`, optional
+            The noise sources to plot at the specified ``sinks``. If None, all sources are plotted.
+        sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`, optional
+            The sinks to plot noise at. If None, all sinks are plotted.
+        types : list of :class:`str`, optional
+            The noise types to plot. If None, all noise types are plotted.
+        show_sums : :class:`bool`, optional
+            Plot any sums contained in this solution.
+
+        Other Parameters
+        ----------------
+        legend : :class:`bool`, optional
+            Display legend.
+        legend_loc : :class:`str`, optional
+            Legend display location. Defaults to "best".
+        legend_groups : :class:`bool`, optional
+            Display function group names in legends, if the group is not the default.
+        title : :class:`str`, optional
+            The plot title.
+        xlim, ylim : sequence of :class:`float`, optional
+            The lower and upper limits for the x- and y-axes.
+        xlabel, ylabel : :class:`str`, optional
+            The x- and y-axis labels.
+
+        Returns
+        -------
+        :class:`~matplotlib.figure.Figure`
+            The plotted figure.
         """
         if groups is None and sources is None and sinks is None and types is None:
             # Filter against sum flag.
             noise = self._filter_default_noise()
 
             if show_sums:
-                noise = self._merge_groups(noise, self._default_noise_sums)
+                noise = self._merge_groups(noise, self.default_noise_sums)
         else:
             noise = self.filter_noise(sources=sources, sinks=sinks, groups=groups, types=types)
 
@@ -668,7 +848,7 @@ class Solution:
         if not noise:
             raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
 
-        figure = self._plot_spectral_density(noise, figure=figure, title=title)
+        figure = self._plot_spectral_density(noise, figure=figure, **kwargs)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
 
         return figure
@@ -691,13 +871,22 @@ class Solution:
         return figure
 
     def _plot_bode(self, responses, figure=None, legend=True, legend_loc="best", legend_groups=True,
-                   title=None, xlim=None, mag_ylim=None, phase_ylim=None,
-                   xlabel=r"$\bf{Frequency}$ (Hz)", ylabel_mag=r"$\bf{Magnitude}$ (dB)",
-                   ylabel_phase=r"$\bf{Phase}$ ($\degree$)", mag_tick_major_step=20,
-                   mag_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
+                   title=None, scale_db=True, xlim=None, mag_ylim=None, phase_ylim=None,
+                   xlabel=None, ylabel_mag=None, ylabel_phase=None, db_tick_major_step=20,
+                   db_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
         if figure is None:
             # create figure
             figure = self.bode_figure()
+
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
+        if ylabel_mag is None:
+            if scale_db:
+                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
+            else:
+                ylabel_mag = r"$\bf{Magnitude}$"
+        if ylabel_phase is None:
+            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
 
         if len(figure.axes) != 2:
             raise ValueError("specified figure must contain two axes")
@@ -721,7 +910,7 @@ class Solution:
                     legend_group = None
 
                 for response in group_responses:
-                    response.draw(ax1, ax2, label_suffix=legend_group)
+                    response.draw(ax1, ax2, label_suffix=legend_group, scale_db=scale_db)
 
                 # overall figure title
                 if title:
@@ -748,22 +937,26 @@ class Solution:
                 ax2.grid(True)
 
                 # magnitude and phase tick locators
-                ax1.yaxis.set_major_locator(MultipleLocator(base=mag_tick_major_step))
-                ax1.yaxis.set_minor_locator(MultipleLocator(base=mag_tick_minor_step))
+                if scale_db:
+                    ax1.yaxis.set_major_locator(MultipleLocator(base=db_tick_major_step))
+                    ax1.yaxis.set_minor_locator(MultipleLocator(base=db_tick_minor_step))
                 ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
                 ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
 
         return figure
 
     def _plot_spectral_density(self, noise, figure=None, legend=True, legend_loc="best",
-                               legend_groups=True, title=None, xlim=None, ylim=None,
-                               xlabel=r"$\bf{Frequency}$ (Hz)", ylabel=None):
+                               legend_groups=True, title=None, xlim=None, ylim=None, xlabel=None,
+                               ylabel=None):
         if figure is None:
             # create figure
             figure = self.noise_figure()
 
         if len(figure.axes) != 1:
             raise ValueError("specified figure must contain one axis")
+
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
 
         ax = figure.axes[0]
 
@@ -805,8 +998,20 @@ class Solution:
                 else:
                     legend_group = None
 
+                sums = []
+
                 for spectral_density in spectra:
+                    if isinstance(spectral_density, MultiNoiseDensity):
+                        # Leave to end as we need to set a new prop cycler on the axis.
+                        sums.append(spectral_density)
+                        continue
+
                     spectral_density.draw(ax, label_suffix=legend_group)
+
+                with self._sum_context():
+                    ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
+                    for sum_spectral_density in sums:
+                        sum_spectral_density.draw(ax, label_suffix=legend_group)
 
                 # overall figure title
                 if title:
@@ -829,6 +1034,14 @@ class Solution:
 
         return figure
 
+    @property
+    def _grayscale_colours(self):
+        """Grayscale colour palette."""
+        greys = plt.get_cmap('Greys')
+        return greys(np.linspace(CONF["plot"]["sum_greyscale_cycle_start"],
+                                 CONF["plot"]["sum_greyscale_cycle_stop"],
+                                 CONF["plot"]["sum_greyscale_cycle_count"]))
+
     def _figure_style_context(self, group):
         """Figure style context manager.
 
@@ -850,6 +1063,10 @@ class Solution:
                     "axes.prop_cycle": prop_cycler}
 
         return plt.rc_context(settings)
+
+    def _sum_context(self):
+        """Sum figure style context manager. This sets the sum colors to greyscale."""
+        return plt.rc_context({"axes.prop_cycle": cycler(color=self._grayscale_colours)})
 
     @staticmethod
     def save_figure(figure, path, **kwargs):

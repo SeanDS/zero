@@ -43,7 +43,6 @@ class Series:
     def __init__(self, x, y):
         if x.shape != y.shape:
             raise ValueError("specified x and y vectors do not have the same shape")
-
         self.x = x
         self.y = y
 
@@ -56,7 +55,7 @@ class Series:
         x : :class:`np.array`
             The x vector.
         magnitude : :class:`np.array`
-            The magnitude.
+            The magnitude. This magnitude's scaling is determined by `mag_scale`.
         phase : :class:`np.array`, optional
             The phase. If `None`, the magnitude is assumed to have zero phase.
         mag_scale : :class:`str`, optional
@@ -112,7 +111,7 @@ class Series:
         x : :class:`np.array`
             The x vector.
         magnitude : :class:`np.array`
-            The magnitude.
+            The magnitude. This magnitude's scaling is determined by `mag_scale`.
         phase : :class:`np.array`
             The phase.
         magnitude_scale : :class:`str`, optional
@@ -160,10 +159,34 @@ class Series:
 
 class Function(metaclass=abc.ABCMeta):
     """Data set"""
-    def __init__(self, sources, sinks, series):
+    def __init__(self, sources, sinks, series, plot_options=None):
+        if plot_options is None:
+            plot_options = {}
         self.sources = list(sources)
         self.sinks = list(sinks)
         self.series = series
+        self.plot_options = dict(plot_options)
+
+        self._set_fallback_plot_options()
+
+    def _set_fallback_plot_options(self):
+        """Set plot options in cases where user-specified options are not provided."""
+        if "alpha" not in self.plot_options:
+            self._set_plot_option("alpha", CONF["plot"]["alpha"])
+        if "dash_capstyle" not in self.plot_options:
+            self._set_plot_option("dash_capstyle", CONF["plot"]["dash_capstyle"])
+        if "linestyle" not in self.plot_options and "ls" not in self.plot_options:
+            self._set_plot_option("linestyle", CONF["plot"]["linestyle"])
+        if "linewidth" not in self.plot_options and "lw" not in self.plot_options:
+            self._set_plot_option("linewidth", CONF["plot"]["linewidth"])
+        if "zorder" not in self.plot_options:
+            self._set_plot_option("zorder", CONF["plot"]["zorder"])
+
+    def _set_plot_option(self, key, value):
+        if value is None:
+            # Ignore empty values, to allow the user to ignore options in the configuration.
+            return
+        self.plot_options[key] = value
 
     @property
     def frequencies(self):
@@ -243,25 +266,45 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
 class Response(SingleSourceFunction, SingleSinkFunction, Function):
     """Response data series"""
     @property
+    def complex_magnitude(self):
+        return self.series.y
+
+    @property
     def magnitude(self):
-        return db(np.abs(self.series.y))
+        """Absolute magnitude."""
+        return np.abs(self.complex_magnitude)
+
+    @property
+    def db_magnitude(self):
+        r"""Magnitude scaled in units of decibel.
+
+        The response is power scaled such that the response is :math:`20 \log_{10} \left| x \right|`
+        where :math:`x` is the complex response provided by :attr:`.complex_magnitude`.
+        """
+        return db(self.magnitude)
 
     @property
     def phase(self):
-        return np.angle(self.series.y) * 180 / np.pi
+        """Phase in degrees."""
+        return np.angle(self.complex_magnitude) * 180 / np.pi
 
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
         return vectors_match(self.magnitude, other.magnitude)
 
-    def _draw_magnitude(self, axes, label_suffix=None):
+    def _draw_magnitude(self, axes, label_suffix=None, scale_db=True):
         """Add magnitude plot to axes"""
         label = self.label(tex=True, suffix=label_suffix)
-        axes.semilogx(self.frequencies, self.magnitude, label=label)
+        if scale_db:
+            # Decibel y-axis scaling.
+            axes.semilogx(self.frequencies, self.db_magnitude, label=label, **self.plot_options)
+        else:
+            # Linear y-axis scaling.
+            axes.loglog(self.frequencies, self.magnitude, label=label, **self.plot_options)
 
     def _draw_phase(self, axes):
         """Add phase plot to axes"""
-        axes.semilogx(self.frequencies, self.phase)
+        axes.semilogx(self.frequencies, self.phase, **self.plot_options)
 
     def draw(self, *axes, **kwargs):
         if len(axes) != 2:
@@ -315,7 +358,7 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
         axes = axes[0]
 
         label = self.label(tex=True, suffix=label_suffix)
-        axes.loglog(self.frequencies, self.spectral_density, label=label)
+        axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
 
 
 class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
@@ -348,8 +391,7 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
 
 class MultiNoiseDensity(NoiseDensityBase):
     """Set of noise data series from multiple sources to a single sink"""
-    def __init__(self, sources=None, series=None, constituents=None, label="incoherent sum",
-                 **kwargs):
+    def __init__(self, sources=None, series=None, constituents=None, label=None, **kwargs):
         if series is None and constituents is None:
             raise ValueError("one of series or constituents must be specified")
         elif series is not None and constituents is not None:
@@ -382,6 +424,9 @@ class MultiNoiseDensity(NoiseDensityBase):
             noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
             series = Series(frequencies, noise_sum)
 
+        if label is None:
+            label = "incoherent sum"
+
         self._label = label
 
         # call parent constructor
@@ -391,6 +436,21 @@ class MultiNoiseDensity(NoiseDensityBase):
             # check sink agrees with those set in constituents
             if not all([self.sink == spectral_density.sink for spectral_density in constituents]):
                 raise Exception("cannot handle noise for functions with different sinks")
+
+    def _set_fallback_plot_options(self):
+        """Set plot options in cases where user-specified options are not provided."""
+        if "alpha" not in self.plot_options:
+            self._set_plot_option("alpha", CONF["plot"]["sum_alpha"])
+        if "dash_capstyle" not in self.plot_options:
+            self._set_plot_option("dash_capstyle", CONF["plot"]["sum_dash_capstyle"])
+        if "linestyle" not in self.plot_options and "ls" not in self.plot_options:
+            self._set_plot_option("linestyle", CONF["plot"]["sum_linestyle"])
+        if "linewidth" not in self.plot_options and "lw" not in self.plot_options:
+            self._set_plot_option("linewidth", CONF["plot"]["sum_linewidth"])
+        if "zorder" not in self.plot_options:
+            self._set_plot_option("zorder", CONF["plot"]["sum_zorder"])
+        # Call parent after setting these options so they don't get overridden.
+        super()._set_fallback_plot_options()
 
     @property
     def noise_names(self):

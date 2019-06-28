@@ -111,11 +111,10 @@ test validation:3.7:
   stage: test
   <<: *template-test-validation
 
-# Generate the documentation only on creation of new tags or pushes to master branch.
+# Generate the documentation only on creation of new tags.
 pages:
   image: python:3.7
   stage: deploy
   only:
-    - tag
-    - master
+    - tags
   <<: *template-deploy-docs
