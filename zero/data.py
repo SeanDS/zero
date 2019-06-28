@@ -1,7 +1,6 @@
 """Data representation and manipulation"""
 
 import abc
-from copy import copy
 import logging
 import numpy as np
 
@@ -164,9 +163,13 @@ class Series:
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
 
-class Function(metaclass=abc.ABCMeta):
-    """Data set"""
-    def __init__(self, sources, sinks, series, plot_options=None):
+class BaseFunction(metaclass=abc.ABCMeta):
+    """Base function container."""
+    def __init__(self, sources=None, sinks=None, series=None, plot_options=None):
+        if sources is None:
+            sources = []
+        if sinks is None:
+            sinks = []
         if plot_options is None:
             plot_options = {}
         self.sources = list(sources)
@@ -240,11 +243,14 @@ class Function(metaclass=abc.ABCMeta):
         return hash(self.meta_data())
 
 
-class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
+class SingleSourceFunction(BaseFunction, metaclass=abc.ABCMeta):
     """Data set containing data for a single source"""
-    def __init__(self, source, **kwargs):
-        # call parent constructor
-        super().__init__(sources=[source], **kwargs)
+    def __init__(self, source=None, **kwargs):
+        if source is not None:
+            sources = [source]
+        else:
+            sources = []
+        super().__init__(sources=sources, **kwargs)
 
     @property
     def source(self):
@@ -259,11 +265,14 @@ class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
         return self.source.SOURCE_SINK_UNIT
 
 
-class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
+class SingleSinkFunction(BaseFunction, metaclass=abc.ABCMeta):
     """Data set containing data for a single sink"""
-    def __init__(self, sink, **kwargs):
-        # call parent constructor
-        super().__init__(sinks=[sink], **kwargs)
+    def __init__(self, sink=None, **kwargs):
+        if sink is not None:
+            sinks = [sink]
+        else:
+            sinks = []
+        super().__init__(sinks=sinks, **kwargs)
 
     @property
     def sink(self):
@@ -278,7 +287,7 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
         return self.sink.SOURCE_SINK_UNIT
 
 
-class Response(SingleSourceFunction, SingleSinkFunction, Function):
+class Response(SingleSourceFunction, SingleSinkFunction, BaseFunction):
     """Response data series"""
     @property
     def complex_magnitude(self):
@@ -470,7 +479,7 @@ class MultiNoiseDensity(NoiseDensityBase):
             series = Series(frequencies, noise_sum)
 
         if label is None:
-            label = "incoherent sum"
+            label = "Incoherent sum"
 
         self._label = label
 
@@ -519,3 +528,27 @@ class MultiNoiseDensity(NoiseDensityBase):
                              f"{self} sink unit, {self.sink_unit}")
         scaled_series = self.series * other.magnitude
         return self.__class__(sources=self.sources, sink=other.sink, series=scaled_series)
+
+
+class ReferenceNoise(NoiseDensity):
+    def __init__(self, frequencies, data, label=None, unit=None, **kwargs):
+        if label is None:
+            label = "Reference"
+        self._label = label
+        if unit is not None:
+            unit = unit.upper()
+            if unit not in ("V", "A"):
+                raise ValueError("unit can be either 'V' or 'A'")
+        self._sink_unit = unit
+        super().__init__(series=Series(frequencies, data), **kwargs)
+
+    def label(self, *args, suffix=None, **kwargs):
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+        return f"{self._label}{suffix}"
+
+    @property
+    def sink_unit(self):
+        return self._sink_unit

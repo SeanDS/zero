@@ -9,7 +9,7 @@ from matplotlib import cycler
 from matplotlib.ticker import MultipleLocator
 
 from .config import ZeroConfig
-from .data import Response, NoiseDensity, MultiNoiseDensity, frequencies_match
+from .data import Response, NoiseDensity, MultiNoiseDensity, ReferenceNoise, frequencies_match
 from .components import Component, Node, Noise
 from .format import Quantity
 from .misc import lighten_colours
@@ -29,8 +29,9 @@ class Solution:
     NOISE_GROUPS_ALL = "all"
     NOISE_TYPES_ALL = "all"
 
-    # Default group name (reserved).
+    # Default group names (reserved).
     DEFAULT_GROUP_NAME = "__default__"
+    DEFAULT_REF_GROUP_NAME = "reference"
 
     def __init__(self, frequencies, name=None):
         """Instantiate a new solution
@@ -49,26 +50,29 @@ class Solution:
         self.default_noise = defaultdict(list)
         self.default_noise_sums = defaultdict(list)
 
+        # Reference functions.
+        self._noise_references = []
+
         self._name = None
 
-        # creation date
+        # Creation date.
         self._creation_date = datetime.datetime.now()
-        # solution name
+        # Solution name.
         self.name = name
 
-        # line style group cycle
+        # Line style group cycle.
         self._linestyles = ["-", "--", "-.", ":"]
 
-        # default colour cycle
+        # Default colour cycle.
         self._default_color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        # cycles by group
+        # Cycles by group.
         self._group_colours = {}
 
         self.frequencies = frequencies
 
     @property
     def groups(self):
-        return list(self.functions)
+        return list(self.functions) + [self.DEFAULT_REF_GROUP_NAME]
 
     def get_group_functions(self, group=None):
         """Get functions by group"""
@@ -89,7 +93,7 @@ class Solution:
         Parameters
         ----------
         key_function : callable
-            Function that yields a key given a :class:`.Function`.
+            Function that yields a key given a :class:`.BaseFunction`.
         default_only : bool, optional
             Whether to sort only the default functions.
         """
@@ -285,11 +289,17 @@ class Solution:
 
         self.default_noise_sums[group].append(noise_sum)
 
+    def add_noise_reference(self, *args, **kwargs):
+        reference = ReferenceNoise(*args, **kwargs)
+        if reference in self._noise_references:
+            raise ValueError("noise reference is already present in the solution")
+        self._noise_references.append(reference)
+
     def _add_function(self, function, group=None):
         if group is None:
             group = self.DEFAULT_GROUP_NAME
-        elif group == self.DEFAULT_GROUP_NAME:
-            raise ValueError(f"group '{self.DEFAULT_GROUP_NAME}' is a reserved keyword")
+        elif group in (self.DEFAULT_GROUP_NAME, self.DEFAULT_REF_GROUP_NAME):
+            raise ValueError(f"group '{group}' is a reserved keyword")
 
         group = str(group)
 
@@ -745,7 +755,8 @@ class Solution:
         if self.has_noise:
             self.plot_noise()
 
-    def plot_responses(self, figure=None, sources=None, sinks=None, **kwargs):
+    def plot_responses(self, figure=None, sources=None, sinks=None, xlabel=None, ylabel_mag=None,
+                       ylabel_phase=None, scale_db=True, **kwargs):
         """Plot responses.
 
         Note: if only one of "sources" or "sinks" is specified, the other defaults to "all" as per
@@ -757,6 +768,10 @@ class Solution:
             Figure to plot to. If not specified, a new figure is created.
         sources, sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`
             The sources and sinks to plot responses between.
+        xlabel, ylabel_mag, ylabel_phase : :class:`str`, optional
+            The x- and y-axis labels for the magnitude and phase plots.
+        scale_db : :class:`bool`, optional
+            Scale the magnitude y-axis values in decibels. If False, absolute scaling is used.
 
         Other Parameters
         ----------------
@@ -768,12 +783,8 @@ class Solution:
             Display function group names in legends, if the group is not the default.
         title : :class:`str`, optional
             The plot title.
-        scale_db : :class:`bool`, optional
-            Scale the magnitude y-axis values in decibels. If False, absolute scaling is used.
         xlim, mag_ylim, phase_ylim : sequence of :class:`float`, optional
             The lower and upper limits for the x- and y-axes for the magnitude and phase plots.
-        xlabel, ylabel_mag, ylabel_phase : :class:`str`, optional
-            The x- and y-axis labels for the magnitude and phase plots.
         db_tick_major_step, db_tick_minor_step : :class:`float`, optional
             The magnitude y axis tick step sizes when ``scale_db`` is enabled. Defaults to 20 and 10
             for the major and minor steps, respectively.
@@ -794,14 +805,25 @@ class Solution:
         if not responses:
             raise NoDataException("no responses found")
 
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
+        if ylabel_mag is None:
+            if scale_db:
+                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
+            else:
+                ylabel_mag = r"$\bf{Magnitude}$"
+        if ylabel_phase is None:
+            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
+
         # Draw plot.
-        figure = self._plot_bode(responses, figure=figure, **kwargs)
+        figure = self._plot_bode(responses, figure=figure, xlabel=xlabel, ylabel_mag=ylabel_mag,
+                                 ylabel_phase=ylabel_phase, scale_db=scale_db, **kwargs)
         LOGGER.info("response(s) plotted on %s", figure.canvas.get_window_title())
 
         return figure
 
     def plot_noise(self, figure=None, groups=None, sources=None, sinks=None, types=None,
-                   show_sums=True, **kwargs):
+                   show_sums=True, xlabel=None, ylabel=None, **kwargs):
         """Plot noise.
 
         Note: if only some of "groups", "sources", "sinks", "types" are specified, the others
@@ -819,6 +841,8 @@ class Solution:
             The noise types to plot. If None, all noise types are plotted.
         show_sums : :class:`bool`, optional
             Plot any sums contained in this solution.
+        xlabel, ylabel : :class:`str`, optional
+            The x- and y-axis labels.
 
         Other Parameters
         ----------------
@@ -832,8 +856,6 @@ class Solution:
             The plot title.
         xlim, ylim : sequence of :class:`float`, optional
             The lower and upper limits for the x- and y-axes.
-        xlabel, ylabel : :class:`str`, optional
-            The x- and y-axis labels.
 
         Returns
         -------
@@ -855,7 +877,34 @@ class Solution:
         if not noise:
             raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
 
-        figure = self._plot_spectral_density(noise, figure=figure, **kwargs)
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
+
+        if ylabel is None:
+            unit_tex = []
+            has_volts = False
+            has_amps = False
+
+            # Check which noise units to use.
+            for spectra in noise.values():
+                if any([spectral_density.sink_unit == "V" for spectral_density in spectra]):
+                    has_volts = True
+                if any([spectral_density.sink_unit == "A" for spectral_density in spectra]):
+                    has_amps = True
+
+            if has_volts:
+                unit_tex.append(r"$\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$")
+            if has_amps:
+                unit_tex.append(r"$\frac{\mathrm{A}}{\sqrt{\mathrm{Hz}}}$")
+
+            unit = ", ".join(unit_tex)
+            ylabel = r"$\bf{Noise}$" + f" ({unit})"
+
+        # Add reference functions to default group.
+        noise[self.DEFAULT_REF_GROUP_NAME].extend(self._noise_references)
+
+        figure = self._plot_spectral_density(noise, figure=figure, xlabel=xlabel, ylabel=ylabel,
+                                             **kwargs)
         LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
 
         return figure
@@ -884,16 +933,6 @@ class Solution:
         if figure is None:
             # create figure
             figure = self.bode_figure()
-
-        if xlabel is None:
-            xlabel = r"$\bf{Frequency}$ (Hz)"
-        if ylabel_mag is None:
-            if scale_db:
-                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
-            else:
-                ylabel_mag = r"$\bf{Magnitude}$"
-        if ylabel_phase is None:
-            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
 
         if len(figure.axes) != 2:
             raise ValueError("specified figure must contain two axes")
@@ -936,10 +975,13 @@ class Solution:
                 if phase_ylim:
                     ax2.set_ylim(phase_ylim)
 
-                # set other axis properties
-                ax2.set_xlabel(xlabel)
-                ax1.set_ylabel(ylabel_mag)
-                ax2.set_ylabel(ylabel_phase)
+                # Set other axis properties.
+                if xlabel is not None:
+                    ax2.set_xlabel(xlabel)
+                if ylabel_mag is not None:
+                    ax1.set_ylabel(ylabel_mag)
+                if ylabel_phase is not None:
+                    ax2.set_ylabel(ylabel_phase)
                 ax1.grid(True)
                 ax2.grid(True)
 
@@ -962,30 +1004,7 @@ class Solution:
         if len(figure.axes) != 1:
             raise ValueError("specified figure must contain one axis")
 
-        if xlabel is None:
-            xlabel = r"$\bf{Frequency}$ (Hz)"
-
         ax = figure.axes[0]
-
-        if ylabel is None:
-            unit_tex = []
-            has_volts = False
-            has_amps = False
-
-            # Check which noise units to use.
-            for spectra in noise.values():
-                if any([spectral_density.sink_unit == "V" for spectral_density in spectra]):
-                    has_volts = True
-                if any([spectral_density.sink_unit == "A" for spectral_density in spectra]):
-                    has_amps = True
-
-            if has_volts:
-                unit_tex.append(r"$\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$")
-            if has_amps:
-                unit_tex.append(r"$\frac{\mathrm{A}}{\sqrt{\mathrm{Hz}}}$")
-
-            unit = ", ".join(unit_tex)
-            ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
         for group, spectra in noise.items():
             if not spectra:
@@ -1034,9 +1053,11 @@ class Solution:
                 if ylim:
                     ax.set_ylim(ylim)
 
-                # set other axis properties
-                ax.set_xlabel(xlabel)
-                ax.set_ylabel(ylabel)
+                # Set other axis properties.
+                if xlabel is not None:
+                    ax.set_xlabel(xlabel)
+                if ylabel is not None:
+                    ax.set_ylabel(ylabel)
                 ax.grid(True)
 
         return figure
