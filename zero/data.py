@@ -444,7 +444,7 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
     def __mul__(self, other):
         if isinstance(other, Response):
             other_sink = other.sink
-            other_value = other.series
+            other_value = other.magnitude
             if self.sink_unit != other.source_unit:
                 raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
                                  f"this response's sink unit, {self.sink_unit}")
@@ -539,7 +539,7 @@ class MultiNoiseDensity(NoiseDensityBase):
     def __mul__(self, other):
         if isinstance(other, Response):
             other_sink = other.sink
-            other_value = other.series
+            other_value = other.magnitude
             if self.sink_unit != other.source_unit:
                 raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
                                  f"this response's sink unit, {self.sink_unit}")
