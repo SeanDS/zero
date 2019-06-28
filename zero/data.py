@@ -355,6 +355,15 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         # Both have units.
         return f"{self.sink_unit}/{self.source_unit}"
 
+    def __mul__(self, other):
+        if not isinstance(other, Response):
+            raise ValueError(f"cannot multiply response by {type(other)}")
+        if self.sink_unit != other.source_unit:
+            raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                             f"this response's sink unit, {self.sink_unit}")
+        scaled_series = self.series * other.series
+        return self.__class__(source=self.source, sink=other.sink, series=scaled_series)
+
     def inverse(self):
         """Inverse response."""
         return self.__class__(source=self.sink, sink=self.source, series=self.series.inverse())
@@ -420,7 +429,7 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
             raise ValueError(f"cannot multiply noise by {type(other)}")
         if self.sink_unit != other.source_unit:
             raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                             f"{self} sink unit, {self.sink_unit}")
+                             f"this response's sink unit, {self.sink_unit}")
         scaled_series = self.series * other.magnitude
         return self.__class__(source=self.source, sink=other.sink, series=scaled_series)
 
