@@ -30,6 +30,6 @@ if __name__ == "__main__":
     solution = analysis.calculate(frequencies=frequencies, input_type="current", node="n1",
                                   sink="nout", incoherent_sum=True, input_refer=True)
 
-    # Plot.
-    solution.plot_noise(sinks="all")
+    # Plot. Note that the sink is now the input, since we projected the noise there.
+    solution.plot_noise(sinks=["input"])
     solution.show()

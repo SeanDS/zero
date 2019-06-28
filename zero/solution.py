@@ -469,8 +469,8 @@ class Solution:
                 if isinstance(sink, str):
                     sink = self.get_noise_sink(sink)
 
-                if not isinstance(sink, Node):
-                    raise ValueError(f"noise sink '{sink}' is not a node")
+                if not isinstance(sink, (Component, Node)):
+                    raise ValueError(f"noise sink '{sink}' is not a component or node")
 
                 filter_sinks.append(sink)
 
