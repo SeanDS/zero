@@ -153,6 +153,9 @@ class Series:
             return self * other.inverse()
         return self.__class__(self.x, self.y * 1 / other)
 
+    def __rtruediv__(self, other):
+        return other * self.inverse()
+
     def inverse(self):
         return self.__class__(self.x, np.reciprocal(self.y))
 
