@@ -608,8 +608,7 @@ class Noise(metaclass=abc.ABCMeta):
     Parameters
     ----------
     function : callable
-        Callable that returns the noise associated with a specified frequency
-        vector.
+        Callable that returns the noise associated with a specified frequency vector.
     """
 
     TYPE = ""
@@ -716,10 +715,10 @@ class JohnsonNoise(VoltageNoise):
 
     def noise_voltage(self, frequencies, *args, **kwargs):
         white_noise = np.sqrt(4 * float(CONF["constants"]["kB"])
-                                * float(CONF["constants"]["T"])
-                                * self.resistance)
+                              * float(CONF["constants"]["T"])
+                              * self.resistance)
 
-        return np.ones(frequencies.shape) * white_noise
+        return np.ones_like(frequencies) * white_noise
 
     def label(self):
         return f"R({self.component.name})"
