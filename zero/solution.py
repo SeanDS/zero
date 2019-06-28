@@ -945,7 +945,7 @@ class Solution:
                 continue
 
             with self._figure_style_context(group):
-                # reset axes colour wheels
+                # Reset axes colour wheels.
                 ax1.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
                 ax2.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
 
@@ -958,15 +958,14 @@ class Solution:
                 for response in group_responses:
                     response.draw(ax1, ax2, label_suffix=legend_group, scale_db=scale_db)
 
-                # overall figure title
                 if title:
-                    figure.suptitle(title)
+                    # Use ax1 since it's at the top. We could use figure.suptitle but this doesn't
+                    # behave with tight_layout.
+                    ax1.set_title(title)
 
-                # legend
                 if legend:
                     ax1.legend(loc=legend_loc)
 
-                # limits
                 if xlim:
                     ax1.set_xlim(xlim)
                     ax2.set_xlim(xlim)
@@ -975,7 +974,6 @@ class Solution:
                 if phase_ylim:
                     ax2.set_ylim(phase_ylim)
 
-                # Set other axis properties.
                 if xlabel is not None:
                     ax2.set_xlabel(xlabel)
                 if ylabel_mag is not None:
@@ -985,7 +983,7 @@ class Solution:
                 ax1.grid(True)
                 ax2.grid(True)
 
-                # magnitude and phase tick locators
+                # Magnitude and phase tick locators.
                 if scale_db:
                     ax1.yaxis.set_major_locator(MultipleLocator(base=db_tick_major_step))
                     ax1.yaxis.set_minor_locator(MultipleLocator(base=db_tick_minor_step))
@@ -1041,7 +1039,7 @@ class Solution:
 
                 # overall figure title
                 if title:
-                    figure.suptitle(title)
+                    ax.set_title(title)
 
                 # legend
                 if legend:

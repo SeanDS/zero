@@ -38,5 +38,5 @@ if __name__ == "__main__":
     solution.add_noise_reference(frequencies, shot_noise(frequencies, 1e-3), label="Shot noise")
 
     # Plot. Note that the sink is now the input, since we projected the noise there.
-    solution.plot_noise(sinks=["input"], ylim=(1e-14, 1e-9))
+    solution.plot_noise(sinks=["input"], ylim=(1e-14, 1e-9), title="Photodetector noise")
     solution.show()
