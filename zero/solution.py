@@ -9,7 +9,8 @@ from matplotlib import cycler
 from matplotlib.ticker import MultipleLocator
 
 from .config import ZeroConfig
-from .data import Response, NoiseDensity, MultiNoiseDensity, ReferenceNoise, frequencies_match
+from .data import (Response, NoiseDensity, MultiNoiseDensity, ReferenceResponse, ReferenceNoise,
+                   frequencies_match)
 from .components import Component, Node, Noise
 from .format import Quantity
 from .misc import lighten_colours
@@ -51,6 +52,7 @@ class Solution:
         self.default_noise_sums = defaultdict(list)
 
         # Reference functions.
+        self._response_references = []
         self._noise_references = []
 
         self._name = None
@@ -288,6 +290,12 @@ class Solution:
             raise ValueError(f"noise sum '{noise_sum}' is already default")
 
         self.default_noise_sums[group].append(noise_sum)
+
+    def add_response_reference(self, *args, **kwargs):
+        reference = ReferenceResponse(*args, **kwargs)
+        if reference in self._response_references:
+            raise ValueError("response reference is already present in the solution")
+        self._response_references.append(reference)
 
     def add_noise_reference(self, *args, **kwargs):
         reference = ReferenceNoise(*args, **kwargs)
@@ -755,8 +763,8 @@ class Solution:
         if self.has_noise:
             self.plot_noise()
 
-    def plot_responses(self, figure=None, sources=None, sinks=None, xlabel=None, ylabel_mag=None,
-                       ylabel_phase=None, scale_db=True, **kwargs):
+    def plot_responses(self, figure=None, groups=None, sources=None, sinks=None, xlabel=None,
+                       ylabel_mag=None, ylabel_phase=None, scale_db=True, **kwargs):
         """Plot responses.
 
         Note: if only one of "sources" or "sinks" is specified, the other defaults to "all" as per
@@ -766,6 +774,8 @@ class Solution:
         ----------
         figure : :class:`~matplotlib.figure.Figure`, optional
             Figure to plot to. If not specified, a new figure is created.
+        groups : list of :class:`str`, optional
+            The response groups to plot. If None, all groups are plotted.
         sources, sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`
             The sources and sinks to plot responses between.
         xlabel, ylabel_mag, ylabel_phase : :class:`str`, optional
@@ -797,10 +807,10 @@ class Solution:
         :class:`~matplotlib.figure.Figure`
             The plotted figure.
         """
-        if sources is None and sinks is None:
+        if groups is None and sources is None and sinks is None:
             responses = self.default_responses
         else:
-            responses = self.filter_responses(sources=sources, sinks=sinks)
+            responses = self.filter_responses(sources=sources, sinks=sinks, groups=groups)
 
         if not responses:
             raise NoDataException("no responses found")
@@ -814,6 +824,9 @@ class Solution:
                 ylabel_mag = r"$\bf{Magnitude}$"
         if ylabel_phase is None:
             ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
+
+        # Add reference functions.
+        responses[self.DEFAULT_REF_GROUP_NAME] = self._response_references
 
         # Draw plot.
         figure = self._plot_bode(responses, figure=figure, xlabel=xlabel, ylabel_mag=ylabel_mag,
@@ -833,6 +846,8 @@ class Solution:
         ----------
         figure : :class:`~matplotlib.figure.Figure`, optional
             Figure to plot to. If not specified, a new figure is created.
+        groups : list of :class:`str`, optional
+            The noise groups to plot. If None, all groups are plotted.
         sources : list of :class:`str` or :class:`.Noise`, optional
             The noise sources to plot at the specified ``sinks``. If None, all sources are plotted.
         sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`, optional
@@ -900,8 +915,8 @@ class Solution:
             unit = ", ".join(unit_tex)
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
-        # Add reference functions to default group.
-        noise[self.DEFAULT_REF_GROUP_NAME].extend(self._noise_references)
+        # Add reference functions.
+        noise[self.DEFAULT_REF_GROUP_NAME] = self._noise_references
 
         figure = self._plot_spectral_density(noise, figure=figure, xlabel=xlabel, ylabel=ylabel,
                                              **kwargs)

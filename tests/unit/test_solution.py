@@ -197,7 +197,7 @@ class SolutionTestCase(TestCase):
         # Combine.
         sol_c = sol_a + sol_b
 
-        self.assertCountEqual(sol_c.groups, ["Sol A", "Sol B"])
+        self.assertCountEqual(sol_c.groups, ["Sol A", "Sol B", sol_c.DEFAULT_REF_GROUP_NAME])
         self.assertCountEqual(sol_c.functions["Sol A"], [self.response11, self.response12])
         self.assertCountEqual(sol_c.functions["Sol B"], [self.response13])
 

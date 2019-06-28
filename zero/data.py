@@ -530,7 +530,7 @@ class MultiNoiseDensity(NoiseDensityBase):
         return self.__class__(sources=self.sources, sink=other.sink, series=scaled_series)
 
 
-class ReferenceNoise(NoiseDensity):
+class Reference(metaclass=abc.ABCMeta):
     def __init__(self, frequencies, data, label=None, unit=None, **kwargs):
         if label is None:
             label = "Reference"
@@ -552,3 +552,11 @@ class ReferenceNoise(NoiseDensity):
     @property
     def sink_unit(self):
         return self._sink_unit
+
+
+class ReferenceResponse(Reference, Response):
+    pass
+
+
+class ReferenceNoise(Reference, NoiseDensity):
+    pass

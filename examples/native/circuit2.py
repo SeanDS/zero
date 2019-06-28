@@ -29,6 +29,9 @@ if __name__ == "__main__":
     analysis = AcSignalAnalysis(circuit=circuit)
     solution = analysis.calculate(frequencies=frequencies, input_type="current", node="n1")
 
+    # Add a response reference curve.
+    solution.add_response_reference(frequencies, np.ones_like(frequencies), label="Unity gain")
+
     # Plot, scaling in absolute units.
     solution.plot_responses(sinks=["nout"], scale_db=False)
     solution.show()
