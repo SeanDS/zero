@@ -94,3 +94,86 @@ class SeriesTestCase(TestCase):
         self.assertRaises(ValueError, Series, x=np.array([1, 2, 3]), y=np.array([1, 2, 3, 4]))
         self.assertRaises(ValueError, Series, x=np.array([[1, 2, 3], [4, 5, 6]]),
                           y=np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
+
+    def test_multiply(self):
+        """Test series multiplication."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 * series2 * series3
+        self.assertTrue(np.allclose(combined.x, series1.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx ** 3))
+
+    def test_multiply_self(self):
+        """Test series multiplication with self."""
+        series = Series(self.x, self.data_cplx)
+        combined = series * series * series
+        # Multiplication should return a new object, so there shouldn't be issues with data
+        # changing later.
+        series.y = np.zeros_like(series.y)
+        self.assertTrue(np.allclose(combined.x, series.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx ** 3))
+
+    def test_multiply_scalar(self):
+        """Test series scalar multiplication."""
+        series = Series(self.x, self.data_cplx)
+        # Right multiplication.
+        scaled = series * 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx * 5))
+        # Left multiplication.
+        scaled = 5 * series
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx * 5))
+
+    def test_divide(self):
+        """Test series division."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        combined = series1 / series2
+        self.assertTrue(np.allclose(combined.x, series1.x))
+        self.assertTrue(np.allclose(combined.y, np.ones_like(self.data_cplx)))
+
+    def test_divide_self(self):
+        """Test series division with self."""
+        series = Series(self.x, self.data_cplx)
+        combined = series / series
+        # Division should return a new object, so there shouldn't be issues with data changing
+        # later.
+        series.y = np.zeros_like(series.y)
+        self.assertTrue(np.allclose(combined.x, series.x))
+        self.assertTrue(np.allclose(combined.y, np.ones_like(self.data_cplx)))
+
+    def test_divide_scalar(self):
+        """Test series scalar division."""
+        series = Series(self.x, self.data_cplx)
+        # Right division.
+        scaled = series / 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx / 5))
+        # Left (reflexive) division.
+        scaled = 5 / series
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, 5 / self.data_cplx))
+
+    def test_inverse(self):
+        """Test series inversion."""
+        series = Series(self.x, self.data_cplx)
+        # Standard inverse.
+        inverted = series.inverse()
+        self.assertTrue(np.allclose(inverted.x, series.x))
+        self.assertTrue(np.allclose(inverted.y, 1 / self.data_cplx))
+        # Alternate inverse.
+        inverted = 1 / series
+        self.assertTrue(np.allclose(inverted.x, series.x))
+        self.assertTrue(np.allclose(inverted.y, 1 / self.data_cplx))
+
+    def test_inverse_self(self):
+        """Test series inversion with self."""
+        series = Series(self.x, self.data_cplx)
+        inverted = series.inverse()
+        # Division should return a new object, so there shouldn't be issues with data changing
+        # later.
+        series.y = np.zeros_like(series.y)
+        self.assertTrue(np.allclose(inverted.x, series.x))
+        self.assertTrue(np.allclose(inverted.y, 1 / self.data_cplx))
