@@ -144,6 +144,10 @@ class Series:
             other = other.y
         return self.__class__(self.x, self.y * other)
 
+    def __rmul__(self, other):
+        # Series are commutative.
+        return self * other
+
     def __truediv__(self, other):
         if hasattr(other, "y"):
             return self * other.inverse()
