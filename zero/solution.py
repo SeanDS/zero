@@ -417,6 +417,13 @@ class Solution:
         """
         return self._apply_noise_filters(self.default_noise, **kwargs)
 
+    def replace(self, current_function, new_function, group=None):
+        """Replace existing function with the specified function."""
+        if group is None:
+            group = self.DEFAULT_GROUP_NAME
+        index = self.functions[group].index(current_function)
+        self.functions[group][index] = new_function
+
     def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, types=None):
         filter_sources = []
         filter_sinks = []

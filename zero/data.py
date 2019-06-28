@@ -1,6 +1,7 @@
 """Data representation and manipulation"""
 
 import abc
+from copy import copy
 import logging
 import numpy as np
 
@@ -141,16 +142,15 @@ class Series:
         if hasattr(other, "y"):
             # Extract data.
             other = other.y
-        return Series(self.x, self.y * other)
-
-    def __div__(self, other):
-        if hasattr(other, "y"):
-            # Extract data.
-            other = other.y
-        return Series(self.x, self.y / other)
+        return self.__class__(self.x, self.y * other)
 
     def __truediv__(self, other):
-        return self.__div__(other)
+        if hasattr(other, "y"):
+            return self * other.inverse()
+        return self.__class__(self.x, self.y * 1 / other)
+
+    def inverse(self):
+        return self.__class__(self.x, np.reciprocal(self.y))
 
     def __eq__(self, other):
         """Checks if the specified series is identical to this one, within tolerance"""
@@ -243,6 +243,10 @@ class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
     def source(self):
         return self.sources[0]
 
+    @source.setter
+    def source(self, source):
+        self.sources[0] = source
+
     @property
     def source_unit(self):
         return self.source.SOURCE_SINK_UNIT
@@ -257,6 +261,10 @@ class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
     @property
     def sink(self):
         return self.sinks[0]
+
+    @sink.setter
+    def sink(self, sink):
+        self.sinks[0] = sink
 
     @property
     def sink_unit(self):
@@ -340,6 +348,10 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         # Both have units.
         return f"{self.sink_unit}/{self.source_unit}"
 
+    def inverse(self):
+        """Inverse response."""
+        return self.__class__(source=self.sink, sink=self.source, series=self.series.inverse())
+
 
 class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
     """Function with a single noise spectral density."""
@@ -359,6 +371,14 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
 
         label = self.label(tex=True, suffix=label_suffix)
         axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
+
+    @abc.abstractmethod
+    def __mul__(self, other):
+        # Multiply behaviour depends on whether the noise is single or multi-source.
+        raise NotImplementedError
+
+    def __truediv__(self, other):
+        return self * other.inverse()
 
 
 class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
@@ -387,6 +407,15 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
             suffix = ""
 
         return format_str % (self.noise_name, self.sink.label(), suffix)
+
+    def __mul__(self, other):
+        if not isinstance(other, Response):
+            raise ValueError(f"cannot multiply noise by {type(other)}")
+        if self.sink_unit != other.source_unit:
+            raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                             f"{self} sink unit, {self.sink_unit}")
+        scaled_series = self.series * other.magnitude
+        return self.__class__(source=self.source, sink=other.sink, series=scaled_series)
 
 
 class MultiNoiseDensity(NoiseDensityBase):
@@ -465,3 +494,12 @@ class MultiNoiseDensity(NoiseDensityBase):
         else:
             suffix = ""
         return f"{self._label}{suffix}"
+
+    def __mul__(self, other):
+        if not isinstance(other, Response):
+            raise ValueError(f"cannot multiply noise by {type(other)}")
+        if self.sink_unit != other.source_unit:
+            raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                             f"{self} sink unit, {self.sink_unit}")
+        scaled_series = self.series * other.magnitude
+        return self.__class__(sources=self.sources, sink=other.sink, series=scaled_series)

@@ -27,9 +27,9 @@ if __name__ == "__main__":
 
     # Solve circuit.
     analysis = AcNoiseAnalysis(circuit=circuit)
-    solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1",
+    solution = analysis.calculate(frequencies=frequencies, input_type="current", node="n1",
                                   sink="nout", incoherent_sum=True, input_refer=True)
 
     # Plot.
-    solution.plot_noise(sinks=["nout"])
+    solution.plot_noise(sinks="all")
     solution.show()
