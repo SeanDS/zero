@@ -28,6 +28,10 @@ if __name__ == "__main__":
     solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1",
                                   sink="nout", incoherent_sum=True)
 
+    # Give the sum a different label.
+    noise_sum = solution.get_noise_sum(sink="nout")
+    noise_sum.label = "Total noise"
+
     # Plot.
-    solution.plot_noise(sinks=["nout"])
+    solution.plot_noise(sink="nout")
     solution.show()

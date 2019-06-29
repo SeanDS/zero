@@ -1,4 +1,4 @@
-"""A simple non-inverting whitening filter's response to a current input, with applied scaling.
+"""A simple non-inverting whitening filter's response to a current input, with scaling applied.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     analysis = AcSignalAnalysis(circuit=circuit)
     solution = analysis.calculate(frequencies=frequencies, input_type="current", node="n1")
 
-    # Scale transfer functions by 2 (e.g. to account for network analyser as discussed in
+    # Scale transfer functions by 2 (e.g. to account for 50Ω network analyser as discussed in
     # footnote 2 on p16 of the LISO manual v1.61).
     solution.scale_responses(2)
 
@@ -35,5 +35,5 @@ if __name__ == "__main__":
     solution.add_response_reference(frequencies, np.ones_like(frequencies), label="Unity gain")
 
     # Plot, scaling in absolute units.
-    solution.plot_responses(sinks=["nout"], scale_db=False)
+    solution.plot_responses(sink="nout", scale_db=False)
     solution.show()

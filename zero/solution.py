@@ -319,8 +319,31 @@ class Solution:
         self.functions[group].append(function)
         self._function_groups[function] = group
 
-    def filter_responses(self, **kwargs):
-        return self._apply_response_filters(self.responses, **kwargs)
+    @classmethod
+    def __group_params(cls, sparam, mparam, sparam_name, mparam_name, default=None):
+        """Create list with either the singular or multiple valued parameter's value(s).
+
+        This method allows only one or the other parameter to be defined, and returns a list
+        containing whatever it finds. If neither parameter is defined, the specified default is
+        instead returned.
+        """
+        if sparam is None and mparam is None:
+            return default
+        if sparam is not None:
+            if mparam is not None:
+                raise ValueError(f"{sparam_name} and {mparam_name} cannot both be defined")
+            return [sparam]
+        return list(mparam)
+
+    def filter_responses(self, group=None, groups=None, source=None, sources=None, sink=None,
+                         sinks=None, label=None, labels=None):
+        groups = self.__group_params(group, groups, "group", "groups",
+                                     default=[self.DEFAULT_GROUP_NAME])
+        sources = self.__group_params(source, sources, "source", "sources")
+        sinks = self.__group_params(sink, sinks, "sink", "sinks")
+        labels = self.__group_params(label, labels, "label", "labels")
+        return self._apply_response_filters(self.responses, groups=groups, sources=sources,
+                                            sinks=sinks, labels=labels)
 
     def _apply_response_filters(self, responses, groups=None, sources=None, sinks=None,
                                 labels=None):
@@ -428,12 +451,7 @@ class Solution:
 
         >>> get_response("nin", "nout", group="b")
         """
-        sources = None if source is None else [source]
-        sinks = None if sink is None else [sink]
-        groups = [self.DEFAULT_GROUP_NAME] if group is None else [group]
-        labels = None if label is None else [label]
-        response_groups = self.filter_responses(sources=sources, sinks=sinks, groups=groups,
-                                                labels=labels)
+        response_groups = self.filter_responses(source=source, sink=sink, group=group, label=label)
         if not response_groups:
             raise ValueError("no response found")
         responses = list(response_groups.values())[0]
@@ -443,12 +461,20 @@ class Solution:
             raise ValueError("degenerate responses for the specified source, sink, and group")
         return responses[0]
 
-    def filter_noise(self, **kwargs):
+    def filter_noise(self, group=None, groups=None, source=None, sources=None, sink=None,
+                     sinks=None, label=None, labels=None, type=None, types=None):
         """Filter for noise spectra.
 
         This does not include sums.
         """
-        return self._apply_noise_filters(self.noise, **kwargs)
+        groups = self.__group_params(group, groups, "group", "groups",
+                                     default=[self.DEFAULT_GROUP_NAME])
+        sources = self.__group_params(source, sources, "source", "sources")
+        sinks = self.__group_params(sink, sinks, "sink", "sinks")
+        labels = self.__group_params(label, labels, "label", "labels")
+        types = self.__group_params(type, types, "type", "types")
+        return self._apply_noise_filters(self.noise, groups=groups, sources=sources, sinks=sinks,
+                                         labels=labels, types=types)
 
     def _filter_default_noise(self, **kwargs):
         """Special filter for default noise spectra.
@@ -457,9 +483,16 @@ class Solution:
         """
         return self._apply_noise_filters(self.default_noise, **kwargs)
 
-    def filter_noise_sums(self, **kwargs):
+    def filter_noise_sums(self, group=None, groups=None, sink=None, sinks=None, label=None,
+                          labels=None, type=None, types=None):
         """Filter for noise sums."""
-        return self._apply_noise_filters(self.noise_sums, **kwargs)
+        groups = self.__group_params(group, groups, "group", "groups",
+                                     default=[self.DEFAULT_GROUP_NAME])
+        sinks = self.__group_params(sink, sinks, "sink", "sinks")
+        labels = self.__group_params(label, labels, "label", "labels")
+        types = self.__group_params(type, types, "type", "types")
+        return self._apply_noise_filters(self.noise_sums, groups=groups, sinks=sinks, labels=labels,
+                                         types=types)
 
     def _scale_functions(self, scale_function, functions):
         for group, group_functions in functions.items():
@@ -481,7 +514,7 @@ class Solution:
     def scale_noise(self, scale, include_singular=True, include_sums=True, **kwargs):
         """Apply a scaling to noise matching the specified filters.
 
-        Supports the keyword arguments of :meth:`._apply_noise_filters`.
+        Supports the keyword arguments of :meth:`.filter_noise`.
 
         Parameters
         ----------
@@ -495,6 +528,11 @@ class Solution:
         if include_singular:
             self._scale_functions(scale, self.filter_noise(**kwargs))
         if include_sums:
+            # Remove source filters, since sums don't have single sources to match against.
+            if "source" in kwargs:
+                del kwargs["source"]
+            if "sources" in kwargs:
+                del kwargs["sources"]
             self._scale_functions(scale, self.filter_noise_sums(**kwargs))
 
     def replace(self, current_function, new_function, group=None):
@@ -623,12 +661,7 @@ class Solution:
 
         >>> get_noise("V(op1)", "nout", group="b")
         """
-        sources = None if source is None else [source]
-        sinks = None if sink is None else [sink]
-        groups = [self.DEFAULT_GROUP_NAME] if group is None else [group]
-        labels = None if label is None else [label]
-        noise_groups = self.filter_noise(sources=sources, sinks=sinks, groups=groups,
-                                         labels=labels)
+        noise_groups = self.filter_noise(source=source, sink=sink, group=group, label=label)
         if not noise_groups:
             raise ValueError("no noise found")
         noise_densities = list(noise_groups.values())[0]
@@ -661,10 +694,7 @@ class Solution:
         ValueError
             If no noise sum is found.
         """
-        sinks = None if sink is None else [sink]
-        groups = [self.DEFAULT_GROUP_NAME] if group is None else [group]
-        labels = None if label is None else [label]
-        noise_groups = self.filter_noise_sums(sinks=sinks, groups=groups, labels=labels)
+        noise_groups = self.filter_noise_sums(sink=sink, group=group, label=label)
         if not noise_groups:
             raise ValueError("no noise sums found")
         noise_densities = list(noise_groups.values())[0]
@@ -814,8 +844,9 @@ class Solution:
         if self.has_noise:
             self.plot_noise()
 
-    def plot_responses(self, figure=None, groups=None, sources=None, sinks=None, xlabel=None,
-                       ylabel_mag=None, ylabel_phase=None, scale_db=True, **kwargs):
+    def plot_responses(self, figure=None, group=None, groups=None, source=None, sources=None,
+                       sink=None, sinks=None, xlabel=None, ylabel_mag=None, ylabel_phase=None,
+                       scale_db=True, **kwargs):
         """Plot responses.
 
         Note: if only one of "sources" or "sinks" is specified, the other defaults to "all" as per
@@ -825,10 +856,12 @@ class Solution:
         ----------
         figure : :class:`~matplotlib.figure.Figure`, optional
             Figure to plot to. If not specified, a new figure is created.
-        groups : list of :class:`str`, optional
-            The response groups to plot. If None, all groups are plotted.
-        sources, sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`
-            The sources and sinks to plot responses between.
+        group, groups : :class:`str` or list of :class:`str`, optional
+            The response group(s) to plot. If None, the default group is assumed.
+        source, sources, sink, sinks : :class:`str` or list of :class:`str`, :class:`.Component`
+                                        or :class:`.Node`
+            The source(s) and sink(s) to plot responses between. If None, all matched sources and
+            sinks are plotted.
         xlabel, ylabel_mag, ylabel_phase : :class:`str`, optional
             The x- and y-axis labels for the magnitude and phase plots.
         scale_db : :class:`bool`, optional
@@ -858,10 +891,13 @@ class Solution:
         :class:`~matplotlib.figure.Figure`
             The plotted figure.
         """
-        if groups is None and sources is None and sinks is None:
+        # Plot default noise if no filters are being applied.
+        default_none_params = (group, groups, source, sources, sink, sinks)
+        if all([param is None for param in default_none_params]):
             responses = self.default_responses
         else:
-            responses = self.filter_responses(sources=sources, sinks=sinks, groups=groups)
+            responses = self.filter_responses(source=source, sources=sources, sink=sink,
+                                              sinks=sinks, group=group, groups=groups)
 
         if not responses:
             raise NoDataException("no responses found")
@@ -886,8 +922,9 @@ class Solution:
 
         return figure
 
-    def plot_noise(self, figure=None, groups=None, sources=None, sinks=None, types=None,
-                   show_sums=True, xlabel=None, ylabel=None, **kwargs):
+    def plot_noise(self, figure=None, group=None, groups=None, source=None, sources=None, sink=None,
+                   sinks=None, type=None, types=None, show_sums=True, xlabel=None, ylabel=None,
+                   **kwargs):
         """Plot noise.
 
         Note: if only some of "groups", "sources", "sinks", "types" are specified, the others
@@ -897,14 +934,15 @@ class Solution:
         ----------
         figure : :class:`~matplotlib.figure.Figure`, optional
             Figure to plot to. If not specified, a new figure is created.
-        groups : list of :class:`str`, optional
-            The noise groups to plot. If None, all groups are plotted.
-        sources : list of :class:`str` or :class:`.Noise`, optional
-            The noise sources to plot at the specified ``sinks``. If None, all sources are plotted.
-        sinks : list of :class:`str`, :class:`.Component` or :class:`.Node`, optional
-            The sinks to plot noise at. If None, all sinks are plotted.
-        types : list of :class:`str`, optional
-            The noise types to plot. If None, all noise types are plotted.
+        group, groups : :class:`str` or list of :class:`str`, optional
+            The noise group(s) to plot. If None, the default group is assumed.
+        source, sources : :class:`str` or list of :class:`str` or :class:`.Noise`, optional
+            The noise source(s) to plot at the specified ``sinks``. If None, all matched sources are
+            plotted.
+        sink, sinks : :class:`str` or list of :class:`str`, :class:`.Component` or :class:`.Node`, optional
+            The sink(s) to plot noise at. If None, all matched sinks are plotted.
+        type, types : :class:`str` or list of :class:`str`, optional
+            The noise type(s) to plot. If None, all matched noise types are plotted.
         show_sums : :class:`bool`, optional
             Plot any sums contained in this solution.
         xlabel, ylabel : :class:`str`, optional
@@ -928,14 +966,17 @@ class Solution:
         :class:`~matplotlib.figure.Figure`
             The plotted figure.
         """
-        if groups is None and sources is None and sinks is None and types is None:
+        # Plot default noise if no filters are being applied.
+        default_none_params = (group, groups, source, sources, sink, sinks, type, types)
+        if all([param is None for param in default_none_params]):
             # Filter against sum flag.
             noise = self._filter_default_noise()
 
             if show_sums:
                 noise = self._merge_groups(noise, self.default_noise_sums)
         else:
-            noise = self.filter_noise(sources=sources, sinks=sinks, groups=groups, types=types)
+            noise = self.filter_noise(source=source, sources=sources, sink=sink, sinks=sinks,
+                                      group=group, groups=groups, type=type, types=types)
 
             if show_sums:
                 noise = self._merge_groups(noise, self.noise_sums)

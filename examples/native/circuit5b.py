@@ -35,8 +35,8 @@ if __name__ == "__main__":
     pd_to_displacement = create_response(source="input", sink="displacement", source_unit="A",
                                          sink_unit="m", data=1e-9*np.ones_like(frequencies),
                                          frequencies=frequencies)
-    solution.scale_noise(pd_to_displacement, sinks=["input"])
+    solution.scale_noise(pd_to_displacement, sink="input")
 
     # Plot. Note that the sink is now the input, since we projected the noise there.
-    solution.plot_noise(sinks=["displacement"], ylim=(1e-23, 1e-18), title="Photodetector noise")
+    solution.plot_noise(sink="displacement", ylim=(1e-23, 1e-18), title="Photodetector noise")
     solution.show()
