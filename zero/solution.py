@@ -911,22 +911,14 @@ class Solution:
             xlabel = r"$\bf{Frequency}$ (Hz)"
 
         if ylabel is None:
+            # Show all plotted noise units.
             unit_tex = []
-            has_volts = False
-            has_amps = False
-
-            # Check which noise units to use.
+            noise_units = set()
             for spectra in noise.values():
-                if any([spectral_density.sink_unit == "V" for spectral_density in spectra]):
-                    has_volts = True
-                if any([spectral_density.sink_unit == "A" for spectral_density in spectra]):
-                    has_amps = True
-
-            if has_volts:
-                unit_tex.append(r"$\frac{\mathrm{V}}{\sqrt{\mathrm{Hz}}}$")
-            if has_amps:
-                unit_tex.append(r"$\frac{\mathrm{A}}{\sqrt{\mathrm{Hz}}}$")
-
+                noise_units.update([spectral_density.sink_unit for spectral_density in spectra])
+            if noise_units:
+                unit_tex = [r"$\frac{\mathrm{" + unit + r"}}{\sqrt{\mathrm{Hz}}}$"
+                            for unit in sorted(noise_units)]
             unit = ", ".join(unit_tex)
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
