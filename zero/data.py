@@ -407,7 +407,9 @@ class Response(SingleSourceFunction, SingleSinkFunction):
             other_value = other
 
         scaled_series = self.series * other_value
-        return self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+        new_response = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+        new_response.label = self._label
+        return new_response
 
     def inverse(self):
         """Inverse response."""
@@ -486,7 +488,9 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
             other_value = other
 
         scaled_series = self.series * other_value
-        return self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+        new_noise = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+        new_noise.label = self._label
+        return new_noise
 
 
 class MultiNoiseDensity(NoiseDensityBase):
