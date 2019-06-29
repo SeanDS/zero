@@ -183,6 +183,7 @@ class BaseFunction(metaclass=abc.ABCMeta):
         Plot options, passed to :meth:`.matplotlib.pyplot.plot`.
     """
     def __init__(self, sources=None, sinks=None, series=None, plot_options=None):
+        self._label = None
         if sources is None:
             sources = []
         if sinks is None:
@@ -223,16 +224,24 @@ class BaseFunction(metaclass=abc.ABCMeta):
     def draw(self, *axes):
         raise NotImplementedError
 
+    @property
+    def label(self):
+        return self._format_label()
+
+    @label.setter
+    def label(self, label):
+        self._label = str(label)
+
     @abc.abstractmethod
-    def label(self, tex=False, suffix=None):
+    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
         raise NotImplementedError
 
     def __str__(self):
-        return self.label()
+        return self.label
 
     def meta_data(self):
         """Meta data used to provide a hash and check for meta equivalence."""
-        return frozenset(self.sources), frozenset(self.sinks), self.label()
+        return frozenset(self.sources), frozenset(self.sinks), self.label
 
     def equivalent(self, other):
         """Checks if the specified function has equivalent sources, sinks, labels and data."""
@@ -335,7 +344,7 @@ class Response(SingleSourceFunction, SingleSinkFunction):
 
     def _draw_magnitude(self, axes, label_suffix=None, scale_db=True):
         """Add magnitude plot to axes"""
-        label = self.label(tex=True, suffix=label_suffix)
+        label = self._format_label(tex=True, suffix=label_suffix)
         if scale_db:
             # Decibel y-axis scaling.
             axes.semilogx(self.frequencies, self.db_magnitude, label=label, **self.plot_options)
@@ -354,7 +363,9 @@ class Response(SingleSourceFunction, SingleSinkFunction):
         self._draw_magnitude(axes[0], **kwargs)
         self._draw_phase(axes[1])
 
-    def label(self, tex=False, suffix=None):
+    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)%s"
         else:
@@ -365,7 +376,7 @@ class Response(SingleSourceFunction, SingleSinkFunction):
         else:
             suffix = ""
 
-        return format_str % (self.source.label(), self.sink.label(), self.unit_str, suffix)
+        return format_str % (self.source.label, self.sink.label, self.unit_str, suffix)
 
     @property
     def unit_str(self):
@@ -419,7 +430,7 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
 
         axes = axes[0]
 
-        label = self.label(tex=True, suffix=label_suffix)
+        label = self._format_label(tex=True, suffix=label_suffix)
         axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
 
     @abc.abstractmethod
@@ -445,7 +456,9 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
     def noise_type(self):
         return self.source.noise_type
 
-    def label(self, tex=False, suffix=None):
+    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$%s"
         else:
@@ -456,7 +469,7 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
         else:
             suffix = ""
 
-        return format_str % (self.noise_name, self.sink.label(), suffix)
+        return format_str % (self.noise_name, self.sink.label, suffix)
 
     def __mul__(self, other):
         if isinstance(other, Response):
@@ -511,13 +524,12 @@ class MultiNoiseDensity(NoiseDensityBase):
             noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
             series = Series(frequencies, noise_sum)
 
-        if label is None:
-            label = "Incoherent sum"
-
-        self._label = label
-
         # call parent constructor
         super().__init__(sources=sources, series=series, **kwargs)
+
+        if label is None:
+            label = "Incoherent sum"
+        self.label = label
 
         if constituents is not None:
             # check sink agrees with those set in constituents
@@ -546,7 +558,9 @@ class MultiNoiseDensity(NoiseDensityBase):
 
         return [spectral_density.noise_name for spectral_density in self.constituent_noise]
 
-    def label(self, *args, suffix=None, **kwargs):
+    def _format_label(self, *args, suffix=None, ignore_user_label=False, **kwargs):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if suffix is not None:
             suffix = " %s" % suffix
         else:
@@ -571,19 +585,17 @@ class MultiNoiseDensity(NoiseDensityBase):
         return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series)
 
 
-class Reference(metaclass=abc.ABCMeta):
+class Reference(BaseFunction, metaclass=abc.ABCMeta):
     def __init__(self, frequencies, data, label=None, unit=None, **kwargs):
-        if label is None:
-            label = "Reference"
-        self._label = label
-        if unit is not None:
-            unit = unit.upper()
-            if unit not in ("V", "A"):
-                raise ValueError("unit can be either 'V' or 'A'")
         self._sink_unit = unit
         super().__init__(series=Series(frequencies, data), **kwargs)
+        if label is None:
+            label = "Reference"
+        self.label = label
 
-    def label(self, *args, suffix=None, **kwargs):
+    def _format_label(self, *args, suffix=None, ignore_user_label=False, **kwargs):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if suffix is not None:
             suffix = " %s" % suffix
         else:

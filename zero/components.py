@@ -22,7 +22,7 @@ class ElementNotFoundError(Exception):
         self.name = name
 
 
-class BaseElement:
+class BaseElement(metaclass=abc.ABCMeta):
     """Represents a source or sink of a function, with a unit.
 
     This is an abstract representation of components, nodes or noise sources.
@@ -41,8 +41,11 @@ class BaseElement:
         return self.ELEMENT_UNIT
 
 
-class UserElement(BaseElement):
-    """Represents a user-defined element with custom unit."""
+class GenericElement(BaseElement):
+    """Represents a generic element with custom unit.
+
+    This is used in place of components and nodes when creating functions with non-circuit elements.
+    """
     ELEMENT_TYPE = "__custom__"
 
     def __init__(self, name, unit):
@@ -126,6 +129,7 @@ class Component(BaseElement, metaclass=abc.ABCMeta):
 
         self.noise.append(noise)
 
+    @property
     def label(self):
         """Get component label.
 
@@ -146,7 +150,7 @@ class Component(BaseElement, metaclass=abc.ABCMeta):
         return str(self)
 
     def __str__(self):
-        return self.label()
+        return self.label
 
     def __eq__(self, other):
         return self.name == getattr(other, "name", None)
@@ -603,6 +607,7 @@ class Node(BaseElement, metaclass=NamedInstance):
         super().__init__()
         self.name = str(name)
 
+    @property
     def label(self):
         return self.name
 
@@ -637,20 +642,21 @@ class Noise(BaseElement, metaclass=abc.ABCMeta):
     def spectral_density(self, frequencies):
         return NotImplemented
 
+    @property
     @abc.abstractmethod
     def label(self):
         return NotImplemented
 
     def _meta_data(self):
         """Meta data used to provide hash."""
-        return tuple(self.label())
+        return tuple(self.label)
 
     @property
     def noise_type(self):
         return self.NOISE_TYPE
 
     def __str__(self):
-        return self.label()
+        return self.label
 
     def __repr__(self):
         return str(self)
@@ -719,6 +725,7 @@ class VoltageNoise(ComponentNoise):
     """Component voltage noise source."""
     NOISE_TYPE = "voltage"
 
+    @property
     def label(self):
         return f"V({self.component.name})"
 
@@ -739,6 +746,7 @@ class JohnsonNoise(VoltageNoise):
 
         return np.ones_like(frequencies) * white_noise
 
+    @property
     def label(self):
         return f"R({self.component.name})"
 
@@ -751,6 +759,7 @@ class CurrentNoise(NodeNoise):
     """Node current noise source."""
     NOISE_TYPE = "current"
 
+    @property
     def label(self):
         return f"I({self.component.name}, {self.node.name})"
 

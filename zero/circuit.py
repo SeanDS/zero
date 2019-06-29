@@ -330,7 +330,7 @@ class Circuit:
         name = noise_name.lower()
 
         for noise in self.noise_sources:
-            if name == noise.label().lower():
+            if name == noise.label.lower():
                 return noise
 
         raise NoiseNotFoundError(name)

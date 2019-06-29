@@ -380,7 +380,7 @@ class Solution:
                 labels = [labels]
             for group, group_responses in responses.items():
                 for response in list(group_responses): # List required to allow item removal.
-                    if response.label() not in labels:
+                    if response.label not in labels:
                         # No match.
                         group_responses.remove(response)
                 responses[group] = group_responses
@@ -528,7 +528,7 @@ class Solution:
                 labels = [labels]
             for group, group_spectra in spectra.items():
                 for noise in list(group_spectra): # List required to allow item removal.
-                    if noise.label() not in labels:
+                    if noise.label not in labels:
                         # No match.
                         group_spectra.remove(noise)
                 spectra[group] = group_spectra
@@ -747,7 +747,7 @@ class Solution:
         source_name = source_name.lower()
 
         for source in self.noise_sources:
-            if source_name == source.label().lower():
+            if source_name == source.label.lower():
                 return source
 
         raise ValueError(f"noise source '{source_name}' not found")
