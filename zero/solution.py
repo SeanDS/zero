@@ -461,6 +461,42 @@ class Solution:
         """Filter for noise sums."""
         return self._apply_noise_filters(self.noise_sums, **kwargs)
 
+    def _scale_functions(self, scale_function, functions):
+        for group, group_functions in functions.items():
+            for function in group_functions:
+                self.replace(function, function * scale_function, group=group)
+
+    def scale_responses(self, scale, **kwargs):
+        """Apply a scaling to responses matching the specified filters.
+
+        Supports the keyword arguments of :meth:`._apply_response_filters`.
+
+        Parameters
+        ----------
+        scale : number or :class:`.BaseFunction`
+            The scaling to apply to the matched responses.
+        """
+        self._scale_functions(scale, self.filter_responses(**kwargs))
+
+    def scale_noise(self, scale, include_singular=True, include_sums=True, **kwargs):
+        """Apply a scaling to noise matching the specified filters.
+
+        Supports the keyword arguments of :meth:`._apply_noise_filters`.
+
+        Parameters
+        ----------
+        scale : number or :class:`.BaseFunction`
+            The scaling to apply to the matched noise.
+        include_singular : :class:`bool`, optional
+            Scale single noise functions.
+        include_sums : :class:`bool`, optional
+            Scale noise sums.
+        """
+        if include_singular:
+            self._scale_functions(scale, self.filter_noise(**kwargs))
+        if include_sums:
+            self._scale_functions(scale, self.filter_noise_sums(**kwargs))
+
     def replace(self, current_function, new_function, group=None):
         """Replace existing function with the specified function."""
         if group is None:
