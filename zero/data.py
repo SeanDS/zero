@@ -164,7 +164,21 @@ class Series:
 
 
 class BaseFunction(metaclass=abc.ABCMeta):
-    """Base function container."""
+    """Base function container.
+
+    A function represents data between one or many sources and sinks. These can be any type
+    descending from :class:`.BaseElement`, though concrete subclasses may implement additional type
+    constraints.
+
+    Parameters
+    ----------
+    sources, sinks : list of :class:`.BaseElement`, optional
+        The function's sources and sinks. Defaults to empty lists.
+    series : :class:`.Series`, optional
+        The function's data.
+    plot_options : :class:`dict`, optional
+        Plot options, passed to :meth:`.matplotlib.pyplot.plot`.
+    """
     def __init__(self, sources=None, sinks=None, series=None, plot_options=None):
         if sources is None:
             sources = []
@@ -244,7 +258,7 @@ class BaseFunction(metaclass=abc.ABCMeta):
 
 
 class SingleSourceFunction(BaseFunction, metaclass=abc.ABCMeta):
-    """Data set containing data for a single source"""
+    """Data set containing data for a single source."""
     def __init__(self, source=None, **kwargs):
         if source is not None:
             sources = [source]
@@ -262,11 +276,11 @@ class SingleSourceFunction(BaseFunction, metaclass=abc.ABCMeta):
 
     @property
     def source_unit(self):
-        return self.source.SOURCE_SINK_UNIT
+        return self.source.element_unit
 
 
 class SingleSinkFunction(BaseFunction, metaclass=abc.ABCMeta):
-    """Data set containing data for a single sink"""
+    """Data set containing data for a single sink."""
     def __init__(self, sink=None, **kwargs):
         if sink is not None:
             sinks = [sink]
@@ -284,11 +298,11 @@ class SingleSinkFunction(BaseFunction, metaclass=abc.ABCMeta):
 
     @property
     def sink_unit(self):
-        return self.sink.SOURCE_SINK_UNIT
+        return self.sink.element_unit
 
 
 class Response(SingleSourceFunction, SingleSinkFunction):
-    """Response data series"""
+    """Data set representing a response at a sink from a source."""
     @property
     def complex_magnitude(self):
         return self.series.y
@@ -421,12 +435,12 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
         return str(self.source)
 
     @property
-    def noise_type(self):
-        return self.source.TYPE
+    def element_type(self):
+        return self.source.element_type
 
     @property
-    def noise_subtype(self):
-        return self.source.SUBTYPE
+    def noise_type(self):
+        return self.source.NOISE_TYPE
 
     def label(self, tex=False, suffix=None):
         if tex:

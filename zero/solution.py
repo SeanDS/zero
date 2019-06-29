@@ -545,7 +545,7 @@ class Solution:
             # Filter by noise type.
             for group, group_spectra in spectra.items():
                 for noise in list(group_spectra): # List required to allow item removal.
-                    if noise.noise_type not in types and noise.noise_subtype not in types:
+                    if noise.element_type not in types and noise.noise_type not in types:
                         # No match.
                         group_spectra.remove(noise)
                 spectra[group] = group_spectra
@@ -658,7 +658,7 @@ class Solution:
 
     @property
     def component_noise(self):
-        return {group: [function for function in functions if function.noise_type == "component"]
+        return {group: [function for function in functions if function.element_type == "component"]
                 for group, functions in self.noise.items()}
 
     @property
