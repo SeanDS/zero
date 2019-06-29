@@ -140,8 +140,8 @@ class BaseSolutionTestCase(TestCase):
         return Solution(freq)
 
 
-class SolutionFunctionTestCase(BaseSolutionTestCase):
-    """Solution function tests"""
+class SolutionEquivalencyTestCase(BaseSolutionTestCase):
+    """Solution equivalency tests"""
     def test_solutions_with_identical_responses_equal(self):
         f = self._freqs()
         resp1 = self._v_v_response(f)
@@ -451,3 +451,135 @@ class SolutionFilterTestCase(BaseSolutionTestCase):
         sol.add_noise_sum(sum2)
         self.assertEqual(sol.get_noise_sum(label=label1), sum1)
         self.assertEqual(sol.get_noise_sum(label=label2), sum2)
+
+
+class SolutionFunctionReplacementTestCase(BaseSolutionTestCase):
+    """Solution function replacement tests"""
+    def test_response_replacement_no_group(self):
+        f = self._freqs()
+        resp1 = self._v_v_response(f)
+        resp2 = self._v_i_response(f)
+        sol = self._solution(f)
+        sol.add_response(resp1)
+        self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [resp1])
+        sol.replace(resp1, resp2)
+        self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [resp2])
+
+    def test_response_replacement_with_group(self):
+        f = self._freqs()
+        resp1 = self._v_v_response(f)
+        resp2 = self._v_i_response(f)
+        sol = self._solution(f)
+        sol.add_response(resp1, group="b")
+        self.assertEqual(sol.functions["b"], [resp1])
+        # Trying to replace without specifying group is not allowed.
+        self.assertRaises(ValueError, sol.replace, resp1, resp2)
+        sol.replace(resp1, resp2, group="b")
+        self.assertEqual(sol.functions["b"], [resp2])
+
+    def test_noise_replacement_no_group(self):
+        f = self._freqs()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._current_noise_at_comp(f)
+        sol = self._solution(f)
+        sol.add_noise(noise1)
+        self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [noise1])
+        sol.replace(noise1, noise2)
+        self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [noise2])
+
+    def test_noise_replacement_with_group(self):
+        f = self._freqs()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._current_noise_at_comp(f)
+        sol = self._solution(f)
+        sol.add_noise(noise1, group="b")
+        self.assertEqual(sol.functions["b"], [noise1])
+        # Trying to replace without specifying group is not allowed.
+        self.assertRaises(ValueError, sol.replace, noise1, noise2)
+        sol.replace(noise1, noise2, group="b")
+        self.assertEqual(sol.functions["b"], [noise2])
+
+    def test_noise_sum_replacement_no_group(self):
+        f = self._freqs()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
+        noise3 = self._voltage_noise_at_comp(f)
+        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
+        sum2 = self._multi_noise_density(noise3.sink, [noise3, noise4])
+        sol = self._solution(f)
+        sol.add_noise_sum(sum1)
+        self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [sum1])
+        sol.replace(sum1, sum2)
+        self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [sum2])
+
+    def test_noise_sum_replacement_with_group(self):
+        f = self._freqs()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
+        noise3 = self._voltage_noise_at_comp(f)
+        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
+        sum2 = self._multi_noise_density(noise3.sink, [noise3, noise4])
+        sol = self._solution(f)
+        sol.add_noise_sum(sum1, group="b")
+        self.assertEqual(sol.functions["b"], [sum1])
+        # Trying to replace without specifying group is not allowed.
+        self.assertRaises(ValueError, sol.replace, sum1, sum2)
+        sol.replace(sum1, sum2, group="b")
+        self.assertEqual(sol.functions["b"], [sum2])
+
+
+class SolutionScalingTestCase(BaseSolutionTestCase):
+    """Solution function scaling tests"""
+    def test_response_scaling(self):
+        f = self._freqs()
+        node1 = self._node()
+        node2 = self._node()
+        label1 = "resp1"
+        label2 = "resp2"
+        label3 = "resp3"
+        resp1 = self._v_v_response(f, node_sink=node1)
+        resp1.label = label1
+        resp2 = self._v_v_response(f, node_sink=node1)
+        resp2.label = label2
+        resp3 = self._v_v_response(f, node_source=node1, node_sink=node2)
+        resp3.label = label3
+        sol = self._solution(f)
+        sol.add_response(resp1)
+        sol.add_response(resp2)
+        solresp1a = sol.get_response(label=label1)
+        solresp2a = sol.get_response(label=label2)
+        self.assertEqual(solresp1a, resp1)
+        self.assertEqual(solresp2a, resp2)
+        sol.scale_responses(resp3)
+        solresp1b = sol.get_response(label=label1)
+        solresp2b = sol.get_response(label=label2)
+        self.assertEqual(solresp1b.sink, resp3.sink)
+        self.assertEqual(solresp2b.sink, resp3.sink)
+
+    def test_noise_scaling(self):
+        f = self._freqs()
+        node1 = self._node()
+        node2 = self._node()
+        label1 = "noise1"
+        label2 = "noise2"
+        label3 = "resp1"
+        noise1 = self._voltage_noise_at_node(f, sink=node1)
+        noise1.label = label1
+        noise2 = self._voltage_noise_at_node(f, sink=node1)
+        noise2.label = label2
+        resp = self._v_v_response(f, node_source=node1, node_sink=node2)
+        resp.label = label3
+        sol = self._solution(f)
+        sol.add_noise(noise1)
+        sol.add_noise(noise2)
+        solnoise1a = sol.get_noise(label=label1)
+        solnoise2a = sol.get_noise(label=label2)
+        self.assertEqual(solnoise1a, noise1)
+        self.assertEqual(solnoise2a, noise2)
+        sol.scale_noise(resp)
+        solnoise1b = sol.get_noise(label=label1)
+        solnoise2b = sol.get_noise(label=label2)
+        self.assertEqual(solnoise1b.sink, resp.sink)
+        self.assertEqual(solnoise2b.sink, resp.sink)
