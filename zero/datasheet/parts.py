@@ -64,7 +64,7 @@ class Part:
         return next(iter(self.sorted_datasheets), None)
 
     def __repr__(self):
-        return "{brand} / {manufacturer} {mpn}".format(**self.__dict__)
+        return f"{self.brand} / {self.manufacturer} {self.mpn}"
 
 
 class Datasheet(Downloadable):

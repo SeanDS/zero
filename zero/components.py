@@ -353,7 +353,7 @@ class OpAmp(LibraryOpAmp, Component):
         raise NoiseNotFoundError("inverting current noise")
 
     def __str__(self):
-        suffix = " [in+={cmp.node1}, in-={cmp.node2}, out={cmp.node3}, model={cmp.model}]".format(cmp=self)
+        suffix = f" [in+={self.node1}, in-={self.node2}, out={self.node3}, model={self.model}]"
         return Component.__str__(self) + suffix
 
 
@@ -419,8 +419,7 @@ class Input(Component):
             z = self.impedance
         else:
             z = "default"
-
-        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, Z={z}]".format(cmp=self, z=z)
+        return super().__str__() + f" [in={self.node1}, out={self.node2}, Z={z}]"
 
 
 class Resistor(PassiveComponent):
@@ -463,7 +462,7 @@ class Resistor(PassiveComponent):
         raise ValueError("no Johnson noise")
 
     def __str__(self):
-        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, R={cmp.resistance}]".format(cmp=self)
+        return super().__str__() + f" [in={self.node1}, out={self.node2}, R={self.resistance}]"
 
 
 class Capacitor(PassiveComponent):
@@ -496,7 +495,7 @@ class Capacitor(PassiveComponent):
         return 1 / (2j * np.pi * frequency * self.capacitance)
 
     def __str__(self):
-        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, C={cmp.capacitance}]".format(cmp=self)
+        return super().__str__() + f" [in={self.node1}, out={self.node2}, C={self.capacitance}]"
 
 
 class Inductor(PassiveComponent):
@@ -584,7 +583,7 @@ class Inductor(PassiveComponent):
         return self.coupling_factors.keys()
 
     def __str__(self):
-        return super().__str__() + " [in={cmp.node1}, out={cmp.node2}, L={cmp.inductance}]".format(cmp=self)
+        return super().__str__() + f" [in={self.node1}, out={self.node2}, L={self.inductance}]"
 
 
 class ComponentNotFoundError(ElementNotFoundError):

@@ -58,11 +58,18 @@ class NodeGraph:
 
             if isinstance(component, OpAmp):
                 attr = {'shape': 'plain', 'margin': '0', 'orientation': '270'}
-                attr['label'] = """<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
-                    <TR><TD PORT="plus">+</TD><TD ROWSPAN="3">{0}<BR/>{1}</TD></TR>
-                    <TR><TD> </TD></TR>
-                    <TR><TD PORT="minus">-</TD></TR>
-                </TABLE>>""".format(component.name, component.model)
+                attr['label'] = f"""<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
+                    <TR>
+                        <TD PORT="plus">+</TD>
+                        <TD ROWSPAN="3">{component.name}<BR/>{component.model}</TD>
+                    </TR>
+                    <TR>
+                        <TD> </TD>
+                    </TR>
+                    <TR>
+                        <TD PORT="minus">-</TD>
+                    </TR>
+                </TABLE>>"""
                 connections = [':plus', ':minus', ':e']
             elif isinstance(component, Inductor):
                 attr = {'fillcolor': 'MediumSlateBlue', 'shape': 'diamond'}

@@ -384,12 +384,12 @@ class Circuit:
         count = 1
 
         # first attempt
-        new_name = "{base}{count}".format(base=base, count=count)
+        new_name = f"{base}{count}"
 
         while new_name in self.component_names:
             # next attempt
             count += 1
-            new_name = "{base}{count}".format(base=base, count=count)
+            new_name = f"{base}{count}"
 
         # set new name
         component.name = new_name

@@ -465,4 +465,4 @@ class LibraryOpAmp:
         return pairs
 
     def __str__(self):
-        return "{cmp.model}(a0={cmp.a0}, gbw={cmp.gbw}, delay={cmp.delay})".format(cmp=self)
+        return f"{self.model}(a0={self.a0}, gbw={self.gbw}, delay={self.delay})"
