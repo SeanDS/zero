@@ -706,34 +706,11 @@ class Solution:
                                   self.default_noise_sums)
 
     @property
-    def response_source_nodes(self):
-        """Get response input nodes.
-
-        :return: input nodes
-        :rtype: Set[:class:`Node`]
-        """
-        nodes = set()
-        for responses in self.responses.values():
-            nodes.update([response.source for response in responses
-                          if isinstance(response.source, Node)])
-        return nodes
-
-    @property
-    def response_source_components(self):
-        """Get response input components.
-
-        :return: output components
-        :rtype: Sequence[:class:`Component`]
-        """
-        components = set()
-        for responses in self.responses.values():
-            components.update([response.source for response in responses
-                               if isinstance(response.source, Component)])
-        return components
-
-    @property
     def response_sources(self):
-        return self.response_source_nodes | self.response_source_components
+        sources = set()
+        for responses in self.responses.values():
+            sources.update([response.source for response in responses])
+        return sources
 
     def get_response_source(self, source_name):
         source_name = source_name.lower()
@@ -745,34 +722,11 @@ class Solution:
         raise ValueError(f"signal source '{source_name}' not found")
 
     @property
-    def response_sink_nodes(self):
-        """Get output nodes in solution
-
-        :return: output nodes
-        :rtype: Set[:class:`Node`]
-        """
-        nodes = set()
-        for responses in self.responses.values():
-            nodes.update([response.sink for response in responses
-                          if isinstance(response.sink, Node)])
-        return nodes
-
-    @property
-    def response_sink_components(self):
-        """Get output components in solution
-
-        :return: output components
-        :rtype: Sequence[:class:`Component`]
-        """
-        components = set()
-        for responses in self.responses.values():
-            components.update([response.sink for response in responses
-                               if isinstance(response.sink, Component)])
-        return components
-
-    @property
     def response_sinks(self):
-        return self.response_sink_nodes | self.response_sink_components
+        sinks = set()
+        for responses in self.responses.values():
+            sinks.update([response.sink for response in responses])
+        return sinks
 
     def get_response_sink(self, sink_name):
         sink_name = sink_name.lower()
@@ -807,34 +761,11 @@ class Solution:
         raise ValueError(f"noise source '{source_name}' not found")
 
     @property
-    def noise_sink_nodes(self):
-        """Get noise nodes in solution
-
-        :return: noise nodes
-        :rtype: Set[:class:`Node`]
-        """
-        nodes = set()
-        for spectra in list(self.noise.values()) + list(self.noise_sums.values()):
-            nodes.update([spectral_density.sink for spectral_density in spectra
-                          if isinstance(spectral_density.sink, Node)])
-        return nodes
-
-    @property
-    def noise_sink_components(self):
-        """Get output components in solution
-
-        :return: output components
-        :rtype: Sequence[:class:`Component`]
-        """
-        components = set()
-        for spectra in list(self.noise.values()) + list(self.noise_sums.values()):
-            components.update([spectral_density.sink for spectral_density in spectra
-                               if isinstance(spectral_density.sink, Component)])
-        return components
-
-    @property
     def noise_sinks(self):
-        return self.noise_sink_nodes | self.noise_sink_components
+        sinks = set()
+        for spectra in list(self.noise.values()) + list(self.noise_sums.values()):
+            sinks.update([spectral_density.sink for spectral_density in spectra])
+        return sinks
 
     def get_noise_sink(self, sink_name):
         sink_name = sink_name.lower()
