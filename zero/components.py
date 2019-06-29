@@ -56,6 +56,10 @@ class GenericElement(BaseElement):
     def element_unit(self):
         return self._unit
 
+    @property
+    def label(self):
+        return self.name
+
 
 class Component(BaseElement, metaclass=abc.ABCMeta):
     """Represents a circuit component.
