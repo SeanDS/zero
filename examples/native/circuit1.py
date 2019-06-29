@@ -1,6 +1,4 @@
-"""Native circuit construction and simulation
-
-This simulates a simple non-inverting whitening filter's responses for a voltage input.
+"""A simple non-inverting whitening filter's response to a voltage input.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 

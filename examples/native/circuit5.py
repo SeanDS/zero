@@ -1,4 +1,4 @@
-"""Photodetector readout circuit noise analysis, projected to the circuit's input.
+"""Photodetector readout circuit noise, projected to the circuit's input.
 
 Rana Adhikari, Sean Leavey
 """

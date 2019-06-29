@@ -1,6 +1,4 @@
-"""Native circuit construction and simulation, with extra noise sum calculations.
-
-This simulates a simple non-inverting whitening filter's output noise.
+"""A simple non-inverting whitening filter's output noise, plotted with various incoherent sums.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
