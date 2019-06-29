@@ -102,10 +102,10 @@ class AcNoiseAnalysis(AcSignalAnalysis):
                 # null noise source
                 empty.append(noise)
 
-            if noise.ELEMENT_TYPE == "component":
+            if noise.element_type == "component":
                 # noise is from a component; use its matrix index
                 index = self.component_matrix_index(noise.component)
-            elif noise.ELEMENT_TYPE == "node":
+            elif noise.element_type == "node":
                 # noise is from a node; use its matrix index
                 index = self.node_matrix_index(noise.node)
             else:

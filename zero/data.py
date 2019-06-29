@@ -440,7 +440,7 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
 
     @property
     def noise_type(self):
-        return self.source.NOISE_TYPE
+        return self.source.noise_type
 
     def label(self, tex=False, suffix=None):
         if tex:

@@ -23,7 +23,10 @@ class ElementNotFoundError(Exception):
 
 
 class BaseElement:
-    """Represents a source or sink of a function, with a unit."""
+    """Represents a source or sink of a function, with a unit.
+
+    This is an abstract representation of components, nodes or noise sources.
+    """
     # Element type. Represents whether this element behaves like a component, node, etc.
     ELEMENT_TYPE = None
     # Unit used for admittance calculations.
@@ -290,22 +293,22 @@ class OpAmp(LibraryOpAmp, Component):
 
     @property
     def has_voltage_noise(self):
-        return "voltage" in [noise.NOISE_TYPE for noise in self.noise]
+        return "voltage" in [noise.noise_type for noise in self.noise]
 
     @property
     def has_non_inv_current_noise(self):
-        return "current" in [noise.NOISE_TYPE for noise in self.noise
+        return "current" in [noise.noise_type for noise in self.noise
                              if hasattr(noise, "node") and noise.node == self.node1]
 
     @property
     def has_inv_current_noise(self):
-        return "current" in [noise.NOISE_TYPE for noise in self.noise
+        return "current" in [noise.noise_type for noise in self.noise
                              if hasattr(noise, "node") and noise.node == self.node2]
 
     @property
     def voltage_noise(self):
         for noise in self.noise:
-            if noise.NOISE_TYPE == "voltage":
+            if noise.noise_type == "voltage":
                 return noise
 
         raise NoiseNotFoundError("voltage noise")
@@ -313,7 +316,7 @@ class OpAmp(LibraryOpAmp, Component):
     @property
     def non_inv_current_noise(self):
         for noise in self.noise:
-            if noise.NOISE_TYPE == "current":
+            if noise.noise_type == "current":
                 if noise.node == self.node1:
                     return noise
 
@@ -322,7 +325,7 @@ class OpAmp(LibraryOpAmp, Component):
     @property
     def inv_current_noise(self):
         for noise in self.noise:
-            if noise.NOISE_TYPE == "current":
+            if noise.noise_type == "current":
                 if noise.node == self.node2:
                     return noise
 
@@ -433,7 +436,7 @@ class Resistor(PassiveComponent):
     @property
     def johnson_noise(self):
         for noise in self.noise:
-            if noise.NOISE_TYPE == "johnson":
+            if noise.noise_type == "johnson":
                 return noise
 
         raise ValueError("no Johnson noise")
@@ -636,6 +639,10 @@ class Noise(BaseElement, metaclass=abc.ABCMeta):
         """Meta data used to provide hash."""
         return tuple(self.label())
 
+    @property
+    def noise_type(self):
+        return self.NOISE_TYPE
+
     def __str__(self):
         return self.label()
 
@@ -673,7 +680,7 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
 
     @property
     def component_type(self):
-        return self.component.ELEMENT_TYPE
+        return self.component.element_type
 
 
 class NodeNoise(Noise, metaclass=abc.ABCMeta):

@@ -474,7 +474,7 @@ class Circuit:
         :class:`list` of :class:`.Resistor`
             The resistors in the circuit.
         """
-        return [component for component in self.components if component.ELEMENT_TYPE == "resistor"]
+        return [component for component in self.components if component.element_type == "resistor"]
 
     @property
     def capacitors(self):
@@ -485,7 +485,7 @@ class Circuit:
         :class:`list` of :class:`.Capacitor`
             The capacitors in the circuit.
         """
-        return [component for component in self.components if component.ELEMENT_TYPE == "capacitor"]
+        return [component for component in self.components if component.element_type == "capacitor"]
 
     @property
     def inductors(self):
@@ -496,7 +496,7 @@ class Circuit:
         :class:`list` of :class:`.Inductor`
             The inductors in the circuit.
         """
-        return [component for component in self.components if component.ELEMENT_TYPE == "inductor"]
+        return [component for component in self.components if component.element_type == "inductor"]
 
     @property
     def passive_components(self):
@@ -524,7 +524,7 @@ class Circuit:
         :class:`list` of :class:`.OpAmp`
             The op-amps.
         """
-        return [component for component in self.components if component.ELEMENT_TYPE == "op-amp"]
+        return [component for component in self.components if component.element_type == "op-amp"]
 
     @property
     def noise_sources(self):
