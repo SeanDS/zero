@@ -1,37 +1,23 @@
 """Data tests"""
 
-from unittest import TestCase
 import numpy as np
+from zero.data import Series, MultiNoiseDensity
+from .data import ZeroDataTestCase
 
-from zero.data import Series
 
-
-class SeriesTestCase(TestCase):
+class SeriesTestCase(ZeroDataTestCase):
     """Data series tests"""
     def setUp(self):
-        # x-axis
-        self.x = np.linspace(1, 10, 10)
-
-        # randomly generated test data
-        test_data = np.array([[0.87641139, 0.89256540],
-                              [0.92233697, 0.14460983],
-                              [0.46331225, 0.11945957],
-                              [0.15163242, 0.31404200],
-                              [0.07903830, 0.54334174],
-                              [0.70267076, 0.40427563],
-                              [0.77077928, 0.36697893],
-                              [0.43051938, 0.08770115],
-                              [0.71906046, 0.27778896],
-                              [0.26178631, 0.02114534]])
-
-        # first column is real, second imaginary
+        # X-axis.
+        self.x = self._freqs(10)
+        # Randomly generated test data.
+        test_data = self._data((len(self.x), 2))
+        # First column is real, second imaginary.
         self.data_cplx = test_data[:, 0] + 1j * test_data[:, 1]
-
-        # separate real and imaginary parts
+        # Separate real and imaginary parts.
         self.data_re = test_data[:, 0]
         self.data_im = test_data[:, 1]
-
-        # magnitude and phase equivalent
+        # Magnitude and phase equivalent.
         self.data_mag_abs = np.abs(self.data_cplx)
         self.data_mag_db = 20 * np.log10(self.data_mag_abs)
         self.data_phase_rad = np.angle(self.data_cplx)
@@ -82,10 +68,10 @@ class SeriesTestCase(TestCase):
 
     def test_from_re_im_invalid_parts(self):
         """Test real/imaginary series factory invalid scales"""
-        # real part cannot have imaginary element
+        # Real part cannot have imaginary element.
         self.assertRaises(ValueError, Series.from_re_im, self.x, np.array([1, 2, 3+1j]),
                           np.array([1, 2, 3]))
-        # imaginary part cannot have imaginary element
+        # Imaginary part cannot have imaginary element.
         self.assertRaises(ValueError, Series.from_re_im, self.x, np.array([1, 2, 3]),
                           np.array([1, 2, 3+1j]))
 
@@ -177,3 +163,19 @@ class SeriesTestCase(TestCase):
         series.y = np.zeros_like(series.y)
         self.assertTrue(np.allclose(inverted.x, series.x))
         self.assertTrue(np.allclose(inverted.y, 1 / self.data_cplx))
+
+
+class MultiNoiseDensityTestCase(ZeroDataTestCase):
+    """MultiNoiseDensity tests."""
+    def test_constituent_noise_sum_equal_total_noise_sum(self):
+        f = self._freqs()
+        sink = self._resistor()
+        noise1 = self._voltage_noise_at_comp(f, sink=sink)
+        noise2 = self._voltage_noise_at_comp(f, sink=sink) # Share sink.
+        constituents = [noise1, noise2]
+        sum_data = np.sqrt(sum([noise.spectral_density ** 2 for noise in constituents]))
+        sum_series = self._series(f, sum_data)
+        noisesum1 = MultiNoiseDensity(sink=sink, constituents=constituents)
+        noisesum2 = MultiNoiseDensity(sources=[noise1.source, noise2.source],
+                                      sink=sink, series=sum_series)
+        self.assertTrue(noisesum1.equivalent(noisesum2))
