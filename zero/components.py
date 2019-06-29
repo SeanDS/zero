@@ -41,6 +41,19 @@ class BaseElement:
         return self.ELEMENT_UNIT
 
 
+class UserElement(BaseElement):
+    """Represents a user-defined element with custom unit."""
+    ELEMENT_TYPE = "__custom__"
+
+    def __init__(self, name, unit):
+        self.name = str(name)
+        self._unit = str(unit)
+
+    @property
+    def element_unit(self):
+        return self._unit
+
+
 class Component(BaseElement, metaclass=abc.ABCMeta):
     """Represents a circuit component.
 

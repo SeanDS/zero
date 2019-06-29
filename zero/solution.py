@@ -11,7 +11,7 @@ from matplotlib.ticker import MultipleLocator
 from .config import ZeroConfig
 from .data import (Response, NoiseDensity, MultiNoiseDensity, ReferenceResponse, ReferenceNoise,
                    frequencies_match)
-from .components import Component, Node, Noise
+from .components import BaseElement, Noise
 from .format import Quantity
 from .misc import lighten_colours
 
@@ -349,10 +349,8 @@ class Solution:
             for source in sources:
                 if isinstance(source, str):
                     source = self.get_response_source(source)
-
-                if not isinstance(source, (Component, Node)):
-                    raise ValueError(f"signal source '{source}' is not a component or node")
-
+                if not isinstance(source, BaseElement):
+                    raise ValueError(f"signal source '{source}' invalid")
                 filter_sources.append(source)
 
             # Filter by source.
@@ -367,10 +365,8 @@ class Solution:
             for sink in sinks:
                 if isinstance(sink, str):
                     sink = self.get_response_sink(sink)
-
-                if not isinstance(sink, (Component, Node)):
-                    raise ValueError(f"signal sink '{sink}' is not a component or node")
-
+                if not isinstance(sink, BaseElement):
+                    raise ValueError(f"signal sink '{sink}' invalid")
                 filter_sinks.append(sink)
 
             # Filter by sink.
@@ -501,10 +497,8 @@ class Solution:
             for source in sources:
                 if isinstance(source, str):
                     source = self.get_noise_source(source)
-
                 if not isinstance(source, Noise):
                     raise ValueError(f"noise source '{source}' is not a noise source")
-
                 filter_sources.append(source)
 
             # Filter by source.
@@ -519,10 +513,8 @@ class Solution:
             for sink in sinks:
                 if isinstance(sink, str):
                     sink = self.get_noise_sink(sink)
-
-                if not isinstance(sink, (Component, Node)):
-                    raise ValueError(f"noise sink '{sink}' is not a component or node")
-
+                if not isinstance(sink, BaseElement):
+                    raise ValueError(f"noise sink '{sink}' invalid")
                 filter_sinks.append(sink)
 
             # Filter by sink.
