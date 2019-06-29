@@ -574,21 +574,14 @@ class ComponentNotFoundError(ElementNotFoundError):
 class Node(BaseElement, metaclass=NamedInstance):
     """Represents a circuit node (connection between components)
 
-    Nodes are considered equal if they have the same case-independent name.
+    Nodes are considered equal if they have the same case-independent name. Nodes are singletons,
+    and as such instantiating a node with a name matching that of a previously instantiated node
+    will result in the previous object being returned.
 
     Parameters
     ----------
     name : :class:`str`
         Node name.
-
-    Attributes
-    ----------
-    sources : :class:`set`
-        :class:`Components <Component>` that source current connected to this
-        node.
-    sinks : :class:`set`
-        :class:`Components <Component>` that sink current connected to this
-        node.
     """
     ELEMENT_UNIT = "V"
 

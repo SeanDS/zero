@@ -170,6 +170,9 @@ class BaseFunction(metaclass=abc.ABCMeta):
     descending from :class:`.BaseElement`, though concrete subclasses may implement additional type
     constraints.
 
+    Functions are designed to allow mathematical operations, such as multiplication by scalars or
+    other functions. Concrete subclasses may implement additional constraints on allowed operations.
+
     Parameters
     ----------
     sources, sinks : list of :class:`.BaseElement`, optional
