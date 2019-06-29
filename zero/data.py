@@ -582,7 +582,8 @@ class MultiNoiseDensity(NoiseDensityBase):
             other_value = other
 
         scaled_series = self.series * other_value
-        return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series)
+        return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series,
+                              label=self._label)
 
 
 class Reference(BaseFunction, metaclass=abc.ABCMeta):
