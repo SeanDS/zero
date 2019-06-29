@@ -370,6 +370,26 @@ class SolutionFilterTestCase(BaseSolutionTestCase):
         # Without units.
         self.assertRaises(ValueError, sol.get_response, label=label1[:-6])
 
+    def test_get_response_with_degenerate_functions_same_source(self):
+        f = self._freqs()
+        res1 = self._resistor()
+        resp1 = self._i_i_response(f, component_source=res1)
+        resp2 = self._i_v_response(f, component_source=res1)
+        sol = Solution(f)
+        sol.add_response(resp1)
+        sol.add_response(resp2)
+        self.assertRaises(ValueError, sol.get_response, source=res1)
+
+    def test_get_response_with_degenerate_functions_same_sink(self):
+        f = self._freqs()
+        res1 = self._resistor()
+        resp1 = self._i_i_response(f, component_sink=res1)
+        resp2 = self._v_i_response(f, component_sink=res1)
+        sol = Solution(f)
+        sol.add_response(resp1)
+        sol.add_response(resp2)
+        self.assertRaises(ValueError, sol.get_response, sink=res1)
+
     def test_get_noise_no_group(self):
         f = self._freqs()
         noise1 = self._voltage_noise_at_comp(f)
@@ -404,6 +424,26 @@ class SolutionFilterTestCase(BaseSolutionTestCase):
         label2 = f"{noise2.source} to {noise2.sink.name}"
         self.assertEqual(sol.get_noise(label=label1), noise1)
         self.assertEqual(sol.get_noise(label=label2), noise2)
+
+    def test_get_noise_with_degenerate_functions_same_source(self):
+        f = self._freqs()
+        res1 = self._resistor()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._voltage_noise_at_comp(f, source=noise1.source)
+        sol = Solution(f)
+        sol.add_noise(noise1)
+        sol.add_noise(noise2)
+        self.assertRaises(ValueError, sol.get_noise, source=noise1.source)
+
+    def test_get_noise_with_degenerate_functions_same_sink(self):
+        f = self._freqs()
+        res1 = self._resistor()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._voltage_noise_at_comp(f, sink=noise1.sink)
+        sol = Solution(f)
+        sol.add_noise(noise1)
+        sol.add_noise(noise2)
+        self.assertRaises(ValueError, sol.get_noise, sink=noise1.sink)
 
     def test_get_noise_sum_no_group(self):
         f = self._freqs()
@@ -451,6 +491,19 @@ class SolutionFilterTestCase(BaseSolutionTestCase):
         sol.add_noise_sum(sum2)
         self.assertEqual(sol.get_noise_sum(label=label1), sum1)
         self.assertEqual(sol.get_noise_sum(label=label2), sum2)
+
+    def test_get_noise_sum_with_degenerate_functions_same_sink(self):
+        f = self._freqs()
+        noise1 = self._voltage_noise_at_comp(f)
+        noise2 = self._voltage_noise_at_comp(f, sink=noise1.sink)
+        noise3 = self._voltage_noise_at_comp(f, sink=noise1.sink)
+        noise4 = self._voltage_noise_at_comp(f, sink=noise1.sink)
+        sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
+        sum2 = self._multi_noise_density(noise1.sink, [noise3, noise4])
+        sol = Solution(f)
+        sol.add_noise_sum(sum1)
+        sol.add_noise_sum(sum2)
+        self.assertRaises(ValueError, sol.get_noise_sum, sink=sum1.sink)
 
 
 class SolutionFunctionReplacementTestCase(BaseSolutionTestCase):
