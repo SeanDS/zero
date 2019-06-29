@@ -287,7 +287,7 @@ class SingleSinkFunction(BaseFunction, metaclass=abc.ABCMeta):
         return self.sink.SOURCE_SINK_UNIT
 
 
-class Response(SingleSourceFunction, SingleSinkFunction, BaseFunction):
+class Response(SingleSourceFunction, SingleSinkFunction):
     """Response data series"""
     @property
     def complex_magnitude(self):
