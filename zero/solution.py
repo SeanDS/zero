@@ -1379,7 +1379,7 @@ class Solution:
                     new_group = solution.name
                 else:
                     # Append the solution name to the group name.
-                    new_group = f"{group} ({solution.name}"
+                    new_group = f"{group} ({solution.name})"
             return new_group
 
         def merge_into_result(solution):
