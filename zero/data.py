@@ -230,7 +230,7 @@ class BaseFunction(metaclass=abc.ABCMeta):
 
     @label.setter
     def label(self, label):
-        self._label = str(label)
+        self._label = label
 
     @abc.abstractmethod
     def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
