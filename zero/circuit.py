@@ -5,37 +5,12 @@ import logging
 import numpy as np
 
 from .config import ZeroConfig, OpAmpLibrary
-from .components import Resistor, Capacitor, Inductor, OpAmp, Node
+from .components import (Resistor, Capacitor, Inductor, OpAmp, Node, ElementNotFoundError,
+                         ComponentNotFoundError, NodeNotFoundError, NoiseNotFoundError)
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
 LIBRARY = OpAmpLibrary()
-
-
-class ElementNotFoundError(Exception):
-    def __init__(self, name, message="element '%s' not found", *args, **kwargs):
-        # apply name to message
-        message = message % name
-
-        # call parent constructor
-        super().__init__(message, *args, **kwargs)
-
-        self.name = name
-
-
-class ComponentNotFoundError(ElementNotFoundError):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, message="component '%s' not found", *args, **kwargs)
-
-
-class NodeNotFoundError(ElementNotFoundError):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
-
-
-class NoiseNotFoundError(ElementNotFoundError):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, message="noise '%s' not found", *args, **kwargs)
 
 
 class Circuit:
@@ -355,7 +330,7 @@ class Circuit:
         name = noise_name.lower()
 
         for noise in self.noise_sources:
-            if name == noise.label().lower():
+            if name == noise.label.lower():
                 return noise
 
         raise NoiseNotFoundError(name)
@@ -409,12 +384,12 @@ class Circuit:
         count = 1
 
         # first attempt
-        new_name = "{base}{count}".format(base=base, count=count)
+        new_name = f"{base}{count}"
 
         while new_name in self.component_names:
             # next attempt
             count += 1
-            new_name = "{base}{count}".format(base=base, count=count)
+            new_name = f"{base}{count}"
 
         # set new name
         component.name = new_name
@@ -499,7 +474,7 @@ class Circuit:
         :class:`list` of :class:`.Resistor`
             The resistors in the circuit.
         """
-        return [component for component in self.components if component.TYPE == "resistor"]
+        return [component for component in self.components if component.element_type == "resistor"]
 
     @property
     def capacitors(self):
@@ -510,7 +485,7 @@ class Circuit:
         :class:`list` of :class:`.Capacitor`
             The capacitors in the circuit.
         """
-        return [component for component in self.components if component.TYPE == "capacitor"]
+        return [component for component in self.components if component.element_type == "capacitor"]
 
     @property
     def inductors(self):
@@ -521,7 +496,7 @@ class Circuit:
         :class:`list` of :class:`.Inductor`
             The inductors in the circuit.
         """
-        return [component for component in self.components if component.TYPE == "inductor"]
+        return [component for component in self.components if component.element_type == "inductor"]
 
     @property
     def passive_components(self):
@@ -549,7 +524,7 @@ class Circuit:
         :class:`list` of :class:`.OpAmp`
             The op-amps.
         """
-        return [component for component in self.components if component.TYPE == "op-amp"]
+        return [component for component in self.components if component.element_type == "op-amp"]
 
     @property
     def noise_sources(self):

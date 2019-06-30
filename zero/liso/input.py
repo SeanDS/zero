@@ -403,7 +403,7 @@ class LisoInputParser(LisoParser):
                 self.p_error("op-amp parameter override must be in the form 'param=value'")
 
             if key not in self.OP_OVERRIDE_MAP.keys():
-                self.p_error("unknown op-amp override parameter '{key}'".format(key=key))
+                self.p_error(f"unknown op-amp override parameter '{key}'")
 
             extra_args[self.OP_OVERRIDE_MAP[key]] = value
 

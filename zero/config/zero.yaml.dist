@@ -3,12 +3,15 @@
 #
 # Strings starting with '#' are comments.
 
+distributed_with: 0.7.0
+
 # Example of overriding plot options:
 #plot:
 #  # Default plot size, in inches.
 #  size_x: 10
 #  size_y: 8
 #
-#  # Matplotlib configuration overrides.
-#  matplotlib:
-#    legend.fontsize: 10
+#  # Default plot options. These are only used if the corresponding parameter is not directly
+#  # specified.
+#  alpha: 0.5
+#  linestyle: -.

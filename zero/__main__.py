@@ -73,6 +73,8 @@ def cli():
 @click.option("--liso-path", type=click.Path(exists=True, dir_okay=False), envvar='LISO_PATH',
               help="Path to LISO binary. If not specified, the environment variable LISO_PATH is "
               "searched.")
+@click.option("--resp-scale-db/--resp-scale-abs", default=True, show_default=True,
+              help="Scale response y-axes in decibels.")
 @click.option("--compare", is_flag=True, default=False,
               help="Simulate using both this tool and LISO binary, and overlay results.")
 @click.option("--diff", is_flag=True, default=False,
@@ -84,30 +86,30 @@ def cli():
 @click.option("--print-equations", is_flag=True, help="Print circuit equations.")
 @click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @click.pass_context
-def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equations,
-         print_matrix):
-    """Parse and simulate LISO input or output file"""
+def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
+         print_equations, print_matrix):
+    """Parse and simulate LISO input or output file."""
     state = ctx.ensure_object(State)
 
-    # check which solutions must be computed
+    # Check which solutions must be computed.
     compute_liso = liso or compare
     compute_native = not liso or compare
 
     if compute_liso:
-        # run file with LISO and parse results
+        # Run file with LISO and parse results.
         runner = LisoRunner(script_path=file.name)
         parser = runner.run(liso_path, plot=False)
         liso_solution = parser.solution()
         liso_solution.name = "LISO"
     else:
-        # parse specified file
+        # Parse specified file.
         try:
-            # try to parse as input file
+            # Try to parse as input file.
             parser = LisoInputParser()
             parser.parse(path=file.name)
         except LisoParserError:
             try:
-                # try to parse as an output file
+                # Try to parse as an output file.
                 parser = LisoOutputParser()
                 parser.parse(path=file.name)
             except LisoParserError:
@@ -115,16 +117,16 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equ
                                  "output file")
 
     if compute_native:
-        # build argument list
+        # Build argument list.
         kwargs = {"print_progress": state.verbose,
                   "print_equations": print_equations,
                   "print_matrix": print_matrix}
 
-        # get native solution
+        # Get native solution.
         native_solution = parser.solution(force=True, **kwargs)
-        native_solution.name = "Native"
+        native_solution.name = "Zero"
 
-    # determine solution to show or save
+    # Determine solution to show or save.
     if compare:
         liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
         def liso_order(function):
@@ -138,38 +140,39 @@ def liso(ctx, file, liso, liso_path, compare, diff, plot, save_figure, print_equ
         # Sort native solution in the order defined in the LISO file.
         native_solution.sort_functions(liso_order, default_only=True)
 
-        # show difference before changing labels
+        # Show difference before changing labels.
         if diff:
-            # group by meta data
+            # Group by meta data.
             header, rows = native_solution.difference(liso_solution, defaults_only=True,
                                                       meta_only=True)
 
             click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-        # combine results from LISO and native simulations
-        solution = native_solution + liso_solution
+        # Combine results from LISO and native simulations. This puts the functions from each
+        # solution into groups with that solution's name so we can differentiate them on the plot.
+        solution = native_solution.combine(liso_solution)
     else:
-        # plot single result
+        # Plot single result.
         if compute_liso:
-            # use LISO's solution
+            # Use LISO's solution.
             solution = liso_solution
         else:
-            # use native solution
+            # Use native solution.
             solution = native_solution
 
-    # determine whether to generate plot
+    # Determine whether to generate plot.
     generate_plot = plot or save_figure
 
     if generate_plot:
         if solution.has_responses:
-            figure = solution.plot_responses()
+            figure = solution.plot_responses(scale_db=resp_scale_db)
         else:
             figure = solution.plot_noise()
 
         if save_figure:
             for save_path in save_figure:
                 # NOTE: use figure file's name so that Matplotlib can identify the file type
-                # appropriately
+                # appropriately.
                 solution.save_figure(figure, save_path.name)
 
     if plot:

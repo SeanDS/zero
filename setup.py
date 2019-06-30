@@ -13,7 +13,8 @@ REQUIREMENTS = [
     "setuptools_scm >= 3.1.0",
     "ply >= 3.11",
     "Click == 7.0",
-    "PyYAML >= 3.13"
+    "PyYAML >= 3.13",
+    "graphviz >= 0.9",
 ]
 
 # Extra dependencies.
@@ -22,11 +23,12 @@ EXTRAS = {
         "pylint",
         "bandit",
         "sphinx",
+        "sphinx-autobuild",
         "sphinx-click",
         "sphinx_rtd_theme",
+        "doc8",
         "numpydoc",
         "nbsphinx",
-        "graphviz == 0.9"
     ]
 }
 

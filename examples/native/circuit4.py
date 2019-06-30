@@ -1,4 +1,4 @@
-"""A simple non-inverting whitening filter's output noise.
+"""A simple non-inverting whitening filter's output noise, plotted with various incoherent sums.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
@@ -26,11 +26,9 @@ if __name__ == "__main__":
     # Solve circuit.
     analysis = AcNoiseAnalysis(circuit=circuit)
     solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1",
-                                  sink="nout", incoherent_sum=True)
-
-    # Give the sum a different label.
-    noise_sum = solution.get_noise_sum(sink="nout")
-    noise_sum.label = "Total noise"
+                                  sink="nout", incoherent_sum={"total": "all",
+                                                               "resistors": "allr",
+                                                               "op-amps": "allop"})
 
     # Plot.
     solution.plot_noise(sink="nout")

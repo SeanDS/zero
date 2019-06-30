@@ -27,14 +27,13 @@ class LisoParserError(ValueError):
                 pos = int(pos)
 
                 # add line number and position
-                message = "{message} (line {line}, position {pos})".format(message=message,
-                                                                           line=line, pos=pos)
+                message = f"{message} (line {line}, position {pos})"
             else:
                 # add line number
-                message = "{message} (line {line})".format(message=message, line=line)
+                message = f"{message} (line {line})"
 
         # prepend message
-        message = "LISO syntax error: {message}".format(message=message)
+        message = f"LISO syntax error: {message}"
 
         super().__init__(message, **kwargs)
 
@@ -236,7 +235,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 raise ValueError("cannot specify both text and a file to parse")
 
             if not os.path.isfile(path):
-                raise FileNotFoundError("cannot read '{path}'".format(path=path))
+                raise FileNotFoundError(f"cannot read '{path}'")
 
             with open(path, "r") as obj:
                 text = obj.read()
@@ -250,9 +249,7 @@ class LisoParser(metaclass=abc.ABCMeta):
     def t_error(self, t):
         # anything that gets past the other filters
         pos = t.lexer.lexpos - self._previous_newline_position
-
-        raise LisoParserError("illegal character '{char}'".format(char=t.value[0]), self.lineno,
-                              pos)
+        raise LisoParserError(f"illegal character '{t.value[0]}'", self.lineno, pos)
 
     @abc.abstractmethod
     def p_error(self, p):

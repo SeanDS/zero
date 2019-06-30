@@ -31,19 +31,21 @@ class NodeGraph:
         graph = self.graphviz.Digraph(engine=CONF["graphviz"]["engine"])
         graph.attr("node", style=CONF["graphviz"]["node_style"],
                    fontname=CONF["graphviz"]["node_font_name"],
-                   fontsize=CONF["graphviz"]["node_font_size"])
+                   # For some reason, font size must be suppied as string.
+                   fontsize=str(CONF["graphviz"]["node_font_size"]))
         graph.attr("edge", arrowhead=CONF["graphviz"]["edge_arrowhead"])
         graph.attr("graph", splines=CONF["graphviz"]["graph_splines"],
                    label="Made with graphviz and Zero",
                    fontname=CONF["graphviz"]["graph_font_name"],
-                   fontsize=CONF["graphviz"]["graph_font_size"])
+                   # For some reason, font size must be suppied as string.
+                   fontsize=str(CONF["graphviz"]["graph_font_size"]))
         node_map = {}
 
         def add_connection(component, conn, node):
             if node == 'gnd':
                 graph.node("%s_%s" % (component, node), shape='point', style='invis')
                 graph.edge('%s_%s' % (component, node), component+conn, dir='both', arrowtail='tee',
-                       len='0.0', weight='10')
+                           len='0.0', weight='10')
             else:
                 if not node in node_map:
                     graph.node(node, shape='point', xlabel=node, width='0.1', fillcolor='Red')
@@ -56,11 +58,18 @@ class NodeGraph:
 
             if isinstance(component, OpAmp):
                 attr = {'shape': 'plain', 'margin': '0', 'orientation': '270'}
-                attr['label'] = """<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
-                    <TR><TD PORT="plus">+</TD><TD ROWSPAN="3">{0}<BR/>{1}</TD></TR>
-                    <TR><TD> </TD></TR>
-                    <TR><TD PORT="minus">-</TD></TR>
-                </TABLE>>""".format(component.name, component.model)
+                attr['label'] = f"""<<TABLE BORDER="0" BGCOLOR="LightSkyBlue">
+                    <TR>
+                        <TD PORT="plus">+</TD>
+                        <TD ROWSPAN="3">{component.name}<BR/>{component.model}</TD>
+                    </TR>
+                    <TR>
+                        <TD> </TD>
+                    </TR>
+                    <TR>
+                        <TD PORT="minus">-</TD>
+                    </TR>
+                </TABLE>>"""
                 connections = [':plus', ':minus', ':e']
             elif isinstance(component, Inductor):
                 attr = {'fillcolor': 'MediumSlateBlue', 'shape': 'diamond'}
@@ -427,7 +436,7 @@ class EquationDisplay(TableFormatter):
                     formatted_coefficient += " × "
 
                 # write coefficient and element
-                clause += "%s%s" % (formatted_coefficient,  element_format % element.label())
+                clause += "%s%s" % (formatted_coefficient,  element_format % element.label)
 
                 clauses.append(clause)
 
@@ -476,7 +485,7 @@ class EquationDisplay(TableFormatter):
                     raise ValueError("unexpected element type")
 
                 # write coefficient and element
-                expression += self.format_coefficient_latex(coefficient) + element_format % element.label()
+                expression += self.format_coefficient_latex(coefficient) + element_format % element.label
 
             # add right hand side, with alignment character
             expression += r"&="

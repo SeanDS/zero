@@ -229,14 +229,13 @@ class LibraryParserError(ValueError):
                 pos = int(pos)
 
                 # add line number and position
-                message = "{message} (line {line}, position {pos})".format(message=message,
-                                                                           line=line, pos=pos)
+                message = f"{message} (line {line}, position {pos})"
             else:
                 # add line number
-                message = "{message} (line {line})".format(message=message, line=line)
+                message = f"{message} (line {line})"
 
         # prepend message
-        message = "Syntax error: {message}".format(message=message)
+        message = f"Syntax error: {message}"
 
         super().__init__(message, **kwargs)
 
