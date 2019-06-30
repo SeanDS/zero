@@ -3,7 +3,7 @@
 #
 # Strings starting with '#' are comments.
 
-distributed_with: 0.6.6
+distributed_with: 0.7.0
 
 # Example of overriding plot options:
 #plot:
