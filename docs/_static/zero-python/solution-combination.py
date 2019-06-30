@@ -4,7 +4,7 @@
 import sys
 from zero.liso import LisoInputParser
 
-# create parser
+# Create parser.
 parser = LisoInputParser()
 
 base_circuit = """
@@ -21,32 +21,34 @@ freq log 100k 100M 1000
 uoutput nout
 """
 
-# parse base circuit
+# Parse the base circuit.
 parser.parse(base_circuit)
-# set input to low frequency port
+# Set the circuit input to the low frequency port.
 parser.parse("uinput nlf 50")
-# ground unused input
+# Ground the unused input.
 parser.parse("r nrfsrc 5 nrf gnd")
-# calculate solution
+# Calculate the solution.
 solutionlf = parser.solution()
 solutionlf.name = "LF Circuit"
 
-# reset parser state
+# Reset the parser's state.
 parser.reset()
 
-# parse base circuit
+# Parse the base circuit.
 parser.parse(base_circuit)
-# set input to radio frequency port
+# Set the input to the radio frequency port.
 parser.parse("uinput nrf 50")
-# ground unused input
+# Ground the unused input.
 parser.parse("r nlfsrc 5 nlf gnd")
-# calculate solution
+# Calculate the solution.
 solutionrf = parser.solution()
 solutionrf.name = "RF Circuit"
 
-# combine solutions
+# Combine the solutions. By default, this keeps the functions from each source solution in different
+# groups in the resulting solution. This makes the plot show the functions with different styles and
+# shows the source solution's name as a suffix on each legend label.
 solution = solutionlf.combine(solutionrf)
 
-# plot
+# Plot.
 plot = solution.plot_responses()
 solution.save_figure(plot, sys.argv[1])

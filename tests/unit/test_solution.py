@@ -138,7 +138,7 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_d = sol_a + sol_b + sol_c
         self.assertEqual(sol_d.name, f"{sol_a.name} + {sol_b.name} + {sol_c.name}")
 
-    def test_solution_combination_default_groups(self):
+    def test_solution_combination_merge_groups_default_only(self):
         """Test default groups in combined solution"""
         f = self._freqs()
         resp1 = self._i_i_response(f)
@@ -150,7 +150,7 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_b.add_response(resp2)
         sol_c = Solution(f)
         sol_c.add_response(resp3)
-        sol_d = sol_a + sol_b + sol_c
+        sol_d = sol_a.combine(sol_b, sol_c, merge_groups=True)
         # Combined solution shouldn't have any new groups.
         self.assertCountEqual(sol_d.groups, sol_a.groups)
         self.assertCountEqual(sol_d.groups, sol_b.groups)
@@ -158,7 +158,7 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         # Check functions.
         self.assertCountEqual(sol_d.functions[sol_d.DEFAULT_GROUP_NAME], [resp1, resp2, resp3])
 
-    def test_solution_combination_mixed_groups(self):
+    def test_solution_combination_merge_groups_mixed(self):
         """Test mixed groups in combined solution"""
         f = self._freqs()
         resp1 = self._i_i_response(f)
@@ -186,7 +186,7 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_c.add_response(resp9, group="b")
         sol_c.add_response(resp10, group="c")
         sol_c.add_response(resp11, group="d")
-        sol_d = sol_a + sol_b + sol_c
+        sol_d = sol_a.combine(sol_b, sol_c, merge_groups=True)
         self.assertCountEqual(sol_d.groups, set(sol_a.groups + sol_b.groups + sol_c.groups))
         # Check functions.
         self.assertCountEqual(sol_d.functions[sol_d.DEFAULT_GROUP_NAME], [resp1, resp4, resp7])
@@ -195,15 +195,15 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         self.assertCountEqual(sol_d.functions["c"], [resp6, resp10])
         self.assertCountEqual(sol_d.functions["d"], [resp11])
 
-    def test_solution_combination_different_frequencies(self):
+    def test_solution_combination_merge_groups_different_frequencies(self):
         """Test that combining solutions with different frequency vectors throws error."""
         f1 = self._freqs()
         f2 = self._freqs()
         sol_a = Solution(f1)
         sol_b = Solution(f2)
-        self.assertRaises(ValueError, lambda: sol_a + sol_b)
+        self.assertRaises(ValueError, sol_a.combine, sol_b, merge_groups=True)
 
-    def test_solution_combination_identical_responses_invalid(self):
+    def test_solution_combination_merge_groups_identical_responses_invalid(self):
         """Test that combining solutions with identical responses in default group throws error."""
         f = self._freqs()
         resp1 = self._i_i_response(f)
@@ -214,9 +214,9 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_b = Solution(f)
         sol_b.add_response(resp1)
         sol_b.add_response(resp2, group="b")
-        self.assertRaises(ValueError, lambda: sol_a + sol_b)
+        self.assertRaises(ValueError, sol_a.combine, sol_b, merge_groups=True)
 
-    def test_solution_combination_identical_responses_different_group_valid(self):
+    def test_solution_combination_merge_groups_identical_responses_different_group_valid(self):
         """Test that combining solutions with identical responses in different groups is valid."""
         f = self._freqs()
         resp1 = self._i_i_response(f)
@@ -227,11 +227,11 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_b = Solution(f)
         sol_b.add_response(resp1, group="b")
         sol_b.add_response(resp2, group="b")
-        sol_c = sol_a + sol_b
+        sol_c = sol_a.combine(sol_b, merge_groups=True)
         self.assertCountEqual(sol_c.functions[sol_c.DEFAULT_GROUP_NAME], [resp1, resp2])
         self.assertCountEqual(sol_c.functions["b"], [resp1, resp2])
 
-    def test_solution_combination_identical_noise_invalid(self):
+    def test_solution_combination_merge_groups_identical_noise_invalid(self):
         """Test that combining solutions with identical noise in default group throws error."""
         f = self._freqs()
         noise1 = self._voltage_noise_at_node(f)
@@ -242,9 +242,9 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_b = Solution(f)
         sol_b.add_noise(noise1)
         sol_b.add_noise(noise2, group="b")
-        self.assertRaises(ValueError, lambda: sol_a + sol_b)
+        self.assertRaises(ValueError, sol_a.combine, sol_b, merge_groups=True)
 
-    def test_solution_combination_identical_noise_different_group_valid(self):
+    def test_solution_combination_merge_groups_identical_noise_different_group_valid(self):
         """Test that combining solutions with identical noise in different groups is valid."""
         f = self._freqs()
         noise1 = self._voltage_noise_at_node(f)
@@ -255,7 +255,7 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_b = Solution(f)
         sol_b.add_noise(noise1, group="b")
         sol_b.add_noise(noise2, group="b")
-        sol_c = sol_a + sol_b
+        sol_c = sol_a.combine(sol_b, merge_groups=True)
         self.assertCountEqual(sol_c.functions[sol_c.DEFAULT_GROUP_NAME], [noise1, noise2])
         self.assertCountEqual(sol_c.functions["b"], [noise1, noise2])
 

@@ -91,25 +91,25 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
     """Parse and simulate LISO input or output file."""
     state = ctx.ensure_object(State)
 
-    # check which solutions must be computed
+    # Check which solutions must be computed.
     compute_liso = liso or compare
     compute_native = not liso or compare
 
     if compute_liso:
-        # run file with LISO and parse results
+        # Run file with LISO and parse results.
         runner = LisoRunner(script_path=file.name)
         parser = runner.run(liso_path, plot=False)
         liso_solution = parser.solution()
         liso_solution.name = "LISO"
     else:
-        # parse specified file
+        # Parse specified file.
         try:
-            # try to parse as input file
+            # Try to parse as input file.
             parser = LisoInputParser()
             parser.parse(path=file.name)
         except LisoParserError:
             try:
-                # try to parse as an output file
+                # Try to parse as an output file.
                 parser = LisoOutputParser()
                 parser.parse(path=file.name)
             except LisoParserError:
@@ -117,16 +117,16 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
                                  "output file")
 
     if compute_native:
-        # build argument list
+        # Build argument list.
         kwargs = {"print_progress": state.verbose,
                   "print_equations": print_equations,
                   "print_matrix": print_matrix}
 
-        # get native solution
+        # Get native solution.
         native_solution = parser.solution(force=True, **kwargs)
-        native_solution.name = "Native"
+        native_solution.name = "Zero"
 
-    # determine solution to show or save
+    # Determine solution to show or save.
     if compare:
         liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
         def liso_order(function):
@@ -148,21 +148,19 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
 
             click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-        # Combine results from LISO and native simulations, remapping the group names so we can
-        # differentiate them on the plot.
-        native_solution.rename_default_group("Zero")
-        liso_solution.rename_default_group("LISO")
-        solution = native_solution + liso_solution
+        # Combine results from LISO and native simulations. This puts the functions from each
+        # solution into groups with that solution's name so we can differentiate them on the plot.
+        solution = native_solution.combine(liso_solution)
     else:
-        # plot single result
+        # Plot single result.
         if compute_liso:
-            # use LISO's solution
+            # Use LISO's solution.
             solution = liso_solution
         else:
-            # use native solution
+            # Use native solution.
             solution = native_solution
 
-    # determine whether to generate plot
+    # Determine whether to generate plot.
     generate_plot = plot or save_figure
 
     if generate_plot:
@@ -174,7 +172,7 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
         if save_figure:
             for save_path in save_figure:
                 # NOTE: use figure file's name so that Matplotlib can identify the file type
-                # appropriately
+                # appropriately.
                 solution.save_figure(figure, save_path.name)
 
     if plot:
