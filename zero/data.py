@@ -141,25 +141,53 @@ class Series:
         if hasattr(other, "y"):
             # Extract data.
             other = other.y
-        return Series(self.x, self.y * other)
+        return self.__class__(self.x, self.y * other)
 
-    def __div__(self, other):
-        if hasattr(other, "y"):
-            # Extract data.
-            other = other.y
-        return Series(self.x, self.y / other)
+    def __rmul__(self, other):
+        # Series are commutative.
+        return self * other
 
     def __truediv__(self, other):
-        return self.__div__(other)
+        if hasattr(other, "y"):
+            return self * other.inverse()
+        return self.__class__(self.x, self.y * 1 / other)
+
+    def __rtruediv__(self, other):
+        return other * self.inverse()
+
+    def inverse(self):
+        return self.__class__(self.x, np.reciprocal(self.y))
 
     def __eq__(self, other):
         """Checks if the specified series is identical to this one, within tolerance"""
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
 
-class Function(metaclass=abc.ABCMeta):
-    """Data set"""
-    def __init__(self, sources, sinks, series, plot_options=None):
+class BaseFunction(metaclass=abc.ABCMeta):
+    """Base function container.
+
+    A function represents data between one or many sources and sinks. These can be any type
+    descending from :class:`.BaseElement`, though concrete subclasses may implement additional type
+    constraints.
+
+    Functions are designed to allow mathematical operations, such as multiplication by scalars or
+    other functions. Concrete subclasses may implement additional constraints on allowed operations.
+
+    Parameters
+    ----------
+    sources, sinks : list of :class:`.BaseElement`, optional
+        The function's sources and sinks. Defaults to empty lists.
+    series : :class:`.Series`, optional
+        The function's data.
+    plot_options : :class:`dict`, optional
+        Plot options, passed to :meth:`.matplotlib.pyplot.plot`.
+    """
+    def __init__(self, sources=None, sinks=None, series=None, plot_options=None):
+        self._label = None
+        if sources is None:
+            sources = []
+        if sinks is None:
+            sinks = []
         if plot_options is None:
             plot_options = {}
         self.sources = list(sources)
@@ -196,16 +224,24 @@ class Function(metaclass=abc.ABCMeta):
     def draw(self, *axes):
         raise NotImplementedError
 
+    @property
+    def label(self):
+        return self._format_label()
+
+    @label.setter
+    def label(self, label):
+        self._label = str(label)
+
     @abc.abstractmethod
-    def label(self, tex=False, suffix=None):
+    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
         raise NotImplementedError
 
     def __str__(self):
-        return self.label()
+        return self.label
 
     def meta_data(self):
         """Meta data used to provide a hash and check for meta equivalence."""
-        return frozenset(self.sources), frozenset(self.sinks), self.label()
+        return frozenset(self.sources), frozenset(self.sinks), self.label
 
     def equivalent(self, other):
         """Checks if the specified function has equivalent sources, sinks, labels and data."""
@@ -233,38 +269,52 @@ class Function(metaclass=abc.ABCMeta):
         return hash(self.meta_data())
 
 
-class SingleSourceFunction(Function, metaclass=abc.ABCMeta):
-    """Data set containing data for a single source"""
-    def __init__(self, source, **kwargs):
-        # call parent constructor
-        super().__init__(sources=[source], **kwargs)
+class SingleSourceFunction(BaseFunction, metaclass=abc.ABCMeta):
+    """Data set containing data for a single source."""
+    def __init__(self, source=None, **kwargs):
+        if source is not None:
+            sources = [source]
+        else:
+            sources = []
+        super().__init__(sources=sources, **kwargs)
 
     @property
     def source(self):
         return self.sources[0]
 
+    @source.setter
+    def source(self, source):
+        self.sources[0] = source
+
     @property
     def source_unit(self):
-        return self.source.SOURCE_SINK_UNIT
+        return self.source.element_unit
 
 
-class SingleSinkFunction(Function, metaclass=abc.ABCMeta):
-    """Data set containing data for a single sink"""
-    def __init__(self, sink, **kwargs):
-        # call parent constructor
-        super().__init__(sinks=[sink], **kwargs)
+class SingleSinkFunction(BaseFunction, metaclass=abc.ABCMeta):
+    """Data set containing data for a single sink."""
+    def __init__(self, sink=None, **kwargs):
+        if sink is not None:
+            sinks = [sink]
+        else:
+            sinks = []
+        super().__init__(sinks=sinks, **kwargs)
 
     @property
     def sink(self):
         return self.sinks[0]
 
+    @sink.setter
+    def sink(self, sink):
+        self.sinks[0] = sink
+
     @property
     def sink_unit(self):
-        return self.sink.SOURCE_SINK_UNIT
+        return self.sink.element_unit
 
 
-class Response(SingleSourceFunction, SingleSinkFunction, Function):
-    """Response data series"""
+class Response(SingleSourceFunction, SingleSinkFunction):
+    """Data set representing a response at a sink from a source."""
     @property
     def complex_magnitude(self):
         return self.series.y
@@ -294,7 +344,7 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
 
     def _draw_magnitude(self, axes, label_suffix=None, scale_db=True):
         """Add magnitude plot to axes"""
-        label = self.label(tex=True, suffix=label_suffix)
+        label = self._format_label(tex=True, suffix=label_suffix)
         if scale_db:
             # Decibel y-axis scaling.
             axes.semilogx(self.frequencies, self.db_magnitude, label=label, **self.plot_options)
@@ -313,7 +363,9 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         self._draw_magnitude(axes[0], **kwargs)
         self._draw_phase(axes[1])
 
-    def label(self, tex=False, suffix=None):
+    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)%s"
         else:
@@ -324,7 +376,7 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
         else:
             suffix = ""
 
-        return format_str % (self.source.label(), self.sink.label(), self.unit_str, suffix)
+        return format_str % (self.source.label, self.sink.label, self.unit_str, suffix)
 
     @property
     def unit_str(self):
@@ -339,6 +391,29 @@ class Response(SingleSourceFunction, SingleSinkFunction, Function):
 
         # Both have units.
         return f"{self.sink_unit}/{self.source_unit}"
+
+    def __mul__(self, other):
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.series
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                                 f"this response's sink unit, {self.sink_unit}")
+        elif isinstance(other, NoiseDensityBase):
+            raise ValueError(f"cannot multiply response by {type(other)}")
+        else:
+            # Assume number.
+            other_sink = self.sink
+            other_value = other
+
+        scaled_series = self.series * other_value
+        new_response = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+        new_response.label = self._label
+        return new_response
+
+    def inverse(self):
+        """Inverse response."""
+        return self.__class__(source=self.sink, sink=self.source, series=self.series.inverse())
 
 
 class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
@@ -357,8 +432,16 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
 
         axes = axes[0]
 
-        label = self.label(tex=True, suffix=label_suffix)
+        label = self._format_label(tex=True, suffix=label_suffix)
         axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
+
+    @abc.abstractmethod
+    def __mul__(self, other):
+        # Multiply behaviour depends on whether the noise is single or multi-source.
+        raise NotImplementedError
+
+    def __truediv__(self, other):
+        return self * other.inverse()
 
 
 class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
@@ -368,14 +451,16 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
         return str(self.source)
 
     @property
-    def noise_type(self):
-        return self.source.TYPE
+    def element_type(self):
+        return self.source.element_type
 
     @property
-    def noise_subtype(self):
-        return self.source.SUBTYPE
+    def noise_type(self):
+        return self.source.noise_type
 
-    def label(self, tex=False, suffix=None):
+    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$%s"
         else:
@@ -386,7 +471,26 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
         else:
             suffix = ""
 
-        return format_str % (self.noise_name, self.sink.label(), suffix)
+        return format_str % (self.noise_name, self.sink.label, suffix)
+
+    def __mul__(self, other):
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.magnitude
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                                 f"this response's sink unit, {self.sink_unit}")
+        elif isinstance(other, NoiseDensityBase):
+            raise ValueError(f"cannot multiply noise by {type(other)}")
+        else:
+            # Assume number.
+            other_sink = self.sink
+            other_value = other
+
+        scaled_series = self.series * other_value
+        new_noise = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+        new_noise.label = self._label
+        return new_noise
 
 
 class MultiNoiseDensity(NoiseDensityBase):
@@ -424,13 +528,12 @@ class MultiNoiseDensity(NoiseDensityBase):
             noise_sum = np.sqrt(sum([data.y ** 2 for data in self.constituent_noise]))
             series = Series(frequencies, noise_sum)
 
-        if label is None:
-            label = "incoherent sum"
-
-        self._label = label
-
         # call parent constructor
         super().__init__(sources=sources, series=series, **kwargs)
+
+        if label is None:
+            label = "Incoherent sum"
+        self.label = label
 
         if constituents is not None:
             # check sink agrees with those set in constituents
@@ -459,9 +562,59 @@ class MultiNoiseDensity(NoiseDensityBase):
 
         return [spectral_density.noise_name for spectral_density in self.constituent_noise]
 
-    def label(self, *args, suffix=None, **kwargs):
+    def _format_label(self, *args, suffix=None, ignore_user_label=False, **kwargs):
+        if not ignore_user_label and self._label is not None:
+            return self._label
         if suffix is not None:
             suffix = " %s" % suffix
         else:
             suffix = ""
         return f"{self._label}{suffix}"
+
+    def __mul__(self, other):
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.magnitude
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
+                                 f"this response's sink unit, {self.sink_unit}")
+        elif isinstance(other, NoiseDensityBase):
+            raise ValueError(f"cannot multiply noise by {type(other)}")
+        else:
+            # Assume number.
+            other_sink = self.sink
+            other_value = other
+
+        scaled_series = self.series * other_value
+        return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series,
+                              label=self._label)
+
+
+class Reference(BaseFunction, metaclass=abc.ABCMeta):
+    def __init__(self, frequencies, data, label=None, unit=None, **kwargs):
+        self._sink_unit = unit
+        super().__init__(series=Series(frequencies, data), **kwargs)
+        if label is None:
+            label = "Reference"
+        self.label = label
+
+    def _format_label(self, *args, suffix=None, ignore_user_label=False, **kwargs):
+        if not ignore_user_label and self._label is not None:
+            return self._label
+        if suffix is not None:
+            suffix = " %s" % suffix
+        else:
+            suffix = ""
+        return f"{self._label}{suffix}"
+
+    @property
+    def sink_unit(self):
+        return self._sink_unit
+
+
+class ReferenceResponse(Reference, Response):
+    pass
+
+
+class ReferenceNoise(Reference, NoiseDensity):
+    pass

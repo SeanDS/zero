@@ -840,7 +840,7 @@ class LisoOutputParser(LisoParser):
 
                 kwargs["zeros"].extend(self._parse_opamp_root(frequency, plane))
             else:
-                self.p_error("unknown op-amp override parameter '{key}'".format(key=prop))
+                self.p_error(f"unknown op-amp override parameter '{prop}'")
 
         self.circuit.add_opamp(name=name, model=model, node1=node1, node2=node2, node3=node3,
                                **kwargs)
@@ -892,7 +892,7 @@ class LisoOutputParser(LisoParser):
         try:
             self.add_response_output(sink)
         except ValueError:
-            self.p_error("voltage output '{sink}' already specified".format(sink=sink))
+            self.p_error(f"voltage output '{sink}' already specified")
 
     def _parse_current_output(self, output):
         self._add_current_output(output)

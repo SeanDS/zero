@@ -1,6 +1,4 @@
-"""Native circuit construction and simulation
-
-This simulates a simple non-inverting whitening filter's output noise.
+"""A simple non-inverting whitening filter's output noise.
 
 https://www.circuitlab.com/circuit/62vd4a/whitening-non-inverting/
 
@@ -30,6 +28,10 @@ if __name__ == "__main__":
     solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1",
                                   sink="nout", incoherent_sum=True)
 
+    # Give the sum a different label.
+    noise_sum = solution.get_noise_sum(sink="nout")
+    noise_sum.label = "Total noise"
+
     # Plot.
-    solution.plot_noise(sinks=["nout"])
+    solution.plot_noise(sink="nout")
     solution.show()

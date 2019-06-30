@@ -28,7 +28,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             sink = self.circuit.get_element(sink)
         self._noise_sink = sink
 
-    def calculate(self, input_type, sink, impedance=None, incoherent_sum=False, **kwargs):
+    def calculate(self, input_type, sink, impedance=None, incoherent_sum=False, input_refer=False,
+                  **kwargs):
         """Calculate noise from circuit elements at a particular element.
 
         Parameters
@@ -49,6 +50,8 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             all resistors, respectively. Sums are plotted in shades of grey determined by the
             plotting configuration's ``sum_greyscale_cycle_start``, ``sum_greyscale_cycle_stop`` and
             ``sum_greyscale_cycle_count`` values.
+        input_refer : bool, optional
+            Refer the noise to the input.
 
         Returns
         -------
@@ -63,6 +66,9 @@ class AcNoiseAnalysis(AcSignalAnalysis):
 
         if incoherent_sum:
             self._compute_sums(incoherent_sum)
+
+        if input_refer:
+            self._refer_sink_noise_to_input()
 
         return self.solution
 
@@ -96,10 +102,10 @@ class AcNoiseAnalysis(AcSignalAnalysis):
                 # null noise source
                 empty.append(noise)
 
-            if noise.TYPE == "component":
+            if noise.element_type == "component":
                 # noise is from a component; use its matrix index
                 index = self.component_matrix_index(noise.component)
-            elif noise.TYPE == "node":
+            elif noise.element_type == "node":
                 # noise is from a node; use its matrix index
                 index = self.node_matrix_index(noise.node)
             else:
@@ -163,6 +169,32 @@ class AcNoiseAnalysis(AcSignalAnalysis):
 
             self.solution.add_noise_sum(MultiNoiseDensity(constituents=constituents,
                                                           sink=self.noise_sink, label=label))
+
+    def _refer_sink_noise_to_input(self):
+        """Project the calculated noise to the input."""
+        LOGGER.info("projecting noise to input")
+
+        input_component = self._current_circuit.input_component
+        if self.input_type == "voltage":
+            input_element = input_component.node2
+        else:
+            input_element = input_component
+        projection_analysis = self.to_signal_analysis()
+        # Grab the input nodes from the noise circuit.
+        node_n, node_p = input_component.nodes
+        projection = projection_analysis.calculate(frequencies=self.frequencies,
+                                                   input_type=self.input_type, node_n=node_n,
+                                                   node_p=node_p)
+        # Transfer function from input to noise sink.
+        input_response = projection.get_response(source=input_element, sink=self.noise_sink)
+
+        for __, noise_spectra in self.solution.noise.items():
+            for noise in noise_spectra:
+                self.solution.replace(noise, noise / input_response)
+
+        for __, noise_sums in self.solution.noise_sums.items():
+            for noise in noise_sums:
+                self.solution.replace(noise, noise / input_response)
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""

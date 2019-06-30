@@ -330,7 +330,7 @@ class Circuit:
         name = noise_name.lower()
 
         for noise in self.noise_sources:
-            if name == noise.label().lower():
+            if name == noise.label.lower():
                 return noise
 
         raise NoiseNotFoundError(name)
@@ -384,12 +384,12 @@ class Circuit:
         count = 1
 
         # first attempt
-        new_name = "{base}{count}".format(base=base, count=count)
+        new_name = f"{base}{count}"
 
         while new_name in self.component_names:
             # next attempt
             count += 1
-            new_name = "{base}{count}".format(base=base, count=count)
+            new_name = f"{base}{count}"
 
         # set new name
         component.name = new_name
@@ -474,7 +474,7 @@ class Circuit:
         :class:`list` of :class:`.Resistor`
             The resistors in the circuit.
         """
-        return [component for component in self.components if component.TYPE == "resistor"]
+        return [component for component in self.components if component.element_type == "resistor"]
 
     @property
     def capacitors(self):
@@ -485,7 +485,7 @@ class Circuit:
         :class:`list` of :class:`.Capacitor`
             The capacitors in the circuit.
         """
-        return [component for component in self.components if component.TYPE == "capacitor"]
+        return [component for component in self.components if component.element_type == "capacitor"]
 
     @property
     def inductors(self):
@@ -496,7 +496,7 @@ class Circuit:
         :class:`list` of :class:`.Inductor`
             The inductors in the circuit.
         """
-        return [component for component in self.components if component.TYPE == "inductor"]
+        return [component for component in self.components if component.element_type == "inductor"]
 
     @property
     def passive_components(self):
@@ -524,7 +524,7 @@ class Circuit:
         :class:`list` of :class:`.OpAmp`
             The op-amps.
         """
-        return [component for component in self.components if component.TYPE == "op-amp"]
+        return [component for component in self.components if component.element_type == "op-amp"]
 
     @property
     def noise_sources(self):
