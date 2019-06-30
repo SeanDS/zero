@@ -14,16 +14,54 @@ an :ref:`analysis <analyses/index:Analyses>`; these are usually :ref:`responses
 Retrieving functions
 --------------------
 
-Using :meth:`.filter_responses` and :meth:`.filter_noise`, functions can be retrieved by matching
-against sources, sinks, groups and, in the case of noise, types. These methods return a
-:class:`dict` containing the matched functions in lists keyed by their group names. To retrieve an
-individual function, two convenience methods are provided: :meth:`.get_response` and
-:meth:`~.Solution.get_noise`. These take as arguments the source and sink of the
-:class:`~.data.Response` or :class:`~.data.NoiseDensity` to retrieve. The source and sink in
-:meth:`.get_response` and the sink in :meth:`~.Solution.get_noise` can be :class:`components
-<.Component>` or :class:`nodes <.Node>` or names, while the source in :meth:`~.Solution.get_noise`
-can be a :class:`~.components.Noise` or noise specifier such as ``V(op1)`` (:ref:`see below
-<solution/index:Specifying noise sources and sinks>`).
+Solutions contain methods to retrieve functions contained within those solutions using a variety of
+filters. The methods :meth:`.filter_responses`, :meth:`.filter_noise` and :meth:`.filter_noise_sums`
+provide ways to match functions against their sources, sinks, :ref:`groups <solution/index:Groups>`
+and :ref:`labels <data/index:Labels>`. These methods return a :class:`dict` containing the matched
+functions in lists keyed by their group names (see :ref:`Groups <solution/index:Groups>`).
+
+To retrieve an individual function directly, three convenience methods are available:
+:meth:`.get_response`, :meth:`~.Solution.get_noise` and :meth:`~.Solution.get_noise_sum`. These take
+as arguments the source, sink, group and/or label of the :class:`~.data.Response`,
+:class:`~.data.NoiseDensity` or :class:`~.data.MultiNoiseDensity` to retrieve. The source and sink
+in :meth:`.get_response` and the sink in :meth:`~.Solution.get_noise` and
+:meth:`~.Solution.get_noise_sum` can be :class:`components <.Component>` or :class:`nodes <.Node>`
+or names, while the source in :meth:`~.Solution.get_noise` can be a :class:`~.components.Noise` or
+:ref:`noise specifier <solution/index:Specifying noise sources and sinks>` such as ``V(op1)``.
+Sources cannot be searched against when using :meth:`~.Solution.get_noise_sum`. You can use these
+convenience methods to retrieve functions when you know enough information about it to match it
+amongst the solution's functions. If multiple functions are found as a result of the filters you
+provide, a :class:`ValueError` is thrown.
+
+The table below lists the available filters for the ``filter_`` methods for each function type.
+With the exception of the multi-valued filters, i.e. ``sources``, ``sinks``, ``groups`` and
+``labels``, these parameters are also available when using the ``get_`` methods.
+
+===========  ============================  =========  =====  ==========
+Filter       Possible values               Responses  Noise  Noise sums
+===========  ============================  =========  =====  ==========
+``source``   Source :class:`.Component`,       ✓        ✓        ✗
+             :class:`.Node` or
+             :class:`.Noise`
+``sources``  :class:`List <list>` of           ✓        ✓        ✗
+             sources, or ``all`` for all
+             sources
+``sink``     Sink :class:`.Component`,         ✓        ✓        ✓
+             :class:`.Node`
+``sinks``    :class:`List <list>` of           ✓        ✓        ✓
+             sinks, or ``all`` for all
+             sinks
+``group``    Function group name               ✓        ✓        ✓
+             (:class:`str`)
+``groups``   :class:`List <list>` of           ✓        ✓        ✓
+             group names, or ``all`` for
+             all groups
+``label``    Function label                    ✓        ✓        ✓
+             (:class:`str`)
+``labels``   :class:`List <list>` of           ✓        ✓        ✓
+             labels, or ``all`` for all
+             labels
+===========  ============================  =========  =====  ==========
 
 Specifying response sources and sinks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,22 +156,6 @@ Assuming that a circuit is built in the following way...
    >>> print(solution.get_noise(label="I(op1, nin) to nout")) # label specifier
    I(op1, nin) to nout
 
-Default functions
------------------
-
-Default functions are functions that are plotted when a call is made to :meth:`.plot_responses` or
-:meth:`.plot_noise` without any filters. Functions are not normally marked as default when an
-:ref:`analysis <analyses/index:Analyses>` builds a solution.
-
-.. note::
-
-    When a :ref:`LISO script <liso/index:LISO compatibility>` is simulated by |Zero|, the functions
-    plotted by the LISO script are marked as defaults. This behaviour assists when :ref:`comparing a
-    LISO solution to that of Zero <cli/liso:Comparing a native simulation to LISO>`, since LISO
-    does not output every possible response or noise whereas |Zero| does. In this case, only the
-    functions that are requested in the LISO script are set as defaults in the |Zero| solution, so
-    that only the relevant functions are compared.
-
 Groups
 ------
 
@@ -179,6 +201,14 @@ solution. This requires that the source solutions contain *no* identical functio
 the group names are the same (including the default group).
 
 The resulting solution's group names can be changed using :meth:`.rename_group`.
+
+.. hint::
+
+    Solutions containing different types of function can be combined, such as solutions with the
+    results of :ref:`signal analyses <analyses/ac/signal:Small AC signal analysis>` and solutions
+    with the results of :ref:`noise analyses <analyses/ac/noise:Small AC noise analysis>`. In order
+    to plot all of the combined solution's functions in such a case, you must call both
+    :meth:`.plot_responses` and :meth:`.plot_noise`.
 
 Here is an example of solution combination using a :ref:`LISO model <liso/index:LISO compatibility>`
 of an RF summing box with two inputs and one output:
@@ -240,8 +270,27 @@ of an RF summing box with two inputs and one output:
 
 .. hint::
 
-    Solutions containing different types of function can be combined, such as solutions with the
-    results of :ref:`signal analyses <analyses/ac/signal:Small AC signal analysis>` and solutions
-    with the results of :ref:`noise analyses <analyses/ac/noise:Small AC noise analysis>`. In order
-    to plot all of the combined solution's functions in such a case, you must call both
-    :meth:`.plot_responses` and :meth:`.plot_noise`.
+    The above example makes a call to :meth:`.plot`. This relies on :ref:`default functions
+    <solution/index:Default functions>` having been set, in this case by the :ref:`LISO
+    compatibility module <liso/index:LISO compatibility>`, which is normally not the case when a
+    circuit is constructed and simulated natively. In such cases, calls to :meth:`.plot_responses`
+    and :meth:`.plot_noise` with filter parameters are usually required.
+
+Default functions
+-----------------
+
+Default functions are functions that are plotted when a call is made to :meth:`.plot_responses` or
+:meth:`.plot_noise` without any filters. Functions are not normally marked as default when an
+:ref:`analysis <analyses/index:Analyses>` builds a solution.
+
+A function can be made default by setting the ``default`` flag to ``True`` when calling
+:meth:`~.Solution.add_response`, :meth:`~.Solution.add_noise` or :meth:`~.Solution.add_noise_sum`.
+
+.. note::
+
+    When a :ref:`LISO script <liso/index:LISO compatibility>` is simulated by |Zero|, the functions
+    plotted by the LISO script are marked as defaults. This behaviour assists when :ref:`comparing a
+    LISO solution to that of Zero <cli/liso:Comparing a native simulation to LISO>`, since LISO
+    does not output every possible response or noise whereas |Zero| does. In this case, only the
+    functions that are requested in the LISO script are set as defaults in the |Zero| solution, so
+    that only the relevant functions are compared.

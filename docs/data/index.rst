@@ -8,19 +8,28 @@ Data containers
 
 .. code-block:: python
 
-   >>> from zero.data import Response, NoiseDensity
+   >>> from zero.data import Series, Response, NoiseDensity
 
-|Zero| :ref:`analysis <analyses/index:Analyses>` results (responses and noise spectra) are
-stored within `function` containers. These are relatively low level objects that hold each
-function's data, its frequency axis, and any meta data produced by the analysis. These objects are
-able to plot themselves when provided a figure to draw to. They also contain logic to compare
-themselves to other functions, to check for equivalency.
+|Zero| :ref:`analysis <analyses/index:Analyses>` results (responses and noise spectra) are stored
+within `function` containers. These are relatively low level objects that hold each function's data
+(within a :ref:`series <data/index:Series>`), its frequency axis, and any meta data produced by the
+analysis. These objects are able to plot themselves when provided a figure to draw to. They also
+contain logic to compare themselves to other functions, to check for equivalency.
 
 In normal circumstances, you should not need to directly interact with these objects; rather, you
 can plot and save their underlying data using a :ref:`Solution <solution/index:Solutions>`.
 
-Responses
+Series
+------
+
+Underlying function data is stored in a :class:`.Series`. This contains two dimensional data. Series
+support basic mathematical operations such as multiplication, division and inversion.
+
+Functions
 ---------
+
+Responses
+~~~~~~~~~
 
 :class:`Responses <.data.Response>` contain the response of a component or node to another component
 or node. Each response contains references to the source and sink component or node, and its units.
@@ -53,16 +62,16 @@ using :attr:`~.Response.db_magnitude`.
           90.65831778,  90.30557459])
 
 Noise spectral densities
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`Noise spectral densities <.data.NoiseDensity>` contain the noise at a particular component
-or node arising from noise produced by another component or node. They contain the :class:`noise source <.components.Noise>`
-that produces the noise and a reference to the component or node that the noise is measured at, and
-its units. :class:`Multi-noise spectra <.data.MultiNoiseDensity>` contain a list of multiple noise
-sources; these are used to represent noise sums.
+or node arising from noise produced by another component or node. They contain the :class:`noise
+source <.components.Noise>` that produces the noise and a reference to the component or node that
+the noise is measured at, and its units. :class:`Multi-noise spectra <.data.MultiNoiseDensity>`
+contain a list of multiple noise sources; these are used to represent noise sums.
 
-The noise spectral density's underlying data is stored in its :attr:`~.NoiseDensityBase.spectral_density`
-property.
+The noise spectral density's underlying data is stored in its
+:attr:`~.NoiseDensityBase.spectral_density` property.
 
 .. code-block:: python
 
@@ -70,3 +79,39 @@ property.
    array([1.29259971e-07, 1.00870891e-07, 8.45132667e-08, 7.57294937e-08,
           7.12855936e-08, 6.91259094e-08, 6.81002020e-08, 6.76188164e-08,
           6.73941734e-08, 6.72894850e-08])
+
+Labels
+~~~~~~
+
+Functions can have labels that are used in plot legends and when :ref:`searching for functions in a
+solution <solution/index:Retrieving functions>`.
+
+Labels can be set for functions using their :attr:`~.data.BaseFunction.label` property. If no label
+is set by the user, a default label is produced using the function's source and sink in the case of
+single-source and -sink functions, or "Incoherent sum" for :class:`noise sums <.MultiNoiseDensity>`.
+
+Mathematical operations
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The underlying data within a function can be multiplied, divided and inverted by applying
+mathematical operations to the function object. Multiplication and division can be applied using
+scalars or other functions. For example, :ref:`noise spectra <data/index:Noise spectral densities>`
+can be multiplied by :ref:`responses <data/index:Responses>` to project noise to a different part of
+a circuit (used for example to :ref:`refer noise to the circuit input <analyses/ac/noise:Referring
+noise to the input>`).
+
+When an operation involves two functions, the units of each function are checked for
+validity. As determined by the order of operation, the left function's sink must have the same units
+as the right function's source. The resulting function then takes the left functions' source and the
+right function's sink.
+
+.. hint::
+
+    While the inner sources and sinks of such operations must have the same units, they do not need
+    to be the same :class:`element <.BaseElement>`. This is to allow functions to be lightweight and
+    not have to maintain a reference to the component, node or noise source objects they originally
+    represented (rather, just their label). It is up to the user to check that each operation makes
+    physical sense.
+
+Some operations are not possible, such as multiplying noise by noise. In these cases, a
+:class:`ValueError` is raised.
