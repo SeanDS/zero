@@ -35,8 +35,8 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _data(self, shape):
         return np.random.random(shape)
 
-    def _freqs(self, n=10, start=0, stop=5):
-        return np.logspace(start, stop, n)
+    def _freqs(self, n=10):
+        return np.sort(self._data(n))
 
     def _series(self, freqs, data=None):
         if data is None:

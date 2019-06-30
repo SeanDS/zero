@@ -140,15 +140,18 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
         # Sort native solution in the order defined in the LISO file.
         native_solution.sort_functions(liso_order, default_only=True)
 
-        # show difference before changing labels
+        # Show difference before changing labels.
         if diff:
-            # group by meta data
+            # Group by meta data.
             header, rows = native_solution.difference(liso_solution, defaults_only=True,
                                                       meta_only=True)
 
             click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-        # combine results from LISO and native simulations
+        # Combine results from LISO and native simulations, remapping the group names so we can
+        # differentiate them on the plot.
+        native_solution.rename_default_group("Zero")
+        liso_solution.rename_default_group("LISO")
         solution = native_solution + liso_solution
     else:
         # plot single result

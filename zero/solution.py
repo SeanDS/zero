@@ -54,8 +54,8 @@ class Solution:
         self.default_noise_sums = defaultdict(list)
 
         # Reference functions.
-        self._response_references = []
-        self._noise_references = []
+        self.response_references = []
+        self.noise_references = []
 
         self._name = None
 
@@ -113,7 +113,7 @@ class Solution:
 
         self.functions = groups
 
-    def _merge_groups(self, *groupsets):
+    def _merge_groupsets(self, *groupsets):
         """Merge grouped functions into one dict"""
         combined = defaultdict(list)
 
@@ -293,17 +293,19 @@ class Solution:
 
         self.default_noise_sums[group].append(noise_sum)
 
-    def add_response_reference(self, *args, **kwargs):
-        reference = ReferenceResponse(*args, **kwargs)
-        if reference in self._response_references:
+    def add_response_reference(self, *args, reference=None, **kwargs):
+        if reference is None:
+            reference = ReferenceResponse(*args, **kwargs)
+        if reference in self.response_references:
             raise ValueError("response reference is already present in the solution")
-        self._response_references.append(reference)
+        self.response_references.append(reference)
 
-    def add_noise_reference(self, *args, **kwargs):
-        reference = ReferenceNoise(*args, **kwargs)
-        if reference in self._noise_references:
+    def add_noise_reference(self, *args, reference=None, **kwargs):
+        if reference is None:
+            reference = ReferenceNoise(*args, **kwargs)
+        if reference in self.noise_references:
             raise ValueError("noise reference is already present in the solution")
-        self._noise_references.append(reference)
+        self.noise_references.append(reference)
 
     def _add_function(self, function, group=None):
         if group is None:
@@ -542,6 +544,59 @@ class Solution:
         index = self.functions[group].index(current_function)
         self.functions[group][index] = new_function
 
+    def rename_group(self, source_group, new_group):
+        """Rename the specified group, moving all of its functions to the new group.
+
+        Raises
+        ------
+        ValueError
+            If the new group already exists.
+        """
+        if new_group in self.groups:
+            raise ValueError("use merge_group to move functions into an existing group")
+        # Touch the new function group to create its key.
+        self.functions[new_group]
+        # Merge source functions into new group.
+        self.merge_group(source_group, new_group)
+
+    def rename_default_group(self, new_group):
+        """Rename the default group, moving all of its functions to the new group."""
+        return self.rename_group(self.DEFAULT_GROUP_NAME, new_group)
+
+    def merge_group(self, source_group, target_group):
+        """Merge functions from source group into target group.
+
+        The source group cannot contain any functions in the target group.
+
+        Raises
+        ------
+        ValueError
+            If the source or target group does not exist.
+        ValueError
+            If the source or target group is the reference group.
+        ValueError
+            If a function in the source group matches one already present in the target group.
+        """
+        if source_group not in self.groups:
+            raise ValueError("source group does not exist")
+        if target_group not in self.groups:
+            raise ValueError("target group does not exist")
+        if self.DEFAULT_REF_GROUP_NAME in (source_group, target_group):
+            raise ValueError("neither source nor target group can be the reference group")
+        if target_group == self.DEFAULT_GROUP_NAME:
+            target_group = None
+        for function in self.functions[source_group]:
+            self._add_function(function, group=target_group)
+        # Remove source group.
+        del self.functions[source_group]
+        # Move default settings.
+        self.default_responses[target_group] = self.default_responses[source_group]
+        self.default_noise[target_group] = self.default_noise[source_group]
+        self.default_noise_sums[target_group] = self.default_noise_sums[source_group]
+        del self.default_responses[source_group]
+        del self.default_noise[source_group]
+        del self.default_noise_sums[source_group]
+
     def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, labels=None,
                              types=None):
         filter_sources = []
@@ -760,8 +815,8 @@ class Solution:
     @property
     def default_functions(self):
         """Default responses and noise spectra"""
-        return self._merge_groups(self.default_responses, self.default_noise,
-                                  self.default_noise_sums)
+        return self._merge_groupsets(self.default_responses, self.default_noise,
+                                     self.default_noise_sums)
 
     @property
     def response_sources(self):
@@ -913,7 +968,7 @@ class Solution:
             ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
 
         # Add reference functions.
-        responses[self.DEFAULT_REF_GROUP_NAME] = self._response_references
+        responses[self.DEFAULT_REF_GROUP_NAME] = self.response_references
 
         # Draw plot.
         figure = self._plot_bode(responses, figure=figure, xlabel=xlabel, ylabel_mag=ylabel_mag,
@@ -973,13 +1028,13 @@ class Solution:
             noise = self._filter_default_noise()
 
             if show_sums:
-                noise = self._merge_groups(noise, self.default_noise_sums)
+                noise = self._merge_groupsets(noise, self.default_noise_sums)
         else:
             noise = self.filter_noise(source=source, sources=sources, sink=sink, sinks=sinks,
                                       group=group, groups=groups, type=type, types=types)
 
             if show_sums:
-                noise = self._merge_groups(noise, self.noise_sums)
+                noise = self._merge_groupsets(noise, self.noise_sums)
 
         if not noise:
             raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
@@ -1000,7 +1055,7 @@ class Solution:
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
         # Add reference functions.
-        noise[self.DEFAULT_REF_GROUP_NAME] = self._noise_references
+        noise[self.DEFAULT_REF_GROUP_NAME] = self.noise_references
 
         figure = self._plot_spectral_density(noise, figure=figure, xlabel=xlabel, ylabel=ylabel,
                                              **kwargs)
@@ -1248,51 +1303,73 @@ class Solution:
     def __add__(self, other):
         return self.combine(other)
 
-    def combine(self, other):
+    def combine(self, other, name=None):
         """Combine this solution with the specified other solution.
 
+        The groups of each solution are copied to a new, combined solution. In cases where groups
+        from each solution have the same name, their functions are combined into a single new group
+        as long as none of the functions are present in both source groups.
+
         To be able to be combined, the two solutions must have equivalent frequency vectors.
+
+        Parameters
+        ----------
+        other : :class:`.Solution`
+            The solution to combine.
+        name : :class:`str`, optional
+            The name to give to the combined solution. Defaults to the "A + B" where "A" and "B" are
+            the source solutions.
+
+        Returns
+        -------
+        :class:`.Solution`
+            The combined solution.
+
+        Raises
+        ------
+        ValueError
+            If the solutions have the same name.
+        ValueError
+            If the solutions have different frequency vectors.
+        ValueError
+            If an identical function with an identical group is present in both solutions.
         """
         LOGGER.info("combining %s solution with %s", self, other)
-
         if str(self) == str(other):
             raise ValueError("cannot combined groups with the same name")
-
-        # check frequencies match
+        # Check frequencies match.
         if not frequencies_match(self.frequencies, other.frequencies):
             raise ValueError(f"specified other solution '{other}' is incompatible with this one")
 
-        for group, functions in self.functions.items():
-            if group in other.functions:
-                for function in functions:
-                    if function in other.functions[group]:
-                        LOGGER.debug("function '%s' appears in both solutions (group '%s')",
-                                     function, group)
+        if name is None:
+            name = f"{self} + {other}"
 
-        # Resultant name.
-        name = f"{self} + {other}"
         # Resultant solution.
         result = self.__class__(self.frequencies, name)
 
-        def flag_functions(solution):
-            # Use solution name as group name.
-            new_group = str(solution)
-
+        def merge_into_result(solution):
             for group, responses in solution.responses.items():
+                new_group = group if group != self.DEFAULT_GROUP_NAME else None
                 for response in responses:
                     is_default = solution.is_default_response(response, group)
                     result.add_response(response, default=is_default, group=new_group)
             for group, spectra in solution.noise.items():
+                new_group = group if group != self.DEFAULT_GROUP_NAME else None
                 for spectral_density in spectra:
                     is_default = solution.is_default_noise(spectral_density, group)
                     result.add_noise(spectral_density, default=is_default, group=new_group)
             for group, noise_sums in solution.noise_sums.items():
+                new_group = group if group != self.DEFAULT_GROUP_NAME else None
                 for noise_sum in noise_sums:
                     is_default = solution.is_default_noise_sum(noise_sum, group)
                     result.add_noise_sum(noise_sum, default=is_default, group=new_group)
+            for response_ref in solution.response_references:
+                result.add_response_reference(reference=response_ref)
+            for noise_ref in solution.noise_references:
+                result.add_noise_reference(reference=noise_ref)
 
-        flag_functions(self)
-        flag_functions(other)
+        merge_into_result(self)
+        merge_into_result(other)
 
         return result
 
