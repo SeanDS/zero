@@ -66,8 +66,8 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_no_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f)
         sol = Solution(f)
         sol.add_noise(noise1)
         sol.add_noise(noise2)
@@ -76,8 +76,8 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_with_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f)
         sol = Solution(f)
         sol.add_noise(noise1, group="b")
         sol.add_noise(noise2, group="b")
@@ -89,8 +89,8 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_with_label(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f)
         sol = Solution(f)
         sol.add_noise(noise1)
         sol.add_noise(noise2)
@@ -102,8 +102,8 @@ class SolutionFilterTestCase(ZeroDataTestCase):
     def test_get_noise_with_degenerate_functions_same_source(self):
         f = self._freqs()
         res1 = self._resistor()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._voltage_noise_at_comp(f, source=noise1.source)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._vnoise_at_comp(f, source=noise1.source)
         sol = Solution(f)
         sol.add_noise(noise1)
         sol.add_noise(noise2)
@@ -112,8 +112,8 @@ class SolutionFilterTestCase(ZeroDataTestCase):
     def test_get_noise_with_degenerate_functions_same_sink(self):
         f = self._freqs()
         res1 = self._resistor()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._voltage_noise_at_comp(f, sink=noise1.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._vnoise_at_comp(f, sink=noise1.sink)
         sol = Solution(f)
         sol.add_noise(noise1)
         sol.add_noise(noise2)
@@ -121,10 +121,10 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_sum_no_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
-        noise3 = self._voltage_noise_at_comp(f)
-        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f, sink=noise1.sink)
+        noise3 = self._vnoise_at_comp(f)
+        noise4 = self._inoise_at_comp(f, sink=noise3.sink)
         sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
         sum2 = self._multi_noise_density(noise3.sink, [noise3, noise4])
         sol = Solution(f)
@@ -135,10 +135,10 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_sum_with_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
-        noise3 = self._voltage_noise_at_comp(f)
-        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f, sink=noise1.sink)
+        noise3 = self._vnoise_at_comp(f)
+        noise4 = self._inoise_at_comp(f, sink=noise3.sink)
         sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
         sum2 = self._multi_noise_density(noise3.sink, [noise3, noise4])
         sol = Solution(f)
@@ -152,10 +152,10 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_sum_with_label(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
-        noise3 = self._voltage_noise_at_comp(f)
-        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f, sink=noise1.sink)
+        noise3 = self._vnoise_at_comp(f)
+        noise4 = self._inoise_at_comp(f, sink=noise3.sink)
         label1 = "label 1"
         label2 = "label 2"
         sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2], label=label1)
@@ -168,10 +168,10 @@ class SolutionFilterTestCase(ZeroDataTestCase):
 
     def test_get_noise_sum_with_degenerate_functions_same_sink(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._voltage_noise_at_comp(f, sink=noise1.sink)
-        noise3 = self._voltage_noise_at_comp(f, sink=noise1.sink)
-        noise4 = self._voltage_noise_at_comp(f, sink=noise1.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._vnoise_at_comp(f, sink=noise1.sink)
+        noise3 = self._vnoise_at_comp(f, sink=noise1.sink)
+        noise4 = self._vnoise_at_comp(f, sink=noise1.sink)
         sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
         sum2 = self._multi_noise_density(noise1.sink, [noise3, noise4])
         sol = Solution(f)
@@ -206,8 +206,8 @@ class SolutionFunctionReplacementTestCase(ZeroDataTestCase):
 
     def test_noise_replacement_no_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f)
         sol = self._solution(f)
         sol.add_noise(noise1)
         self.assertEqual(sol.functions[sol.DEFAULT_GROUP_NAME], [noise1])
@@ -216,8 +216,8 @@ class SolutionFunctionReplacementTestCase(ZeroDataTestCase):
 
     def test_noise_replacement_with_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f)
         sol = self._solution(f)
         sol.add_noise(noise1, group="b")
         self.assertEqual(sol.functions["b"], [noise1])
@@ -228,10 +228,10 @@ class SolutionFunctionReplacementTestCase(ZeroDataTestCase):
 
     def test_noise_sum_replacement_no_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
-        noise3 = self._voltage_noise_at_comp(f)
-        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f, sink=noise1.sink)
+        noise3 = self._vnoise_at_comp(f)
+        noise4 = self._inoise_at_comp(f, sink=noise3.sink)
         sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
         sum2 = self._multi_noise_density(noise3.sink, [noise3, noise4])
         sol = self._solution(f)
@@ -242,10 +242,10 @@ class SolutionFunctionReplacementTestCase(ZeroDataTestCase):
 
     def test_noise_sum_replacement_with_group(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_comp(f)
-        noise2 = self._current_noise_at_comp(f, sink=noise1.sink)
-        noise3 = self._voltage_noise_at_comp(f)
-        noise4 = self._current_noise_at_comp(f, sink=noise3.sink)
+        noise1 = self._vnoise_at_comp(f)
+        noise2 = self._inoise_at_comp(f, sink=noise1.sink)
+        noise3 = self._vnoise_at_comp(f)
+        noise4 = self._inoise_at_comp(f, sink=noise3.sink)
         sum1 = self._multi_noise_density(noise1.sink, [noise1, noise2])
         sum2 = self._multi_noise_density(noise3.sink, [noise3, noise4])
         sol = self._solution(f)
@@ -292,9 +292,9 @@ class SolutionScalingTestCase(ZeroDataTestCase):
         label1 = "noise1"
         label2 = "noise2"
         label3 = "resp1"
-        noise1 = self._voltage_noise_at_node(f, sink=node1)
+        noise1 = self._vnoise_at_node(f, sink=node1)
         noise1.label = label1
-        noise2 = self._voltage_noise_at_node(f, sink=node1)
+        noise2 = self._vnoise_at_node(f, sink=node1)
         noise2.label = label2
         resp = self._v_v_response(f, node_source=node1, node_sink=node2)
         resp.label = label3

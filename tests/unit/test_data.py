@@ -170,8 +170,8 @@ class MultiNoiseDensityTestCase(ZeroDataTestCase):
     def test_constituent_noise_sum_equal_total_noise_sum(self):
         f = self._freqs()
         sink = self._resistor()
-        noise1 = self._voltage_noise_at_comp(f, sink=sink)
-        noise2 = self._voltage_noise_at_comp(f, sink=sink) # Share sink.
+        noise1 = self._vnoise_at_comp(f, sink=sink)
+        noise2 = self._vnoise_at_comp(f, sink=sink) # Share sink.
         constituents = [noise1, noise2]
         sum_data = np.sqrt(sum([noise.spectral_density ** 2 for noise in constituents]))
         sum_series = self._series(f, sum_data)

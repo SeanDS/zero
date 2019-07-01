@@ -21,8 +21,8 @@ class SolutionEquivalencyTestCase(ZeroDataTestCase):
 
     def test_solutions_with_identical_noise_equal(self):
         f = self._freqs()
-        noise1 = self._voltage_noise_at_node(f)
-        noise2 = self._voltage_noise_at_node(f)
+        noise1 = self._vnoise_at_node(f)
+        noise2 = self._vnoise_at_node(f)
         sol_a = self._solution(f)
         sol_a.add_noise(noise1)
         sol_a.add_noise(noise2)
@@ -61,19 +61,19 @@ class SolutionEquivalencyTestCase(ZeroDataTestCase):
         f = self._freqs()
         # All responses different.
         sol_a = Solution(f)
-        sol_a.add_noise(self._voltage_noise_at_node(f))
-        sol_a.add_noise(self._voltage_noise_at_node(f))
+        sol_a.add_noise(self._vnoise_at_node(f))
+        sol_a.add_noise(self._vnoise_at_node(f))
         sol_b = Solution(f)
-        sol_b.add_noise(self._voltage_noise_at_node(f))
-        sol_b.add_noise(self._voltage_noise_at_node(f))
+        sol_b.add_noise(self._vnoise_at_node(f))
+        sol_b.add_noise(self._vnoise_at_node(f))
         self.assertFalse(sol_a.equivalent_to(sol_b))
         # One noise same, but extra in one solution.
-        spectrum1 = self._voltage_noise_at_node(f)
+        spectrum1 = self._vnoise_at_node(f)
         sol_c = Solution(f)
         sol_c.add_noise(spectrum1)
         sol_d = Solution(f)
         sol_d.add_noise(spectrum1)
-        sol_d.add_noise(self._voltage_noise_at_node(f))
+        sol_d.add_noise(self._vnoise_at_node(f))
         self.assertFalse(sol_c.equivalent_to(sol_d))
 
 
@@ -295,8 +295,8 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
     def test_solution_combination_identical_noise_valid(self):
         """Test that combining solutions with identical noise in default group is valid."""
         f = self._freqs()
-        noise1 = self._voltage_noise_at_node(f)
-        noise2 = self._voltage_noise_at_node(f)
+        noise1 = self._vnoise_at_node(f)
+        noise2 = self._vnoise_at_node(f)
         sol_a = Solution(f)
         sol_a.add_noise(noise1)
         sol_a.add_noise(noise2, group="b")
@@ -312,8 +312,8 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
     def test_solution_combination_identical_noise_different_group_valid(self):
         """Test that combining solutions with identical noise in different groups is valid."""
         f = self._freqs()
-        noise1 = self._voltage_noise_at_node(f)
-        noise2 = self._voltage_noise_at_node(f)
+        noise1 = self._vnoise_at_node(f)
+        noise2 = self._vnoise_at_node(f)
         sol_a = Solution(f)
         sol_a.add_noise(noise1)
         sol_a.add_noise(noise2)
@@ -415,8 +415,8 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         """Test that combining solutions with identical noise in default group throws error
         when merge_groups is True."""
         f = self._freqs()
-        noise1 = self._voltage_noise_at_node(f)
-        noise2 = self._voltage_noise_at_node(f)
+        noise1 = self._vnoise_at_node(f)
+        noise2 = self._vnoise_at_node(f)
         sol_a = Solution(f)
         sol_a.add_noise(noise1)
         sol_a.add_noise(noise2, group="b")
@@ -429,8 +429,8 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         """Test that combining solutions with identical noise in different groups is valid
         when merge_groups is True."""
         f = self._freqs()
-        noise1 = self._voltage_noise_at_node(f)
-        noise2 = self._voltage_noise_at_node(f)
+        noise1 = self._vnoise_at_node(f)
+        noise2 = self._vnoise_at_node(f)
         sol_a = Solution(f)
         sol_a.add_noise(noise1)
         sol_a.add_noise(noise2)

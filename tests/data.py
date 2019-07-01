@@ -107,28 +107,28 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _noise_density(self, freqs, source, sink):
         return NoiseDensity(source=source, sink=sink, series=self._series(freqs))
 
-    def _voltage_noise_at_node(self, freqs, source=None, sink=None):
+    def _vnoise_at_node(self, freqs, source=None, sink=None):
         if source is None:
             source = self._voltage_noise()
         if sink is None:
             sink = self._node()
         return self._noise_density(freqs, source, sink)
 
-    def _voltage_noise_at_comp(self, freqs, source=None, sink=None):
+    def _vnoise_at_comp(self, freqs, source=None, sink=None):
         if source is None:
             source = self._voltage_noise()
         if sink is None:
             sink = self._resistor()
         return self._noise_density(freqs, source, sink)
 
-    def _current_noise_at_node(self, freqs, source=None, sink=None):
+    def _inoise_at_node(self, freqs, source=None, sink=None):
         if source is None:
             source = self._current_noise()
         if sink is None:
             sink = self._node()
         return self._noise_density(freqs, source, sink)
 
-    def _current_noise_at_comp(self, freqs, source=None, sink=None):
+    def _inoise_at_comp(self, freqs, source=None, sink=None):
         if source is None:
             source = self._current_noise()
         if sink is None:
