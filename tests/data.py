@@ -32,15 +32,18 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
         self._last_opamp_num += 1
         return f"op{self._last_opamp_num}"
 
-    def _data(self, shape):
-        return np.random.random(shape)
+    def _data(self, shape, cplx=False):
+        data = np.random.random(shape)
+        if cplx:
+            data = data + 1j * self._data(shape, False)
+        return data
 
     def _freqs(self, n=10):
         return np.sort(self._data(n))
 
-    def _series(self, freqs, data=None):
+    def _series(self, freqs, data=None, cplx=False):
         if data is None:
-            data = self._data(len(freqs))
+            data = self._data(len(freqs), cplx)
         return Series(freqs, data)
 
     def _node(self):
@@ -74,7 +77,7 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
         return CurrentNoise(node, component)
 
     def _response(self, source, sink, freqs):
-        return Response(source=source, sink=sink, series=self._series(freqs))
+        return Response(source=source, sink=sink, series=self._series(freqs, cplx=True))
 
     def _v_v_response(self, freqs, node_source=None, node_sink=None):
         if node_source is None:
