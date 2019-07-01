@@ -1,10 +1,11 @@
 """Data function operator tests"""
 
+import numpy as np
 from ..data import ZeroDataTestCase
 
 
-class FunctionMathematicalOperationsTestCase(ZeroDataTestCase):
-    """Function mathematical operations tests."""
+class FunctionMathematicalOperationUnitsTestCase(ZeroDataTestCase):
+    """Function mathematical operation units tests."""
     def test_multiply_response_units(self):
         """Test units when multiplying response by response."""
         f = self._freqs()
@@ -82,3 +83,29 @@ class FunctionMathematicalOperationsTestCase(ZeroDataTestCase):
         self.assertRaises(ValueError, lambda: self._v_i_response(f) * self._vnoise_at_comp(f))
         self.assertRaises(ValueError, lambda: self._i_i_response(f) * self._vnoise_at_comp(f))
         self.assertRaises(ValueError, lambda: self._i_v_response(f) * self._vnoise_at_node(f))
+
+
+class FunctionMathematicalOperationDataTestCase(ZeroDataTestCase):
+    """Function mathematical operation data tests."""
+    def _check_response_multiply_right(self, response, scale):
+        scaled_response = response * scale
+        self.assertTrue(np.allclose(scaled_response.complex_magnitude,
+                                    response.complex_magnitude * scale))
+
+    def _check_response_multiply_left(self, response, scale):
+        scaled_response = scale * response
+        self.assertTrue(np.allclose(scaled_response.complex_magnitude,
+                                    scale * response.complex_magnitude))
+
+    def _check_response_multiply_both(self, response, scale):
+        self._check_response_multiply_left(response, scale)
+        self._check_response_multiply_right(response, scale)
+
+    def test_multiply_response_by_scalar(self):
+        """Test units when multiplying response by response."""
+        f = self._freqs()
+        for scalar in (0, 1, 1.5, -2.3, 1e2, -1e2, 6.7e-10, 3.78e10+4.802e9j):
+            self._check_response_multiply_both(self._v_v_response(f), scalar)
+            self._check_response_multiply_both(self._v_i_response(f), scalar)
+            self._check_response_multiply_both(self._i_i_response(f), scalar)
+            self._check_response_multiply_both(self._i_v_response(f), scalar)

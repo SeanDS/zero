@@ -2,6 +2,7 @@
 
 import abc
 import logging
+from numbers import Number
 import numpy as np
 
 from .config import ZeroConfig
@@ -401,15 +402,23 @@ class Response(SingleSourceFunction, SingleSinkFunction):
                                  f"this response's sink unit, {self.sink_unit}")
         elif isinstance(other, NoiseDensityBase):
             raise ValueError(f"cannot multiply response by {type(other)}")
-        else:
-            # Assume number.
+        elif isinstance(other, Number):
             other_sink = self.sink
             other_value = other
-
+        else:
+            raise ValueError(f"don't know how to multiply {type(other)}")
         scaled_series = self.series * other_value
         new_response = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
         new_response.label = self._label
         return new_response
+
+    def __rmul__(self, other):
+        # Note: "other" should never be another Response or NoiseDensityBase, since these functions
+        # implement the corresponding __mul__ methods for Response.
+        if not isinstance(other, Number):
+            raise ValueError(f"cannot multiply response by {type(other)}")
+        # Response is commutative for scalars.
+        return self * other
 
     def inverse(self):
         """Inverse response."""
@@ -439,6 +448,14 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
     def __mul__(self, other):
         # Multiply behaviour depends on whether the noise is single or multi-source.
         raise NotImplementedError
+
+    def __rmul__(self, other):
+        # Note: "other" should never be another Response or NoiseDensityBase, since these functions
+        # implement the corresponding __mul__ methods for NoiseDensityBase.
+        if not isinstance(other, Number):
+            raise ValueError(f"cannot multiply response by {type(other)}")
+        # NoiseDensityBase is commutative for scalars.
+        return self * other
 
     def __truediv__(self, other):
         return self * other.inverse()
@@ -482,11 +499,11 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
                                  f"this response's sink unit, {self.sink_unit}")
         elif isinstance(other, NoiseDensityBase):
             raise ValueError(f"cannot multiply noise by {type(other)}")
-        else:
-            # Assume number.
+        elif isinstance(other, Number):
             other_sink = self.sink
             other_value = other
-
+        else:
+            raise ValueError(f"don't know how to multiply {type(other)}")
         scaled_series = self.series * other_value
         new_noise = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
         new_noise.label = self._label
@@ -580,10 +597,11 @@ class MultiNoiseDensity(NoiseDensityBase):
                                  f"this response's sink unit, {self.sink_unit}")
         elif isinstance(other, NoiseDensityBase):
             raise ValueError(f"cannot multiply noise by {type(other)}")
-        else:
-            # Assume number.
+        elif isinstance(other, Number):
             other_sink = self.sink
             other_value = other
+        else:
+            raise ValueError(f"don't know how to multiply {type(other)}")
 
         scaled_series = self.series * other_value
         return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series,
