@@ -72,7 +72,7 @@ class FunctionMathematicalOperationUnitsTestCase(ZeroDataTestCase):
 
 class FunctionMathematicalOperationDataTestCase(ZeroDataTestCase):
     def setUp(self):
-        self.scalars = [1, 1.5, -2.3, 1e2, -1e2, 6.7e-10, 3.78e10+4.802e9j]
+        self.scalars = [1, 1.5, -2.3, 1e2, -1e2, 6.7e-10, 3.78e10+4.802e9j, -6.8e-5-0.988e4j]
         self.scalars_inc_zero = [0] + self.scalars
 
     """Function mathematical operation data tests."""
@@ -127,7 +127,7 @@ class FunctionMathematicalOperationDataTestCase(ZeroDataTestCase):
     def test_invalid_response_by_scalar_operations_both_ways(self):
         """Test that certain operators between a response and a scalar are invalid."""
         f = self._freqs()
-        for scalar in self.scalars:
+        for scalar in self.scalars_inc_zero:
             for operation in (add, sub):
                 self._invalid_operation_both_ways(operation, self._v_v_response(f), scalar)
                 self._invalid_operation_both_ways(operation, self._v_i_response(f), scalar)
