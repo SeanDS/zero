@@ -261,6 +261,12 @@ class BaseFunction(metaclass=abc.ABCMeta):
         """Checks if the specified function has an equivalent series to this one."""
         raise NotImplementedError
 
+    def __truediv__(self, other):
+        raise NotImplementedError("functions do not support division")
+
+    def __rtruediv__(self, other):
+        raise NotImplementedError("functions do not support division")
+
     def __eq__(self, other):
         """Checks if the specified data set is identical to this one, within tolerance."""
         return self.equivalent(other)
