@@ -1,4 +1,4 @@
-"""Data integration tests"""
+"""Data function operator tests"""
 
 from unittest import TestCase
 import numpy as np
@@ -7,7 +7,7 @@ from zero import Circuit
 from zero.data import Series, Response, NoiseDensity
 
 
-class FunctionArithmeticTestCase(TestCase):
+class FunctionMathematicalOperationsTestCase(TestCase):
     """Function arithmetic tests."""
     def setUp(self):
         self.frequencies = np.logspace(0, 6, 1000)
@@ -38,30 +38,30 @@ class FunctionArithmeticTestCase(TestCase):
         self.noise_a = NoiseDensity(source=self.circuit["r1"].johnson_noise,
                                     sink=self.circuit["op1"], series=noise_density_a)
 
-    def test_multiple_response(self):
-        """Test multiplying response by response."""
-        # voltage-voltage response by voltage-voltage response
+    def test_multiply_response_units(self):
+        """Test units when multiplying response by response."""
+        # Voltage-voltage response by voltage-voltage response.
         scaled_response = self.response_vv * self.response_vv
         self.assertEqual(scaled_response.sink_unit, "V")
-        # voltage-voltage response by voltage-current response
+        # Voltage-voltage response by voltage-current response.
         scaled_response = self.response_vv * self.response_va
         self.assertEqual(scaled_response.sink_unit, "A")
-        # voltage-current response by current-current response
+        # Voltage-current response by current-current response.
         scaled_response = self.response_va * self.response_aa
         self.assertEqual(scaled_response.sink_unit, "A")
-        # voltage-current response by current-voltage response
+        # Voltage-current response by current-voltage response.
         scaled_response = self.response_va * self.response_av
         self.assertEqual(scaled_response.sink_unit, "V")
-        # current-current response by current-current response
+        # Current-current response by current-current response.
         scaled_response = self.response_aa * self.response_aa
         self.assertEqual(scaled_response.sink_unit, "A")
-        # current-current response by current-voltage response
+        # Current-current response by current-voltage response.
         scaled_response = self.response_aa * self.response_av
         self.assertEqual(scaled_response.sink_unit, "V")
-        # current-voltage response by voltage-voltage response
+        # Current-voltage response by voltage-voltage response.
         scaled_response = self.response_av * self.response_vv
         self.assertEqual(scaled_response.sink_unit, "V")
-        # current-voltage response by voltage-current response
+        # Current-voltage response by voltage-current response.
         scaled_response = self.response_av * self.response_va
         self.assertEqual(scaled_response.sink_unit, "A")
 
@@ -75,8 +75,8 @@ class FunctionArithmeticTestCase(TestCase):
         self.assertRaises(ValueError, lambda: self.response_av * self.response_av)
         self.assertRaises(ValueError, lambda: self.response_av * self.response_aa)
 
-    def test_multiply_noise(self):
-        """Test multiplying noise by response."""
+    def test_multiply_noise_by_response_units(self):
+        """Test units when multiplying noise by response."""
         # Scale voltage noise by voltage-voltage response.
         scaled_noise = self.noise_v * self.response_vv
         self.assertEqual(scaled_noise.sink_unit, "V")
@@ -90,14 +90,23 @@ class FunctionArithmeticTestCase(TestCase):
         scaled_noise = self.noise_a * self.response_av
         self.assertEqual(scaled_noise.sink_unit, "V")
 
-        # Noise cannot be multiplied by noise.
+    def test_multiply_noise_by_response_with_incompatible_source_invalid(self):
+        """Test noise can't be multiplied by responses with source different to the noise sink."""
+        self.assertRaises(ValueError, lambda: self.noise_v * self.response_av)
+        self.assertRaises(ValueError, lambda: self.noise_v * self.response_aa)
+        self.assertRaises(ValueError, lambda: self.noise_a * self.response_vv)
+        self.assertRaises(ValueError, lambda: self.noise_a * self.response_va)
+
+    def test_multiply_noise_by_noise_invalid(self):
+        """Test that noise cannot be multiplied by noise."""
         self.assertRaises(ValueError, lambda: self.noise_v * self.noise_v)
         self.assertRaises(ValueError, lambda: self.noise_v * self.noise_a)
         self.assertRaises(ValueError, lambda: self.noise_a * self.noise_a)
         self.assertRaises(ValueError, lambda: self.noise_a * self.noise_v)
 
-        # Disallowed noise-response multiplications.
-        self.assertRaises(ValueError, lambda: self.noise_v * self.response_av)
-        self.assertRaises(ValueError, lambda: self.noise_v * self.response_aa)
-        self.assertRaises(ValueError, lambda: self.noise_a * self.response_vv)
-        self.assertRaises(ValueError, lambda: self.noise_a * self.response_va)
+    def test_multiply_response_by_noise_invalid(self):
+        """Test that a response cannot be multiplied by noise."""
+        self.assertRaises(ValueError, lambda: self.response_vv * self.noise_v)
+        self.assertRaises(ValueError, lambda: self.response_va * self.noise_a)
+        self.assertRaises(ValueError, lambda: self.response_aa * self.noise_a)
+        self.assertRaises(ValueError, lambda: self.response_av * self.noise_v)
