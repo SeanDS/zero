@@ -145,7 +145,7 @@ class Series:
         return self.__class__(self.x, self.y * other)
 
     def __rmul__(self, other):
-        # Series are commutative.
+        # Series multiplication is commutative.
         return self * other
 
     def __truediv__(self, other):
@@ -260,12 +260,6 @@ class BaseFunction(metaclass=abc.ABCMeta):
     def series_equivalent(self, other):
         """Checks if the specified function has an equivalent series to this one."""
         raise NotImplementedError
-
-    def __truediv__(self, other):
-        raise NotImplementedError("functions do not support division")
-
-    def __rtruediv__(self, other):
-        raise NotImplementedError("functions do not support division")
 
     def __eq__(self, other):
         """Checks if the specified data set is identical to this one, within tolerance."""
@@ -404,31 +398,48 @@ class Response(SingleSourceFunction, SingleSinkFunction):
             other_sink = other.sink
             other_value = other.series
             if self.sink_unit != other.source_unit:
-                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                                 f"this response's sink unit, {self.sink_unit}")
-        elif isinstance(other, NoiseDensityBase):
-            raise ValueError(f"cannot multiply response by {type(other)}")
+                raise ValueError(f"Cannot multiply this response by {other}: the sink unit of this "
+                                 f"response, {self.sink_unit}, is incompatible with the source "
+                                 f"unit of {other}, {other.source_unit}.")
         elif isinstance(other, Number):
             other_sink = self.sink
             other_value = other
         else:
-            raise ValueError(f"don't know how to multiply {type(other)}")
-        scaled_series = self.series * other_value
-        new_response = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
-        new_response.label = self._label
-        return new_response
+            # E.g. NoiseDensityBase.
+            raise NotImplementedError(f"Cannot multiply {self.__class__.__name__} by "
+                                      f"{other.__class__.__name__}.")
+        return self._new_response(other_sink, self.series * other_value)
 
     def __rmul__(self, other):
         # Note: "other" should never be another Response or NoiseDensityBase, since these functions
         # implement the corresponding __mul__ methods for Response.
         if not isinstance(other, Number):
-            raise ValueError(f"cannot multiply response by {type(other)}")
-        # Response is commutative for scalars.
+            raise NotImplementedError(f"Cannot multiply {other.__class__.__name__} by "
+                                      f"{self.__class__.__name__}.")
+        # Scalar-Response multiplication is commutative.
         return self * other
+
+    def __truediv__(self, other):
+        if not isinstance(other, Number):
+            raise NotImplementedError(f"Cannot divide {self.__class__.__name__} by "
+                                      f"{other.__class__.__name__}. To invert, call inverse().")
+        return self * 1 / other
+
+    def __rtruediv__(self, other):
+        if not isinstance(other, Number):
+            raise NotImplementedError(f"Cannot divide {other.__class__.__name__} by "
+                                      f"{self.__class__.__name__}. To invert, call inverse().")
+        return self._new_response(self.sink, other / self.series)
 
     def inverse(self):
         """Inverse response."""
         return self.__class__(source=self.sink, sink=self.source, series=self.series.inverse())
+
+    def _new_response(self, new_sink, new_series):
+        """Create a copy of this response with the specified sink and series."""
+        new_response = self.__class__(source=self.source, sink=new_sink, series=new_series)
+        new_response.label = self._label
+        return new_response
 
 
 class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
@@ -450,21 +461,35 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
         label = self._format_label(tex=True, suffix=label_suffix)
         axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
 
-    @abc.abstractmethod
     def __mul__(self, other):
-        # Multiply behaviour depends on whether the noise is single or multi-source.
-        raise NotImplementedError
+        if isinstance(other, Response):
+            other_sink = other.sink
+            other_value = other.magnitude
+            if self.sink_unit != other.source_unit:
+                raise ValueError(f"Cannot multiply this noise by {other}: the sink unit of this "
+                                 f"noise, {self.sink_unit}, is incompatible with the source unit "
+                                 f"of {other}, {other.source_unit}.")
+        elif isinstance(other, Number):
+            other_sink = self.sink
+            other_value = other
+        else:
+            # E.g. NoiseDensityBase.
+            raise NotImplementedError(f"Cannot multiply {self.__class__.__name__} by "
+                                      f"{other.__class__.__name__}.")
+        return self._new_noise_density(other_sink, self.series * other_value)
 
     def __rmul__(self, other):
         # Note: "other" should never be another Response or NoiseDensityBase, since these functions
         # implement the corresponding __mul__ methods for NoiseDensityBase.
         if not isinstance(other, Number):
-            raise ValueError(f"cannot multiply response by {type(other)}")
-        # NoiseDensityBase is commutative for scalars.
+            raise NotImplementedError(f"Cannot divide {other.__class__.__name__} by "
+                                      f"{self.__class__.__name__}.")
+        # Noise-scalar multiplication is commutative.
         return self * other
 
-    def __truediv__(self, other):
-        return self * other.inverse()
+    @abc.abstractmethod
+    def _new_noise_density(self, new_sink, new_series):
+        raise NotImplementedError
 
 
 class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
@@ -496,22 +521,9 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
 
         return format_str % (self.noise_name, self.sink.label, suffix)
 
-    def __mul__(self, other):
-        if isinstance(other, Response):
-            other_sink = other.sink
-            other_value = other.magnitude
-            if self.sink_unit != other.source_unit:
-                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                                 f"this response's sink unit, {self.sink_unit}")
-        elif isinstance(other, NoiseDensityBase):
-            raise ValueError(f"cannot multiply noise by {type(other)}")
-        elif isinstance(other, Number):
-            other_sink = self.sink
-            other_value = other
-        else:
-            raise ValueError(f"don't know how to multiply {type(other)}")
-        scaled_series = self.series * other_value
-        new_noise = self.__class__(source=self.source, sink=other_sink, series=scaled_series)
+    def _new_noise_density(self, new_sink, new_series):
+        """Create a copy of this noise density with the specified sink and series."""
+        new_noise = self.__class__(source=self.source, sink=new_sink, series=new_series)
         new_noise.label = self._label
         return new_noise
 
@@ -594,24 +606,11 @@ class MultiNoiseDensity(NoiseDensityBase):
             suffix = ""
         return f"{self._label}{suffix}"
 
-    def __mul__(self, other):
-        if isinstance(other, Response):
-            other_sink = other.sink
-            other_value = other.magnitude
-            if self.sink_unit != other.source_unit:
-                raise ValueError(f"{other} source unit, {other.source_unit}, is incompatible with "
-                                 f"this response's sink unit, {self.sink_unit}")
-        elif isinstance(other, NoiseDensityBase):
-            raise ValueError(f"cannot multiply noise by {type(other)}")
-        elif isinstance(other, Number):
-            other_sink = self.sink
-            other_value = other
-        else:
-            raise ValueError(f"don't know how to multiply {type(other)}")
-
-        scaled_series = self.series * other_value
-        return self.__class__(sources=self.sources, sink=other_sink, series=scaled_series,
-                              label=self._label)
+    def _new_noise_density(self, new_sink, new_series):
+        """Create a copy of this noise density with the specified sink and series."""
+        new_noise = self.__class__(sources=self.sources, sink=new_sink, series=new_series,
+                                   label=self._label)
+        return new_noise
 
 
 class Reference(BaseFunction, metaclass=abc.ABCMeta):

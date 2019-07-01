@@ -71,18 +71,26 @@ class FunctionMathematicalOperationUnitsTestCase(ZeroDataTestCase):
     def test_multiply_noise_by_noise_invalid(self):
         """Test that noise cannot be multiplied by noise."""
         f = self._freqs()
-        self.assertRaises(ValueError, lambda: self._vnoise_at_node(f) * self._vnoise_at_node(f))
-        self.assertRaises(ValueError, lambda: self._vnoise_at_node(f) * self._vnoise_at_comp(f))
-        self.assertRaises(ValueError, lambda: self._vnoise_at_comp(f) * self._vnoise_at_comp(f))
-        self.assertRaises(ValueError, lambda: self._vnoise_at_comp(f) * self._vnoise_at_node(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._vnoise_at_node(f) * self._vnoise_at_node(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._vnoise_at_node(f) * self._vnoise_at_comp(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._vnoise_at_comp(f) * self._vnoise_at_comp(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._vnoise_at_comp(f) * self._vnoise_at_node(f))
 
     def test_multiply_response_by_noise_invalid(self):
         """Test that a response cannot be multiplied by noise."""
         f = self._freqs()
-        self.assertRaises(ValueError, lambda: self._v_v_response(f) * self._vnoise_at_node(f))
-        self.assertRaises(ValueError, lambda: self._v_i_response(f) * self._vnoise_at_comp(f))
-        self.assertRaises(ValueError, lambda: self._i_i_response(f) * self._vnoise_at_comp(f))
-        self.assertRaises(ValueError, lambda: self._i_v_response(f) * self._vnoise_at_node(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._v_v_response(f) * self._vnoise_at_node(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._v_i_response(f) * self._vnoise_at_comp(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._i_i_response(f) * self._vnoise_at_comp(f))
+        self.assertRaises(NotImplementedError,
+                          lambda: self._i_v_response(f) * self._vnoise_at_node(f))
 
 
 class FunctionMathematicalOperationDataTestCase(ZeroDataTestCase):

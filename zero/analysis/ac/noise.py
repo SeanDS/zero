@@ -190,11 +190,11 @@ class AcNoiseAnalysis(AcSignalAnalysis):
 
         for __, noise_spectra in self.solution.noise.items():
             for noise in noise_spectra:
-                self.solution.replace(noise, noise / input_response)
+                self.solution.replace(noise, noise * input_response.inverse())
 
         for __, noise_sums in self.solution.noise_sums.items():
             for noise in noise_sums:
-                self.solution.replace(noise, noise / input_response)
+                self.solution.replace(noise, noise * input_response.inverse())
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""
