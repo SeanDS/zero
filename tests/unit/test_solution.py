@@ -152,8 +152,22 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_c.add_response(resp9, group="b")
         sol_c.add_response(resp10, group="c")
         sol_c.add_response(resp11, group="d")
-        sol_d_a = sol_a.combine(sol_b, sol_c)
-        sol_d_b = sol_a + sol_b + sol_c
+        # Test combination all at once.
+        sol_d_a = sol_a + sol_b + sol_c
+        sol_d_b = sol_a.combine(sol_b, sol_c)
+        self.assertTrue(sol_d_a.equivalent_to(sol_d_b))
+        # Test combination with an intermediate step.
+        sol_d_a = sol_a + sol_b
+        sol_d_a += sol_c
+        sol_d_b = sol_a.combine(sol_b)
+        sol_d_b = sol_d_b.combine(sol_c)
+        self.assertTrue(sol_d_a.equivalent_to(sol_d_b))
+        # Test combination with two intermediate steps.
+        sol_d_a = sol_a
+        sol_d_a += sol_b
+        sol_d_a += sol_c
+        sol_d_b = sol_a.combine(sol_b)
+        sol_d_b = sol_d_b.combine(sol_c)
         self.assertTrue(sol_d_a.equivalent_to(sol_d_b))
 
     def test_solution_combination_new_name(self):
