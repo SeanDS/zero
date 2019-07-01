@@ -406,29 +406,29 @@ class Response(SingleSourceFunction, SingleSinkFunction):
             other_value = other
         else:
             # E.g. NoiseDensityBase.
-            raise NotImplementedError(f"Cannot multiply {self.__class__.__name__} by "
-                                      f"{other.__class__.__name__}.")
+            raise TypeError(f"Cannot multiply {self.__class__.__name__} by "
+                            f"{other.__class__.__name__}.")
         return self._new_response(other_sink, self.series * other_value)
 
     def __rmul__(self, other):
         # Note: "other" should never be another Response or NoiseDensityBase, since these functions
         # implement the corresponding __mul__ methods for Response.
         if not isinstance(other, Number):
-            raise NotImplementedError(f"Cannot multiply {other.__class__.__name__} by "
-                                      f"{self.__class__.__name__}.")
-        # Scalar-Response multiplication is commutative.
+            raise TypeError(f"Cannot multiply {other.__class__.__name__} by "
+                            f"{self.__class__.__name__}.")
+        # Response-scalar multiplication is commutative.
         return self * other
 
     def __truediv__(self, other):
         if not isinstance(other, Number):
-            raise NotImplementedError(f"Cannot divide {self.__class__.__name__} by "
-                                      f"{other.__class__.__name__}. To invert, call inverse().")
-        return self * 1 / other
+            raise TypeError(f"Cannot divide {self.__class__.__name__} by "
+                            f"{other.__class__.__name__}. To invert, call inverse().")
+        return self._new_response(self.sink, self.series * 1 / other)
 
     def __rtruediv__(self, other):
         if not isinstance(other, Number):
-            raise NotImplementedError(f"Cannot divide {other.__class__.__name__} by "
-                                      f"{self.__class__.__name__}. To invert, call inverse().")
+            raise TypeError(f"Cannot divide {other.__class__.__name__} by "
+                            f"{self.__class__.__name__}. To invert, call inverse().")
         return self._new_response(self.sink, other / self.series)
 
     def inverse(self):
@@ -474,16 +474,16 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
             other_value = other
         else:
             # E.g. NoiseDensityBase.
-            raise NotImplementedError(f"Cannot multiply {self.__class__.__name__} by "
-                                      f"{other.__class__.__name__}.")
+            raise TypeError(f"Cannot multiply {self.__class__.__name__} by "
+                            f"{other.__class__.__name__}.")
         return self._new_noise_density(other_sink, self.series * other_value)
 
     def __rmul__(self, other):
         # Note: "other" should never be another Response or NoiseDensityBase, since these functions
         # implement the corresponding __mul__ methods for NoiseDensityBase.
         if not isinstance(other, Number):
-            raise NotImplementedError(f"Cannot divide {other.__class__.__name__} by "
-                                      f"{self.__class__.__name__}.")
+            raise TypeError(f"Cannot divide {other.__class__.__name__} by "
+                            f"{self.__class__.__name__}.")
         # Noise-scalar multiplication is commutative.
         return self * other
 
