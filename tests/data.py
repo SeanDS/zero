@@ -1,4 +1,4 @@
-"""Test case with methods for constructing mock data."""
+"""Test case with methods for constructing mock Zero data."""
 
 import abc
 from unittest import TestCase
@@ -8,7 +8,7 @@ from zero.components import OpAmp, Resistor, Node, VoltageNoise, CurrentNoise
 from zero.solution import Solution
 from zero.data import Series, Response, NoiseDensity, MultiNoiseDensity
 
-# fixed random seed for test reproducibility
+# Fixed random seed for test reproducibility.
 np.random.seed(seed=2543070)
 
 

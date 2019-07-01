@@ -1,7 +1,7 @@
 """Test suite runner"""
 
-import os
 import sys
+from pathlib import Path
 import logging
 from unittest import TestSuite, TestLoader, TextTestRunner
 import click
@@ -9,27 +9,28 @@ from zero import set_log_verbosity
 
 from .validation import LisoTestSuite
 
-# this directory
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+# This directory.
+THIS_DIR = Path(__file__).resolve().parent
 
-# LISO validation scripts
-LISO_SCRIPT_DIR = os.path.join(THIS_DIR, "scripts/liso")
+# LISO validation scripts.
+LISO_SCRIPT_DIR = THIS_DIR / "scripts/liso"
 
-# test loader
+# Test loader.
 LOADER = TestLoader()
 
-# test suites
-UNIT_TESTS = LOADER.discover("unit", top_level_dir=THIS_DIR)
-INTEGRATION_TESTS = LOADER.discover("integration", top_level_dir=THIS_DIR)
-FAST_VALIDATION_TESTS = LisoTestSuite(os.path.join(LISO_SCRIPT_DIR, "fast"))
-SLOW_VALIDATION_TESTS = LisoTestSuite(os.path.join(LISO_SCRIPT_DIR, "slow"))
+# Test suites. We have to use the parent directory as the top level so that the "data.py" module
+# in this package can be imported by test scripts.
+UNIT_TESTS = LOADER.discover(THIS_DIR / "unit", top_level_dir=THIS_DIR.parent)
+INTEGRATION_TESTS = LOADER.discover(THIS_DIR / "integration", top_level_dir=THIS_DIR.parent)
+FAST_VALIDATION_TESTS = LisoTestSuite(LISO_SCRIPT_DIR / "fast")
+SLOW_VALIDATION_TESTS = LisoTestSuite(LISO_SCRIPT_DIR / "slow")
 
-# derived suites
+# Derived suites.
 VALIDATION_TESTS = TestSuite((FAST_VALIDATION_TESTS, SLOW_VALIDATION_TESTS))
 ALL_FAST_TESTS = TestSuite((UNIT_TESTS, INTEGRATION_TESTS, FAST_VALIDATION_TESTS))
 ALL_TESTS = TestSuite((ALL_FAST_TESTS, SLOW_VALIDATION_TESTS))
 
-# test name map
+# Test name map.
 TESTS = {
     "unit": UNIT_TESTS,
     "integration": INTEGRATION_TESTS,
@@ -53,9 +54,9 @@ def run(suite_names, verbose):
     if verbose > 2:
         verbose = 2
 
-    # tune in to zero's logs
+    # Tune in to zero's logs.
     logger = logging.getLogger("zero")
-    # show only warnings with no verbosity, or more if higher
+    # Show only warnings with no verbosity, or more if higher.
     set_log_verbosity(logging.WARNING - 10 * verbose, logger)
 
     # test suite to run

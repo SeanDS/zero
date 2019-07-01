@@ -2,7 +2,7 @@
 
 import numpy as np
 from zero.data import Series, MultiNoiseDensity
-from .data import ZeroDataTestCase
+from ..data import ZeroDataTestCase
 
 
 class SeriesTestCase(ZeroDataTestCase):
