@@ -120,6 +120,42 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         self.assertEqual(residuals_a, [resp2])
         self.assertEqual(residuals_b, [resp3])
 
+    def test_solution_combination_operator(self):
+        """Solution combination __mul__ operator should be equivalent to .combine"""
+        # Build non-trivial solutions.
+        f = self._freqs()
+        resp1 = self._i_i_response(f)
+        resp2 = self._i_v_response(f)
+        resp3 = self._v_v_response(f)
+        resp4 = self._v_i_response(f)
+        resp5 = self._i_i_response(f)
+        resp6 = self._i_v_response(f)
+        resp7 = self._v_v_response(f)
+        resp8 = self._v_i_response(f)
+        resp9 = self._i_i_response(f)
+        resp10 = self._i_v_response(f)
+        resp11 = self._v_v_response(f)
+        sol_a = Solution(f)
+        sol_a.name = "A"
+        sol_a.add_response(resp1)
+        sol_a.add_response(resp2, group="a")
+        sol_a.add_response(resp3, group="b")
+        sol_b = Solution(f)
+        sol_b.name = "B"
+        sol_b.add_response(resp4)
+        sol_b.add_response(resp5, group="a")
+        sol_b.add_response(resp6, group="c")
+        sol_c = Solution(f)
+        sol_c.name = "C"
+        sol_c.add_response(resp7)
+        sol_c.add_response(resp8, group="a")
+        sol_c.add_response(resp9, group="b")
+        sol_c.add_response(resp10, group="c")
+        sol_c.add_response(resp11, group="d")
+        sol_d_a = sol_a.combine(sol_b, sol_c)
+        sol_d_b = sol_a + sol_b + sol_c
+        self.assertTrue(sol_d_a.equivalent_to(sol_d_b))
+
     def test_solution_combination_new_name(self):
         """Test new name in combined solution"""
         f = self._freqs()
@@ -135,8 +171,13 @@ class SolutionEqualityAndCombinationTestCase(ZeroDataTestCase):
         sol_c = Solution(f)
         sol_c.name = "Sol C"
         sol_c.add_response(resp3)
-        sol_d = sol_a + sol_b + sol_c
-        self.assertEqual(sol_d.name, f"{sol_a.name} + {sol_b.name} + {sol_c.name}")
+        name = f"{sol_a.name} + {sol_b.name} + {sol_c.name}"
+        # No group merging.
+        sol_d = sol_a.combine(sol_b, sol_c)
+        self.assertEqual(sol_d.name, name)
+        # With group merging.
+        sol_d = sol_a.combine(sol_b, sol_c, merge_groups=True)
+        self.assertEqual(sol_d.name, name)
 
     def test_solution_combination_different_frequencies(self):
         """Test that combining solutions with different frequency vectors throws error."""
