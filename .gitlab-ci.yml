@@ -45,27 +45,6 @@ stages:
     - pip install .
     - make test-validation
 
-.template:deploy:docs: &template-deploy-docs
-  script:
-    - mkdir liso
-    - cd liso
-    - wget -O liso.tar.gz ${LISO_GIT_ARCHIVE_URL}
-    - tar -xvf liso.tar.gz -C . --wildcards liso-linux*/ --strip-components=1
-    - chmod +x fil_static
-    - cd ..
-    - export LISO_DIR=$(pwd)/liso
-    - export LISO_PATH=$LISO_DIR/fil_static
-    - python --version
-    - apt update -qy
-    - apt install --assume-yes python-pip
-    - pip install .[dev]
-    - cd docs
-    - make html
-    - mv _build/html ../public
-  artifacts:
-    paths:
-    - public
-
 test unit:latest:
   image: python:latest
   stage: test
@@ -112,9 +91,41 @@ test validation:3.7:
   <<: *template-test-validation
 
 # Generate the documentation only on creation of new tags.
-pages:
+deploy pages:
   image: python:3.7
   stage: deploy
   only:
     - tags
-  <<: *template-deploy-docs
+  script:
+    - mkdir liso
+    - cd liso
+    - wget -O liso.tar.gz ${LISO_GIT_ARCHIVE_URL}
+    - tar -xvf liso.tar.gz -C . --wildcards liso-linux*/ --strip-components=1
+    - chmod +x fil_static
+    - cd ..
+    - export LISO_DIR=$(pwd)/liso
+    - export LISO_PATH=$LISO_DIR/fil_static
+    - python --version
+    - apt update -qy
+    - apt install --assume-yes python-pip
+    - pip install .[dev]
+    - cd docs
+    - make html
+    - mv _build/html ../public
+  artifacts:
+    paths:
+    - public
+
+# Generate PyPI release only on creation of new tags.
+deploy pypi:
+  image: python:3.7
+  stage: deploy
+  only:
+    - tags
+  script:
+    - python --version
+    - apt update -qy
+    - apt install --assume-yes python-pip
+    - pip install twine
+    - python setup.py sdist bdist_wheel
+    - python -m twine upload dist/zero-*
