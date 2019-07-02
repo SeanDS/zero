@@ -138,11 +138,21 @@ class Series:
 
         return cls(x=x, y=complex_)
 
+    def __add__(self, other):
+        if hasattr(other, "y"):
+            other = other.y
+        return self._new_series(self.y + other)
+
+    def __sub__(self, other):
+        return self + -other
+
+    def __neg__(self):
+        return self._new_series(-self.y)
+
     def __mul__(self, other):
         if hasattr(other, "y"):
-            # Extract data.
             other = other.y
-        return self.__class__(self.x, self.y * other)
+        return self._new_series(self.y * other)
 
     def __rmul__(self, other):
         # Series multiplication is commutative.
@@ -151,13 +161,16 @@ class Series:
     def __truediv__(self, other):
         if hasattr(other, "y"):
             return self * other.inverse()
-        return self.__class__(self.x, self.y * 1 / other)
+        return self._new_series(self.y * 1 / other)
 
     def __rtruediv__(self, other):
         return other * self.inverse()
 
     def inverse(self):
-        return self.__class__(self.x, np.reciprocal(self.y))
+        return self._new_series(np.reciprocal(self.y))
+
+    def _new_series(self, new_y):
+        return self.__class__(self.x, new_y)
 
     def __eq__(self, other):
         """Checks if the specified series is identical to this one, within tolerance"""

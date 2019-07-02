@@ -81,6 +81,38 @@ class SeriesTestCase(ZeroDataTestCase):
         self.assertRaises(ValueError, Series, x=np.array([[1, 2, 3], [4, 5, 6]]),
                           y=np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
 
+    def test_addition(self):
+        """Test series addition."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 + series2 + series3
+        self.assertTrue(np.allclose(combined.x, combined.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx * 3))
+
+    def test_addition_scalar(self):
+        """Test series scalar addition."""
+        series = Series(self.x, self.data_cplx)
+        scaled = series + 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx + 5))
+
+    def test_subtract(self):
+        """Test series subtraction."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 - series2 - series3
+        self.assertTrue(np.allclose(combined.x, combined.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx * -1))
+
+    def test_subtract_scalar(self):
+        """Test series scalar subtraction."""
+        series = Series(self.x, self.data_cplx)
+        scaled = series - 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx - 5))
+
     def test_multiply(self):
         """Test series multiplication."""
         series1 = Series(self.x, self.data_cplx)
@@ -141,6 +173,16 @@ class SeriesTestCase(ZeroDataTestCase):
         scaled = 5 / series
         self.assertTrue(np.allclose(scaled.x, series.x))
         self.assertTrue(np.allclose(scaled.y, 5 / self.data_cplx))
+
+    def test_negate(self):
+        """Test series negation."""
+        series = Series(self.x, self.data_cplx)
+        negated = -series
+        # Negation should return a new object, so there shouldn't be issues with data changing
+        # later.
+        series.y = np.zeros_like(series.y)
+        self.assertTrue(np.allclose(negated.x, series.x))
+        self.assertTrue(np.allclose(negated.y, -self.data_cplx))
 
     def test_inverse(self):
         """Test series inversion."""
