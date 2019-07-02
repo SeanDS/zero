@@ -174,6 +174,22 @@ class SeriesTestCase(ZeroDataTestCase):
         self.assertTrue(np.allclose(scaled.x, series.x))
         self.assertTrue(np.allclose(scaled.y, 5 / self.data_cplx))
 
+    def test_exponentiate(self):
+        """Test series exponentiation."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 ** series2 ** series3
+        self.assertTrue(np.allclose(combined.x, combined.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx ** self.data_cplx ** self.data_cplx))
+
+    def test_exponentiate_scalar(self):
+        """Test series scalar exponentiation."""
+        series = Series(self.x, self.data_cplx)
+        scaled = series ** 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx ** 5))
+
     def test_negate(self):
         """Test series negation."""
         series = Series(self.x, self.data_cplx)

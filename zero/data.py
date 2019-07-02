@@ -139,8 +139,7 @@ class Series:
         return cls(x=x, y=complex_)
 
     def __add__(self, other):
-        if hasattr(other, "y"):
-            other = other.y
+        other = getattr(other, "y", other)
         return self._new_series(self.y + other)
 
     def __sub__(self, other):
@@ -150,8 +149,7 @@ class Series:
         return self._new_series(-self.y)
 
     def __mul__(self, other):
-        if hasattr(other, "y"):
-            other = other.y
+        other = getattr(other, "y", other)
         return self._new_series(self.y * other)
 
     def __rmul__(self, other):
@@ -165,6 +163,10 @@ class Series:
 
     def __rtruediv__(self, other):
         return other * self.inverse()
+
+    def __pow__(self, other):
+        other = getattr(other, "y", other)
+        return self._new_series(self.y ** other)
 
     def inverse(self):
         return self._new_series(np.reciprocal(self.y))
