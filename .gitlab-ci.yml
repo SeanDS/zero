@@ -3,7 +3,6 @@
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache"
-  LISO_GIT_ARCHIVE_URL: "https://gitlab.aei.uni-hannover.de/api/v4/projects/143/repository/archive?private_token=${LISO_ACCESS_TOKEN}"
 
 cache:
   paths:
@@ -30,6 +29,10 @@ stages:
     - make test-integration
 
 .template:test:validation: &template-test-validation
+  only:
+    variables:
+      - $LISO_GIT_ARCHIVE_ACCESS_TOKEN
+      - $LISO_GIT_ARCHIVE_URL
   script:
     - mkdir liso
     - cd liso
@@ -95,7 +98,11 @@ deploy pages:
   image: python:3.7
   stage: deploy
   only:
-    - tags
+    refs:
+      - tags
+    variables:
+      - $LISO_GIT_ARCHIVE_ACCESS_TOKEN
+      - $LISO_GIT_ARCHIVE_URL
   script:
     - mkdir liso
     - cd liso
@@ -121,7 +128,11 @@ deploy pypi:
   image: python:3.7
   stage: deploy
   only:
-    - tags
+    refs:
+      - tags
+    variables:
+      - $TWINE_USERNAME
+      - $TWINE_PASSWORD
   script:
     - python --version
     - apt update -qy
