@@ -10,19 +10,32 @@ from zero.analysis import AcNoiseAnalysis
 class AcNoiseAnalysisIntegrationTestCase(TestCase):
     """AC noise analysis tests"""
     def setUp(self):
-        self.frequencies = np.logspace(0, 6, 1000)
-        self.circuit = Circuit()
-        self.circuit.add_capacitor(value="10u", node1="gnd", node2="n1")
-        self.circuit.add_resistor(value="430", node1="n1", node2="nm", name="r1")
-        self.circuit.add_resistor(value="43k", node1="nm", node2="nout")
-        self.circuit.add_capacitor(value="47p", node1="nm", node2="nout")
-        self.circuit.add_library_opamp(model="LT1124", node1="gnd", node2="nm", node3="nout")
+        self.f = np.logspace(0, 5, 1000)
+
+    def test_empty_circuit_calculation(self):
+        """Test set voltage input"""
+        circuit = Circuit()
+        circuit.add_resistor(value="1k", node1="nin", node2="nout")
+        analysis = AcNoiseAnalysis(circuit)
+        for input_type in ("voltage", "current"):
+            with self.subTest(input_type):
+                analysis.calculate(frequencies=self.f, input_type=input_type, node="nin",
+                                   sink="nout")
+                self.assertEqual(analysis.n_freqs, len(self.f))
+                self.assertCountEqual(analysis.element_names, ["input", "r1", "nin", "nout"])
 
     def test_input_noise_units(self):
         """Check units when projecting noise to input."""
-        analysis = AcNoiseAnalysis(circuit=self.circuit)
+        circuit = Circuit()
+        circuit.add_capacitor(value="10u", node1="gnd", node2="n1")
+        circuit.add_resistor(value="430", node1="n1", node2="nm", name="r1")
+        circuit.add_resistor(value="43k", node1="nm", node2="nout")
+        circuit.add_capacitor(value="47p", node1="nm", node2="nout")
+        circuit.add_library_opamp(model="LT1124", node1="gnd", node2="nm", node3="nout")
 
-        kwargs = {"frequencies": self.frequencies,
+        analysis = AcNoiseAnalysis(circuit=circuit)
+
+        kwargs = {"frequencies": self.f,
                   "node": "n1",
                   "sink": "nout",
                   "incoherent_sum": True}
