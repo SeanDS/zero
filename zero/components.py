@@ -5,7 +5,7 @@ from collections.abc import MutableMapping
 import numpy as np
 
 from .elements import BaseElement, ElementNotFoundError
-from .noise import VoltageNoise, CurrentNoise, JohnsonNoise, NoiseNotFoundError
+from .noise import OpAmpVoltageNoise, OpAmpCurrentNoise, JohnsonNoise, NoiseNotFoundError
 from .misc import NamedInstance
 from .format import Quantity
 from .config import ZeroConfig, LibraryOpAmp
@@ -82,7 +82,6 @@ class Component(BaseElement, metaclass=abc.ABCMeta):
         """
         if noise in self.noise:
             raise ValueError(f"specified noise '{noise}' already exists in '{self}'")
-
         self.noise.append(noise)
 
     @property
@@ -218,16 +217,14 @@ class OpAmp(LibraryOpAmp, Component):
     def __init__(self, node1, node2, node3, **kwargs):
         super().__init__(nodes=[node1, node2, node3], **kwargs)
         # Op-amp voltage noise.
-        self.add_noise(VoltageNoise(component=self, function=self._noise_voltage))
+        self.add_noise(OpAmpVoltageNoise(component=self))
         # Op-amp input current noise.
         if self.node1 is not Node("gnd"):
             # Non-inverting input noise.
-            self.add_noise(CurrentNoise(node=self.node1, component=self,
-                                        function=self._noise_current))
+            self.add_noise(OpAmpCurrentNoise(node=self.node1, component=self))
         if self.node2 is not Node("gnd"):
             # Inverting input noise.
-            self.add_noise(CurrentNoise(node=self.node2, component=self,
-                                        function=self._noise_current))
+            self.add_noise(OpAmpCurrentNoise(node=self.node2, component=self))
 
     @property
     def node1(self):
@@ -252,13 +249,6 @@ class OpAmp(LibraryOpAmp, Component):
     @node3.setter
     def node3(self, node):
         self.nodes[2] = node
-
-    def _noise_voltage(self, component, frequencies):
-        return self.params["vnoise"] * np.sqrt(1 + self.params["vcorner"] / frequencies)
-
-    def _noise_current(self, node, frequencies):
-        # ignore node; noise is same at both inputs
-        return self.params["inoise"] * np.sqrt(1 + self.params["icorner"] / frequencies)
 
     @property
     def has_voltage_noise(self):

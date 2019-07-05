@@ -9,6 +9,12 @@ from .config import ZeroConfig
 CONF = ZeroConfig()
 
 
+class NoiseNotFoundError(ValueError):
+    def __init__(self, noise_description, *args, **kwargs):
+        message = f"{noise_description} not found"
+        super().__init__(message, *args, **kwargs)
+
+
 class Noise(BaseElement, metaclass=abc.ABCMeta):
     """Noise source.
 
@@ -24,9 +30,8 @@ class Noise(BaseElement, metaclass=abc.ABCMeta):
         super().__init__()
         self.function = function
 
-    @abc.abstractmethod
     def spectral_density(self, frequencies):
-        return NotImplemented
+        return self.function(frequencies=frequencies)
 
     @property
     @abc.abstractmethod
@@ -64,13 +69,9 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
     """
     ELEMENT_TYPE = "component"
 
-    def __init__(self, component, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __init__(self, component, **kwargs):
+        super().__init__(**kwargs)
         self.component = component
-
-    def spectral_density(self, frequencies):
-        return self.function(component=self.component, frequencies=frequencies)
 
     def _meta_data(self):
         """Meta data used to provide hash."""
@@ -93,37 +94,50 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
     """
     ELEMENT_TYPE = "node"
 
-    def __init__(self, node, component, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __init__(self, node, component, **kwargs):
+        super().__init__(**kwargs)
         self.node = node
         self.component = component
-
-    def spectral_density(self, *args, **kwargs):
-        return self.function(node=self.node, *args, **kwargs)
 
     def _meta_data(self):
         """Meta data used to provide hash."""
         return super()._meta_data(), self.node, self.component
 
 
-class VoltageNoise(ComponentNoise):
+class VoltageNoise(ComponentNoise, metaclass=abc.ABCMeta):
     """Component voltage noise source."""
     NOISE_TYPE = "voltage"
+
+    def __init__(self, **kwargs):
+        super().__init__(function=self.noise_voltage, **kwargs)
+
+    @abc.abstractmethod
+    def noise_voltage(self, frequencies, **kwargs):
+        raise NotImplementedError
 
     @property
     def label(self):
         return f"V({self.component.name})"
 
 
+class OpAmpVoltageNoise(VoltageNoise):
+    def noise_voltage(self, frequencies):
+        return self.flat_noise * np.sqrt(1 + self.corner_frequency / frequencies)
+
+    @property
+    def flat_noise(self):
+        return self.component.params["vnoise"]
+
+    @property
+    def corner_frequency(self):
+        return self.component.params["vcorner"]
+
+
 class JohnsonNoise(VoltageNoise):
     """Resistor Johnson-Nyquist noise source."""
     NOISE_TYPE = "johnson"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(function=self.noise_voltage, *args, **kwargs)
-
-    def noise_voltage(self, frequencies, *args, **kwargs):
+    def noise_voltage(self, frequencies):
         white_noise = np.sqrt(4 * float(CONF["constants"]["kB"])
                               * float(CONF["constants"]["T"])
                               * self.resistance)
@@ -143,16 +157,31 @@ class JohnsonNoise(VoltageNoise):
         return super()._meta_data(), self.resistance
 
 
-class CurrentNoise(NodeNoise):
+class CurrentNoise(NodeNoise, metaclass=abc.ABCMeta):
     """Node current noise source."""
     NOISE_TYPE = "current"
+
+    def __init__(self, **kwargs):
+        super().__init__(function=self.noise_current, **kwargs)
+
+    @abc.abstractmethod
+    def noise_current(self, frequencies, **kwargs):
+        raise NotImplementedError
 
     @property
     def label(self):
         return f"I({self.component.name}, {self.node.name})"
 
 
-class NoiseNotFoundError(ValueError):
-    def __init__(self, noise_description, *args, **kwargs):
-        message = f"{noise_description} not found"
-        super().__init__(message, *args, **kwargs)
+class OpAmpCurrentNoise(CurrentNoise):
+    def noise_current(self, frequencies):
+        # Ignore node; noise is same at both inputs.
+        return self.flat_noise * np.sqrt(1 + self.corner_frequency / frequencies)
+
+    @property
+    def flat_noise(self):
+        return self.component.params["inoise"]
+
+    @property
+    def corner_frequency(self):
+        return self.component.params["icorner"]
