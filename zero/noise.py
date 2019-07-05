@@ -22,13 +22,17 @@ class Noise(BaseElement, metaclass=abc.ABCMeta):
     ----------
     function : callable
         Callable that returns the noise associated with a specified frequency vector.
+    component : :class:`Component`, optional
+        Component associated with the noise. While optional, this must be set before the noise can
+        be used in a calculation.
     """
     # Noise type, e.g. Johnson noise.
     NOISE_TYPE = None
 
-    def __init__(self, function=None):
+    def __init__(self, function=None, component=None):
         super().__init__()
         self.function = function
+        self.component = component
 
     def spectral_density(self, frequencies):
         return self.function(frequencies=frequencies)
@@ -60,18 +64,8 @@ class Noise(BaseElement, metaclass=abc.ABCMeta):
 
 
 class ComponentNoise(Noise, metaclass=abc.ABCMeta):
-    """Component noise source.
-
-    Parameters
-    ----------
-    component : :class:`Component`
-        Component associated with the noise.
-    """
+    """Component noise source."""
     ELEMENT_TYPE = "component"
-
-    def __init__(self, component, **kwargs):
-        super().__init__(**kwargs)
-        self.component = component
 
     def _meta_data(self):
         """Meta data used to provide hash."""
@@ -89,15 +83,12 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
     ----------
     node : :class:`Node`
         Node associated with the noise.
-    component : :class:`Component`
-        Component associated with the noise.
     """
     ELEMENT_TYPE = "node"
 
-    def __init__(self, node, component, **kwargs):
+    def __init__(self, node=None, **kwargs):
         super().__init__(**kwargs)
         self.node = node
-        self.component = component
 
     def _meta_data(self):
         """Meta data used to provide hash."""

@@ -80,6 +80,7 @@ class Component(BaseElement, metaclass=abc.ABCMeta):
         ValueError
             If specified noise is already present.
         """
+        noise.component = self
         if noise in self.noise:
             raise ValueError(f"specified noise '{noise}' already exists in '{self}'")
         self.noise.append(noise)
@@ -221,10 +222,10 @@ class OpAmp(LibraryOpAmp, Component):
         # Op-amp input current noise.
         if self.node1 is not Node("gnd"):
             # Non-inverting input noise.
-            self.add_noise(OpAmpCurrentNoise(node=self.node1, component=self))
+            self.add_noise(OpAmpCurrentNoise(node=self.node1))
         if self.node2 is not Node("gnd"):
             # Inverting input noise.
-            self.add_noise(OpAmpCurrentNoise(node=self.node2, component=self))
+            self.add_noise(OpAmpCurrentNoise(node=self.node2))
 
     @property
     def node1(self):
@@ -269,7 +270,6 @@ class OpAmp(LibraryOpAmp, Component):
         for noise in self.noise:
             if noise.noise_type == "voltage":
                 return noise
-
         raise NoiseNotFoundError("voltage noise")
 
     @property
@@ -278,7 +278,6 @@ class OpAmp(LibraryOpAmp, Component):
             if noise.noise_type == "current":
                 if noise.node == self.node1:
                     return noise
-
         raise NoiseNotFoundError("non-inverting current noise")
 
     @property
@@ -287,7 +286,6 @@ class OpAmp(LibraryOpAmp, Component):
             if noise.noise_type == "current":
                 if noise.node == self.node2:
                     return noise
-
         raise NoiseNotFoundError("inverting current noise")
 
     def __str__(self):
@@ -302,12 +300,9 @@ class Input(Component):
 
     def __init__(self, nodes, input_type, impedance=None, is_noise=False, **kwargs):
         self._impedance = None
-
         self.input_type = input_type
         self.is_noise = bool(is_noise)
         self.impedance = impedance
-
-        # Call parent constructor.
         super().__init__(name="input", nodes=nodes, **kwargs)
 
     @property
@@ -369,7 +364,7 @@ class Resistor(PassiveComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Register Johnson noise.
-        self.add_noise(JohnsonNoise(component=self))
+        self.add_noise(JohnsonNoise())
 
     @property
     def resistance(self):
