@@ -264,20 +264,16 @@ class OpAmp(LibraryOpAmp, Component):
     BASE_NAME = "op"
 
     def __init__(self, node1, node2, node3, **kwargs):
-        # call parent constructor
         super().__init__(nodes=[node1, node2, node3], **kwargs)
-
-        # op-amp voltage noise
-        self.add_noise(VoltageNoise(component=self,
-                                    function=self._noise_voltage))
-
-        # op-amp input current noise
+        # Op-amp voltage noise.
+        self.add_noise(VoltageNoise(component=self, function=self._noise_voltage))
+        # Op-amp input current noise.
         if self.node1 is not Node("gnd"):
-            # non-inverting input noise
+            # Non-inverting input noise.
             self.add_noise(CurrentNoise(node=self.node1, component=self,
                                         function=self._noise_current))
         if self.node2 is not Node("gnd"):
-            # inverting input noise
+            # Inverting input noise.
             self.add_noise(CurrentNoise(node=self.node2, component=self,
                                         function=self._noise_current))
 
@@ -430,9 +426,8 @@ class Resistor(PassiveComponent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # register Johnson noise
-        self.add_noise(JohnsonNoise(component=self, resistance=self.resistance))
+        # Register Johnson noise.
+        self.add_noise(JohnsonNoise(component=self))
 
     @property
     def resistance(self):
@@ -737,10 +732,8 @@ class JohnsonNoise(VoltageNoise):
     """Resistor Johnson-Nyquist noise source."""
     NOISE_TYPE = "johnson"
 
-    def __init__(self, resistance, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(function=self.noise_voltage, *args, **kwargs)
-
-        self.resistance = float(resistance)
 
     def noise_voltage(self, frequencies, *args, **kwargs):
         white_noise = np.sqrt(4 * float(CONF["constants"]["kB"])
@@ -748,6 +741,10 @@ class JohnsonNoise(VoltageNoise):
                               * self.resistance)
 
         return np.ones_like(frequencies) * white_noise
+
+    @property
+    def resistance(self):
+        return self.component.resistance
 
     @property
     def label(self):

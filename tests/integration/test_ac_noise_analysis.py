@@ -10,7 +10,7 @@ from zero.analysis import AcNoiseAnalysis
 class AcNoiseAnalysisIntegrationTestCase(TestCase):
     """AC noise analysis tests"""
     def setUp(self):
-        self.frequencies = np.logspace(0, 6, 1000)
+        self.frequencies = np.logspace(0, 6, 10)
         self.circuit = Circuit()
         self.circuit.add_capacitor(value="10u", node1="gnd", node2="n1")
         self.circuit.add_resistor(value="430", node1="n1", node2="nm", name="r1")
@@ -42,3 +42,24 @@ class AcNoiseAnalysisIntegrationTestCase(TestCase):
         self.assertRaises(ValueError, solution.get_noise, source="R(r1)", sink="nout")
         rnoise = solution.get_noise(source="R(r1)", sink="input")
         self.assertEqual(rnoise.sink_unit, "A")
+
+    def test_changing_resistance_changes_noise(self):
+        """Check that changing a resistance changes the corresponding Johnson noise."""
+        circuit = Circuit()
+        circuit.add_resistor(value="1k", node1="nin", node2="nout", name="r1")
+        analysis = AcNoiseAnalysis(circuit=circuit)
+        kwargs = {"frequencies": self.frequencies, "node": "nin", "sink": "nout"}
+        # First noise.
+        solution1 = analysis.calculate(input_type="voltage", **kwargs)
+        noise1 = solution1.get_noise(source="R(r1)", sink="nout")
+        original_resistance = circuit["r1"].resistance
+        for factor in (0.5, 2, 10, 1000):
+            with self.subTest(factor):
+                # Change resistance.
+                circuit["r1"].resistance = original_resistance * factor
+                # Second noise.
+                solution2 = analysis.calculate(input_type="voltage", **kwargs)
+                noise2 = solution2.get_noise(source="R(r1)", sink="nout")
+                # Double the resistance gives only sqrt(2) more noise.
+                self.assertTrue(np.allclose(noise1.spectral_density,
+                                            1 / np.sqrt(factor) * noise2.spectral_density))
