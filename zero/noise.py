@@ -2,6 +2,7 @@
 
 import abc
 import numpy as np
+from scipy.constants import Boltzmann
 
 from .components import BaseElement
 from .config import ZeroConfig
@@ -129,9 +130,7 @@ class JohnsonNoise(VoltageNoise):
     NOISE_TYPE = "johnson"
 
     def noise_voltage(self, frequencies):
-        white_noise = np.sqrt(4 * float(CONF["constants"]["kB"])
-                              * float(CONF["constants"]["T"])
-                              * self.resistance)
+        white_noise = np.sqrt(4 * Boltzmann * float(CONF["constants"]["T"]) * self.resistance)
 
         return np.ones_like(frequencies) * white_noise
 
