@@ -14,6 +14,7 @@ Components
 
     passive-components
     op-amps
+    noise
 
 What is a 'component'?
 ----------------------
@@ -90,14 +91,6 @@ Capacitor  c       c1
 Inductor   l       l1
 Op-amp     op      op1
 =========  ======  =======
-
-Component noise sources
------------------------
-
-Some components directly produce noise at a node they are connected to (:class:`.NodeNoise`). Others
-create noise affecting current flow (:class:`.ComponentNoise`). The type and amount of noise depends
-on the component; for example, :class:`capacitors <.Capacitor>` do not produce noise, whereas
-:class:`resistors <.Resistor>` do (:class:`Johnson noise <.ResistorJohnsonNoise>`).
 
 Setting a component's value
 ---------------------------

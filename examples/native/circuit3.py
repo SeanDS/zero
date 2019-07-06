@@ -8,7 +8,6 @@ Sean Leavey
 import numpy as np
 from zero import Circuit
 from zero.analysis import AcNoiseAnalysis
-from zero.noise import ExcessNoise
 
 if __name__ == "__main__":
     # 1000 frequencies between 1 Hz to 1 MHz
@@ -23,10 +22,6 @@ if __name__ == "__main__":
     circuit.add_resistor(value="43k", node1="nm", node2="nout")
     circuit.add_capacitor(value="47p", node1="nm", node2="nout")
     circuit.add_library_opamp(model="LT1124", node1="gnd", node2="nm", node3="nout")
-
-    # Add excess noise to r1.
-    r1 = circuit["r1"]
-    r1.add_noise(ExcessNoise(1e-8, 0.5))
 
     # Solve circuit.
     analysis = AcNoiseAnalysis(circuit=circuit)
