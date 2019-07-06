@@ -108,8 +108,7 @@ In order to retrieve a noise function from a solution, you must specify the nois
 way as response sinks (:ref:`see above <solution/index:Specifying response sources and sinks>`).
 
 Specifying the noise source by its object involves first retrieving the component that produces the
-noise. Each component holds its noise sources in its :ref:`properties <Components/index:Component
-noise sources>`. For example, op-amps have voltage noise at their output and current noise at their
+noise. Each component holds its noise sources in its properties. For example, op-amps have voltage noise at their output and current noise at their
 inverting and non-inverting inputs. Assuming the op-amp is referenced by ``op1``, these can be
 retrieved using ``op1.voltage_noise``, ``op1.inv_current_noise`` and ``op1.non_inv_current_noise``,
 respectively.
