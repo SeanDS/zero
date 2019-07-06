@@ -4,6 +4,7 @@ import abc
 import numpy as np
 from scipy.constants import Boltzmann
 
+from .format import Quantity
 from .components import BaseElement
 from .config import ZeroConfig
 
@@ -68,10 +69,6 @@ class ComponentNoise(Noise, metaclass=abc.ABCMeta):
     """Component noise source."""
     ELEMENT_TYPE = "component"
 
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.component
-
     @property
     def component_type(self):
         return self.component.element_type
@@ -90,10 +87,6 @@ class NodeNoise(Noise, metaclass=abc.ABCMeta):
     def __init__(self, node=None, **kwargs):
         super().__init__(**kwargs)
         self.node = node
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.node, self.component
 
 
 class VoltageNoise(ComponentNoise, metaclass=abc.ABCMeta):
@@ -141,31 +134,6 @@ class JohnsonNoise(VoltageNoise):
     @property
     def label(self):
         return f"R({self.component.name})"
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.resistance
-
-
-class ExcessNoise(VoltageNoise):
-    """Resistor excess (flicker) noise source."""
-    NOISE_TYPE = "excess"
-
-    def __init__(self, vnone, coefficient, **kwargs):
-        super().__init__(**kwargs)
-        self.vnone = vnone
-        self.coefficient = coefficient
-
-    def noise_voltage(self, frequencies, **kwargs):
-        return self.vnone / frequencies ** self.coefficient
-
-    @property
-    def label(self):
-        return f"RE({self.component.name})"
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.coefficient
 
 
 class CurrentNoise(NodeNoise, metaclass=abc.ABCMeta):
