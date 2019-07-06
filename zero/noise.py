@@ -118,7 +118,7 @@ class OpAmpVoltageNoise(VoltageNoise):
         return self.component.params["vcorner"]
 
 
-class JohnsonNoise(VoltageNoise):
+class ResistorJohnsonNoise(VoltageNoise):
     """Resistor Johnson-Nyquist noise source."""
     NOISE_TYPE = "johnson"
 

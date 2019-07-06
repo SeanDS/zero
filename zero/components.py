@@ -5,7 +5,7 @@ from collections.abc import MutableMapping
 import numpy as np
 
 from .elements import BaseElement, ElementNotFoundError
-from .noise import OpAmpVoltageNoise, OpAmpCurrentNoise, JohnsonNoise, NoiseNotFoundError
+from .noise import OpAmpVoltageNoise, OpAmpCurrentNoise, ResistorJohnsonNoise, NoiseNotFoundError
 from .misc import NamedInstance
 from .format import Quantity
 from .config import ZeroConfig, LibraryOpAmp
@@ -364,7 +364,7 @@ class Resistor(PassiveComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Register Johnson noise.
-        self.add_noise(JohnsonNoise())
+        self.add_noise(ResistorJohnsonNoise())
 
     @property
     def resistance(self):
