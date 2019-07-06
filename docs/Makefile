@@ -20,7 +20,8 @@ STATICDIR = _static
 # Static files
 ZEROSTATICDEPS = $(STATICDIR)/liso-input-node-graph.svg
 # Zero Python files.
-ZEROPYTHONDEPS = $(STATICDIR)/liso-input-response.svg $(STATICDIR)/solution-combination.svg
+ZEROPYTHONDEPS = $(STATICDIR)/liso-input-response.svg $(STATICDIR)/solution-combination.svg \
+				 $(STATICDIR)/resistor-current-noise.svg
 # LISO script comparisons.
 ZEROLISODEPS = $(STATICDIR)/liso-compare-response.svg
 

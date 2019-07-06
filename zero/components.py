@@ -4,61 +4,13 @@ import abc
 from collections.abc import MutableMapping
 import numpy as np
 
+from .elements import BaseElement, ElementNotFoundError
+from .noise import OpAmpVoltageNoise, OpAmpCurrentNoise, ResistorJohnsonNoise, NoiseNotFoundError
 from .misc import NamedInstance
 from .format import Quantity
 from .config import ZeroConfig, LibraryOpAmp
 
 CONF = ZeroConfig()
-
-
-class ElementNotFoundError(Exception):
-    def __init__(self, name, message="element '%s' not found", *args, **kwargs):
-        # apply name to message
-        message = message % name
-
-        # call parent constructor
-        super().__init__(message, *args, **kwargs)
-
-        self.name = name
-
-
-class BaseElement(metaclass=abc.ABCMeta):
-    """Represents a source or sink of a function, with a unit.
-
-    This is an abstract representation of components, nodes or noise sources.
-    """
-    # Element type. Represents whether this element behaves like a component, node, etc.
-    ELEMENT_TYPE = None
-    # Unit used for admittance calculations.
-    ELEMENT_UNIT = None
-
-    @property
-    def element_type(self):
-        return self.ELEMENT_TYPE
-
-    @property
-    def element_unit(self):
-        return self.ELEMENT_UNIT
-
-
-class GenericElement(BaseElement):
-    """Represents a generic element with custom unit.
-
-    This is used in place of components and nodes when creating functions with non-circuit elements.
-    """
-    ELEMENT_TYPE = "__custom__"
-
-    def __init__(self, name, unit):
-        self.name = str(name)
-        self._unit = str(unit)
-
-    @property
-    def element_unit(self):
-        return self._unit
-
-    @property
-    def label(self):
-        return self.name
 
 
 class Component(BaseElement, metaclass=abc.ABCMeta):
@@ -128,9 +80,9 @@ class Component(BaseElement, metaclass=abc.ABCMeta):
         ValueError
             If specified noise is already present.
         """
+        noise.component = self
         if noise in self.noise:
             raise ValueError(f"specified noise '{noise}' already exists in '{self}'")
-
         self.noise.append(noise)
 
     @property
@@ -266,16 +218,14 @@ class OpAmp(LibraryOpAmp, Component):
     def __init__(self, node1, node2, node3, **kwargs):
         super().__init__(nodes=[node1, node2, node3], **kwargs)
         # Op-amp voltage noise.
-        self.add_noise(VoltageNoise(component=self, function=self._noise_voltage))
+        self.add_noise(OpAmpVoltageNoise(component=self))
         # Op-amp input current noise.
         if self.node1 is not Node("gnd"):
             # Non-inverting input noise.
-            self.add_noise(CurrentNoise(node=self.node1, component=self,
-                                        function=self._noise_current))
+            self.add_noise(OpAmpCurrentNoise(node=self.node1))
         if self.node2 is not Node("gnd"):
             # Inverting input noise.
-            self.add_noise(CurrentNoise(node=self.node2, component=self,
-                                        function=self._noise_current))
+            self.add_noise(OpAmpCurrentNoise(node=self.node2))
 
     @property
     def node1(self):
@@ -301,13 +251,6 @@ class OpAmp(LibraryOpAmp, Component):
     def node3(self, node):
         self.nodes[2] = node
 
-    def _noise_voltage(self, component, frequencies):
-        return self.params["vnoise"] * np.sqrt(1 + self.params["vcorner"] / frequencies)
-
-    def _noise_current(self, node, frequencies):
-        # ignore node; noise is same at both inputs
-        return self.params["inoise"] * np.sqrt(1 + self.params["icorner"] / frequencies)
-
     @property
     def has_voltage_noise(self):
         return "voltage" in [noise.noise_type for noise in self.noise]
@@ -327,7 +270,6 @@ class OpAmp(LibraryOpAmp, Component):
         for noise in self.noise:
             if noise.noise_type == "voltage":
                 return noise
-
         raise NoiseNotFoundError("voltage noise")
 
     @property
@@ -336,7 +278,6 @@ class OpAmp(LibraryOpAmp, Component):
             if noise.noise_type == "current":
                 if noise.node == self.node1:
                     return noise
-
         raise NoiseNotFoundError("non-inverting current noise")
 
     @property
@@ -345,7 +286,6 @@ class OpAmp(LibraryOpAmp, Component):
             if noise.noise_type == "current":
                 if noise.node == self.node2:
                     return noise
-
         raise NoiseNotFoundError("inverting current noise")
 
     def __str__(self):
@@ -360,12 +300,9 @@ class Input(Component):
 
     def __init__(self, nodes, input_type, impedance=None, is_noise=False, **kwargs):
         self._impedance = None
-
         self.input_type = input_type
         self.is_noise = bool(is_noise)
         self.impedance = impedance
-
-        # Call parent constructor.
         super().__init__(name="input", nodes=nodes, **kwargs)
 
     @property
@@ -427,7 +364,7 @@ class Resistor(PassiveComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Register Johnson noise.
-        self.add_noise(JohnsonNoise(component=self))
+        self.add_noise(ResistorJohnsonNoise())
 
     @property
     def resistance(self):
@@ -619,155 +556,6 @@ class Node(BaseElement, metaclass=NamedInstance):
 class NodeNotFoundError(ElementNotFoundError):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name=name, message="node '%s' not found", *args, **kwargs)
-
-
-class Noise(BaseElement, metaclass=abc.ABCMeta):
-    """Noise source.
-
-    Parameters
-    ----------
-    function : callable
-        Callable that returns the noise associated with a specified frequency vector.
-    """
-    # Noise type, e.g. Johnson noise.
-    NOISE_TYPE = None
-
-    def __init__(self, function=None):
-        super().__init__()
-        self.function = function
-
-    @abc.abstractmethod
-    def spectral_density(self, frequencies):
-        return NotImplemented
-
-    @property
-    @abc.abstractmethod
-    def label(self):
-        return NotImplemented
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return tuple(self.label)
-
-    @property
-    def noise_type(self):
-        return self.NOISE_TYPE
-
-    def __str__(self):
-        return self.label
-
-    def __repr__(self):
-        return str(self)
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-    def __hash__(self):
-        return hash(self._meta_data())
-
-
-class ComponentNoise(Noise, metaclass=abc.ABCMeta):
-    """Component noise source.
-
-    Parameters
-    ----------
-    component : :class:`Component`
-        Component associated with the noise.
-    """
-    ELEMENT_TYPE = "component"
-
-    def __init__(self, component, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.component = component
-
-    def spectral_density(self, frequencies):
-        return self.function(component=self.component, frequencies=frequencies)
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.component
-
-    @property
-    def component_type(self):
-        return self.component.element_type
-
-
-class NodeNoise(Noise, metaclass=abc.ABCMeta):
-    """Node noise source.
-
-    Parameters
-    ----------
-    node : :class:`Node`
-        Node associated with the noise.
-    component : :class:`Component`
-        Component associated with the noise.
-    """
-    ELEMENT_TYPE = "node"
-
-    def __init__(self, node, component, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.node = node
-        self.component = component
-
-    def spectral_density(self, *args, **kwargs):
-        return self.function(node=self.node, *args, **kwargs)
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.node, self.component
-
-
-class VoltageNoise(ComponentNoise):
-    """Component voltage noise source."""
-    NOISE_TYPE = "voltage"
-
-    @property
-    def label(self):
-        return f"V({self.component.name})"
-
-
-class JohnsonNoise(VoltageNoise):
-    """Resistor Johnson-Nyquist noise source."""
-    NOISE_TYPE = "johnson"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(function=self.noise_voltage, *args, **kwargs)
-
-    def noise_voltage(self, frequencies, *args, **kwargs):
-        white_noise = np.sqrt(4 * float(CONF["constants"]["kB"])
-                              * float(CONF["constants"]["T"])
-                              * self.resistance)
-
-        return np.ones_like(frequencies) * white_noise
-
-    @property
-    def resistance(self):
-        return self.component.resistance
-
-    @property
-    def label(self):
-        return f"R({self.component.name})"
-
-    def _meta_data(self):
-        """Meta data used to provide hash."""
-        return super()._meta_data(), self.resistance
-
-
-class CurrentNoise(NodeNoise):
-    """Node current noise source."""
-    NOISE_TYPE = "current"
-
-    @property
-    def label(self):
-        return f"I({self.component.name}, {self.node.name})"
-
-
-class NoiseNotFoundError(ValueError):
-    def __init__(self, noise_description, *args, **kwargs):
-        message = f"{noise_description} not found"
-        super().__init__(message, *args, **kwargs)
 
 
 class CouplingFactorDict(MutableMapping):

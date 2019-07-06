@@ -11,7 +11,8 @@ from matplotlib.ticker import MultipleLocator
 from .config import ZeroConfig
 from .data import (Response, NoiseDensity, MultiNoiseDensity, ReferenceResponse, ReferenceNoise,
                    frequencies_match)
-from .components import BaseElement, Noise
+from .components import BaseElement
+from .noise import Noise
 from .format import Quantity
 from .misc import lighten_colours
 

@@ -25,10 +25,8 @@ the voltage gain is modified.
 Noise
 =====
 
-Op-amps produce :class:`voltage noise <VoltageNoise>` across their input
-and output :class:`nodes <Node>`, and :class:`current noise <CurrentNoise>`
-is present at its input :class:`nodes <Node>`. The noise is a function of
-frequency.
+Op-amps produce voltage noise across their input and output nodes, and current noise is present at
+their input nodes. See :ref:`components/noise:Op-amp noise` for more details.
 
 Library
 =======

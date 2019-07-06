@@ -4,7 +4,7 @@ import abc
 from unittest import TestCase
 import numpy as np
 
-from zero.components import OpAmp, Resistor, Node, VoltageNoise, CurrentNoise
+from zero.components import OpAmp, Resistor, Node, OpAmpVoltageNoise, OpAmpCurrentNoise
 from zero.solution import Solution
 from zero.data import Series, Response, NoiseDensity, MultiNoiseDensity
 
@@ -67,14 +67,14 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _voltage_noise(self, component=None):
         if component is None:
             component = self._resistor()
-        return VoltageNoise(component)
+        return OpAmpVoltageNoise(component=component)
 
     def _current_noise(self, node=None, component=None):
         if node is None:
             node = self._node()
         if component is None:
             component = self._resistor(node1=node)
-        return CurrentNoise(node, component)
+        return OpAmpCurrentNoise(node=node, component=component)
 
     def _response(self, source, sink, freqs):
         return Response(source=source, sink=sink, series=self._series(freqs, cplx=True))
