@@ -915,17 +915,299 @@ op-amps:
     imax: 100m
     sr: 400e6
 
+# The following are additional opamp definitions which were added in CIT labs at 40m LISO repo.
+  lt1012:
+    description: Picoamp Input Current, Microvolt Offset, Low Noise Op Amp
+    a0: 2e6
+    gbw: 8e6
+    vnoise: 15e-9   #from datasheet
+    vcorner: 2.5    #from datasheet
+    inoise: 6e-15   #from datasheet
+    icorner: 120    #from datasheet
+    vmax: 12
+    imax: 0.02
+    sr: 2.5e6
+
+  lt1792:
+    a0: 4e6
+    gbw: 4e6
+    vnoise: 4.2e-9   #from datasheet
+    vcorner: 30      #from datasheet
+    inoise: 10e-15   #from datasheet
+    icorner: 120     # WAG
+    vmax: 12
+    imax: 0.02
+    sr: 2.5e6
+
+  op497:
+    description: low noise quad FET, for QPD transimpedance
+    a0: 2e6
+    gbw: 0.5e6
+    vnoise: 15e-9
+    vcorner: 2.5
+    inoise: 5e-15
+    icorner: 150
+    vmax: 12
+    imax: 25m
+    sr: 100e6
+
+  lt1128:
+    description: low voltage noise - copied from lt1028
+    a0: 30e6
+    gbw: 15e6
+    poles:
+      - 780k
+    zeros:
+      - 3.14M
+    delay: 7.5n
+    vnoise: 0.85e-9
+    vcorner: 3.5
+    inoise: 0.9e-12
+    icorner: 250
+    vmax: 12
+    imax: 0.02
+    sr: 15e6
+
+  RW1128:
+    description: ow noise Rai FET box
+    a0: 30e6
+    gbw: 15e6
+    poles:
+      - 780k
+    zeros:
+      - 3.14M
+    delay: 7.5n
+    vnoise: 0.5e-9
+    vcorner: 8
+    inoise: 9e-15
+    icorner: 250
+    vmax: 12
+    imax: 0.02
+    sr: 15e6
+
+  cs3002:
+    description: added by Rana for KAGRA L4-C preamp 2013
+    a0: 1e8         # seems bogus
+    gbw: 1e6
+    vnoise: 6e-9
+    vcorner: 0.08
+    inoise: 2e-12
+    icorner: 1      # guess / not in datasheet as of 1/2013
+
+  max4107:
+    a0: 1e5
+    gbw: 908M       # from closed-loop gain fit & stability considerations
+    poles:
+      - 653M
+    delay: 300p
+    vmax: 3.5
+    imax: 80m
+    sr: 275e6
+    vnoise: .75e-9  # !!! best ever
+    vcorner: 1k
+    inoise: 2.5e-12
+    icorner: 10k
+
+  rana2000:
+    a0: 1e5
+    gbw: 908M       # from closed-loop gain fit & stability considerations
+    poles:
+      - 653M
+    delay: 300p
+    vmax: 3.5
+    imax: 80m
+    sr: 275e6
+    vnoise: 1e-9
+    vcorner: 1k
+    inoise: 1e-12
+    icorner: 10k
+
+  opa827:
+    a0: 1e6         # 120 dB
+    gbw: 22M
+    vnoise: 4e-9
+    vcorner: 15
+    inoise: 2.2e-15
+    icorner: 100    # not given
+    vmax: 12
+    imax: .030
+    sr: 55e6
+
+  lf356:
+    comment: all info from datasheet
+    a0: 100e3
+    gbw: 5e6
+    sr: 12e6
+    vnoise: 12e-9
+    vcorner: 100
+    inoise: 0.01e-12
+    icorner: 100
+
+  sr560:
+    description: approximate only for gain of 100, low noise
+    a0: 4e6         # http://nodus.ligo.caltech.edu:8080/40m/2806
+    gbw: 20M
+    poles:
+      - 70M
+    delay: 12.3n
+    vnoise: 5e-9
+    vcorner: 30     # http://nodus.ligo.caltech.edu:8080/40m/2806
+    inoise: 7e-15   # WAG
+    icorner: 100    # WAG
+    sr: 12.5e6
+    vmax: 6
+    imax: 0.100
+
+  opa548:
+    a0: 31.6k
+    gbw: 1M
+    vnoise: 90n
+    vcorner: 20
+    inoise: 0.2p
+    icorner: 100
+    vmax: 3.3
+    imax: 3
+    sr: 10M
+
+  opa547:
+    comment: From datasheet http://www.ti.com/lit/ds/symlink/opa547.pdf
+    a0: 562341.32519  #115 db
+    gbw: 1M
+    vnoise: 90e-9
+    vcorner: 30
+    inoise: 200e-15
+    icorner: 10     #Guess
+    vmax: 13.1
+    imax: 0.5
+    sr: 6e6
+
+  ad8671:
+    a0: 1M
+    gbw: 10M
+    vnoise: 3.8n
+    vcorner: 10
+    inoise: 0.3p
+    icorner: 100
+    vmax: 13.8
+    imax: 0.02
+    sr: 4M
+
+  opa140:
+    a0: 1e6
+    gbw: 11e6
+    vnoise: 5e-9
+    vcorner: 18
+    inoise: 0.8e-15
+    icorner: 0.1
+    sr: 20M
+    imax: 30m
+
+  ad587:
+    description: ZK, model for low-noise 10V reference
+    comment: Use as a unity-gain follower with grounded input
+    a0: 1e12
+    gbw: 1e15
+    vnoise: 1e-7
+    vcorner: 1
+    inoise: 0
+    icorner: 1e-10
+
+  ad620:
+    description: EQ, ad620 at unity gain
+    a0: 1e5         # Made up!
+    gbw:  12e6
+    vnoise: 72e-9   # Lower at higher gains
+    vcorner: 13
+    inoise: 1e-13
+    icorner: 40
+    vmax: 12
+    imax: 0.18
+    sr: 1e6
+
+  lm7905:
+    description: EQ, model for 7905 voltage reference
+    a0: 1e12
+    gbw: 1e15
+    vnoise: 1.3e-5  # Data sheet lists 125uV rms from 10-100Hz
+    vcorner: 10
+    inoise: 0
+    icorner: 1e-10
+
+  ad8672:
+    description: CC, EFM circuit
+    comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD8671_8672_8674.pdf
+    a0: 1e6
+    gbw: 1e7
+    vnoise: 2.8e-9 # extremely low
+    vcorner: 0.1 # guess, extremely low
+    inoise: 0.3e-12
+    icorner: 500 # kinda high corner freq
+    vmax: 13.8
+    imax: 20e-3
+    sr: 4e6
+
   ad743:
-    comment: from 40m git
     a0: 4e6
     gbw: 20M
     poles:
       - 70M
     delay: 12.3n
     vnoise: 2.9e-9
-    vcorner: 30     # from AD743 Rev E datasheet
+    vcorner: 30 # from AD743 Rev E datasheet
     inoise: 7e-15
-    icorner: 100    # from AD743 Rev E datasheet
+    icorner: 100 # from AD743 Rev E datasheet
     sr: 12.5e6
     vmax: 12
     imax: 0.02
+
+  ad549:
+    description: CC, EFM circuit
+    comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD549.pdf
+    a0: 1e5 # at 10 Hz
+    gbw: 1e6
+    vnoise: 40e-9
+    vcorner: 100 # guess
+    inoise: 0.22e-15
+    icorner: 100 # guess
+    vmax: 15
+    imax: 700e-6
+    sr: 3e6
+
+  ad602:
+    description: Just a hack for this variable gain opamp.
+    comment: Add a 100 Ohm resistance between IN- and IN+.
+    a0: 10          #Assuming operation at 20dB gain
+    gbw: 90e6       #Using figure 5 in the datasheet
+    vnoise: 1.4e-9  #Datasheet
+    vcorner: 10     #guess
+    inoise: 3.35e-13 #Calculated as sot noise from input bias current stated in the datasheet
+    icorner: 1e3    #guess
+    vmax: 5         #Assuming AD602 is connected to +-5 supply
+    imax: 50e-3     #Datasheet
+    sr: 275e6       #Datasheet
+    delay: 2n       #Group delay
+
+  ad847:
+    comment: unverified, from datasheet only
+    a0: 5.5e3       # from data sheet
+    gbw: 50M        # from data sheet OLG corner at 9.09 kHz
+    vnoise: 15n     # from data sheet
+    vcorner: 150    # guess from data sheet noise plot
+    inoise: 1.5p    # from data sheet
+    icorner: 100    # from wild guess not from data sheet
+    vmax: 12        # from data sheet
+    imax: 0.032     # from data sheet
+    delay: 18.9n    # unknown
+    sr: 300e6       # from data sheet
+
+  ad8675:
+    comment: https://www.analog.com/media/en/technical-documentation/data-sheets/AD8675.pdf
+    a0: 1995262.314969   #126dB
+    gbw: 10e6
+    sr: 2.5e6
+    vnoise: 2.8e-9
+    vcorner: 20
+    inoise: 0.3e-12
+    icorner: 20     #Guess
+    vmax: 15
+    imax: 35e-3
