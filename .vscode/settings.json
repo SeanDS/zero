@@ -10,4 +10,5 @@
     "restructuredtext.linter.extraArgs": [
         "--max-line-length 100",
     ],
+    "restructuredtext.confPath": "${workspaceFolder}/docs",
 }

@@ -53,6 +53,18 @@ class AcNoiseAnalysis(AcSignalAnalysis):
         input_refer : bool, optional
             Refer the noise to the input.
 
+        Other Parameters
+        ----------------
+        frequencies : :class:`np.ndarray` or sequence
+            The frequency vector to calculate the response with.
+        node, node_p, node_n : :class:`.Node`
+            The node or nodes to make the input. The `node` parameter sets a single, grounded input,
+            whereas `node_p` and `node_n` together create a floating input.
+        print_equations : :class:`bool`, optional
+            Print the circuit equations.
+        print_matrix : :class:`bool`, optional
+            Print the circuit matrix.
+
         Returns
         -------
         :class:`~.solution.Solution`
@@ -63,13 +75,10 @@ class AcNoiseAnalysis(AcSignalAnalysis):
             LOGGER.warning(f"assuming default input impedance of {self.DEFAULT_INPUT_IMPEDANCE}")
             impedance = self.DEFAULT_INPUT_IMPEDANCE
         self._do_calculate(input_type, impedance=impedance, is_noise=True, **kwargs)
-
         if incoherent_sum:
             self._compute_sums(incoherent_sum)
-
         if input_refer:
             self._refer_sink_noise_to_input()
-
         return self.solution
 
     def circuit_matrix(self, *args, **kwargs):
@@ -190,11 +199,11 @@ class AcNoiseAnalysis(AcSignalAnalysis):
 
         for __, noise_spectra in self.solution.noise.items():
             for noise in noise_spectra:
-                self.solution.replace(noise, noise / input_response)
+                self.solution.replace(noise, noise * input_response.inverse())
 
         for __, noise_sums in self.solution.noise_sums.items():
             for noise in noise_sums:
-                self.solution.replace(noise, noise / input_response)
+                self.solution.replace(noise, noise * input_response.inverse())
 
     def to_signal_analysis(self):
         """Return a new signal analysis using the settings defined in the current analysis."""

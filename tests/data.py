@@ -1,14 +1,14 @@
-"""Test case with methods for constructing mock data."""
+"""Test case with methods for constructing mock Zero data."""
 
 import abc
 from unittest import TestCase
 import numpy as np
 
-from zero.components import OpAmp, Resistor, Node, VoltageNoise, CurrentNoise
+from zero.components import OpAmp, Resistor, Node, OpAmpVoltageNoise, OpAmpCurrentNoise
 from zero.solution import Solution
 from zero.data import Series, Response, NoiseDensity, MultiNoiseDensity
 
-# fixed random seed for test reproducibility
+# Fixed random seed for test reproducibility.
 np.random.seed(seed=2543070)
 
 
@@ -32,15 +32,18 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
         self._last_opamp_num += 1
         return f"op{self._last_opamp_num}"
 
-    def _data(self, shape):
-        return np.random.random(shape)
+    def _data(self, shape, cplx=False):
+        data = np.random.random(shape)
+        if cplx:
+            data = data + 1j * self._data(shape, False)
+        return data
 
     def _freqs(self, n=10):
         return np.sort(self._data(n))
 
-    def _series(self, freqs, data=None):
+    def _series(self, freqs, data=None, cplx=False):
         if data is None:
-            data = self._data(len(freqs))
+            data = self._data(len(freqs), cplx)
         return Series(freqs, data)
 
     def _node(self):
@@ -64,17 +67,17 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _voltage_noise(self, component=None):
         if component is None:
             component = self._resistor()
-        return VoltageNoise(component)
+        return OpAmpVoltageNoise(component=component)
 
     def _current_noise(self, node=None, component=None):
         if node is None:
             node = self._node()
         if component is None:
             component = self._resistor(node1=node)
-        return CurrentNoise(node, component)
+        return OpAmpCurrentNoise(node=node, component=component)
 
     def _response(self, source, sink, freqs):
-        return Response(source=source, sink=sink, series=self._series(freqs))
+        return Response(source=source, sink=sink, series=self._series(freqs, cplx=True))
 
     def _v_v_response(self, freqs, node_source=None, node_sink=None):
         if node_source is None:
@@ -107,28 +110,28 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _noise_density(self, freqs, source, sink):
         return NoiseDensity(source=source, sink=sink, series=self._series(freqs))
 
-    def _voltage_noise_at_node(self, freqs, source=None, sink=None):
+    def _vnoise_at_node(self, freqs, source=None, sink=None):
         if source is None:
             source = self._voltage_noise()
         if sink is None:
             sink = self._node()
         return self._noise_density(freqs, source, sink)
 
-    def _voltage_noise_at_comp(self, freqs, source=None, sink=None):
+    def _vnoise_at_comp(self, freqs, source=None, sink=None):
         if source is None:
             source = self._voltage_noise()
         if sink is None:
             sink = self._resistor()
         return self._noise_density(freqs, source, sink)
 
-    def _current_noise_at_node(self, freqs, source=None, sink=None):
+    def _inoise_at_node(self, freqs, source=None, sink=None):
         if source is None:
             source = self._current_noise()
         if sink is None:
             sink = self._node()
         return self._noise_density(freqs, source, sink)
 
-    def _current_noise_at_comp(self, freqs, source=None, sink=None):
+    def _inoise_at_comp(self, freqs, source=None, sink=None):
         if source is None:
             source = self._current_noise()
         if sink is None:

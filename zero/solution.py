@@ -11,7 +11,8 @@ from matplotlib.ticker import MultipleLocator
 from .config import ZeroConfig
 from .data import (Response, NoiseDensity, MultiNoiseDensity, ReferenceResponse, ReferenceNoise,
                    frequencies_match)
-from .components import BaseElement, Noise
+from .components import BaseElement
+from .noise import Noise
 from .format import Quantity
 from .misc import lighten_colours
 
@@ -1417,6 +1418,13 @@ class Solution:
         other : :class:`.Solution`
             The other solution to compare to.
 
+        Other Parameters
+        ----------------
+        defaults_only : :class:`bool`, optional
+            Whether to check only the default functions, or everything. Defaults to everything.
+        meta_only : :class:`bool`, optional
+            Whether to check only meta data, not function data, when comparing. Defaults to False.
+
         Returns
         -------
         :class:`bool`
@@ -1494,9 +1502,9 @@ def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
     sol_a, sol_b : :class:`.Solution`
         The solutions to compare.
     defaults_only : :class:`bool`, optional
-        Whether to check only the default functions, or everything.
+        Whether to check only the default functions, or everything. Defaults to everything.
     meta_only : :class:`bool`, optional
-        Whether to check only meta data when comparing.
+        Whether to check only meta data, not function data, when comparing. Defaults to False.
 
     Returns
     -------

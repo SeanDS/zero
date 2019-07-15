@@ -176,15 +176,11 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         """Calculate solution."""
         raise NotImplementedError
 
-    def _do_calculate(self, input_type, frequencies=None, print_equations=False, print_matrix=False,
-                      stream=None, **inputs):
+    def _do_calculate(self, input_type, frequencies, print_equations=False, print_matrix=False,
+                      **inputs):
         """Calculate analysis results."""
         # Reset state.
         self.reset()
-
-        if frequencies is None:
-            # Default to empty list.
-            frequencies = []
 
         self.frequencies = np.array(frequencies)
 
@@ -196,14 +192,11 @@ class BaseAcAnalysis(BaseAnalysis, metaclass=abc.ABCMeta):
         # Validate.
         self.validate_circuit()
 
-        if stream is None:
-            stream = sys.stdout
-
         if print_equations:
-            print(self.circuit_equation_display(), file=stream)
+            print(self.circuit_equation_display(), file=self.stream)
 
         if print_matrix:
-            print(self.circuit_matrix_display(), file=stream)
+            print(self.circuit_matrix_display(), file=self.stream)
 
         # Calculate transfer functions by solving the transfer matrix for input at the circuit's
         # input node/component.
