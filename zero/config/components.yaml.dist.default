@@ -1129,6 +1129,7 @@ op-amps:
     sr: 300e6       # from data sheet
 
   ad8675:
+    description: Precision, wide bandwidth op amp
     comment: https://www.analog.com/media/en/technical-documentation/data-sheets/AD8675.pdf
     a0: 1995262.314969   #126dB
     gbw: 10e6
