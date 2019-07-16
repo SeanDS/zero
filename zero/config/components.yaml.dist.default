@@ -1046,14 +1046,21 @@ op-amps:
     >>: *ad8671
 
   opa140:
-    a0: 1e6
+    a0: 2e6         # 126dB From Datasheet
     gbw: 11e6
     vnoise: 5e-9
     vcorner: 18
     inoise: 0.8e-15
     icorner: 0.1
     sr: 20M
+    vmax: 14.8
     imax: 30m
+
+  opa2140:
+    >>: *opa140
+
+  opa4140:
+    >>:  *opa140
 
   ad587:
     description: ZK, model for low-noise 10V reference
