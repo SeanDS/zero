@@ -953,20 +953,9 @@ op-amps:
 
   lt1128:
     description: low voltage noise - copied from lt1028
-    a0: 30e6
-    gbw: 15e6
-    poles:
-      - 780k
-    zeros:
-      - 3.14M
-    delay: 7.5n
-    vnoise: 0.85e-9
-    vcorner: 3.5
-    inoise: 0.9e-12
-    icorner: 250
-    vmax: 12
-    imax: 0.02
-    sr: 15e6
+    <<: *lt1028
+    gbw: 15e6       # Datasheet says 13M min, 20M typ
+    sr: 6e6         # From Datasheet (typ value)
 
   RW1128:
     description: ow noise Rai FET box
