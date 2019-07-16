@@ -972,20 +972,11 @@ op-amps:
     >>: *cs3002
     description: Single amplifier version of cs3002
 
-
   max4107:
-    a0: 1e5
-    gbw: 908M       # from closed-loop gain fit & stability considerations
-    poles:
-      - 653M
-    delay: 300p
-    vmax: 3.5
-    imax: 80m
-    sr: 275e6
-    vnoise: .75e-9  # !!! best ever
-    vcorner: 1k
-    inoise: 2.5e-12
-    icorner: 10k
+    description: Slower but higher gain version of max4106
+    >>: *max4106
+    gbw: 778M       # Scaled using datasheet and max4106 gbw above
+    sr: 500e6
 
   rana2000:
     a0: 1e5
