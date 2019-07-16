@@ -957,23 +957,6 @@ op-amps:
     gbw: 15e6       # Datasheet says 13M min, 20M typ
     sr: 6e6         # From Datasheet (typ value)
 
-  RW1128:
-    description: ow noise Rai FET box
-    a0: 30e6
-    gbw: 15e6
-    poles:
-      - 780k
-    zeros:
-      - 3.14M
-    delay: 7.5n
-    vnoise: 0.5e-9
-    vcorner: 8
-    inoise: 9e-15
-    icorner: 250
-    vmax: 12
-    imax: 0.02
-    sr: 15e6
-
   cs3002:
     description: added by Rana for KAGRA L4-C preamp 2013
     a0: 1e8         # seems bogus
