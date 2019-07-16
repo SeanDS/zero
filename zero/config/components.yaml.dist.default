@@ -1110,7 +1110,7 @@ op-amps:
     imax: 700e-6
     sr: 3e6
 
-  ad602:
+  ad602:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: Just a hack for this variable gain opamp.
     comment: Add a 100 Ohm resistance between IN- and IN+.
     a0: 10          #Assuming operation at 20dB gain
