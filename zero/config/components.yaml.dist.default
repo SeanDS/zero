@@ -249,7 +249,7 @@ op-amps:
     imax: 0.02
     sr: 20e6
 
-  lt1028:
+  lt1028: &lt1028
     description: low noise
     comment: beware of 400 kHz noise peak
     a0: 30e6
@@ -936,8 +936,8 @@ op-amps:
     sr: 100e6
 
   lt1128:
-    description: low voltage noise - copied from lt1028
     <<: *lt1028
+    description: Ultralow Noise Precision High Speed Op Amps, different version of lt1028
     gbw: 15e6       # Datasheet says 13M min, 20M typ
     sr: 6e6         # From Datasheet (typ value)
 
