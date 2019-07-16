@@ -1062,16 +1062,6 @@ op-amps:
   opa4140:
     >>:  *opa140
 
-  ad587:
-    description: ZK, model for low-noise 10V reference
-    comment: Use as a unity-gain follower with grounded input
-    a0: 1e12
-    gbw: 1e15
-    vnoise: 1e-7
-    vcorner: 1
-    inoise: 0
-    icorner: 1e-10
-
   ad620:
     description: EQ, ad620 at unity gain
     a0: 1e5         # Made up!
