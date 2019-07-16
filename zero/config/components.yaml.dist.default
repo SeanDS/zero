@@ -982,6 +982,13 @@ op-amps:
     vcorner: 0.08
     inoise: 2e-12
     icorner: 1      # guess / not in datasheet as of 1/2013
+    vmax: 4.7       # From Datasheet
+    sr: 5e6         # From Datasheet
+
+  cs3001:
+    >>: *cs3002
+    description: Single amplifier version of cs3002
+
 
   max4107:
     a0: 1e5
