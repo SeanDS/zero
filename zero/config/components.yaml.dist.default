@@ -978,20 +978,6 @@ op-amps:
     gbw: 778M       # Scaled using datasheet and max4106 gbw above
     sr: 500e6
 
-  rana2000:
-    a0: 1e5
-    gbw: 908M       # from closed-loop gain fit & stability considerations
-    poles:
-      - 653M
-    delay: 300p
-    vmax: 3.5
-    imax: 80m
-    sr: 275e6
-    vnoise: 1e-9
-    vcorner: 1k
-    inoise: 1e-12
-    icorner: 10k
-
   opa827:
     a0: 1e6         # 120 dB
     gbw: 22M
