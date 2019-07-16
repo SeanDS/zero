@@ -1062,7 +1062,7 @@ op-amps:
   opa4140:
     >>:  *opa140
 
-  ad620:
+  ad620:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: EQ, ad620 at unity gain
     a0: 1e5         # Made up!
     gbw:  12e6
