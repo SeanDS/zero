@@ -819,22 +819,6 @@ op-amps:
     vmax: 3.9
     imax: 50e-3
 
-  ad8674:
-    a0: 6e6
-    gbw: 14.7M
-    poles:
-      - 1.75M
-    zeros:
-      - 2.83M 23.5M
-    delay: 12.3n
-    vnoise: 2.8e-9
-    vcorner: 5 # guess
-    inoise: 0.3e-12
-    icorner: 100 # wild guess
-    sr: 4e6
-    vmax: 12
-    imax: 0.02
-
   ad745:
     a0: 4e6
     gbw: 20M
@@ -1038,15 +1022,28 @@ op-amps:
     sr: 6e6
 
   ad8671:
-    a0: 1M
-    gbw: 10M
-    vnoise: 3.8n
-    vcorner: 10
-    inoise: 0.3p
-    icorner: 100
+    description: Precision, Very Low Noise, Low Input Bias Current Operational Amplifiers
+    comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD8671_8672_8674.pdf
+    a0: 6e6
+    gbw: 14.7M
+    poles:
+      - 1.75M
+    zeros:
+      - 2.83M 23.5M
+    delay: 12.3n
+    vnoise: 2.8e-9  # extremely low
+    vcorner: 0.1    # guess, extremely low
+    inoise: 0.3e-12
+    icorner: 500    # kinda high corner freq
     vmax: 13.8
-    imax: 0.02
-    sr: 4M
+    imax: 20e-3
+    sr: 4e6
+
+  ad8672:
+    >>: *ad8671
+
+  ad8674:
+    >>: *ad8671
 
   opa140:
     a0: 1e6
@@ -1088,19 +1085,6 @@ op-amps:
     vcorner: 10
     inoise: 0
     icorner: 1e-10
-
-  ad8672:
-    description: CC, EFM circuit
-    comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD8671_8672_8674.pdf
-    a0: 1e6
-    gbw: 1e7
-    vnoise: 2.8e-9 # extremely low
-    vcorner: 0.1 # guess, extremely low
-    inoise: 0.3e-12
-    icorner: 500 # kinda high corner freq
-    vmax: 13.8
-    imax: 20e-3
-    sr: 4e6
 
   ad743:
     a0: 4e6
