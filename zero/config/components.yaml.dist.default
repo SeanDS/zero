@@ -1074,15 +1074,6 @@ op-amps:
     imax: 0.18
     sr: 1e6
 
-  lm7905:
-    description: EQ, model for 7905 voltage reference
-    a0: 1e12
-    gbw: 1e15
-    vnoise: 1.3e-5  # Data sheet lists 125uV rms from 10-100Hz
-    vcorner: 10
-    inoise: 0
-    icorner: 1e-10
-
   ad743:
     a0: 4e6
     gbw: 20M
