@@ -1089,7 +1089,7 @@ op-amps:
     imax: 0.02
 
   ad549:
-    description: CC, EFM circuit
+    description: Ultralow Input Bias Current Operational Amplifier
     comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD549.pdf
     a0: 1e5 # at 10 Hz
     gbw: 1e6
