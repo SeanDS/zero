@@ -571,7 +571,7 @@ op-amps:
     inoise: 25e-12
     icorner: 10k
 
-  max4106:
+  max4106: &max4106
     a0: 1e5
     gbw: 908M # from closed-loop gain fit & stability considerations
     poles:
@@ -941,7 +941,7 @@ op-amps:
     gbw: 15e6       # Datasheet says 13M min, 20M typ
     sr: 6e6         # From Datasheet (typ value)
 
-  cs3002:
+  cs3002: &cs3002
     description: added by Rana for KAGRA L4-C preamp 2013
     a0: 1e8         # seems bogus
     gbw: 1e6
@@ -953,12 +953,12 @@ op-amps:
     sr: 5e6         # From Datasheet
 
   cs3001:
-    >>: *cs3002
+    <<: *cs3002
     description: Single amplifier version of cs3002
 
   max4107:
     description: Slower but higher gain version of max4106
-    >>: *max4106
+    <<: *max4106
     gbw: 778M       # Scaled using datasheet and max4106 gbw above
     sr: 500e6
 
@@ -1021,7 +1021,7 @@ op-amps:
     imax: 0.5
     sr: 6e6
 
-  ad8671:
+  ad8671: &ad8671
     description: Precision, Very Low Noise, Low Input Bias Current Operational Amplifiers
     comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD8671_8672_8674.pdf
     a0: 6e6
@@ -1040,12 +1040,12 @@ op-amps:
     sr: 4e6
 
   ad8672:
-    >>: *ad8671
+    <<: *ad8671
 
   ad8674:
-    >>: *ad8671
+    <<: *ad8671
 
-  opa140:
+  opa140: &opa140
     a0: 2e6         # 126dB From Datasheet
     gbw: 11e6
     vnoise: 5e-9
@@ -1057,10 +1057,10 @@ op-amps:
     imax: 30m
 
   opa2140:
-    >>: *opa140
+    <<: *opa140
 
   opa4140:
-    >>:  *opa140
+    <<:  *opa140
 
   ad620:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: EQ, ad620 at unity gain
