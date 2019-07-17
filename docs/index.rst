@@ -17,8 +17,9 @@ inductors and op-amps to predict responses and noise.
 Why |Zero|?
 ===========
 
-Given that tools such as `LTspice <http://www.analog.com/en/design-center/design-tools-and-calculators/ltspice-simulator.html>`_
-and `Qucs <http://qucs.sourceforge.net/>`_ exist, why use this tool?
+Given that tools such as `LTspice
+<http://www.analog.com/en/design-center/design-tools-and-calculators/ltspice-simulator.html>`_ and
+`Qucs <http://qucs.sourceforge.net/>`_ exist, why use this tool?
 
 The answer is: `it depends`. For circuits where dc analysis is needed, or where you must
 model non-linear or time-variant effects, then the above tools are very useful; however,
@@ -46,10 +47,11 @@ implemented in |Zero|.
 What |Zero| does
 ================
 
-|Zero| can perform small signal analyses on circuits containing linear components. It is
-inherently AC, and as such can compute :ref:`frequency responses between nodes or components <analyses/ac/signal:Small AC signal analysis>`
-and :ref:`noise spectral densities at nodes <analyses/ac/noise:Small AC noise analysis>`. Inputs and
-outputs can be specified in terms of voltage or current.
+|Zero| can perform small signal analyses on circuits containing linear components. It is inherently
+AC, and as such can compute :ref:`frequency responses between nodes or components
+<analyses/ac/signal:Small AC signal analysis>` and :ref:`noise spectral densities at nodes
+<analyses/ac/noise:Small AC noise analysis>`. Inputs and outputs can be specified in terms of
+voltage or current.
 
 For more information, see :ref:`the available AC analyses <analyses/ac/index:Available analyses>`.
 
@@ -77,11 +79,12 @@ For more information, see :ref:`analyses/ac/index:AC analyses`.
 LISO
 ====
 
-|Zero| is loosely based on `LISO <https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso>`_
-by Gerhard Heinzel. It (mostly) understands LISO circuit mode input files, meaning that it
-can be used in place of LISO to simulate circuit signals. It also understands LISO output
-files, allowing results previously computed with LISO to be plotted, and for LISO results
-to be directly compared to those of this program.
+|Zero| is loosely based on `LISO
+<https://wiki.projekt.uni-hannover.de/aei-geo-q/start/software/liso>`_ by Gerhard Heinzel. It
+(mostly) understands LISO circuit mode input files, meaning that it can be used in place of LISO to
+simulate circuit signals. It also understands LISO output files, allowing results previously
+computed with LISO to be plotted, and for LISO results to be directly compared to those of this
+program.
 
 Contents
 ========
