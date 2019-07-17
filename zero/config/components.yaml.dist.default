@@ -899,25 +899,26 @@ op-amps:
     imax: 100m
     sr: 400e6
 
-# The following are additional opamp definitions which were added in CIT labs at 40m LISO repo.
   lt1012:
     description: Picoamp Input Current, Microvolt Offset, Low Noise Op Amp
+    comment: from Caltech 40m LISO git repository
     a0: 2e6
     gbw: 8e6
-    vnoise: 15e-9   #from datasheet
-    vcorner: 2.5    #from datasheet
-    inoise: 6e-15   #from datasheet
-    icorner: 120    #from datasheet
+    vnoise: 15e-9   # from datasheet
+    vcorner: 2.5    # from datasheet
+    inoise: 6e-15   # from datasheet
+    icorner: 120    # from datasheet
     vmax: 12
     imax: 0.02
     sr: 2.5e6
 
   lt1792:
+    comment: from Caltech 40m LISO git repository
     a0: 4e6
     gbw: 4e6
-    vnoise: 4.2e-9   #from datasheet
-    vcorner: 30      #from datasheet
-    inoise: 10e-15   #from datasheet
+    vnoise: 4.2e-9   # from datasheet
+    vcorner: 30      # from datasheet
+    inoise: 10e-15   # from datasheet
     icorner: 120     # WAG
     vmax: 12
     imax: 0.02
@@ -925,6 +926,7 @@ op-amps:
 
   op497:
     description: low noise quad FET, for QPD transimpedance
+    comment: from Caltech 40m LISO git repository
     a0: 2e6
     gbw: 0.5e6
     vnoise: 15e-9
@@ -938,11 +940,13 @@ op-amps:
   lt1128:
     <<: *lt1028
     description: Ultralow Noise Precision High Speed Op Amps, different version of lt1028
+    comment: from Caltech 40m LISO git repository
     gbw: 15e6       # Datasheet says 13M min, 20M typ
     sr: 6e6         # From Datasheet (typ value)
 
   cs3002: &cs3002
     description: added by Rana for KAGRA L4-C preamp 2013
+    comment: from Caltech 40m LISO git repository
     a0: 1e8         # seems bogus
     gbw: 1e6
     vnoise: 6e-9
@@ -955,14 +959,17 @@ op-amps:
   cs3001:
     <<: *cs3002
     description: Single amplifier version of cs3002
+    comment: from Caltech 40m LISO git repository
 
   max4107:
-    description: Slower but higher gain version of max4106
     <<: *max4106
+    description: Slower but higher gain version of max4106
+    comment: from Caltech 40m LISO git repository
     gbw: 778M       # Scaled using datasheet and max4106 gbw above
     sr: 500e6
 
   opa827:
+    comment: from Caltech 40m LISO git repository
     a0: 1e6         # 120 dB
     gbw: 22M
     vnoise: 4e-9
@@ -974,7 +981,7 @@ op-amps:
     sr: 55e6
 
   lf356:
-    comment: all info from datasheet
+    comment: from Caltech 40m LISO git repository; all info from datasheet
     a0: 100e3
     gbw: 5e6
     sr: 12e6
@@ -985,6 +992,7 @@ op-amps:
 
   sr560:
     description: approximate only for gain of 100, low noise
+    comment: from Caltech 40m LISO git repository
     a0: 4e6         # http://nodus.ligo.caltech.edu:8080/40m/2806
     gbw: 20M
     poles:
@@ -999,6 +1007,7 @@ op-amps:
     imax: 0.100
 
   opa548:
+    comment: from Caltech 40m LISO git repository
     a0: 31.6k
     gbw: 1M
     vnoise: 90n
@@ -1010,20 +1019,20 @@ op-amps:
     sr: 10M
 
   opa547:
-    comment: From datasheet http://www.ti.com/lit/ds/symlink/opa547.pdf
-    a0: 562341.32519  #115 db
+    comment: from Caltech 40m LISO git repository; from datasheet http://www.ti.com/lit/ds/symlink/opa547.pdf
+    a0: 562341.32519  # 115 db
     gbw: 1M
     vnoise: 90e-9
     vcorner: 30
     inoise: 200e-15
-    icorner: 10     #Guess
+    icorner: 10       # Guess
     vmax: 13.1
     imax: 0.5
     sr: 6e6
 
   ad8671: &ad8671
     description: Precision, Very Low Noise, Low Input Bias Current Operational Amplifiers
-    comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD8671_8672_8674.pdf
+    comment: from Caltech 40m LISO git repository; http://www.analog.com/media/en/technical-documentation/data-sheets/AD8671_8672_8674.pdf
     a0: 6e6
     gbw: 14.7M
     poles:
@@ -1041,11 +1050,14 @@ op-amps:
 
   ad8672:
     <<: *ad8671
+    comment: from Caltech 40m LISO git repository
 
   ad8674:
     <<: *ad8671
+    comment: from Caltech 40m LISO git repository
 
   opa140: &opa140
+    comment: from Caltech 40m LISO git repository
     a0: 2e6         # 126dB From Datasheet
     gbw: 11e6
     vnoise: 5e-9
@@ -1058,12 +1070,15 @@ op-amps:
 
   opa2140:
     <<: *opa140
+    comment: from Caltech 40m LISO git repository
 
   opa4140:
     <<:  *opa140
+    comment: from Caltech 40m LISO git repository
 
   ad620:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: EQ, ad620 at unity gain
+    comment: from Caltech 40m LISO git repository
     a0: 1e5         # Made up!
     gbw:  12e6
     vnoise: 72e-9   # Lower at higher gains
@@ -1075,6 +1090,7 @@ op-amps:
     sr: 1e6
 
   ad743:
+    comment: from Caltech 40m LISO git repository
     a0: 4e6
     gbw: 20M
     poles:
@@ -1090,7 +1106,7 @@ op-amps:
 
   ad549:
     description: Ultralow Input Bias Current Operational Amplifier
-    comment: http://www.analog.com/media/en/technical-documentation/data-sheets/AD549.pdf
+    comment: from Caltech 40m LISO git repository; http://www.analog.com/media/en/technical-documentation/data-sheets/AD549.pdf
     a0: 1e5 # at 10 Hz
     gbw: 1e6
     vnoise: 40e-9
@@ -1103,20 +1119,20 @@ op-amps:
 
   ad602:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: Just a hack for this variable gain opamp.
-    comment: Add a 100 Ohm resistance between IN- and IN+.
-    a0: 10          #Assuming operation at 20dB gain
-    gbw: 90e6       #Using figure 5 in the datasheet
-    vnoise: 1.4e-9  #Datasheet
-    vcorner: 10     #guess
-    inoise: 3.35e-13 #Calculated as sot noise from input bias current stated in the datasheet
-    icorner: 1e3    #guess
-    vmax: 5         #Assuming AD602 is connected to +-5 supply
-    imax: 50e-3     #Datasheet
-    sr: 275e6       #Datasheet
-    delay: 2n       #Group delay
+    comment: from Caltech 40m LISO git repository; add a 100 Ohm resistance between IN- and IN+.
+    a0: 10          # Assuming operation at 20dB gain
+    gbw: 90e6       # Using figure 5 in the datasheet
+    vnoise: 1.4e-9  # Datasheet
+    vcorner: 10     # guess
+    inoise: 3.35e-13 # Calculated as sot noise from input bias current stated in the datasheet
+    icorner: 1e3    # guess
+    vmax: 5         # Assuming AD602 is connected to +-5 supply
+    imax: 50e-3     # Datasheet
+    sr: 275e6       # Datasheet
+    delay: 2n       # Group delay
 
   ad847:
-    comment: unverified, from datasheet only
+    comment: from Caltech 40m LISO git repository; unverified, from datasheet only
     a0: 5.5e3       # from data sheet
     gbw: 50M        # from data sheet OLG corner at 9.09 kHz
     vnoise: 15n     # from data sheet
@@ -1130,13 +1146,13 @@ op-amps:
 
   ad8675:
     description: Precision, wide bandwidth op amp
-    comment: https://www.analog.com/media/en/technical-documentation/data-sheets/AD8675.pdf
-    a0: 1995262.314969   #126dB
+    comment: from Caltech 40m LISO git repository; https://www.analog.com/media/en/technical-documentation/data-sheets/AD8675.pdf
+    a0: 1995262.314969   # 126dB
     gbw: 10e6
     sr: 2.5e6
     vnoise: 2.8e-9
     vcorner: 20
     inoise: 0.3e-12
-    icorner: 20     #Guess
+    icorner: 20     # Guess
     vmax: 15
     imax: 35e-3
