@@ -1,7 +1,6 @@
-"""Component libraries"""
+"""Component library parser"""
 
 import logging
-import re
 import numpy as np
 
 from .base import BaseConfig
@@ -12,116 +11,121 @@ LOGGER = logging.getLogger(__name__)
 
 class OpAmpLibrary(BaseConfig):
     """Op-amp library"""
-    # user config filename
+    # User config filename.
     USER_CONFIG_FILENAME = "components.yaml"
-    # default config copied to user directory if requested
+    # Default config copied to user directory if requested.
     DEFAULT_USER_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist"
-    # config into which others are merged
+    # Config into which others are merged.
     BASE_CONFIG_FILENAME = USER_CONFIG_FILENAME + ".dist.default"
 
     def __init__(self, *args, **kwargs):
-        """Instantiate a new op-amp library"""
-
-        # call parent constructor
+        """Instantiate a new op-amp library."""
         super().__init__(*args, **kwargs)
-
-        # default options
+        # Defaults.
         self.data = {}
         self.loaded = False
-
-        # load and parse op-amp data from config file
+        # Load and parse op-amp data from config file.
         self.populate_library()
 
     def populate_library(self):
-        """Load and parse op-amp data from config file"""
-
+        """Load and parse op-amp data from config file."""
         count = 0
-
-        # each section is a new op-amp
+        # Each section is a new op-amp.
         if "op-amps" in self and self["op-amps"] is not None:
             for opamp, data in self["op-amps"].items():
                 self._parse_lib_data(opamp, data)
                 count += 1
-
         LOGGER.debug("found %i op-amps", count)
-
         self.loaded = True
 
     @classmethod
     def format_name(cls, name):
-        """Format op-amp name for use as a key in the data dict
+        """Format op-amp name for use as a key in the data dict.
 
-        :param name: name to format
-        :type name: str
-        :return: formatted name
-        :rtype: str
+        Parameters
+        ----------
+        name : :class:`str`
+            The name to format.
+
+        Returns
+        -------
+        :class:`str`
+            The formatted name.
         """
-
         return str(name).upper()
 
     def get_data(self, name):
-        """Get op-amp data
+        """Get op-amp data.
 
-        :param name: op-amp name
-        :type name: str
-        :return: op-amp data
-        :rtype: dict
+        Parameters
+        ----------
+        name : :class:`str`
+            The op-amp name.
+
+        Returns
+        -------
+        :class:`dict`
+            The op-amp data.
+
+        Raises
+        ------
+        ValueError
+            If the specified op-amp name is not found in the library.
         """
-
         model = self.format_name(name)
-
         try:
             return self.data[model]
         except KeyError:
             raise ValueError(f"op-amp model '{name}' not found in library")
 
     def has_data(self, name):
-        """Check if op-amp data exists in library
+        """Check if op-amp data exists in library.
 
-        :param name: op-amp name
-        :type name: str
-        :return: whether op-amp exists
-        :rtype: bool
+        Parameters
+        ----------
+        name : :class:`str`
+            The op-amp name.
+
+        Returns
+        -------
+        :class:`bool`
+            Whether the op-amp exists in the library.
         """
-
         return self.format_name(name) in self.data.keys()
 
     def match(self, opamp):
-        """Get model name of library op-amp given a specified op-amp
+        """Get model name of library op-amp given a specified op-amp.
 
-        :param opamp: op-amp object to match
-        :type opamp: :class:`~OpAmp`
-        :return: model name, or None
-        :rtype: str or NoneType
+        Parameters
+        ----------
+        opamp : :class:`.OpAmp`
+            The op-amp object to match.
+
+        Returns
+        -------
+        :class:`str`
+            The op-amp's name as specified in the library, or None if not found.
         """
-
         for model in self.data:
             if opamp.params == self.data[model]:
                 return model
-
         return None
 
     def _parse_lib_data(self, name, data):
-        """Parse op-amp data from config file"""
-        # handle poles and zeros
+        """Parse op-amp data from config file."""
         poles = []
         zeros = []
-
         if "poles" in data and data["poles"] is not None:
             for freq in data["poles"]:
                 poles.extend(self._parse_freq_str(freq))
-
         if "zeros" in data and data["zeros"] is not None:
             for freq in data["zeros"]:
                 zeros.extend(self._parse_freq_str(freq))
-
         poles = np.array(poles)
         zeros = np.array(zeros)
-
-        # build op-amp data dict with poles and zeros as entries
+        # Build op-amp data dict with poles and zeros as entries.
         class_data = {"zeros": zeros, "poles": poles}
-
-        # add other op-amp data
+        # Add other op-amp data.
         if "a0" in data:
             class_data["a0"] = Quantity(data["a0"])
         if "gbw" in data:
@@ -142,95 +146,91 @@ class OpAmpLibrary(BaseConfig):
             class_data["imax"] = Quantity(data["imax"], "A")
         if "sr" in data:
             class_data["sr"] = Quantity(data["sr"], "V/s")
-
-        # add data to library
+        # Add data to library.
         self.add_data(name, class_data)
-
-        # check if there are aliases
+        # Check if there are aliases.
         if "aliases" in data:
-            # get individual aliases
             aliases = [alias.strip() for alias
                        in data["aliases"].split(",")]
-
-            # create new op-amps for each alias using identical data
+            # Create new op-amps for each alias using identical data.
             for alias in aliases:
                 self.add_data(alias, class_data)
 
     def add_data(self, name, data):
-        """Add op-amp data to library
+        """Add op-amp data to library.
 
-        :param name: op-amp name
-        :type name: str
-        :param data: op-amp data
-        :type data: Dict[str, Any]
-        :raises ValueError: if op-amp is already in library
+        Parameters
+        ----------
+        name : :class:`str`
+            The op-amp name.
+        data : :class:`dict`
+            The op-amp data.
+
+        Raises
+        ------
+        ValueError
+            If the op-amp is already in library.
         """
-
         name = self.format_name(name)
-
         if name in self.opamp_names:
             raise ValueError(f"Duplicate op-amp type: '{name}'")
-
-        # set data
         self.data[name] = data
 
     @property
     def opamp_names(self):
-        """Get names of op-amps in library (including alises)
-
-        :return: op-amp names
-        :rtype: KeysView[str]
-        """
-
+        """Get names of op-amps in library (including alises)."""
         return self.data.keys()
 
     def _parse_freq_str(self, token):
-        """Parse token as complex frequency/frequencies
+        """Parse token as complex frequency/frequencies.
 
         The frequency may include an optional q-factor, which results in this
         method returning a pair of equal and opposite complex frequencies. The
         one or two returned frequencies are always contained in a list.
 
-        :param token: string containing frequency and optional q-factor
-        :type token: str
-        :return: list of frequencies
-        :rtype: List[Numpy scalar or float]
+        Parameters
+        ----------
+        token : :class:`str`
+            The frequency and optional q-factor.
+
+        Returns
+        -------
+        :class:`list`
+            The list of frequencies.
+
+        Raises
+        ------
+        Exception
+            If the frequency list is malformed.
         """
-
         frequencies = []
-
-        # split frequency and optional q-factor into list entries
+        # Split frequency and optional q-factor into list entries.
         try:
             parts = token.split()
         except AttributeError:
-            # not a string; assume number
+            # Assume number.
             parts = [token]
-
-        # frequency is always first in the list
+        # Frequency is always first in the list.
         frequency = Quantity(parts[0], "Hz")
-
-        # q-factor is second, if present
+        # Q-factor is second, if present.
         if len(parts) == 1:
             frequencies.append(frequency)
         elif len(parts) == 2:
-            # calculate complex frequency using q-factor
+            # Calculate complex frequency using q-factor.
             qfactor = Quantity(parts[1])
-            # cast to complex to avoid issues with arccos
+            # Cast to complex to avoid issues with arccos.
             qfactor = complex(qfactor)
             theta = np.arccos(1 / (2 * qfactor))
-
-            # add negative/positive pair of poles/zeros
+            # Add negative/positive pair of poles/zeros.
             frequencies.append(frequency * np.exp(-1j * theta))
             frequencies.append(frequency * np.exp(1j * theta))
         else:
             raise Exception("invalid frequency list")
-
         return frequencies
 
     @property
     def opamps(self):
         opdata = self.data.items()
-
         return [LibraryOpAmp(model=self.format_name(model), **data) for model, data in opdata]
 
 
