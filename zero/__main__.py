@@ -68,7 +68,7 @@ def cli():
     pass
 
 @cli.command()
-@click.argument("file", type=click.File())
+@click.argument("files", type=click.File(), nargs=-1, metavar="[FILE]...")
 @click.option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
 @click.option("--liso-path", type=click.Path(exists=True, dir_okay=False), envvar='LISO_PATH',
               help="Path to LISO binary. If not specified, the environment variable LISO_PATH is "
@@ -76,7 +76,7 @@ def cli():
 @click.option("--resp-scale-db/--resp-scale-abs", default=True, show_default=True,
               help="Scale response y-axes in decibels.")
 @click.option("--compare", is_flag=True, default=False,
-              help="Simulate using both this tool and LISO binary, and overlay results.")
+              help="Simulate using both this tool and LISO binary, and combine the results.")
 @click.option("--diff", is_flag=True, default=False,
               help="Show difference between results of comparison.")
 @click.option("--plot/--no-plot", default=True, show_default=True, help="Display results as "
@@ -86,10 +86,10 @@ def cli():
 @click.option("--print-equations", is_flag=True, help="Print circuit equations.")
 @click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @click.pass_context
-def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
+def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
          print_equations, print_matrix):
-    """Parse and simulate LISO input or output file(s). If multiple files are specified, these are
-    all simulated and combined into one solution.
+    """Parse and simulate LISO input or output file(s). Multiple files can be specified as long as
+    they have compatible frequency vectors. These are all simulated and combined into one solution.
     """
     state = ctx.ensure_object(State)
 
@@ -97,72 +97,102 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
     compute_liso = liso or compare
     compute_native = not liso or compare
 
-    if compute_liso:
-        # Run file with LISO and parse results.
-        runner = LisoRunner(script_path=file.name)
-        parser = runner.run(liso_path, plot=False)
-        liso_solution = parser.solution()
-        liso_solution.name = "LISO"
-    else:
-        # Parse specified file.
-        try:
-            # Try to parse as input file.
-            parser = LisoInputParser()
-            parser.parse(path=file.name)
-        except LisoParserError:
+    if not files:
+        click.echo("No input files provided. For help, specify --help.")
+        sys.exit(0)
+
+    # Determine whether to add script paths to solution names.
+    add_path_suffix = len(files) > 1
+
+    solutions = []
+
+    for liso_file in files:
+        if compute_liso:
+            if add_path_suffix:
+                name_suffix = f" {liso_file.name}"
+            else:
+                name_suffix = ""
+            name = f"LISO{name_suffix}"
+
+            # Run file with LISO and parse results.
+            runner = LisoRunner(script_path=liso_file.name)
+            parser = runner.run(liso_path, plot=False)
+            liso_solution = parser.solution()
+            liso_solution.name = name
+        else:
+            # Parse specified file.
             try:
-                # Try to parse as an output file.
-                parser = LisoOutputParser()
-                parser.parse(path=file.name)
+                # Try to parse as input file.
+                parser = LisoInputParser()
+                parser.parse(path=liso_file.name)
             except LisoParserError:
-                click.echo(f"cannot interpret {file.name} as either a LISO input or LISO output "
-                           "file", err=True)
+                try:
+                    # Try to parse as an output file.
+                    parser = LisoOutputParser()
+                    parser.parse(path=liso_file.name)
+                except LisoParserError:
+                    click.echo(f"cannot interpret {liso_file.name} as either a LISO input or LISO "
+                               "output file", err=True)
+                    sys.exit(1)
+
+        if compute_native:
+            if add_path_suffix:
+                name_suffix = f" {liso_file.name}"
+            else:
+                name_suffix = ""
+            name = f"Zero{name_suffix}"
+
+            # Build argument list.
+            kwargs = {"print_progress": state.verbose,
+                    "print_equations": print_equations,
+                    "print_matrix": print_matrix}
+
+            # Get native solution.
+            native_solution = parser.solution(force=True, **kwargs)
+            native_solution.name = name
+
+        # Determine solution to show or save.
+        if compare:
+            liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
+            def liso_order(function):
+                """Return order as specified in LISO file for specified function"""
+                for index, liso_function in enumerate(liso_functions):
+                    if liso_function.meta_equivalent(function):
+                        return index
+
+                click.echo(f"{function} is not in LISO solution", err=True)
                 sys.exit(1)
 
-    if compute_native:
-        # Build argument list.
-        kwargs = {"print_progress": state.verbose,
-                  "print_equations": print_equations,
-                  "print_matrix": print_matrix}
+            # Sort native solution in the order defined in the LISO file.
+            native_solution.sort_functions(liso_order, default_only=True)
 
-        # Get native solution.
-        native_solution = parser.solution(force=True, **kwargs)
-        native_solution.name = "Zero"
+            # Show difference before changing labels.
+            if diff:
+                # Group by meta data.
+                header, rows = native_solution.difference(liso_solution, defaults_only=True,
+                                                        meta_only=True)
 
-    # Determine solution to show or save.
-    if compare:
-        liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
-        def liso_order(function):
-            """Return order as specified in LISO file for specified function"""
-            for index, liso_function in enumerate(liso_functions):
-                if liso_function.meta_equivalent(function):
-                    return index
+                click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
-            click.echo(f"{function} is not in LISO solution", err=True)
-            sys.exit(1)
-
-        # Sort native solution in the order defined in the LISO file.
-        native_solution.sort_functions(liso_order, default_only=True)
-
-        # Show difference before changing labels.
-        if diff:
-            # Group by meta data.
-            header, rows = native_solution.difference(liso_solution, defaults_only=True,
-                                                      meta_only=True)
-
-            click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
-
-        # Combine results from LISO and native simulations. This puts the functions from each
-        # solution into groups with that solution's name so we can differentiate them on the plot.
-        solution = native_solution.combine(liso_solution)
-    else:
-        # Plot single result.
-        if compute_liso:
-            # Use LISO's solution.
-            solution = liso_solution
+            # Combine results from LISO and native simulations. This puts the functions from each
+            # solution into groups with that solution's name so we can differentiate them on the
+            # plot.
+            solution = native_solution.combine(liso_solution)
         else:
-            # Use native solution.
-            solution = native_solution
+            # Plot single result.
+            if compute_liso:
+                # Use LISO's solution.
+                solution = liso_solution
+            else:
+                # Use native solution.
+                solution = native_solution
+
+        solutions.append(solution)
+
+    solution = solutions[0]
+    if len(solutions) > 1:
+        # Combine all simulated solutions.
+        solution = solution.combine(*solutions[1:])
 
     # Determine whether to generate plot.
     generate_plot = plot or save_figure
