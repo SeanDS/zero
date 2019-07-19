@@ -88,7 +88,9 @@ def cli():
 @click.pass_context
 def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
          print_equations, print_matrix):
-    """Parse and simulate LISO input or output file."""
+    """Parse and simulate LISO input or output file(s). If multiple files are specified, these are
+    all simulated and combined into one solution.
+    """
     state = ctx.ensure_object(State)
 
     # Check which solutions must be computed.
@@ -113,8 +115,9 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
                 parser = LisoOutputParser()
                 parser.parse(path=file.name)
             except LisoParserError:
-                raise ValueError("cannot interpret specified file as either a LISO input or LISO "
-                                 "output file")
+                click.echo(f"cannot interpret {file.name} as either a LISO input or LISO output "
+                           "file", err=True)
+                sys.exit(1)
 
     if compute_native:
         # Build argument list.
@@ -135,7 +138,8 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
                 if liso_function.meta_equivalent(function):
                     return index
 
-            raise ValueError(f"{function} is not in LISO solution")
+            click.echo(f"{function} is not in LISO solution", err=True)
+            sys.exit(1)
 
         # Sort native solution in the order defined in the LISO file.
         native_solution.sort_functions(liso_order, default_only=True)
