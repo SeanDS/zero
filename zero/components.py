@@ -490,7 +490,7 @@ class Inductor(PassiveComponent):
         coupling_factor = self.coupling_factors[other]
         mutual_inductance = coupling_factor * np.sqrt(self.inductance * other.inductance)
 
-        return Quantity(mutual_inductance, unit=self.DISPLAY_UNIT)
+        return Quantity(mutual_inductance, units=self.DISPLAY_UNIT)
 
     def impedance_from(self, other, frequency):
         """Calculate the impedance this inductor has due to the specified coupled inductor

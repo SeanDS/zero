@@ -144,16 +144,6 @@ class Downloadable:
 
         return filename, request
 
-def db(magnitude):
-    """Calculate (power) magnitude in decibels
-
-    :param magnitude: magnitude
-    :type magnitude: Numeric or :class:`np.array`
-    :return: dB magnitude
-    :rtype: Numeric or :class:`np.array`
-    """
-
-    return 20 * np.log10(magnitude)
 
 def lighten_colours(colour_cycle, factor):
     """Lightens the given color by multiplying (1 - luminosity) by the given factor.
@@ -177,3 +167,9 @@ def lighten_colours(colour_cycle, factor):
         cycle.append(hexcode)
 
     return cycle
+
+def db_to_mag(quantity):
+    return 10 ** (quantity / 20)
+
+def mag_to_db(quantity):
+    return 20 * np.log10(quantity)

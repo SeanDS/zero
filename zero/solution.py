@@ -1467,10 +1467,10 @@ class Solution:
             # absolute and relative worst indices
             iworst = np.argmax(np.abs(data_a - data_b))
             worst = np.abs(data_a[iworst] - data_b[iworst])
-            fworst = Quantity(frequencies[iworst], unit="Hz")
+            fworst = Quantity(frequencies[iworst], units="Hz")
             irelworst = np.argmax(np.abs((data_a - data_b) / data_b))
             relworst = np.abs((data_a[irelworst] - data_b[irelworst]) / data_b[irelworst])
-            frelworst = Quantity(frequencies[irelworst], unit="Hz")
+            frelworst = Quantity(frequencies[irelworst], units="Hz")
 
             if worst != 0:
                 # descriptions of worst
