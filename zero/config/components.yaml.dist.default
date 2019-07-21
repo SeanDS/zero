@@ -1,9 +1,9 @@
 # Zero component library. Op-amps are based on the library from LISO, reproduced with permission
 # from Gerhard Heinzel. All credit goes to him for the data and measurements.
 #
-# Please note: this library is experimental, incomplete and may be wrong.
-# Whenever the individual op-amp properties become important, you must
-# check yourself that the correct values are entered below.
+# Please note: this library is experimental, incomplete and may be wrong. Whenever the individual
+# op-amp properties become important, you must check yourself that the correct values are entered
+# below.
 #
 # Strings starting with '#' are comments.
 #
@@ -11,7 +11,8 @@
 # -------
 #
 # Everything is in SI units:
-#   - 'a0': DC open loop gain
+#   - 'a0': DC open loop gain (V / V)
+#      - This can be specified in decibels or absolute magnitude. For decibels, append "dB".
 #   - 'gbw': gain-bandwidth product for typical operating frequencies
 #   - 'vnoise': voltage noise spectral density (V / sqrt(Hz))
 #   - 'vcorner' voltage noise 1/f corner frequency
@@ -20,13 +21,12 @@
 #   - 'poles': pole frequencies in the op-amp's open-loop response
 #   - 'zeros': zero frequencies in the op-amp's open-loop response
 #
-# Options that are not specified for a particular op-amp default to standard
-# values. Depending on the parameter, the default can be drastically different
-# from that of a particular op-amp, so be careful.
+# Options that are not specified for a particular op-amp default to standard values. Depending on
+# the parameter, the default can be drastically different # from that of a particular op-amp, so be
+# careful.
 #
-# Note that multiple pole/zero frequencies can be defined for each op-amp,
-# and complex values can be specified by providing the q-factor after the
-# frequency, e.g.
+# Note that multiple pole/zero frequencies can be defined for each op-amp, and complex values can be
+# specified by providing the q-factor after the frequency, e.g.
 #
 #   poles:
 #     - 100k
@@ -35,25 +35,23 @@
 #
 # These values are converted into single complex values internally.
 #
-# Unless mentioned explicitly, values are "typical" for the cheapest grade
-# at 25 degrees. a0 should usually be uncritical; these are entered for
-# large loads. The 1/f corner frequencies 'vcorner' and 'icorner' (in Hz) are
-# often not well defined. Poles and zeroes of the open-loop transfer function
-# are interpreted as additional features to the 1/f frequency response
+# Unless mentioned explicitly, values are "typical" for the cheapest grade at 25 degrees. The a0
+# parameter should usually be uncritical; these are entered for large loads. The 1/f corner
+# frequencies 'vcorner' and 'icorner' (in Hz) are often not well defined. Poles and zeroes of the
+# open-loop transfer function are interpreted as additional features to the 1/f frequency response
 # given by a0 and gbw.
 #
-# 'vmax' (in volts), 'imax' (in amperes) and 'sr' (in V/s) describe the
-# output capabilities (used by the 'maxinput' command).
+# 'vmax' (in volts), 'imax' (in amperes) and 'sr' (in V/s) describe the output capabilities (used by
+# the 'maxinput' command).
 #
-# Identical components with different names can be specified for the root
-# component by specifying their names in a list using the "aliases" entry,
-# e.g.
+# Identical components with different names can be specified for the root component by specifying
+# their names in a list using the "aliases" entry, e.g.
 #
 #   aliases:
 #     - op27
 #     - op47
 #
-# This will create identical, but distinct op-amp classes.
+# This will create distinct op-amp models with identical parameters.
 
 schema: 1
 
@@ -61,7 +59,7 @@ op-amps:
 
   op00:
     description: (almost) ideal op-amp
-    a0: 1e12
+    a0: 240 dB
     gbw: 1e15
     vnoise: 0
     vcorner: 1
@@ -223,7 +221,7 @@ op-amps:
 
   opa671:
     description: fast FET, for photodiode transimpedance
-    a0: 1e4
+    a0: 80 dB
     gbw: 35e6
     vnoise: 10e-9
     vcorner: 1e3
@@ -270,7 +268,7 @@ op-amps:
   ad829: &ad829
     description: fast low noise voltage-feedback
     comment: no ext. comp., measured at gain 1
-    a0: 1e5 # 100V/mV
+    a0: 100 dB
     gbw: 85M
     vnoise: 1.7e-9
     vcorner: 30
@@ -374,7 +372,7 @@ op-amps:
 
   opa2604:
     aliases: opa604
-    a0: 1e5
+    a0: 120 dB
     gbw: 17.7e6
     vnoise: 10e-9
     vcorner: 200
@@ -408,7 +406,7 @@ op-amps:
 
   tle2227:
     description: standard dual low noise opamp
-    a0: 44668359 # 153 dB
+    a0: 153 dB
     gbw: 15e6
     vnoise: 2.5e-9
     vcorner: 10 # guessed
@@ -439,7 +437,7 @@ op-amps:
       - 7e6 # cc = 68pF
 
   l2724:
-    a0: 1e4
+    a0: 80 dB
     gbw: 1.2e6
     vnoise: 67e-9 # guessed from rms
     vcorner: 100 # free guess
@@ -495,7 +493,7 @@ op-amps:
       - 10e6
 
   ina103_1000:
-    a0: 1000
+    a0: 60 dB
     gbw: 100M
     vnoise: 1e-9
     vcorner: 100
@@ -506,7 +504,7 @@ op-amps:
     sr: 15e6
 
   opa620:
-    a0: 1000 # 60 dB only
+    a0: 60 dB
     gbw: 200M
     vnoise: 2.5e-9
     vcorner: 5k # guess
@@ -572,7 +570,7 @@ op-amps:
     icorner: 10k
 
   max4106: &max4106
-    a0: 1e5
+    a0: 100 dB
     gbw: 908M # from closed-loop gain fit & stability considerations
     poles:
       - 653M
@@ -629,7 +627,7 @@ op-amps:
     icorner: 2.4k
 
   op284:
-    a0: 1e6
+    a0: 120 dB
     gbw: 16M # fitted from measurement
     poles: # fitted from measurement
       - 800k
@@ -645,7 +643,7 @@ op-amps:
     sr: 4e6
 
   opa627:
-    a0: 630957 # 116 dB
+    a0: 116 dB
     gbw: 16M
     vnoise: 4.8e-9
     vcorner: 100
@@ -657,7 +655,7 @@ op-amps:
 
   ad8628:
     description: single-supply chopper at 5V
-    a0: 1e7 # 140dB
+    a0: 140 dB
     gbw: 2.5e6
     sr: 1e6
     vmax: 5
@@ -712,7 +710,7 @@ op-amps:
     sr: 1000e6 # from data sheet
 
   ad8608:
-    a0: 1e6
+    a0: 120 dB
     gbw: 10e6
     poles:
       - 15M
@@ -725,7 +723,7 @@ op-amps:
     icorner: 1k
 
   lf353:
-    a0: 100e3
+    a0: 100 dB
     gbw: 4e6
     poles:
       - 10M
@@ -794,7 +792,7 @@ op-amps:
 
   op200:
     comment: worst case
-    a0: 1e6
+    a0: 120 dB
     gbw: 500e3
     poles:
       - 2M
@@ -846,7 +844,7 @@ op-amps:
     imax: 0.01
 
   ad8005:
-    a0: 1000
+    a0: 60 dB
     gbw: 200M
     vnoise: 4n
     vcorner: 300
@@ -947,7 +945,7 @@ op-amps:
   cs3002: &cs3002
     description: added by Rana for KAGRA L4-C preamp 2013
     comment: from Caltech 40m LISO git repository
-    a0: 1e8         # seems bogus
+    a0: 160 dB      # seems bogus
     gbw: 1e6
     vnoise: 6e-9
     vcorner: 0.08
@@ -970,7 +968,7 @@ op-amps:
 
   opa827:
     comment: from Caltech 40m LISO git repository
-    a0: 1e6         # 120 dB
+    a0: 120 dB
     gbw: 22M
     vnoise: 4e-9
     vcorner: 15
@@ -982,7 +980,7 @@ op-amps:
 
   lf356:
     comment: from Caltech 40m LISO git repository; all info from datasheet
-    a0: 100e3
+    a0: 100 dB
     gbw: 5e6
     sr: 12e6
     vnoise: 12e-9
@@ -1020,7 +1018,7 @@ op-amps:
 
   opa547:
     comment: from Caltech 40m LISO git repository; from datasheet http://www.ti.com/lit/ds/symlink/opa547.pdf
-    a0: 562341.32519  # 115 db
+    a0: 115 dB
     gbw: 1M
     vnoise: 90e-9
     vcorner: 30
@@ -1058,7 +1056,7 @@ op-amps:
 
   opa140: &opa140
     comment: from Caltech 40m LISO git repository
-    a0: 2e6         # 126dB From Datasheet
+    a0: 126 dB # from datasheet
     gbw: 11e6
     vnoise: 5e-9
     vcorner: 18
@@ -1079,7 +1077,7 @@ op-amps:
   ad620:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: EQ, ad620 at unity gain
     comment: from Caltech 40m LISO git repository
-    a0: 1e5         # Made up!
+    a0: 100 dB      # Made up!
     gbw:  12e6
     vnoise: 72e-9   # Lower at higher gains
     vcorner: 13
@@ -1107,7 +1105,7 @@ op-amps:
   ad549:
     description: Ultralow Input Bias Current Operational Amplifier
     comment: from Caltech 40m LISO git repository; http://www.analog.com/media/en/technical-documentation/data-sheets/AD549.pdf
-    a0: 1e5 # at 10 Hz
+    a0: 100 dB # at 10 Hz
     gbw: 1e6
     vnoise: 40e-9
     vcorner: 100 # guess
@@ -1120,7 +1118,7 @@ op-amps:
   ad602:            # Leaving this here for now. Ideally there should be a separate InAmp class.
     description: Just a hack for this variable gain opamp.
     comment: from Caltech 40m LISO git repository; add a 100 Ohm resistance between IN- and IN+.
-    a0: 10          # Assuming operation at 20dB gain
+    a0: 20 dB       # Assuming operation at 20dB gain
     gbw: 90e6       # Using figure 5 in the datasheet
     vnoise: 1.4e-9  # Datasheet
     vcorner: 10     # guess
@@ -1147,7 +1145,7 @@ op-amps:
   ad8675:
     description: Precision, wide bandwidth op amp
     comment: from Caltech 40m LISO git repository; https://www.analog.com/media/en/technical-documentation/data-sheets/AD8675.pdf
-    a0: 1995262.314969   # 126dB
+    a0: 126 dB
     gbw: 10e6
     sr: 2.5e6
     vnoise: 2.8e-9
