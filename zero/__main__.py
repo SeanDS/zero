@@ -147,8 +147,8 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
 
             # Build argument list.
             kwargs = {"print_progress": state.verbose,
-                    "print_equations": print_equations,
-                    "print_matrix": print_matrix}
+                      "print_equations": print_equations,
+                      "print_matrix": print_matrix}
 
             # Get native solution.
             native_solution = parser.solution(force=True, **kwargs)
