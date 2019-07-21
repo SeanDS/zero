@@ -850,7 +850,7 @@ op-amps:
     vcorner: 300
     inoise: 1.1p # noninverting, inverting: 9.1
     icorner: 3k
-    umax: 3
+    vmax: 3
     imax: 0.01
     sr: 280e6
 
@@ -863,7 +863,7 @@ op-amps:
     vcorner: 30k
     inoise: 3p
     icorner: 30k
-    umax: 3.5
+    vmax: 3.5
     imax: 55m
     sr: 500e6
 
@@ -893,7 +893,7 @@ op-amps:
     vcorner: 10k
     inoise: 1.8p
     icorner: 10k
-    umax: 4.9
+    vmax: 4.9
     imax: 100m
     sr: 400e6
 

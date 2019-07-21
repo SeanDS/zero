@@ -254,12 +254,11 @@ class LibraryOpAmp:
                  poles=np.array([]), vnoise=3.2e-9, vcorner=2.7, inoise=0.4e-12, icorner=140,
                  vmax=12, imax=0.06, sr=1e6, **kwargs):
         super().__init__(**kwargs)
-
-        # default properties
+        # Default properties.
         self._model = "None"
         self.params = {}
 
-        # set parameters
+        # Op-amp parameters.
         self.model = model
         self.a0 = a0
         self.gbw = gbw
@@ -420,7 +419,6 @@ class LibraryOpAmp:
         :class:`float`
             Op-amp gain at specified frequency.
         """
-
         return (self.a0
                 / (1 + self.a0 * 1j * frequency / self.gbw)
                 * np.exp(-2j * np.pi * self.delay * frequency)
@@ -438,19 +436,14 @@ class LibraryOpAmp:
     def _mag_q_pairs(self, complex_freqs):
         complex_freqs = list(complex_freqs)
         pairs = []
-
         for freq in complex_freqs:
             fabs = np.absolute(freq)
             freq_conj = np.conj(freq)
-
-            # find conjugate
+            # Find conjugate.
             if freq_conj in complex_freqs:
                 complex_freqs.remove(freq_conj)
-
             qfactor = fabs / (2 * np.real(freq)) # = 0.5 if real pole
-
             pairs.append((fabs, qfactor))
-
         return pairs
 
     def __str__(self):
