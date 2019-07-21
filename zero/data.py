@@ -6,10 +6,11 @@ from numbers import Number
 import numpy as np
 
 from .config import ZeroConfig
-from .misc import db
+from .misc import mag_to_db, db_to_mag
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
+
 
 def frequencies_match(vector_a, vector_b):
     return np.all(vector_a == vector_b)
@@ -83,7 +84,7 @@ class Series:
             phase_scale = "deg"
 
         if mag_scale.lower() == "db":
-            magnitude = 10 ** (magnitude / 20)
+            magnitude = db_to_mag(magnitude)
         elif mag_scale.lower() == "abs":
             # don't need to scale
             pass
@@ -347,7 +348,7 @@ class Response(SingleSourceFunction, SingleSinkFunction):
         The response is power scaled such that the response is :math:`20 \log_{10} \left| x \right|`
         where :math:`x` is the complex response provided by :attr:`.complex_magnitude`.
         """
-        return db(self.magnitude)
+        return mag_to_db(self.magnitude)
 
     @property
     def phase(self):

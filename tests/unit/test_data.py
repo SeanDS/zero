@@ -2,8 +2,8 @@
 
 import numpy as np
 from zero.data import Series, MultiNoiseDensity
+from zero.misc import mag_to_db
 from ..data import ZeroDataTestCase
-
 
 class SeriesTestCase(ZeroDataTestCase):
     """Data series tests"""
@@ -19,7 +19,7 @@ class SeriesTestCase(ZeroDataTestCase):
         self.data_im = test_data[:, 1]
         # Magnitude and phase equivalent.
         self.data_mag_abs = np.abs(self.data_cplx)
-        self.data_mag_db = 20 * np.log10(self.data_mag_abs)
+        self.data_mag_db = mag_to_db(self.data_mag_abs)
         self.data_phase_rad = np.angle(self.data_cplx)
         self.data_phase_deg = np.degrees(self.data_phase_rad)
 
