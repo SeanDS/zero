@@ -121,40 +121,21 @@ class OpAmpLibrary(BaseConfig):
         if "zeros" in data and data["zeros"] is not None:
             for freq in data["zeros"]:
                 zeros.extend(self._parse_freq_str(freq))
-        poles = np.array(poles)
-        zeros = np.array(zeros)
-        # Build op-amp data dict with poles and zeros as entries.
-        class_data = {"zeros": zeros, "poles": poles}
-        # Add other op-amp data.
-        if "a0" in data:
-            class_data["a0"] = Quantity(data["a0"])
-        if "gbw" in data:
-            class_data["gbw"] = Quantity(data["gbw"], "Hz")
-        if "delay" in data:
-            class_data["delay"] = Quantity(data["delay"], "s")
-        if "vnoise" in data:
-            class_data["vnoise"] = Quantity(data["vnoise"], "V/sqrt(Hz)")
-        if "vcorner" in data:
-            class_data["vcorner"] = Quantity(data["vcorner"], "Hz")
-        if "inoise" in data:
-            class_data["inoise"] = Quantity(data["inoise"], "A/sqrt(Hz)")
-        if "icorner" in data:
-            class_data["icorner"] = Quantity(data["icorner"], "Hz")
-        if "vmax" in data:
-            class_data["vmax"] = Quantity(data["vmax"], "V")
-        if "imax" in data:
-            class_data["imax"] = Quantity(data["imax"], "A")
-        if "sr" in data:
-            class_data["sr"] = Quantity(data["sr"], "V/s")
-        # Add data to library.
-        self.add_data(name, class_data)
+        data["poles"] = np.array(poles)
+        data["zeros"] = np.array(zeros)
         # Check if there are aliases.
+        aliases = []
         if "aliases" in data:
-            aliases = [alias.strip() for alias
-                       in data["aliases"].split(",")]
-            # Create new op-amps for each alias using identical data.
-            for alias in aliases:
-                self.add_data(alias, class_data)
+            aliases.extend([alias.strip() for alias in data["aliases"].split(",")])
+        # Remove unused op-amp fields.
+        for field in ["aliases", "comment", "description"]:
+            if field in data:
+                del data[field]
+        # Add data to library.
+        self.add_data(name, data)
+        # Create new op-amps for each alias using identical data.
+        for alias in aliases:
+            self.add_data(alias, data)
 
     def add_data(self, name, data):
         """Add op-amp data to library.
@@ -307,7 +288,7 @@ class LibraryOpAmp:
 
     @a0.setter
     def a0(self, a0):
-        self.params["a0"] = Quantity(a0)
+        self.params["a0"] = Quantity(a0, "V/V")
 
     @property
     def gbw(self):
