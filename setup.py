@@ -13,6 +13,7 @@ REQUIREMENTS = [
     "setuptools_scm >= 3.1.0",
     "ply >= 3.11",
     "Click == 7.0",
+    "quantiphy >= 2.5.0",
     "PyYAML >= 3.13",
     "graphviz >= 0.9",
 ]
