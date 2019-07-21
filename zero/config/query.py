@@ -18,8 +18,7 @@ class LibraryQueryParser:
     This implements a lexer to identify search terms for the Zero op-amp library, and returns
     lambda functions that perform corresponding checks.
     """
-
-    # parameter tokens
+    # Parameter tokens.
     parameters = {
         "model": "MODEL",
         "a0": "OPEN_LOOP_GAIN",
@@ -83,10 +82,11 @@ class LibraryQueryParser:
     t_RPAREN = r'\)'
 
     def __init__(self):
-        # parsed search filters
+        # Parsed search filters.
         self._filters = None
-
-        # create lexer and parser handlers
+        # Order in which parameters have been queried.
+        self.parameter_query_order = []
+        # Create lexer and parser handlers.
         self.lexer = lex.lex(module=self)
         self.parser = yacc.yacc(module=self)
 
@@ -187,8 +187,14 @@ class LibraryQueryParser:
                                | LESS_THAN_EQUAL'''
         t[0] = getattr(operator, self._operators[t[1]])
 
+    def p_value_with_unit(self, t):
+        'value_with_unit : VALUE VALUE'
+        # Matches a value with a unit.
+        t[0] = t[1] + t[2]
+
     def p_comparison_expression(self, t):
-        'expression : PARAMETER comparison_operator VALUE'
+        '''expression : PARAMETER comparison_operator VALUE
+                      | PARAMETER comparison_operator value_with_unit'''
         # parse value
         try:
             value = Quantity(t[3])
@@ -198,6 +204,10 @@ class LibraryQueryParser:
 
         parameter = t[1]
         comparison = t[2]
+
+        if parameter not in self.parameter_query_order:
+            # This parameter has not been seen yet.
+            self.parameter_query_order.append(parameter)
 
         # change comparison method if necessary (e.g. text comparison)
         comparison = self._get_comparison_method(comparison, parameter)
@@ -245,13 +255,38 @@ class LibraryQueryEngine:
     def __init__(self):
         self._parser = LibraryQueryParser()
 
-    def query(self, text):
-        # parse
-        expression = self._parser.parse(text)
+    def query(self, text, sort_order=None):
+        """Query the library.
 
-        # run with op-amp set so we can use support for binary operators
-        return expression(self.opamp_set)
+        Parameters
+        ----------
+        text : :class:`str`
+            The query text.
+        sort_order : :class:`dict`, optional
+            The sort order map. If specified, the items in this dictionary are used to determine the
+            sort order for the returned results. The keys represent the parameter to filter, and
+            the values represent the order (standard or reverse). The sorting is applied in the
+            order that the parameter appears in the query text (left to right).
+
+        Returns
+        -------
+        :class:`list`
+            The matched op-amps.
+        """
+        expression = self._parser.parse(text)
+        # Run query with op-amp set so we can use support for binary operators.
+        parts = list(expression(self.opamp_set))
+        if sort_order is not None:
+            # Sort the results in the order they were specified (left to right).
+            for parameter in reversed(self._parser.parameter_query_order):
+                reverse = sort_order[parameter]
+                parts = sorted(parts, key=lambda part: getattr(part, parameter), reverse=reverse)
+        return parts
 
     @property
     def opamp_set(self):
         return set(LIBRARY.opamps)
+
+    @property
+    def parameters(self):
+        return self._parser.parameters.keys()

@@ -140,30 +140,28 @@ Parentheses may be used to delimit groups:
 Display
 ~~~~~~~
 
-The results are displayed in a table. By default, only the op-amp model names
-matching a given query are displayed in the table. To add extra columns,
-specify the corresponding flag as part of the call:
+The results are displayed in a table. The rows are sorted based on the order in which the parameters
+are defined in the search query, from left to right, with the leftmost parameter being sorted last.
+The default sort direction is defined based on the parameter. The sort direction can be specified
+explicitly as ``ASC`` (ascending) or ``DESC`` (descending) with the corresponding ``--sort``
+parameter:
 
-``--a0``
-  Show open loop gain.
-``--gbw``
-  Show gain-bandwidth product.
-``--delay``
-  Show delay.
-``--vnoise``
-  Show flat voltage noise.
-``--vcorner``
-  Show voltage noise corner frequency.
-``--inoise``
-  Show flat current noise.
-``--icorner``
-  Show current noise corner frequency.
-``--vmax``
-  Show maximum output voltage.
-``--imax``
-  Show maximum output current.
-``--sr``
-  Show slew rate.
+==================  ===========  =================
+Flag                Parameter    Default direction
+==================  ===========  =================
+``--sort-a0``       ``a0``       descending
+``--sort-gbw``      ``gbw``      descending
+``--sort-delay``    ``delay``    ascending
+``--sort-vnoise``   ``vnoise``   ascending
+``--sort-vcorner``  ``vcorner``  ascending
+``--sort-inoise``   ``inoise``   ascending
+``--sort-icorner``  ``icorner``  ascending
+``--sort-vmax``     ``vmax``     descending
+``--sort-imax``     ``imax``     descending
+``--sort-sr``       ``sr``       ascending
+==================  ===========  =================
+
+Parameters that are not explicitly searched are not ordered.
 
 Command reference
 -----------------
