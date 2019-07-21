@@ -5,6 +5,7 @@ import numpy as np
 
 from .base import BaseConfig
 from ..format import Quantity
+from ..misc import db_to_mag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -288,6 +289,18 @@ class LibraryOpAmp:
 
     @a0.setter
     def a0(self, a0):
+        try:
+            pieces = a0.split()
+        except AttributeError:
+            pieces = []
+        if len(pieces) > 2:
+            raise ValueError("invalid a0 format")
+        elif len(pieces) == 2:
+            if pieces[1].lower() == "db":
+                # Convert decibels to absolute magnitude.
+                a0 = db_to_mag(float(pieces[0]))
+            else:
+                raise ValueError(f"unrecognised scale '{pieces[1]}'")
         self.params["a0"] = Quantity(a0, "V/V")
 
     @property
