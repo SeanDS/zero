@@ -5,6 +5,7 @@ import numpy as np
 
 from .base import BaseConfig
 from ..format import Quantity
+from ..misc import db_to_mag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -121,40 +122,21 @@ class OpAmpLibrary(BaseConfig):
         if "zeros" in data and data["zeros"] is not None:
             for freq in data["zeros"]:
                 zeros.extend(self._parse_freq_str(freq))
-        poles = np.array(poles)
-        zeros = np.array(zeros)
-        # Build op-amp data dict with poles and zeros as entries.
-        class_data = {"zeros": zeros, "poles": poles}
-        # Add other op-amp data.
-        if "a0" in data:
-            class_data["a0"] = Quantity(data["a0"])
-        if "gbw" in data:
-            class_data["gbw"] = Quantity(data["gbw"], "Hz")
-        if "delay" in data:
-            class_data["delay"] = Quantity(data["delay"], "s")
-        if "vnoise" in data:
-            class_data["vnoise"] = Quantity(data["vnoise"], "V/sqrt(Hz)")
-        if "vcorner" in data:
-            class_data["vcorner"] = Quantity(data["vcorner"], "Hz")
-        if "inoise" in data:
-            class_data["inoise"] = Quantity(data["inoise"], "A/sqrt(Hz)")
-        if "icorner" in data:
-            class_data["icorner"] = Quantity(data["icorner"], "Hz")
-        if "vmax" in data:
-            class_data["vmax"] = Quantity(data["vmax"], "V")
-        if "imax" in data:
-            class_data["imax"] = Quantity(data["imax"], "A")
-        if "sr" in data:
-            class_data["sr"] = Quantity(data["sr"], "V/s")
-        # Add data to library.
-        self.add_data(name, class_data)
+        data["poles"] = np.array(poles)
+        data["zeros"] = np.array(zeros)
         # Check if there are aliases.
+        aliases = []
         if "aliases" in data:
-            aliases = [alias.strip() for alias
-                       in data["aliases"].split(",")]
-            # Create new op-amps for each alias using identical data.
-            for alias in aliases:
-                self.add_data(alias, class_data)
+            aliases.extend([alias.strip() for alias in data["aliases"].split(",")])
+        # Remove unused op-amp fields.
+        for field in ["aliases", "comment", "description"]:
+            if field in data:
+                del data[field]
+        # Add data to library.
+        self.add_data(name, data)
+        # Create new op-amps for each alias using identical data.
+        for alias in aliases:
+            self.add_data(alias, data)
 
     def add_data(self, name, data):
         """Add op-amp data to library.
@@ -272,12 +254,11 @@ class LibraryOpAmp:
                  poles=np.array([]), vnoise=3.2e-9, vcorner=2.7, inoise=0.4e-12, icorner=140,
                  vmax=12, imax=0.06, sr=1e6, **kwargs):
         super().__init__(**kwargs)
-
-        # default properties
+        # Default properties.
         self._model = "None"
         self.params = {}
 
-        # set parameters
+        # Op-amp parameters.
         self.model = model
         self.a0 = a0
         self.gbw = gbw
@@ -307,7 +288,14 @@ class LibraryOpAmp:
 
     @a0.setter
     def a0(self, a0):
-        self.params["a0"] = Quantity(a0)
+        try:
+            a0 = a0.strip()
+            if a0[-2:].lower() == "db":
+                # Convert decibels to absolute magnitude.
+                a0 = db_to_mag(float(a0[:-2].strip()))
+        except AttributeError:
+            pass
+        self.params["a0"] = Quantity(a0, "V/V")
 
     @property
     def gbw(self):
@@ -431,7 +419,6 @@ class LibraryOpAmp:
         :class:`float`
             Op-amp gain at specified frequency.
         """
-
         return (self.a0
                 / (1 + self.a0 * 1j * frequency / self.gbw)
                 * np.exp(-2j * np.pi * self.delay * frequency)
@@ -449,19 +436,14 @@ class LibraryOpAmp:
     def _mag_q_pairs(self, complex_freqs):
         complex_freqs = list(complex_freqs)
         pairs = []
-
         for freq in complex_freqs:
             fabs = np.absolute(freq)
             freq_conj = np.conj(freq)
-
-            # find conjugate
+            # Find conjugate.
             if freq_conj in complex_freqs:
                 complex_freqs.remove(freq_conj)
-
             qfactor = fabs / (2 * np.real(freq)) # = 0.5 if real pole
-
             pairs.append((fabs, qfactor))
-
         return pairs
 
     def __str__(self):
