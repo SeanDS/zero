@@ -772,51 +772,42 @@ class LisoOutputParser(LisoParser):
             if prop.startswith("a0"):
                 kwargs["a0"] = value
             elif prop.startswith("gbw"):
-                unit = next(params)
-                kwargs["gbw"] = value + unit
+                # Combine number with unit since LISO often (always?) specifies combinations of
+                # scientific notation and SI prefixes.
+                kwargs["gbw"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("un"):
-                unit = next(params)
+                units = next(params)
                 # split off "/sqrt(Hz)"
-                unit = unit.rstrip("/sqrt(Hz)")
+                units = units.rstrip("/sqrt(Hz)")
                 # parse as V
-                voltage_noise = Quantity(value + unit, "V")
-                # change unit back
-                voltage_noise.unit = "V/sqrt(Hz)"
-                kwargs["vnoise"] = voltage_noise
+                kwargs["vnoise"] = Quantity(str(float(value)) + units)
             elif prop.startswith("uc"):
-                unit = next(params)
-                kwargs["vcorner"] = value + unit
+                kwargs["vcorner"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("in"):
-                unit = next(params)
+                units = next(params)
                 # split off "/sqrt(Hz)"
-                unit = unit.rstrip("/sqrt(Hz)")
+                units = units.rstrip("/sqrt(Hz)")
                 # parse as A
-                current_noise = Quantity(value + unit, "A")
-                # change unit back
-                current_noise.unit = "A/sqrt(Hz)"
-                kwargs["inoise"] = current_noise
+                kwargs["inoise"] = Quantity(str(float(value)) + units)
             elif prop.startswith("ic"):
-                unit = next(params)
-                kwargs["icorner"] = value + unit
+                kwargs["icorner"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("umax"):
-                unit = next(params)
-                kwargs["vmax"] = value + unit
+                kwargs["vmax"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("imax"):
-                unit = next(params)
-                kwargs["imax"] = value + unit
+                kwargs["imax"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("sr"):
-                unit = next(params)
+                next(params)
                 # parse without unit to avoid warning
-                slew_rate = Quantity(value, "V/s")
+                slew_rate = Quantity(str(float(value)), "V/s")
                 # convert from V/us to V/s
                 slew_rate *= 1e6
                 kwargs["sr"] = slew_rate
             elif prop.startswith("delay"):
                 if value != "0":
-                    unit = next(params)
+                    units = next(params)
                 else:
-                    unit = ""
-                kwargs["delay"] = value + unit
+                    units = ""
+                kwargs["delay"] = Quantity(str(float(value)) + units)
             elif prop.startswith("pole"):
                 # skip "at"
                 next(params)

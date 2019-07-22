@@ -42,7 +42,7 @@
 # Strings starting with '#' are comments.
 
 schema: 1
-distributed_with: 0.6.6
+distributed_with: 0.7.0
 
 op-amps:
 

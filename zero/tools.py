@@ -1,6 +1,6 @@
 """User tools."""
 
-from .components import BaseElement, GenericElement
+from .elements import BaseElement, GenericElement
 from .data import Series, Response
 
 

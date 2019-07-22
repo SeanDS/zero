@@ -17,6 +17,9 @@ LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
 LIBRARY = OpAmpLibrary()
 
+# Library search filter order.
+LIBRARY_FILTER_CHOICE = click.Choice(("ASC", "DESC"), case_sensitive=False)
+
 
 # Shared arguments:
 # https://github.com/pallets/click/issues/108
@@ -68,7 +71,7 @@ def cli():
     pass
 
 @cli.command()
-@click.argument("file", type=click.File())
+@click.argument("files", type=click.File(), nargs=-1, metavar="[FILE]...")
 @click.option("--liso", is_flag=True, default=False, help="Simulate using LISO.")
 @click.option("--liso-path", type=click.Path(exists=True, dir_okay=False), envvar='LISO_PATH',
               help="Path to LISO binary. If not specified, the environment variable LISO_PATH is "
@@ -76,7 +79,7 @@ def cli():
 @click.option("--resp-scale-db/--resp-scale-abs", default=True, show_default=True,
               help="Scale response y-axes in decibels.")
 @click.option("--compare", is_flag=True, default=False,
-              help="Simulate using both this tool and LISO binary, and overlay results.")
+              help="Simulate using both this tool and LISO binary, and combine the results.")
 @click.option("--diff", is_flag=True, default=False,
               help="Show difference between results of comparison.")
 @click.option("--plot/--no-plot", default=True, show_default=True, help="Display results as "
@@ -86,80 +89,115 @@ def cli():
 @click.option("--print-equations", is_flag=True, help="Print circuit equations.")
 @click.option("--print-matrix", is_flag=True, help="Print circuit matrix.")
 @click.pass_context
-def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
+def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_figure,
          print_equations, print_matrix):
-    """Parse and simulate LISO input or output file."""
+    """Parse and simulate LISO input or output file(s). Multiple files can be specified as long as
+    they have compatible frequency vectors. These are all simulated and combined into one solution.
+    """
     state = ctx.ensure_object(State)
 
-    # check which solutions must be computed
+    # Check which solutions must be computed.
     compute_liso = liso or compare
     compute_native = not liso or compare
 
-    if compute_liso:
-        # run file with LISO and parse results
-        runner = LisoRunner(script_path=file.name)
-        parser = runner.run(liso_path, plot=False)
-        liso_solution = parser.solution()
-        liso_solution.name = "LISO"
-    else:
-        # parse specified file
-        try:
-            # try to parse as input file
-            parser = LisoInputParser()
-            parser.parse(path=file.name)
-        except LisoParserError:
-            try:
-                # try to parse as an output file
-                parser = LisoOutputParser()
-                parser.parse(path=file.name)
-            except LisoParserError:
-                raise ValueError("cannot interpret specified file as either a LISO input or LISO "
-                                 "output file")
+    if not files:
+        click.echo("No input files provided. For help, specify --help.")
+        sys.exit(0)
 
-    if compute_native:
-        # build argument list
-        kwargs = {"print_progress": state.verbose,
-                  "print_equations": print_equations,
-                  "print_matrix": print_matrix}
+    # Determine whether to add script paths to solution names.
+    add_path_suffix = len(files) > 1
 
-        # get native solution
-        native_solution = parser.solution(force=True, **kwargs)
-        native_solution.name = "Native"
+    solutions = []
 
-    # determine solution to show or save
-    if compare:
-        liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
-        def liso_order(function):
-            """Return order as specified in LISO file for specified function"""
-            for index, liso_function in enumerate(liso_functions):
-                if liso_function.meta_equivalent(function):
-                    return index
-
-            raise ValueError(f"{function} is not in LISO solution")
-
-        # Sort native solution in the order defined in the LISO file.
-        native_solution.sort_functions(liso_order, default_only=True)
-
-        # show difference before changing labels
-        if diff:
-            # group by meta data
-            header, rows = native_solution.difference(liso_solution, defaults_only=True,
-                                                      meta_only=True)
-
-            click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
-
-        # combine results from LISO and native simulations
-        solution = native_solution + liso_solution
-    else:
-        # plot single result
+    for liso_file in files:
         if compute_liso:
-            # use LISO's solution
-            solution = liso_solution
-        else:
-            # use native solution
-            solution = native_solution
+            if add_path_suffix:
+                name_suffix = f" {liso_file.name}"
+            else:
+                name_suffix = ""
+            name = f"LISO{name_suffix}"
 
-    # determine whether to generate plot
+            # Run file with LISO and parse results.
+            runner = LisoRunner(script_path=liso_file.name)
+            parser = runner.run(liso_path, plot=False)
+            liso_solution = parser.solution()
+            liso_solution.name = name
+        else:
+            # Parse specified file.
+            try:
+                # Try to parse as input file.
+                parser = LisoInputParser()
+                parser.parse(path=liso_file.name)
+            except LisoParserError:
+                try:
+                    # Try to parse as an output file.
+                    parser = LisoOutputParser()
+                    parser.parse(path=liso_file.name)
+                except LisoParserError:
+                    click.echo(f"cannot interpret {liso_file.name} as either a LISO input or LISO "
+                               "output file", err=True)
+                    sys.exit(1)
+
+        if compute_native:
+            if add_path_suffix:
+                name_suffix = f" {liso_file.name}"
+            else:
+                name_suffix = ""
+            name = f"Zero{name_suffix}"
+
+            # Build argument list.
+            kwargs = {"print_progress": state.verbose,
+                    "print_equations": print_equations,
+                    "print_matrix": print_matrix}
+
+            # Get native solution.
+            native_solution = parser.solution(force=True, **kwargs)
+            native_solution.name = name
+
+        # Determine solution to show or save.
+        if compare:
+            liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
+            def liso_order(function):
+                """Return order as specified in LISO file for specified function"""
+                for index, liso_function in enumerate(liso_functions):
+                    if liso_function.meta_equivalent(function):
+                        return index
+
+                click.echo(f"{function} is not in LISO solution", err=True)
+                sys.exit(1)
+
+            # Sort native solution in the order defined in the LISO file.
+            native_solution.sort_functions(liso_order, default_only=True)
+
+            # Show difference before changing labels.
+            if diff:
+                # Group by meta data.
+                header, rows = native_solution.difference(liso_solution, defaults_only=True,
+                                                        meta_only=True)
+
+                click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+
+            # Combine results from LISO and native simulations. This puts the functions from each
+            # solution into groups with that solution's name so we can differentiate them on the
+            # plot.
+            solution = native_solution.combine(liso_solution)
+        else:
+            # Plot single result.
+            if compute_liso:
+                # Use LISO's solution.
+                solution = liso_solution
+            else:
+                # Use native solution.
+                solution = native_solution
+
+        solutions.append(solution)
+
+    solution = solutions[0]
+    if len(solutions) > 1:
+        # Combine all simulated solutions.
+        solution = solution.combine(*solutions[1:])
+
+    # Determine whether to generate plot.
     generate_plot = plot or save_figure
 
     if generate_plot:
@@ -171,7 +209,7 @@ def liso(ctx, file, liso, liso_path, resp_scale_db, compare, diff, plot, save_fi
         if save_figure:
             for save_path in save_figure:
                 # NOTE: use figure file's name so that Matplotlib can identify the file type
-                # appropriately
+                # appropriately.
                 solution.save_figure(figure, save_path.name)
 
     if plot:
@@ -228,17 +266,19 @@ def library_show(paged):
 
 @library.command("search")
 @click.argument("query")
-@click.option("--a0", is_flag=True, default=False, help="Show open loop gain.")
-@click.option("--gbw", is_flag=True, default=False, help="Show gain-bandwidth product.")
-@click.option("--vnoise", is_flag=True, default=False, help="Show flat voltage noise.")
-@click.option("--vcorner", is_flag=True, default=False, help="Show voltage noise corner frequency.")
-@click.option("--inoise", is_flag=True, default=False, help="Show flat current noise.")
-@click.option("--icorner", is_flag=True, default=False, help="Show current noise corner frequency.")
-@click.option("--vmax", is_flag=True, default=False, help="Show maximum output voltage.")
-@click.option("--imax", is_flag=True, default=False, help="Show maximum output current.")
-@click.option("--sr", is_flag=True, default=False, help="Show slew rate.")
+@click.option("--sort-a0", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
+@click.option("--sort-gbw", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
+@click.option("--sort-delay", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
+@click.option("--sort-vnoise", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
+@click.option("--sort-vcorner", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
+@click.option("--sort-inoise", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
+@click.option("--sort-icorner", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
+@click.option("--sort-vmax", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
+@click.option("--sort-imax", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
+@click.option("--sort-sr", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
 @click.option("--paged", is_flag=True, default=False, help="Print results with paging.")
-def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax, sr, paged):
+def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorner, sort_inoise,
+                   sort_icorner, sort_vmax, sort_imax, sort_sr, paged):
     """Search Zero op-amp library.
 
     Op-amp parameters listed in the library can be searched:
@@ -259,60 +299,38 @@ def library_search(query, a0, gbw, vnoise, vcorner, inoise, icorner, vmax, imax,
 
     The query engine supports arbitrary expressions.
 
-    Example: all op-amps with noise less than 10 nV/sqrt(Hz) and corner frequency
-    below 10 Hz:
+    The 'a0' parameter can be specified in magnitude or decibels. For decibels, append 'dB' (case
+    insensitive) to the value.
 
-        vnoise < 10n & vcorner < 10
+    The results are sorted sequentially in the order that each parameter appears in the
+    search query (left to right). The sort direction (descending or ascending) depends on the type
+    of parameter. The sort direction for parameter 'X' can be overridden using the corresponding
+    '--sort-X' flag. Specify 'ASC' for ascending and 'DESC' for descending order.
     """
-    echo = click.echo_via_pager if paged else click.echo
-
     engine = LibraryQueryEngine()
-
-    # build parameter list
-    params = []
-    if a0:
-        params.append("a0")
-    if gbw:
-        params.append("gbw")
-    if vnoise:
-        params.append("vnoise")
-    if vcorner:
-        params.append("vcorner")
-    if inoise:
-        params.append("inoise")
-    if icorner:
-        params.append("icorner")
-    if vmax:
-        params.append("vmax")
-    if imax:
-        params.append("imax")
-    if sr:
-        params.append("sr")
-
-    # get results
-    devices = engine.query(query)
-
+    sort_order = {"a0": sort_a0 == "DESC", "gbw": sort_gbw == "DESC", "delay": sort_delay == "DESC",
+                  "vnoise": sort_vnoise == "DESC", "vcorner": sort_vcorner == "DESC",
+                  "inoise": sort_inoise == "DESC", "icorner": sort_icorner == "DESC",
+                  "vmax": sort_vmax == "DESC", "imax": sort_imax == "DESC", "sr": sort_sr == "DESC"}
+    # Get results.
+    devices = engine.query(query, sort_order=sort_order)
     if not devices:
         click.echo("No op-amps found", err=True)
-        sys.exit()
-
+        sys.exit(1)
     nmodel = len(devices)
     if nmodel == 1:
         opstr = "op-amp"
     else:
         opstr = "op-amps"
-
     click.echo(f"{nmodel} {opstr} found:")
-
-    header = ["Model"] + params
     rows = []
-
     for device in devices:
-        row = [device.model]
-        row.extend([str(getattr(device, param)) for param in params])
-        rows.append(row)
-
-    echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
+        rows.append([str(getattr(device, param)) for param in engine.parameters])
+    table = tabulate(rows, engine.parameters, tablefmt=CONF["format"]["table"])
+    if paged:
+        click.echo_via_pager(table)
+    else:
+        click.echo(table)
 
 @cli.group()
 def config():

@@ -2,8 +2,8 @@
 
 import numpy as np
 from zero.data import Series, MultiNoiseDensity
-from .data import ZeroDataTestCase
-
+from zero.misc import mag_to_db
+from ..data import ZeroDataTestCase
 
 class SeriesTestCase(ZeroDataTestCase):
     """Data series tests"""
@@ -19,7 +19,7 @@ class SeriesTestCase(ZeroDataTestCase):
         self.data_im = test_data[:, 1]
         # Magnitude and phase equivalent.
         self.data_mag_abs = np.abs(self.data_cplx)
-        self.data_mag_db = 20 * np.log10(self.data_mag_abs)
+        self.data_mag_db = mag_to_db(self.data_mag_abs)
         self.data_phase_rad = np.angle(self.data_cplx)
         self.data_phase_deg = np.degrees(self.data_phase_rad)
 
@@ -80,6 +80,38 @@ class SeriesTestCase(ZeroDataTestCase):
         self.assertRaises(ValueError, Series, x=np.array([1, 2, 3]), y=np.array([1, 2, 3, 4]))
         self.assertRaises(ValueError, Series, x=np.array([[1, 2, 3], [4, 5, 6]]),
                           y=np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
+
+    def test_addition(self):
+        """Test series addition."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 + series2 + series3
+        self.assertTrue(np.allclose(combined.x, combined.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx * 3))
+
+    def test_addition_scalar(self):
+        """Test series scalar addition."""
+        series = Series(self.x, self.data_cplx)
+        scaled = series + 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx + 5))
+
+    def test_subtract(self):
+        """Test series subtraction."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 - series2 - series3
+        self.assertTrue(np.allclose(combined.x, combined.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx * -1))
+
+    def test_subtract_scalar(self):
+        """Test series scalar subtraction."""
+        series = Series(self.x, self.data_cplx)
+        scaled = series - 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx - 5))
 
     def test_multiply(self):
         """Test series multiplication."""
@@ -142,6 +174,32 @@ class SeriesTestCase(ZeroDataTestCase):
         self.assertTrue(np.allclose(scaled.x, series.x))
         self.assertTrue(np.allclose(scaled.y, 5 / self.data_cplx))
 
+    def test_exponentiate(self):
+        """Test series exponentiation."""
+        series1 = Series(self.x, self.data_cplx)
+        series2 = Series(self.x, self.data_cplx)
+        series3 = Series(self.x, self.data_cplx)
+        combined = series1 ** series2 ** series3
+        self.assertTrue(np.allclose(combined.x, combined.x))
+        self.assertTrue(np.allclose(combined.y, self.data_cplx ** self.data_cplx ** self.data_cplx))
+
+    def test_exponentiate_scalar(self):
+        """Test series scalar exponentiation."""
+        series = Series(self.x, self.data_cplx)
+        scaled = series ** 5
+        self.assertTrue(np.allclose(scaled.x, series.x))
+        self.assertTrue(np.allclose(scaled.y, self.data_cplx ** 5))
+
+    def test_negate(self):
+        """Test series negation."""
+        series = Series(self.x, self.data_cplx)
+        negated = -series
+        # Negation should return a new object, so there shouldn't be issues with data changing
+        # later.
+        series.y = np.zeros_like(series.y)
+        self.assertTrue(np.allclose(negated.x, series.x))
+        self.assertTrue(np.allclose(negated.y, -self.data_cplx))
+
     def test_inverse(self):
         """Test series inversion."""
         series = Series(self.x, self.data_cplx)
@@ -170,8 +228,8 @@ class MultiNoiseDensityTestCase(ZeroDataTestCase):
     def test_constituent_noise_sum_equal_total_noise_sum(self):
         f = self._freqs()
         sink = self._resistor()
-        noise1 = self._voltage_noise_at_comp(f, sink=sink)
-        noise2 = self._voltage_noise_at_comp(f, sink=sink) # Share sink.
+        noise1 = self._vnoise_at_comp(f, sink=sink)
+        noise2 = self._vnoise_at_comp(f, sink=sink) # Share sink.
         constituents = [noise1, noise2]
         sum_data = np.sqrt(sum([noise.spectral_density ** 2 for noise in constituents]))
         sum_series = self._series(f, sum_data)

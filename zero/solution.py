@@ -11,7 +11,8 @@ from matplotlib.ticker import MultipleLocator
 from .config import ZeroConfig
 from .data import (Response, NoiseDensity, MultiNoiseDensity, ReferenceResponse, ReferenceNoise,
                    frequencies_match)
-from .components import BaseElement, Noise
+from .components import BaseElement
+from .noise import Noise
 from .format import Quantity
 from .misc import lighten_colours
 
@@ -54,8 +55,8 @@ class Solution:
         self.default_noise_sums = defaultdict(list)
 
         # Reference functions.
-        self._response_references = []
-        self._noise_references = []
+        self.response_references = []
+        self.noise_references = []
 
         self._name = None
 
@@ -113,7 +114,7 @@ class Solution:
 
         self.functions = groups
 
-    def _merge_groups(self, *groupsets):
+    def _merge_groupsets(self, *groupsets):
         """Merge grouped functions into one dict"""
         combined = defaultdict(list)
 
@@ -293,17 +294,19 @@ class Solution:
 
         self.default_noise_sums[group].append(noise_sum)
 
-    def add_response_reference(self, *args, **kwargs):
-        reference = ReferenceResponse(*args, **kwargs)
-        if reference in self._response_references:
+    def add_response_reference(self, *args, reference=None, **kwargs):
+        if reference is None:
+            reference = ReferenceResponse(*args, **kwargs)
+        if reference in self.response_references:
             raise ValueError("response reference is already present in the solution")
-        self._response_references.append(reference)
+        self.response_references.append(reference)
 
-    def add_noise_reference(self, *args, **kwargs):
-        reference = ReferenceNoise(*args, **kwargs)
-        if reference in self._noise_references:
+    def add_noise_reference(self, *args, reference=None, **kwargs):
+        if reference is None:
+            reference = ReferenceNoise(*args, **kwargs)
+        if reference in self.noise_references:
             raise ValueError("noise reference is already present in the solution")
-        self._noise_references.append(reference)
+        self.noise_references.append(reference)
 
     def _add_function(self, function, group=None):
         if group is None:
@@ -320,7 +323,7 @@ class Solution:
         self._function_groups[function] = group
 
     @classmethod
-    def __group_params(cls, sparam, mparam, sparam_name, mparam_name, default=None):
+    def __group_params(cls, sparam, mparam, sparam_name, mparam_name, default=None, allmstr=None):
         """Create list with either the singular or multiple valued parameter's value(s).
 
         This method allows only one or the other parameter to be defined, and returns a list
@@ -333,15 +336,21 @@ class Solution:
             if mparam is not None:
                 raise ValueError(f"{sparam_name} and {mparam_name} cannot both be defined")
             return [sparam]
+        if allmstr is not None and mparam == allmstr:
+            # The "all" specifier was given for the multi-specifier; let this though unimpeded.
+            return mparam
         return list(mparam)
 
     def filter_responses(self, group=None, groups=None, source=None, sources=None, sink=None,
                          sinks=None, label=None, labels=None):
         groups = self.__group_params(group, groups, "group", "groups",
-                                     default=[self.DEFAULT_GROUP_NAME])
-        sources = self.__group_params(source, sources, "source", "sources")
-        sinks = self.__group_params(sink, sinks, "sink", "sinks")
-        labels = self.__group_params(label, labels, "label", "labels")
+                                     default=[self.DEFAULT_GROUP_NAME],
+                                     allmstr=self.RESPONSE_GROUPS_ALL)
+        sources = self.__group_params(source, sources, "source", "sources",
+                                      allmstr=self.RESPONSE_SOURCES_ALL)
+        sinks = self.__group_params(sink, sinks, "sink", "sinks", allmstr=self.RESPONSE_SINKS_ALL)
+        labels = self.__group_params(label, labels, "label", "labels",
+                                     allmstr=self.RESPONSE_LABELS_ALL)
         return self._apply_response_filters(self.responses, groups=groups, sources=sources,
                                             sinks=sinks, labels=labels)
 
@@ -468,11 +477,14 @@ class Solution:
         This does not include sums.
         """
         groups = self.__group_params(group, groups, "group", "groups",
-                                     default=[self.DEFAULT_GROUP_NAME])
-        sources = self.__group_params(source, sources, "source", "sources")
-        sinks = self.__group_params(sink, sinks, "sink", "sinks")
-        labels = self.__group_params(label, labels, "label", "labels")
-        types = self.__group_params(type, types, "type", "types")
+                                     default=[self.DEFAULT_GROUP_NAME],
+                                     allmstr=self.NOISE_GROUPS_ALL)
+        sources = self.__group_params(source, sources, "source", "sources",
+                                      allmstr=self.NOISE_SOURCES_ALL)
+        sinks = self.__group_params(sink, sinks, "sink", "sinks", allmstr=self.NOISE_SINKS_ALL)
+        labels = self.__group_params(label, labels, "label", "labels",
+                                     allmstr=self.NOISE_LABELS_ALL)
+        types = self.__group_params(type, types, "type", "types", allmstr=self.NOISE_TYPES_ALL)
         return self._apply_noise_filters(self.noise, groups=groups, sources=sources, sinks=sinks,
                                          labels=labels, types=types)
 
@@ -541,6 +553,62 @@ class Solution:
             group = self.DEFAULT_GROUP_NAME
         index = self.functions[group].index(current_function)
         self.functions[group][index] = new_function
+
+    def rename_group(self, source_group, new_group):
+        """Rename the specified group, moving all of its functions to the new group.
+
+        The new group must not already exist. If it does, :meth:`.merge_group` should be used
+        instead.
+
+        Raises
+        ------
+        ValueError
+            If the new group already exists.
+        """
+        if new_group in self.groups:
+            raise ValueError("use merge_group to move functions into an existing group")
+        # Touch the new function group to create its key.
+        self.functions[new_group]
+        # Merge source functions into new group.
+        self.merge_group(source_group, new_group)
+
+    def move_default_group_functions(self, new_group):
+        """Move the default group's functions to a new group.
+
+        The default group will still be used for any new functions added to the solution with no
+        explicit group, as usual.
+        """
+        return self.merge_group(self.DEFAULT_GROUP_NAME, new_group)
+
+    def merge_group(self, source_group, target_group):
+        """Merge functions from source group into target group.
+
+        The source group cannot contain any functions in the target group.
+
+        Raises
+        ------
+        ValueError
+            If the source or target group is the reference group.
+        ValueError
+            If a function in the source group matches one already present in the target group.
+        """
+        if source_group not in self.groups:
+            raise ValueError("source group does not exist")
+        if self.DEFAULT_REF_GROUP_NAME in (source_group, target_group):
+            raise ValueError("neither source nor target group can be the reference group")
+        if target_group == self.DEFAULT_GROUP_NAME:
+            target_group_name = None
+        for function in self.functions[source_group]:
+            self._add_function(function, group=target_group_name)
+        # Remove source group.
+        del self.functions[source_group]
+        # Move default settings.
+        self.default_responses[target_group] = self.default_responses[source_group]
+        self.default_noise[target_group] = self.default_noise[source_group]
+        self.default_noise_sums[target_group] = self.default_noise_sums[source_group]
+        del self.default_responses[source_group]
+        del self.default_noise[source_group]
+        del self.default_noise_sums[source_group]
 
     def _apply_noise_filters(self, spectra, groups=None, sources=None, sinks=None, labels=None,
                              types=None):
@@ -760,8 +828,8 @@ class Solution:
     @property
     def default_functions(self):
         """Default responses and noise spectra"""
-        return self._merge_groups(self.default_responses, self.default_noise,
-                                  self.default_noise_sums)
+        return self._merge_groupsets(self.default_responses, self.default_noise,
+                                     self.default_noise_sums)
 
     @property
     def response_sources(self):
@@ -892,6 +960,7 @@ class Solution:
             The plotted figure.
         """
         # Plot default noise if no filters are being applied.
+        default_none_param_names = ("group", "groups", "source", "sources", "sink", "sinks")
         default_none_params = (group, groups, source, sources, sink, sinks)
         if all([param is None for param in default_none_params]):
             responses = self.default_responses
@@ -900,7 +969,8 @@ class Solution:
                                               sinks=sinks, group=group, groups=groups)
 
         if not responses:
-            raise NoDataException("no responses found")
+            filters = ", ".join([f"'{param}'" for param in default_none_param_names])
+            raise NoDataException(f"No responses found. Consider setting one of {filters}.")
 
         if xlabel is None:
             xlabel = r"$\bf{Frequency}$ (Hz)"
@@ -913,7 +983,7 @@ class Solution:
             ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
 
         # Add reference functions.
-        responses[self.DEFAULT_REF_GROUP_NAME] = self._response_references
+        responses[self.DEFAULT_REF_GROUP_NAME] = self.response_references
 
         # Draw plot.
         figure = self._plot_bode(responses, figure=figure, xlabel=xlabel, ylabel_mag=ylabel_mag,
@@ -967,22 +1037,25 @@ class Solution:
             The plotted figure.
         """
         # Plot default noise if no filters are being applied.
+        default_none_param_names = ("group", "groups", "source", "sources", "sink", "sinks", "type",
+                                    "types")
         default_none_params = (group, groups, source, sources, sink, sinks, type, types)
         if all([param is None for param in default_none_params]):
             # Filter against sum flag.
             noise = self._filter_default_noise()
 
             if show_sums:
-                noise = self._merge_groups(noise, self.default_noise_sums)
+                noise = self._merge_groupsets(noise, self.default_noise_sums)
         else:
             noise = self.filter_noise(source=source, sources=sources, sink=sink, sinks=sinks,
                                       group=group, groups=groups, type=type, types=types)
 
             if show_sums:
-                noise = self._merge_groups(noise, self.noise_sums)
+                noise = self._merge_groupsets(noise, self.noise_sums)
 
         if not noise:
-            raise NoDataException("no noise spectra found from specified sources and/or sum(s)")
+            filters = ", ".join([f"'{param}'" for param in default_none_param_names])
+            raise NoDataException(f"No noise spectra found. Consider setting one of {filters}.")
 
         if xlabel is None:
             xlabel = r"$\bf{Frequency}$ (Hz)"
@@ -1000,7 +1073,7 @@ class Solution:
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
 
         # Add reference functions.
-        noise[self.DEFAULT_REF_GROUP_NAME] = self._noise_references
+        noise[self.DEFAULT_REF_GROUP_NAME] = self.noise_references
 
         figure = self._plot_spectral_density(noise, figure=figure, xlabel=xlabel, ylabel=ylabel,
                                              **kwargs)
@@ -1248,51 +1321,92 @@ class Solution:
     def __add__(self, other):
         return self.combine(other)
 
-    def combine(self, other):
-        """Combine this solution with the specified other solution.
+    def combine(self, *others, name=None, merge_groups=False):
+        """Combine this solution with the specified other solution(s).
 
-        To be able to be combined, the two solutions must have equivalent frequency vectors.
+        The groups of each solution are copied to a new, combined solution. By default, the group
+        names have the source solution's name appended as a suffix in the form "group name (solution
+        name)", unless the group is the default group, in which case the functions are placed in a
+        group with the solution name only. When the `merge_groups` flag is True, in cases where
+        groups from each solution have the same name, their functions are combined into a single new
+        group as long as none of the functions are present in both source groups.
+
+        To be able to be combined, the two solutions must have equivalent frequency vectors, and
+        cannot have the same name.
+
+        Parameters
+        ----------
+        *others : sequence of :class:`.Solution`
+            The solution(s) to combine.
+        name : :class:`str`, optional
+            The name to give to the combined solution. Defaults to the "A + B + ..." where "A", "B",
+            etc. are the source solutions.
+
+        Returns
+        -------
+        :class:`.Solution`
+            The combined solution.
+
+        Raises
+        ------
+        ValueError
+            If the solutions have the same name.
+        ValueError
+            If the solutions have different frequency vectors.
+        ValueError
+            If an identical function with an identical group is present in both solutions.
         """
-        LOGGER.info("combining %s solution with %s", self, other)
+        other_names = ", ".join([str(other) for other in others])
+        LOGGER.info(f"combining {self} solution with {other_names}")
+        for other in others:
+            if str(self) == str(other):
+                raise ValueError("cannot combined groups with the same name")
+            # Check frequencies match.
+            if not frequencies_match(self.frequencies, other.frequencies):
+                raise ValueError(f"specified other solution '{other}' has incompatible frequencies")
 
-        if str(self) == str(other):
-            raise ValueError("cannot combined groups with the same name")
+        if name is None:
+            name = " + ".join([str(solution) for solution in [self] + list(others)])
 
-        # check frequencies match
-        if not frequencies_match(self.frequencies, other.frequencies):
-            raise ValueError(f"specified other solution '{other}' is incompatible with this one")
-
-        for group, functions in self.functions.items():
-            if group in other.functions:
-                for function in functions:
-                    if function in other.functions[group]:
-                        LOGGER.debug("function '%s' appears in both solutions (group '%s')",
-                                     function, group)
-
-        # Resultant name.
-        name = f"{self} + {other}"
         # Resultant solution.
         result = self.__class__(self.frequencies, name)
 
-        def flag_functions(solution):
-            # Use solution name as group name.
-            new_group = str(solution)
+        def new_group_name(group, solution):
+            if merge_groups:
+                new_group = group if group != self.DEFAULT_GROUP_NAME else None
+            else:
+                if group == solution.DEFAULT_GROUP_NAME:
+                    # Use the solution name as the group name.
+                    new_group = solution.name
+                else:
+                    # Append the solution name to the group name.
+                    new_group = f"{group} ({solution.name})"
+            return new_group
 
+        def merge_into_result(solution):
             for group, responses in solution.responses.items():
+                new_group = new_group_name(group, solution)
                 for response in responses:
                     is_default = solution.is_default_response(response, group)
                     result.add_response(response, default=is_default, group=new_group)
             for group, spectra in solution.noise.items():
+                new_group = new_group_name(group, solution)
                 for spectral_density in spectra:
                     is_default = solution.is_default_noise(spectral_density, group)
                     result.add_noise(spectral_density, default=is_default, group=new_group)
             for group, noise_sums in solution.noise_sums.items():
+                new_group = new_group_name(group, solution)
                 for noise_sum in noise_sums:
                     is_default = solution.is_default_noise_sum(noise_sum, group)
                     result.add_noise_sum(noise_sum, default=is_default, group=new_group)
+            for response_ref in solution.response_references:
+                result.add_response_reference(reference=response_ref)
+            for noise_ref in solution.noise_references:
+                result.add_noise_reference(reference=noise_ref)
 
-        flag_functions(self)
-        flag_functions(other)
+        merge_into_result(self)
+        for other in others:
+            merge_into_result(other)
 
         return result
 
@@ -1303,6 +1417,13 @@ class Solution:
         ----------
         other : :class:`.Solution`
             The other solution to compare to.
+
+        Other Parameters
+        ----------------
+        defaults_only : :class:`bool`, optional
+            Whether to check only the default functions, or everything. Defaults to everything.
+        meta_only : :class:`bool`, optional
+            Whether to check only meta data, not function data, when comparing. Defaults to False.
 
         Returns
         -------
@@ -1346,10 +1467,10 @@ class Solution:
             # absolute and relative worst indices
             iworst = np.argmax(np.abs(data_a - data_b))
             worst = np.abs(data_a[iworst] - data_b[iworst])
-            fworst = Quantity(frequencies[iworst], unit="Hz")
+            fworst = Quantity(frequencies[iworst], units="Hz")
             irelworst = np.argmax(np.abs((data_a - data_b) / data_b))
             relworst = np.abs((data_a[irelworst] - data_b[irelworst]) / data_b[irelworst])
-            frelworst = Quantity(frequencies[irelworst], unit="Hz")
+            frelworst = Quantity(frequencies[irelworst], units="Hz")
 
             if worst != 0:
                 # descriptions of worst
@@ -1381,9 +1502,9 @@ def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
     sol_a, sol_b : :class:`.Solution`
         The solutions to compare.
     defaults_only : :class:`bool`, optional
-        Whether to check only the default functions, or everything.
+        Whether to check only the default functions, or everything. Defaults to everything.
     meta_only : :class:`bool`, optional
-        Whether to check only meta data when comparing.
+        Whether to check only meta data, not function data, when comparing. Defaults to False.
 
     Returns
     -------

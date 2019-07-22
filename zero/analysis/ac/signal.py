@@ -17,6 +17,18 @@ class AcSignalAnalysis(BaseAcAnalysis):
         input_type : str
             Input type, either "voltage" or "current".
 
+        Other Parameters
+        ----------------
+        frequencies : :class:`np.ndarray` or sequence
+            The frequency vector to calculate the response with.
+        node, node_p, node_n : :class:`.Node`
+            The node or nodes to make the input. The `node` parameter sets a single, grounded input,
+            whereas `node_p` and `node_n` together create a floating input.
+        print_equations : :class:`bool`, optional
+            Print the circuit equations.
+        print_matrix : :class:`bool`, optional
+            Print the circuit matrix.
+
         Returns
         -------
         :class:`~.solution.Solution`
@@ -28,7 +40,6 @@ class AcSignalAnalysis(BaseAcAnalysis):
         else:
             impedance = None
         self._do_calculate(input_type, impedance=impedance, **kwargs)
-
         return self.solution
 
     @property
