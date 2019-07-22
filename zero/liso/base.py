@@ -87,7 +87,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 "input_node_n": None,
                 "input_impedance": None,
                 "output_type": None,
-                "input_refer": None,
+                "input_refer": False,
                 "noise_output_element": None,
                 "response_outputs": [],
                 # Displayed noise.
