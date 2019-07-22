@@ -43,6 +43,7 @@ class LisoInputParser(LisoParser):
         "uoutput": "UOUTPUT",
         "ioutput": "IOUTPUT",
         "noise": "NOISE",
+        "inputnoise": "INPUTNOISE",
         "noisy": "NOISY"
     }
 
@@ -304,11 +305,13 @@ class LisoInputParser(LisoParser):
         self._parse_current_output(p[2])
 
     def p_noise(self, p):
-        '''instruction : NOISE CHUNK chunks end'''
+        '''instruction : NOISE CHUNK chunks end
+                       | INPUTNOISE CHUNK chunks end'''
         noise_str = p[2] + " " + p[3]
+        input_noise = p[1] == "inputnoise"
 
         # parse noise node
-        self._parse_noise_output(noise_str)
+        self._parse_noise_output(noise_str, input_refer=input_noise)
 
     def p_noisy(self, p):
         '''instruction : NOISY chunks end'''
@@ -514,12 +517,13 @@ class LisoInputParser(LisoParser):
             # add output
             self.add_response_output(LisoOutputCurrent(component=component_name, scales=scales))
 
-    def _parse_noise_output(self, noise_str):
+    def _parse_noise_output(self, noise_str, input_refer=False):
         # split by whitespace
         params = noise_str.split()
 
         # noise output
         self.output_type = "noise"
+        self.input_refer = input_refer
 
         # noise output
         self.noise_output_element = params[0]

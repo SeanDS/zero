@@ -87,6 +87,7 @@ class LisoParser(metaclass=abc.ABCMeta):
                 "input_node_n": None,
                 "input_impedance": None,
                 "output_type": None,
+                "input_refer": None,
                 "noise_output_element": None,
                 "response_outputs": [],
                 # Displayed noise.
@@ -471,6 +472,7 @@ class LisoParser(metaclass=abc.ABCMeta):
         if self.output_type == "noise":
             analysis_args['sink'] = self.circuit[self.noise_output_element]
             analysis_args['impedance'] = self.input_impedance
+            analysis_args['input_refer'] = self.input_refer
 
         return analysis.calculate(self.input_type, **analysis_args, **kwargs)
 
@@ -601,6 +603,15 @@ class LisoParser(metaclass=abc.ABCMeta):
             raise ValueError("unknown output type")
 
         self._circuit_properties["output_type"] = output_type
+
+    @property
+    def input_refer(self):
+        """Whether noise is project to the input."""
+        return self._circuit_properties["input_refer"]
+
+    @input_refer.setter
+    def input_refer(self, input_refer):
+        self._circuit_properties["input_refer"] = bool(input_refer)
 
     def _set_inductor_couplings(self):
         # discard name (not used in circuit mode)
