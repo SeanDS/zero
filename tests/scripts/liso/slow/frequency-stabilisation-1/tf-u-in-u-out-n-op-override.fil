@@ -86,7 +86,7 @@ c  c4 220n        nN1_C4 nEOMDGHTR
 # Computation commands
 ###############################################################################
 
-freq log 1 10M 100
+freq log 1 10M 1000
 
 uinput nTP1
 uoutput nEOMDGHTR

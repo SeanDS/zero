@@ -8,7 +8,7 @@ c c2 4.7n nsum gnd
 c c5 122p no nm
 op op1 op27 gnd nm no
 
-freq log 1 100k 100
+freq log 1 100k 1000
 
 uinput nin 50
 inputnoise no all

@@ -8,7 +8,7 @@ c c1 4.7n nm no
 c c2 4.7n np gnd
 op op1 op27 np nm no
 
-freq log 1 1M 100
+freq log 1 1M 1000
 
 uinput nin1 nin2 50
 uoutput no
