@@ -19,3 +19,18 @@ LISO
     liso-input
 
 .. _development repository: https://git.ligo.org/sean-leavey/zero/tree/master/examples/native
+
+Generating a circuit graph
+--------------------------
+
+You can plot the circuit's node network using Graphviz, if installed:
+
+.. code:: python
+
+    >>> from zero.display import NodeGraph
+    >>> NodeGraph(circuit)
+
+.. image:: /_static/liso-input-node-graph.svg
+
+Graphviz almost always produces a messy representation, but it can sometimes be useful to help
+spot simple mistakes in circuit definitions.

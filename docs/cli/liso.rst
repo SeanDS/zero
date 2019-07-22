@@ -14,9 +14,12 @@ LISO by overlaying results in a plot or displaying a table of values.
 Script path
 -----------
 
-For all calls to ``zero liso``, a script path (``FILE``) must be specified. This can either be a
-LISO input or output file (commonly given ``.fil`` and ``.out`` extensions, respectively), and
-|Zero| will choose an appropriate parser based on what it finds.
+For all calls to ``zero liso``, one or more script paths (``FILE``) must be specified. These can
+either be LISO input or output file (commonly given ``.fil`` and ``.out`` extensions, respectively),
+and |Zero| will choose an appropriate parser based on what it finds.
+
+When more than one script is specified, they are simulated separately and the results combined. See
+:ref:`cli/liso:Simulating multiple input files together` for more information.
 
 Verbose output
 --------------
@@ -107,6 +110,66 @@ they occur:
     ├──────────────────┼───────────────────────────────┼───────────────────────────────┤
     │ nin to no (V/V)  │ 1.04e-08 (f = 79.433 kHz)     │ 9.54e-10 (f = 79.433 kHz)     │
     ╘══════════════════╧═══════════════════════════════╧═══════════════════════════════╛
+
+Simulating multiple input files together
+----------------------------------------
+
+Multiple input or output files may be specified in the ``zero liso`` call. These are simulated
+separately and the results are merged together such that they can be plotted on one graph if
+possible. The results can only be combined with the simulations contain the same frequency vectors.
+If they do not have the same frequency vectors, an error is displayed and the program exits.
+
+This can be useful for example for simulating similar circuits with different component values on
+one graph. Each script is plotted with a different line style and a gradually lighter colour map.
+
+Here is an example that shows the noise at an output node and the same noise referred to the input
+on one plot:
+
+.. code-block:: bash
+
+    $ zero liso noise1.fil noise2.fil
+
+.. image:: /_static/liso-two-noises.svg
+
+Contents of ``noise1.fil``:
+
+.. code-block:: text
+
+    r r1 400k nin n1
+    r r2 400k n1 n2
+    r r3 50 n5 n3
+    r rs 230 n5 n6
+    r led 48.6 n6 gnd
+    c c1 20u n1 n3
+    c c2 10u n2 gnd
+    op op1 op27 n2 n3 n4
+    op op2 buf634 n4 n5 n5
+
+    freq log .003 300 1000
+
+    uinput nin 0
+    noise n6 sum
+    noisy all
+
+Contents of ``noise2.fil``:
+
+.. code-block:: text
+
+    r r1 400k nin n1
+    r r2 400k n1 n2
+    r r3 50 n5 n3
+    r rs 230 n5 n6
+    r led 48.6 n6 gnd
+    c c1 20u n1 n3
+    c c2 10u n2 gnd
+    op op1 op27 n2 n3 n4
+    op op2 buf634 n4 n5 n5
+
+    freq log .003 300 1000
+
+    uinput nin 0
+    inputnoise n6 sum
+    noisy all
 
 Scaling response plots
 ----------------------

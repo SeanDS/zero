@@ -22,8 +22,10 @@ ZEROSTATICDEPS = $(STATICDIR)/liso-input-node-graph.svg
 # Zero Python files.
 ZEROPYTHONDEPS = $(STATICDIR)/liso-input-response.svg $(STATICDIR)/solution-combination.svg \
 				 $(STATICDIR)/resistor-current-noise.svg
-# LISO script comparisons.
-ZEROLISODEPS = $(STATICDIR)/liso-compare-response.svg
+# Native plots with LISO files.
+ZEROLISODEPS = $(STATICDIR)/liso-two-noises.svg
+# Native/LISO script comparisons.
+ZEROLISOCOMPAREDEPS = $(STATICDIR)/liso-compare-response.svg
 
 .PHONY: help
 help:
@@ -68,12 +70,17 @@ apidoc:
 static: plots
 
 .PHONY: plots
-plots: $(ZEROSTATICDEPS) $(ZEROPYTHONDEPS) $(ZEROLISODEPS)
+plots: $(ZEROSTATICDEPS) $(ZEROPYTHONDEPS) $(ZEROLISODEPS) $(ZEROLISOCOMPAREDEPS)
 
 # Generate SVG plots of Zero output using Python script.
 $(STATICDIR)/%.svg: $(STATICDIR)/zero-python/%.py
 	@echo "Generating $@ from $<"
 	python $< $@
+
+# Generate SVG plot of two noise example.
+$(STATICDIR)/liso-two-noises.svg:
+	@echo "Generating $@"
+	zero liso $(STATICDIR)/liso-two-noises/noise1.fil $(STATICDIR)/liso-two-noises/noise2.fil --no-plot --save-figure $@
 
 # Generate SVG plots comparing Zero to LISO using LISO files.
 $(STATICDIR)/%.svg: $(STATICDIR)/liso-compare/%.fil
