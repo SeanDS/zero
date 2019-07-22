@@ -147,8 +147,8 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
 
             # Build argument list.
             kwargs = {"print_progress": state.verbose,
-                    "print_equations": print_equations,
-                    "print_matrix": print_matrix}
+                      "print_equations": print_equations,
+                      "print_matrix": print_matrix}
 
             # Get native solution.
             native_solution = parser.solution(force=True, **kwargs)
@@ -173,7 +173,7 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
             if diff:
                 # Group by meta data.
                 header, rows = native_solution.difference(liso_solution, defaults_only=True,
-                                                        meta_only=True)
+                                                          meta_only=True)
 
                 click.echo(tabulate(rows, header, tablefmt=CONF["format"]["table"]))
 
@@ -195,7 +195,7 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
     solution = solutions[0]
     if len(solutions) > 1:
         # Combine all simulated solutions.
-        solution = solution.combine(*solutions[1:])
+        solution = solution.combine(*solutions[1:], merge_groups=True)
 
     # Determine whether to generate plot.
     generate_plot = plot or save_figure
