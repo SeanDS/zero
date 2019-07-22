@@ -175,7 +175,6 @@ class LisoParser(metaclass=abc.ABCMeta):
     def noise_output_element(self, noise_output_element):
         if self.noise_output_element is not None:
             self.p_error("cannot redefine noise output element")
-
         self._circuit_properties["noise_output_element"] = noise_output_element
 
     @property
@@ -304,7 +303,15 @@ class LisoParser(metaclass=abc.ABCMeta):
                 sum_spectra = [spectral_density for group_spectra in sum_spectra_groups.values()
                                for spectral_density in group_spectra]
                 # Get sink element.
-                sum_sink = self.circuit[self.noise_output_element]
+                if self.input_refer:
+                    if self.input_type == "voltage":
+                        sum_sink = self.input_node_p
+                    elif self.input_type == "current":
+                        sum_sink = self.circuit["input"]
+                    else:
+                        raise ValueError("invalid input type")
+                else:
+                    sum_sink = self.circuit[self.noise_output_element]
                 # Create overall spectral density.
                 sum_spectral_density = MultiNoiseDensity(sink=sum_sink, constituents=sum_spectra)
                 # Build noise sum. Sums are always shown by default.

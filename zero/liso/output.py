@@ -291,27 +291,19 @@ class LisoOutputParser(LisoParser):
                 raise ValueError("cannot build solution without either magnitude or phase, or "
                                  "both real and imaginary data columns present")
 
-            # Create appropriate response depending on analysis.
             if self.input_type == "voltage":
                 source = self.input_node_p
-
-                if response_output.OUTPUT_TYPE == "voltage":
-                    sink = self.circuit.get_node(response_output.node)
-                elif response_output.OUTPUT_TYPE == "current":
-                    sink = self.circuit[response_output.component]
-                else:
-                    raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self._input_component
-
-                if response_output.OUTPUT_TYPE == "voltage":
-                    sink = self.circuit.get_node(response_output.node)
-                elif response_output.OUTPUT_TYPE == "current":
-                    sink = self.circuit[response_output.component]
-                else:
-                    raise ValueError("invalid output type")
             else:
                 raise ValueError("invalid input type")
+
+            if response_output.OUTPUT_TYPE == "voltage":
+                sink = self.circuit.get_node(response_output.node)
+            elif response_output.OUTPUT_TYPE == "current":
+                sink = self.circuit[response_output.component]
+            else:
+                raise ValueError("invalid output type")
 
             function = Response(series=series, source=source, sink=sink)
 
@@ -324,11 +316,11 @@ class LisoOutputParser(LisoParser):
         """Build noise outputs"""
         if self.input_refer:
             if self.input_type == "voltage":
-                # The data sink is the circuit input node.
                 sink = self.input_node_p
-            else:
-                # The data sink is the circuit input component.
+            elif self.input_type == "current":
                 sink = self._input_component
+            else:
+                raise ValueError("invalid input type")
         else:
             # The data sink is the noise output element.
             sink = self.circuit[self.noise_output_element]
