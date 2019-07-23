@@ -1,7 +1,9 @@
 """Circuit simulator command line interface"""
 
 import sys
+import os
 import logging
+import csv
 from pprint import pformat
 import click
 from tabulate import tabulate
@@ -20,6 +22,8 @@ LIBRARY = OpAmpLibrary()
 # Library search filter order.
 LIBRARY_FILTER_CHOICE = click.Choice(("ASC", "DESC"), case_sensitive=False)
 
+# Data file formats and their delimiters (single characters).
+FILE_FORMAT_DELIMITERS = {"csv": ",", "txt": "\t"}
 
 # Shared arguments:
 # https://github.com/pallets/click/issues/108
@@ -276,9 +280,14 @@ def library_show(paged):
 @click.option("--sort-vmax", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
 @click.option("--sort-imax", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
 @click.option("--sort-sr", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
+@click.option("--show/--no-show", default=True, show_default=True, help="Print results as a table.")
 @click.option("--paged", is_flag=True, default=False, help="Print results with paging.")
+@click.option("--save", type=click.File("wb", lazy=False), multiple=True,
+              help="Save search results to file. The file format is decided based on the specified "
+                   "extension. Supported extensions are \"csv\" and \"txt\". Can be specified "
+                   "multiple times.")
 def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorner, sort_inoise,
-                   sort_icorner, sort_vmax, sort_imax, sort_sr, paged):
+                   sort_icorner, sort_vmax, sort_imax, sort_sr, show, paged, save):
     """Search Zero op-amp library.
 
     Op-amp parameters listed in the library can be searched:
@@ -322,15 +331,32 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
         opstr = "op-amp"
     else:
         opstr = "op-amps"
-    click.echo(f"{nmodel} {opstr} found:")
     rows = []
     for device in devices:
         rows.append([str(getattr(device, param)) for param in engine.parameters])
     table = tabulate(rows, engine.parameters, tablefmt=CONF["format"]["table"])
-    if paged:
-        click.echo_via_pager(table)
-    else:
-        click.echo(table)
+    if show:
+        click.echo(f"{nmodel} {opstr} found:")
+        if paged:
+            click.echo_via_pager(table)
+        else:
+            click.echo(table)
+    if save:
+        for path in save:
+            pieces = os.path.splitext(path.name)
+            if not len(pieces) == 2:
+                click.echo(f"Path {path} extension invalid.", err=True)
+                sys.exit(1)
+            # Remove leading full stop.
+            extension = pieces[1][1:]
+            if extension.lower() not in FILE_FORMAT_DELIMITERS:
+                click.echo(f"File format '{extension}' not recognised.", err=True)
+                sys.exit(1)
+            delimiter = FILE_FORMAT_DELIMITERS[extension]
+            with open(path.name, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile, delimiter=delimiter)
+                writer.writerow(engine.parameters)
+                writer.writerows(rows)
 
 @cli.group()
 def config():
