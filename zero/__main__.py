@@ -317,10 +317,12 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
     '--sort-X' flag. Specify 'ASC' for ascending and 'DESC' for descending order.
     """
     engine = LibraryQueryEngine()
-    sort_order = {"a0": sort_a0 == "DESC", "gbw": sort_gbw == "DESC", "delay": sort_delay == "DESC",
-                  "vnoise": sort_vnoise == "DESC", "vcorner": sort_vcorner == "DESC",
-                  "inoise": sort_inoise == "DESC", "icorner": sort_icorner == "DESC",
-                  "vmax": sort_vmax == "DESC", "imax": sort_imax == "DESC", "sr": sort_sr == "DESC"}
+    # Define sort order based on defaults and user preferences. Models are always alphabetical.
+    sort_order = {"model": False, "a0": sort_a0 == "DESC", "gbw": sort_gbw == "DESC",
+                  "delay": sort_delay == "DESC", "vnoise": sort_vnoise == "DESC",
+                  "vcorner": sort_vcorner == "DESC", "inoise": sort_inoise == "DESC",
+                  "icorner": sort_icorner == "DESC", "vmax": sort_vmax == "DESC",
+                  "imax": sort_imax == "DESC", "sr": sort_sr == "DESC"}
     # Get results.
     devices = engine.query(query, sort_order=sort_order)
     if not devices:
