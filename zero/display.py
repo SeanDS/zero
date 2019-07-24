@@ -621,7 +621,17 @@ class MplGroupPlotter(MatplotlibPlotter, BaseGroupPlotter, metaclass=abc.ABCMeta
                     legend_group = "(%s)" % group
                 else:
                     legend_group = None
-                self.plot(functions, label_suffix=legend_group)
+                self._do_plot(functions, label_suffix=legend_group)
+        self._finalise_plot()
+
+    @abc.abstractmethod
+    def _do_plot(self, functions, **kwargs):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _finalise_plot(self):
+        """Set last plot options such as limits, using the plotted functions."""
+        raise NotImplementedError
 
     def _figure_style_context(self, group):
         """Figure style context manager.
@@ -682,6 +692,14 @@ class BodePlotter(MplGroupPlotter):
         self.phase_tick_major_step = phase_tick_major_step
         self.phase_tick_minor_step = phase_tick_minor_step
 
+    @property
+    def ax1(self):
+        return self.figure.axes[0]
+
+    @property
+    def ax2(self):
+        return self.figure.axes[1]
+
     def _create_figure(self):
         figure = super()._create_figure()
         # Add magnitude and phase axes.
@@ -694,13 +712,6 @@ class BodePlotter(MplGroupPlotter):
             ax1.set_title(self.title)
         if self.legend:
             ax1.legend(loc=self.legend_loc)
-        if self.xlim is not None:
-            ax1.set_xlim(self.xlim)
-            ax2.set_xlim(self.xlim)
-        if self.mag_ylim is not None:
-            ax1.set_ylim(self.mag_ylim)
-        if self.phase_ylim is not None:
-            ax2.set_ylim(self.phase_ylim)
         if self.xlabel is not None:
             ax2.set_xlabel(self.xlabel)
         if self.ylabel_mag is not None:
@@ -723,12 +734,25 @@ class BodePlotter(MplGroupPlotter):
             raise ValueError("figure must contain two axes")
         self._figure = figure
 
-    def plot(self, functions, **kwargs):
-        ax1, ax2 = self.figure.axes
+    def _do_plot(self, functions, **kwargs):
         for response in functions:
-            response.draw(ax1, ax2, scale_db=self.scale_db, **kwargs)
-        # Add new labels to legend.
-        ax1.legend()
+            response.draw(self.ax1, self.ax2, scale_db=self.scale_db, **kwargs)
+
+    def plot(self, functions, **kwargs):
+        self._do_plot(functions, **kwargs)
+        self._finalise_plot()
+
+    def _finalise_plot(self):
+        # Update the legend.
+        self.ax1.legend()
+        # Set limits.
+        if self.xlim is not None:
+            self.ax1.set_xlim(self.xlim)
+            self.ax2.set_xlim(self.xlim)
+        if self.mag_ylim is not None:
+            self.ax1.set_ylim(self.mag_ylim)
+        if self.phase_ylim is not None:
+            self.ax2.set_ylim(self.phase_ylim)
 
 
 class SpectralDensityPlotter(MplGroupPlotter):
@@ -757,10 +781,6 @@ class SpectralDensityPlotter(MplGroupPlotter):
             axis.set_title(self.title)
         if self.legend:
             axis.legend(loc=self.legend_loc)
-        if self.xlim is not None:
-            axis.set_xlim(self.xlim)
-        if self.ylim is not None:
-            axis.set_ylim(self.ylim)
         if self.xlabel is not None:
             axis.set_xlabel(self.xlabel)
         if self.ylabel is not None:
@@ -775,20 +795,35 @@ class SpectralDensityPlotter(MplGroupPlotter):
             raise ValueError("figure must contain one axis")
         self._figure = figure
 
+    def _do_plot(self, functions, **kwargs):
+        for function in functions:
+            function.draw(self.axis, **kwargs)
+
     def plot(self, functions, **kwargs):
+        singles = []
         sums = []
         for spectral_density in functions:
             if isinstance(spectral_density, MultiNoiseDensity):
                 # Leave to end as we need to set a new prop cycler on the axis.
                 sums.append(spectral_density)
-                continue
-            spectral_density.draw(self.axis, **kwargs)
+            else:
+                singles.append(spectral_density)
+        self._do_plot(singles, **kwargs)
         with self._axis_grayscale_context():
             self.axis.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
-            for sum_spectral_density in sums:
-                sum_spectral_density.draw(self.axis, **kwargs)
+            self._do_plot(sums, **kwargs)
         # Add label to legend.
         self.axis.legend()
+        self._finalise_plot()
+
+    def _finalise_plot(self):
+        # Update the legend.
+        self.axis.legend()
+        # Set limits.
+        if self.xlim is not None:
+            self.axis.set_xlim(self.xlim)
+        if self.ylim is not None:
+            self.axis.set_ylim(self.ylim)
 
 
 class OpAmpGainPlotter(BodePlotter):
