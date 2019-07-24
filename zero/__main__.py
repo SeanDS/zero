@@ -377,8 +377,8 @@ def opamp_tools(model, show, plot, fstart, fstop, npoints, save_figure):
     library_opamp = LIBRARY.get_opamp(model)
     if show:
         print(repr(library_opamp))
-    opamp = OpAmp(model=OpAmpLibrary.format_name(model), node1="n1", node2="n2", node3="n3",
-                  **LIBRARY.get_data(model))
+    opamp = OpAmp(model=OpAmpLibrary.format_name(model), node1="input", node2="gnd",
+                  node3="output", **LIBRARY.get_data(model))
     # Determine whether to generate plot.
     generate_plot = plot or save_figure
     if generate_plot:
