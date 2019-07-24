@@ -363,7 +363,7 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
                 writer.writerows(rows)
 
 @library.command("opamp")
-@click.argument("model", type=str)
+@click.argument("models", type=str, nargs=-1, metavar="[MODEL]...")
 @click.option("--show/--no-show", is_flag=True, default=True, show_default=True,
               help="Show op-amp data.")
 @click.option("--plot/--no-plot", is_flag=True, default=False,
@@ -373,17 +373,20 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
 @click.option("--npoints", type=int, default=1000, show_default=True, help="Plot number of points.")
 @click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of figure to file. Can be specified multiple times.")
-def opamp_tools(model, show, plot, fstart, fstop, npoints, save_figure):
-    library_opamp = LIBRARY.get_opamp(model)
-    if show:
-        print(repr(library_opamp))
-    opamp = OpAmp(model=OpAmpLibrary.format_name(model), node1="input", node2="gnd",
-                  node3="output", **LIBRARY.get_data(model))
+def opamp_tools(models, show, plot, fstart, fstop, npoints, save_figure):
+    opamps = []
+    for model in models:
+        library_opamp = LIBRARY.get_opamp(model)
+        if show:
+            print(repr(library_opamp))
+        opamp = OpAmp(model=OpAmpLibrary.format_name(model), node1="input", node2="gnd",
+                      node3="output", **LIBRARY.get_data(model))
+        opamps.append(opamp)
     # Determine whether to generate plot.
     generate_plot = plot or save_figure
     if generate_plot:
-        plotter = OpAmpGainPlotter(opamp, fstart=fstart, fstop=fstop, npoints=npoints)
-        plotter.plot()
+        plotter = OpAmpGainPlotter(fstart=fstart, fstop=fstop, npoints=npoints)
+        plotter.plot(opamps)
         if save_figure:
             for save_path in save_figure:
                 # NOTE: use figure file's name so that Matplotlib can identify the file type

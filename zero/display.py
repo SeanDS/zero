@@ -792,10 +792,9 @@ class SpectralDensityPlotter(MplGroupPlotter):
 
 
 class OpAmpGainPlotter(BodePlotter):
-    def __init__(self, opamp, frequencies=None, fstart=None, fstop=None, npoints=1000):
-        title = f"{opamp.model} open loop gain"
+    def __init__(self, frequencies=None, fstart=None, fstop=None, npoints=1000,
+                 title="Open loop gain"):
         super().__init__(title=title)
-        self.opamp = opamp
         if frequencies is None:
             if any([param is None for param in (fstart, fstop, npoints)]):
                 raise ValueError("either frequencies, or all of fstart, fstop and npoints must be "
@@ -803,14 +802,15 @@ class OpAmpGainPlotter(BodePlotter):
             frequencies = np.logspace(np.log10(fstart), np.log10(fstop), npoints)
         self.frequencies = np.array(frequencies)
 
-    @property
-    def response(self):
-        gain = np.array([self.opamp.gain(frequency) for frequency in self.frequencies])
+    def response(self, opamp):
+        gain = np.array([opamp.gain(frequency) for frequency in self.frequencies])
         series = Series(self.frequencies, gain)
-        return Response(source=self.opamp.node1, sink=self.opamp.node3, series=series)
+        response = Response(source=opamp.node1, sink=opamp.node3, series=series)
+        response.label = opamp.model
+        return response
 
-    def plot(self):
-        super().plot([self.response])
+    def plot(self, opamps):
+        super().plot([self.response(opamp) for opamp in opamps])
 
     def show(self):
         plt.show()
