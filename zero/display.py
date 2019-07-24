@@ -789,3 +789,28 @@ class SpectralDensityPlotter(MplGroupPlotter):
                 sum_spectral_density.draw(self.axis, **kwargs)
         # Add label to legend.
         self.axis.legend()
+
+
+class OpAmpGainPlotter(BodePlotter):
+    def __init__(self, opamp, frequencies=None, fstart=None, fstop=None, npoints=1000):
+        title = f"{opamp.model} open loop gain"
+        super().__init__(title=title)
+        self.opamp = opamp
+        if frequencies is None:
+            if any([param is None for param in (fstart, fstop, npoints)]):
+                raise ValueError("either frequencies, or all of fstart, fstop and npoints must be "
+                                 "specified")
+            frequencies = np.logspace(np.log10(fstart), np.log10(fstop), npoints)
+        self.frequencies = np.array(frequencies)
+
+    @property
+    def response(self):
+        gain = np.array([self.opamp.gain(frequency) for frequency in self.frequencies])
+        series = Series(self.frequencies, gain)
+        return Response(source=self.opamp.node1, sink=self.opamp.node3, series=series)
+
+    def plot(self):
+        super().plot([self.response])
+
+    def show(self):
+        plt.show()

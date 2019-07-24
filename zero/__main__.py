@@ -5,7 +5,6 @@ import os
 import logging
 import csv
 from pprint import pformat
-import numpy as np
 import click
 from tabulate import tabulate
 
@@ -14,6 +13,7 @@ from .solution import Solution
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
 from .components import OpAmp
+from .display import OpAmpGainPlotter
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
                      ConfigAlreadyExistsException, LibraryQueryEngine)
 
@@ -361,6 +361,36 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
                 writer = csv.writer(csvfile, delimiter=delimiter)
                 writer.writerow(engine.parameters)
                 writer.writerows(rows)
+
+@library.command("opamp")
+@click.argument("model", type=str)
+@click.option("--show/--no-show", is_flag=True, default=True, show_default=True,
+              help="Show op-amp data.")
+@click.option("--plot/--no-plot", is_flag=True, default=False,
+              help="Display open loop gain as figure.")
+@click.option("--fstart", type=float, default=1e0, show_default=True, help="Plot start frequency.")
+@click.option("--fstop", type=float, default=1e9, show_default=True, help="Plot stop frequency.")
+@click.option("--npoints", type=int, default=1000, show_default=True, help="Plot number of points.")
+@click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
+              help="Save image of figure to file. Can be specified multiple times.")
+def opamp_tools(model, show, plot, fstart, fstop, npoints, save_figure):
+    library_opamp = LIBRARY.get_opamp(model)
+    if show:
+        print(repr(library_opamp))
+    opamp = OpAmp(model=OpAmpLibrary.format_name(model), node1="n1", node2="n2", node3="n3",
+                  **LIBRARY.get_data(model))
+    # Determine whether to generate plot.
+    generate_plot = plot or save_figure
+    if generate_plot:
+        plotter = OpAmpGainPlotter(opamp, fstart=fstart, fstop=fstop, npoints=npoints)
+        plotter.plot()
+        if save_figure:
+            for save_path in save_figure:
+                # NOTE: use figure file's name so that Matplotlib can identify the file type
+                # appropriately.
+                plotter.save(save_path.name)
+    if plot:
+        plotter.show()
 
 @cli.group()
 def config():
