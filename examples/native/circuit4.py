@@ -31,5 +31,5 @@ if __name__ == "__main__":
                                                                "op-amps": "allop"})
 
     # Plot.
-    solution.plot_noise(sink="nout")
-    solution.show()
+    plot = solution.plot_noise(sink="nout")
+    plot.show()

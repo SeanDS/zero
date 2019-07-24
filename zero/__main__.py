@@ -5,6 +5,7 @@ import os
 import logging
 import csv
 from pprint import pformat
+import numpy as np
 import click
 from tabulate import tabulate
 
@@ -12,6 +13,7 @@ from . import __version__, PROGRAM, DESCRIPTION, set_log_verbosity
 from .solution import Solution
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
+from .components import OpAmp
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
                      ConfigAlreadyExistsException, LibraryQueryEngine)
 
@@ -206,18 +208,18 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
 
     if generate_plot:
         if solution.has_responses:
-            figure = solution.plot_responses(scale_db=resp_scale_db)
+            plotter = solution.plot_responses(scale_db=resp_scale_db)
         else:
-            figure = solution.plot_noise()
+            plotter = solution.plot_noise()
 
         if save_figure:
             for save_path in save_figure:
                 # NOTE: use figure file's name so that Matplotlib can identify the file type
                 # appropriately.
-                solution.save_figure(figure, save_path.name)
+                plotter.save(save_path.name)
 
     if plot:
-        solution.show()
+        plotter.show()
 
 @cli.group()
 def library():

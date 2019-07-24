@@ -2,15 +2,46 @@
 
 import abc
 from importlib import import_module
+import logging
 import collections
 import tempfile
+import colorsys
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import colors, cycler
+from matplotlib.ticker import MultipleLocator
 from tabulate import tabulate
 
 from .config import ZeroConfig
 from .components import Resistor, Capacitor, Inductor, OpAmp, Input, Component, Node
+from .data import Response, Series, MultiNoiseDensity
 
+LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
+
+
+def lighten_colours(colour_cycle, factor):
+    """Lightens the given color by multiplying (1 - luminosity) by the given factor.
+
+    https://stackoverflow.com/a/49601444/2251982
+    """
+    cycle = []
+
+    for this_colour in colour_cycle:
+        try:
+            # get RGB values from hex string or name
+            c = colors.cnames[this_colour]
+        except KeyError:
+            c = this_colour
+
+        c = colorsys.rgb_to_hls(*colors.to_rgb(c))
+        new = colorsys.hls_to_rgb(c[0], 1 - factor * (1 - c[1]), c[2])
+        newints = tuple([int(value * 255) for value in new])
+        hexcode = "#%02x%02x%02x" % newints
+
+        cycle.append(hexcode)
+
+    return cycle
 
 
 class NodeGraph:
@@ -497,3 +528,251 @@ class EquationDisplay(TableFormatter):
         expression += r"\end{align}"
 
         return expression
+
+
+class BasePlotter(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def plot(self, functions, **kwargs):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def show(self):
+        raise NotImplementedError
+
+
+class BaseGroupPlotter(metaclass=abc.ABCMeta):
+    def __init__(self, legend_groups=True, hidden_group_names=None, **kwargs):
+        super().__init__(**kwargs)
+        self.legend_groups = legend_groups
+        if hidden_group_names is None:
+            hidden_group_names = []
+        self.hidden_group_names = list(hidden_group_names)
+
+    @abc.abstractmethod
+    def plot_groups(self, groups):
+        raise NotImplementedError
+
+
+class MatplotlibPlotter(BasePlotter, metaclass=abc.ABCMeta):
+    def __init__(self, figure=None, title=None, legend=True, legend_loc="best", **kwargs):
+        super().__init__(**kwargs)
+        # Defaults.
+        self._figure = None
+        # Parameters.
+        if figure is not None:
+            self.figure = figure
+        self.title = title
+        self.legend = legend
+        self.legend_loc = legend_loc
+
+    @property
+    def figure(self):
+        if self._figure is None:
+            self._figure = self._create_figure()
+        return self._figure
+
+    @figure.setter
+    def figure(self, figure):
+        self._figure = figure
+
+    def _create_figure(self):
+        figure = plt.figure(figsize=(float(CONF["plot"]["size_x"]), float(CONF["plot"]["size_y"])))
+        LOGGER.info("figure created on %s", figure.canvas.get_window_title())
+        return figure
+
+    def show(self, tight_layout=True):
+        if tight_layout:
+            plt.tight_layout()
+        plt.show()
+
+    def save(self, path, **kwargs):
+        """Save specified figure to specified path (path can be file object or string path)."""
+        # Set figure as current figure.
+        plt.figure(self.figure.number)
+        # Squeeze things together.
+        self.figure.tight_layout()
+        plt.savefig(path, **kwargs)
+
+
+class MplGroupPlotter(MatplotlibPlotter, BaseGroupPlotter, metaclass=abc.ABCMeta):
+    """Provides interface for plotting grouped functions."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.style_groups = []
+        # Plot group line style cycle.
+        self.linestyles = ["-", "--", "-.", ":"]
+        # Default colour cycle.
+        self.default_color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        # Cycles by group. These are created at runtime using the default colour cycle and the
+        # lighten_colours() function.
+        self._plot_group_colours = {}
+
+    def plot_groups(self, groups):
+        for group, functions in groups.items():
+            if not functions:
+                # Skip empty group.
+                continue
+            with self._figure_style_context(group):
+                # Reset axes colour wheels.
+                for axis in self.figure.axes:
+                    axis.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
+                if self.legend_groups and group not in self.hidden_group_names:
+                    # Show group.
+                    legend_group = "(%s)" % group
+                else:
+                    legend_group = None
+                self.plot(functions, label_suffix=legend_group)
+
+    def _figure_style_context(self, group):
+        """Figure style context manager.
+
+        Used to override the default style for a figure.
+        """
+        # Find group index.
+        if group not in self.style_groups:
+            self.style_groups.append(group)
+        group_index = self.style_groups.index(group)
+        # Get index of linestyle to use (cycles through styles, wrapping back to beginning).
+        index = group_index % len(self.linestyles)
+        if group not in self._plot_group_colours:
+            # Create new cycle with brighter colours.
+            cycle = lighten_colours(self.default_color_cycle, 0.5 ** group_index)
+            self._plot_group_colours[group] = cycle
+        prop_cycler = cycler(color=self._plot_group_colours[group])
+        settings = {"lines.linestyle": self.linestyles[index],
+                    "axes.prop_cycle": prop_cycler}
+        return plt.rc_context(settings)
+
+    def _axis_grayscale_context(self):
+        """Sum figure style context manager. This sets the sum colors to greyscale."""
+        return plt.rc_context({"axes.prop_cycle": cycler(color=self._grayscale_colours)})
+
+    @property
+    def _grayscale_colours(self):
+        """Grayscale colour palette."""
+        greys = plt.get_cmap('Greys')
+        return greys(np.linspace(CONF["plot"]["sum_greyscale_cycle_start"],
+                                 CONF["plot"]["sum_greyscale_cycle_stop"],
+                                 CONF["plot"]["sum_greyscale_cycle_count"]))
+
+
+class BodePlotter(MplGroupPlotter):
+    def __init__(self, scale_db=True, xlim=None, mag_ylim=None, phase_ylim=None, xlabel=None,
+                 ylabel_mag=None, ylabel_phase=None, db_tick_major_step=20, db_tick_minor_step=10,
+                 phase_tick_major_step=30, phase_tick_minor_step=15, **kwargs):
+        super().__init__(**kwargs)
+        self.scale_db = scale_db
+        self.xlim = xlim
+        self.mag_ylim = mag_ylim
+        self.phase_ylim = phase_ylim
+        self.xlabel = xlabel
+        self.ylabel_mag = ylabel_mag
+        self.ylabel_phase = ylabel_phase
+        self.db_tick_major_step = db_tick_major_step
+        self.db_tick_minor_step = db_tick_minor_step
+        self.phase_tick_major_step = phase_tick_major_step
+        self.phase_tick_minor_step = phase_tick_minor_step
+
+    def _create_figure(self):
+        figure = super()._create_figure()
+        # Add magnitude and phase axes.
+        ax1 = figure.add_subplot(211)
+        ax2 = figure.add_subplot(212, sharex=ax1)
+        # Draw labels etc.
+        if self.title is not None:
+            # Use ax1 since it's at the top. We could use figure.suptitle but this doesn't
+            # behave with tight_layout.
+            ax1.set_title(self.title)
+        if self.legend:
+            ax1.legend(loc=self.legend_loc)
+        if self.xlim is not None:
+            ax1.set_xlim(self.xlim)
+            ax2.set_xlim(self.xlim)
+        if self.mag_ylim is not None:
+            ax1.set_ylim(self.mag_ylim)
+        if self.phase_ylim is not None:
+            ax2.set_ylim(self.phase_ylim)
+        if self.xlabel is not None:
+            ax2.set_xlabel(self.xlabel)
+        if self.ylabel_mag is not None:
+            ax1.set_ylabel(self.ylabel_mag)
+        if self.ylabel_phase is not None:
+            ax2.set_ylabel(self.ylabel_phase)
+        ax1.grid(zorder=CONF["plot"]["grid_zorder"])
+        ax2.grid(zorder=CONF["plot"]["grid_zorder"])
+        # Magnitude and phase tick locators.
+        if self.scale_db:
+            ax1.yaxis.set_major_locator(MultipleLocator(base=self.db_tick_major_step))
+            ax1.yaxis.set_minor_locator(MultipleLocator(base=self.db_tick_minor_step))
+        ax2.yaxis.set_major_locator(MultipleLocator(base=self.phase_tick_major_step))
+        ax2.yaxis.set_minor_locator(MultipleLocator(base=self.phase_tick_minor_step))
+        return figure
+
+    @MplGroupPlotter.figure.setter
+    def figure(self, figure):
+        if len(figure.axes) != 2:
+            raise ValueError("figure must contain two axes")
+        self._figure = figure
+
+    def plot(self, functions, **kwargs):
+        ax1, ax2 = self.figure.axes
+        for response in functions:
+            response.draw(ax1, ax2, scale_db=self.scale_db, **kwargs)
+        # Add new labels to legend.
+        ax1.legend()
+
+
+class SpectralDensityPlotter(MplGroupPlotter):
+    def __init__(self, xlim=None, ylim=None, xlabel=None, ylabel=None, **kwargs):
+        super().__init__(**kwargs)
+        self.xlim = xlim
+        self.ylim = ylim
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+
+    @property
+    def axis(self):
+        return self.figure.axes[0]
+
+    def _create_figure(self):
+        figure = super()._create_figure()
+        axis = figure.add_subplot(111)
+        # Draw labels etc.
+        if self.title is not None:
+            # Use ax1 since it's at the top. We could use figure.suptitle but this doesn't
+            # behave with tight_layout.
+            axis.set_title(self.title)
+        if self.legend:
+            axis.legend(loc=self.legend_loc)
+        if self.xlim is not None:
+            axis.set_xlim(self.xlim)
+        if self.ylim is not None:
+            axis.set_ylim(self.ylim)
+        if self.xlabel is not None:
+            axis.set_xlabel(self.xlabel)
+        if self.ylabel is not None:
+            axis.set_ylabel(self.ylabel)
+        axis.grid(zorder=CONF["plot"]["grid_zorder"])
+        # Magnitude and phase tick locators.
+        return figure
+
+    @MplGroupPlotter.figure.setter
+    def figure(self, figure):
+        if len(figure.axes) != 1:
+            raise ValueError("figure must contain one axis")
+        self._figure = figure
+
+    def plot(self, functions, **kwargs):
+        sums = []
+        for spectral_density in functions:
+            if isinstance(spectral_density, MultiNoiseDensity):
+                # Leave to end as we need to set a new prop cycler on the axis.
+                sums.append(spectral_density)
+                continue
+            spectral_density.draw(self.axis, **kwargs)
+        with self._axis_grayscale_context():
+            self.axis.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
+            for sum_spectral_density in sums:
+                sum_spectral_density.draw(self.axis, **kwargs)
+        # Add label to legend.
+        self.axis.legend()
