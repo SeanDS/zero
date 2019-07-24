@@ -47,5 +47,5 @@ if __name__ == "__main__":
     solution = solution1.combine(solution2, solution3)
 
     # Plot
-    solution.plot_responses(sink="nout", groups="all")
-    solution.show()
+    plot = solution.plot_responses(sink="nout", groups="all")
+    plot.show()

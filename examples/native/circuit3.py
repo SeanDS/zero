@@ -33,5 +33,5 @@ if __name__ == "__main__":
     noise_sum.label = "Total noise"
 
     # Plot.
-    solution.plot_noise(sink="nout")
-    solution.show()
+    plot = solution.plot_noise(sink="nout")
+    plot.show()

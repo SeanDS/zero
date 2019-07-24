@@ -55,6 +55,24 @@ class OpAmpLibrary(BaseConfig):
         """
         return str(name).upper()
 
+    def get_opamp(self, model):
+        """Get op-amp by model.
+
+        Parameters
+        ----------
+        model : :class:`str`
+            The op-amp model.
+
+        Returns
+        -------
+        :class:`.LibraryOpAmp`
+            The op-amp.
+        """
+        for opamp in self.opamps:
+            if opamp.model.upper() == model.upper():
+                return opamp
+        raise ValueError(f"op-amp model '{model}' not found in library.")
+
     def get_data(self, name):
         """Get op-amp data.
 
@@ -448,3 +466,38 @@ class LibraryOpAmp:
 
     def __str__(self):
         return f"{self.model}(a0={self.a0}, gbw={self.gbw}, delay={self.delay})"
+
+    def __repr__(self):
+        def format_poles(poles):
+            formatted_poles = []
+            for mag, q in poles:
+                frequency = Quantity(mag, units="Hz")
+                if q == 0.5:
+                    q = "real"
+                else:
+                    q = f"q={q}"
+                formatted_poles.append(f"{frequency} ({q})")
+            return ", ".join(formatted_poles)
+
+        if self.poles:
+            poles = format_poles(self.poles_mag_q)
+        else:
+            poles = "--"
+        if self.zeros:
+            zeros = format_poles(self.zeros_mag_q)
+        else:
+            zeros = "--"
+        return f"""{self.model}
+    a0: {self.a0}
+    gbw: {self.gbw}
+    delay: {self.delay}
+    vnoise: {self.vnoise}
+    vcorner: {self.vcorner}
+    inoise: {self.inoise}
+    icorner: {self.icorner}
+    vmax: {self.vmax}
+    imax: {self.imax}
+    sr: {self.sr}
+    poles: {poles}
+    zeros: {zeros}
+"""

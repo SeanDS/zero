@@ -28,5 +28,5 @@ if __name__ == "__main__":
     solution = analysis.calculate(frequencies=frequencies, input_type="voltage", node="n1")
 
     # Plot.
-    solution.plot_responses(sinks=["nm", "nout", "op1"])
-    solution.show()
+    plot = solution.plot_responses(sinks=["nm", "nout", "op1"])
+    plot.show()

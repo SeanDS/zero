@@ -269,8 +269,8 @@ of an RF summing box with two inputs and one output:
 
 .. hint::
 
-    The above example makes a call to :meth:`.plot`. This relies on :ref:`default functions
-    <solution/index:Default functions>` having been set, in this case by the :ref:`LISO
+    The above example makes a call to :meth:`~.Solution.plot`. This relies on :ref:`default
+    functions <solution/index:Default functions>` having been set, in this case by the :ref:`LISO
     compatibility module <liso/index:LISO compatibility>`, which is normally not the case when a
     circuit is constructed and simulated natively. In such cases, calls to :meth:`.plot_responses`
     and :meth:`.plot_noise` with filter parameters are usually required.
