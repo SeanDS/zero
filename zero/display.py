@@ -665,6 +665,15 @@ class BodePlotter(MplGroupPlotter):
         self.xlim = xlim
         self.mag_ylim = mag_ylim
         self.phase_ylim = phase_ylim
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
+        if ylabel_mag is None:
+            if scale_db:
+                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
+            else:
+                ylabel_mag = r"$\bf{Magnitude}$"
+        if ylabel_phase is None:
+            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
         self.xlabel = xlabel
         self.ylabel_mag = ylabel_mag
         self.ylabel_phase = ylabel_phase
@@ -727,7 +736,11 @@ class SpectralDensityPlotter(MplGroupPlotter):
         super().__init__(**kwargs)
         self.xlim = xlim
         self.ylim = ylim
+        if xlabel is None:
+            xlabel = r"$\bf{Frequency}$ (Hz)"
         self.xlabel = xlabel
+        if ylabel is None:
+            ylabel = r"$\bf{Noise}$"
         self.ylabel = ylabel
 
     @property

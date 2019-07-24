@@ -965,15 +965,6 @@ class Solution:
         if not groups:
             filters = ", ".join([f"'{param}'" for param in default_none_param_names])
             raise NoDataException(f"No responses found. Consider setting one of {filters}.")
-        if xlabel is None:
-            xlabel = r"$\bf{Frequency}$ (Hz)"
-        if ylabel_mag is None:
-            if scale_db:
-                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
-            else:
-                ylabel_mag = r"$\bf{Magnitude}$"
-        if ylabel_phase is None:
-            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
         # Add reference functions.
         groups[self.DEFAULT_REF_GROUP_NAME] = self.response_references
         # Draw plot.
@@ -1045,8 +1036,6 @@ class Solution:
         if not groups:
             filters = ", ".join([f"'{param}'" for param in default_none_param_names])
             raise NoDataException(f"No noise spectra found. Consider setting one of {filters}.")
-        if xlabel is None:
-            xlabel = r"$\bf{Frequency}$ (Hz)"
         if ylabel is None:
             # Show all plotted noise units.
             unit_tex = []
