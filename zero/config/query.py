@@ -86,9 +86,10 @@ class LibraryQueryParser:
         self._filters = None
         # Order in which parameters have been queried.
         self.parameter_query_order = []
-        # Create lexer and parser handlers.
-        self.lexer = lex.lex(module=self)
-        self.parser = yacc.yacc(module=self)
+        # Create lexer and parser handlers. Set lex and yacc to not generate grammar files, for
+        # packaging simplicity, at the cost of a slight speed penalty.
+        self.lexer = lex.lex(module=self, optimize=False, debug=False)
+        self.parser = yacc.yacc(module=self, write_tables=False, debug=False)
 
     def parse(self, text):
         # clear existing filters
