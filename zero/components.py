@@ -173,7 +173,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @node1.setter
     def node1(self, node):
-        self.nodes[0] = node
+        self.nodes[0] = Node(node)
 
     @property
     def node2(self):
@@ -188,7 +188,7 @@ class PassiveComponent(Component, metaclass=abc.ABCMeta):
 
     @node2.setter
     def node2(self, node):
-        self.nodes[1] = node
+        self.nodes[1] = Node(node)
 
     @abc.abstractmethod
     def impedance(self, frequency):
@@ -233,7 +233,7 @@ class OpAmp(LibraryOpAmp, Component):
 
     @node1.setter
     def node1(self, node):
-        self.nodes[0] = node
+        self.nodes[0] = Node(node)
 
     @property
     def node2(self):
@@ -241,7 +241,7 @@ class OpAmp(LibraryOpAmp, Component):
 
     @node2.setter
     def node2(self, node):
-        self.nodes[1] = node
+        self.nodes[1] = Node(node)
 
     @property
     def node3(self):
@@ -249,7 +249,7 @@ class OpAmp(LibraryOpAmp, Component):
 
     @node3.setter
     def node3(self, node):
-        self.nodes[2] = node
+        self.nodes[2] = Node(node)
 
     @property
     def has_voltage_noise(self):
@@ -321,7 +321,7 @@ class Input(Component):
 
     @node1.setter
     def node1(self, node):
-        self.nodes[0] = node
+        self.nodes[0] = Node(node)
 
     @property
     def node2(self):
@@ -329,7 +329,7 @@ class Input(Component):
 
     @node2.setter
     def node2(self, node):
-        self.nodes[1] = node
+        self.nodes[1] = Node(node)
 
     @property
     def node_n(self):
