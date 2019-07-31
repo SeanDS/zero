@@ -4,7 +4,8 @@ import abc
 from unittest import TestCase
 import numpy as np
 
-from zero.components import OpAmp, Resistor, Node, OpAmpVoltageNoise, OpAmpCurrentNoise
+from zero.components import (Resistor, Capacitor, Inductor, OpAmp, Node, OpAmpVoltageNoise,
+                             OpAmpCurrentNoise)
 from zero.solution import Solution
 from zero.data import Series, Response, NoiseDensity, MultiNoiseDensity
 
@@ -18,6 +19,8 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
         super().__init__(*args, **kwargs)
         self._last_node_num = 0
         self._last_resistor_num = 0
+        self._last_capacitor_num = 0
+        self._last_inductor_num = 0
         self._last_opamp_num = 0
 
     def _unique_node_name(self):
@@ -27,6 +30,14 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _unique_resistor_name(self):
         self._last_resistor_num += 1
         return f"r{self._last_resistor_num}"
+
+    def _unique_capacitor_name(self):
+        self._last_capacitor_num += 1
+        return f"c{self._last_capacitor_num}"
+
+    def _unique_inductor_name(self):
+        self._last_inductor_num += 1
+        return f"l{self._last_inductor_num}"
 
     def _unique_opamp_name(self):
         self._last_opamp_num += 1
@@ -49,7 +60,13 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
     def _node(self):
         return Node(self._unique_node_name())
 
-    def _opamp(self, node1, node2, node3, model=None):
+    def _opamp(self, node1=None, node2=None, node3=None, model=None):
+        if node1 is None:
+            node1 = self._node()
+        if node2 is None:
+            node2 = self._node()
+        if node3 is None:
+            node3 = self._node()
         if model is None:
             model = "OP00"
         return OpAmp(name=self._unique_opamp_name(), model=model, node1=node1, node2=node2,
@@ -63,6 +80,24 @@ class ZeroDataTestCase(TestCase, metaclass=abc.ABCMeta):
         if value is None:
             value = "1k"
         return Resistor(name=self._unique_resistor_name(), node1=node1, node2=node2, value=value)
+
+    def _capacitor(self, node1=None, node2=None, value=None):
+        if node1 is None:
+            node1 = self._node()
+        if node2 is None:
+            node2 = self._node()
+        if value is None:
+            value = "1u"
+        return Capacitor(name=self._unique_capacitor_name(), node1=node1, node2=node2, value=value)
+
+    def _inductor(self, node1=None, node2=None, value=None):
+        if node1 is None:
+            node1 = self._node()
+        if node2 is None:
+            node2 = self._node()
+        if value is None:
+            value = "1u"
+        return Inductor(name=self._unique_inductor_name(), node1=node1, node2=node2, value=value)
 
     def _voltage_noise(self, component=None):
         if component is None:

@@ -60,12 +60,12 @@ class Component(BaseElement, metaclass=abc.ABCMeta):
 
     @nodes.setter
     def nodes(self, nodes):
-        for node in list(nodes):
+        nodes = list(nodes)
+        for index, node in enumerate(nodes):
             if not isinstance(node, Node):
-                # parse node name
-                node = Node(str(node))
-
-            self._nodes.append(node)
+                # Parse as a node name.
+                nodes[index] = Node(str(node))
+        self._nodes = nodes
 
     def add_noise(self, noise):
         """Add a noise source to the component.
