@@ -744,7 +744,7 @@ class BodePlotter(MplGroupPlotter):
 
     def _finalise_plot(self):
         # Update the legend.
-        self.ax1.legend()
+        self.ax1.legend(loc=self.legend_loc)
         # Set limits.
         if self.xlim is not None:
             self.ax1.set_xlim(self.xlim)
