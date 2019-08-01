@@ -422,7 +422,7 @@ op-amps:
     imax: 0.02
     sr: 2.8e6
 
-  pa85:
+  pa85: &pa85
     description: apex high voltage high current high speed opamp
     a0: 3e5 # 110dB
     gbw: 7e6 # cc = 68pF
@@ -1154,3 +1154,15 @@ op-amps:
     icorner: 20     # Guess
     vmax: 15
     imax: 35e-3
+
+  pa98: &pa98
+    <<: *pa85
+    description: Apex high voltage high current high speed opamp
+    comment: Change a0 and gbw according to Cc used and power limitations
+    a0: 354813      # 111dB
+    sr: 100e6       # At Cc = 60 pF
+    poles:
+      - 7e6         # cc = 68pF
+
+  pa98A:
+    <<:  *pa98
