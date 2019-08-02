@@ -1159,9 +1159,8 @@ op-amps:
     <<: *pa85
     description: Apex high voltage high current high speed opamp
     comment: Change a0 and gbw according to Cc used and power limitations
-    aliases: pa98A
-    a0: 354813      # 111dB
+    aliases: pa98a
+    a0: 111 dB
     sr: 100e6       # At Cc = 60 pF
     poles:
       - 7e6         # cc = 68pF
-
