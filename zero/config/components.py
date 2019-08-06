@@ -338,28 +338,28 @@ class LibraryOpAmp:
         """Additional zeros"""
         return self.params["zeros"]
 
+    @zeros.setter
+    def zeros(self, zeros):
+        self.params["zeros"] = np.array(zeros)
+
     @property
     def zeros_mag_q(self):
         """Additional zeros, in tuples containing magnitude and Q-factor"""
         return self._mag_q_pairs(self.zeros)
-
-    @zeros.setter
-    def zeros(self, zeros):
-        self.params["zeros"] = np.array(zeros)
 
     @property
     def poles(self):
         """Additional poles"""
         return self.params["poles"]
 
+    @poles.setter
+    def poles(self, poles):
+        self.params["poles"] = np.array(poles)
+
     @property
     def poles_mag_q(self):
         """Additional poles, in tuples containing magnitude and Q-factor"""
         return self._mag_q_pairs(self.poles)
-
-    @poles.setter
-    def poles(self, poles):
-        self.params["poles"] = np.array(poles)
 
     @property
     def vnoise(self):
@@ -479,11 +479,11 @@ class LibraryOpAmp:
                 formatted_poles.append(f"{frequency} ({q})")
             return ", ".join(formatted_poles)
 
-        if self.poles:
+        if self.poles.size:
             poles = format_poles(self.poles_mag_q)
         else:
             poles = "--"
-        if self.zeros:
+        if self.zeros.size:
             zeros = format_poles(self.zeros_mag_q)
         else:
             zeros = "--"
