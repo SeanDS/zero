@@ -14,7 +14,7 @@ LIBRARY = OpAmpLibrary()
 
 
 class Circuit:
-    """Represents an electronic circuit containing components.
+    """Represents an electronic circuit containing components and nodes.
 
     A circuit can contain components like :class:`resistors <.components.Resistor>`,
     :class:`capacitors <.components.Capacitor>`, :class:`inductors <.components.Inductor>`
@@ -28,7 +28,7 @@ class Circuit:
     nodes : :class:`set` of :class:`.Node`
         The circuit nodes.
     """
-    # Aisallowed component names.
+    # Disallowed component names.
     RESERVED_NAMES = ["all", "allop", "allr", "sum"]
 
     def __init__(self):
