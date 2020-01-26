@@ -62,5 +62,5 @@ solution = analysis.calculate(frequencies=frequencies, input_type="voltage", nod
                                 sink="nout", incoherent_sum=True)
 
 # Plot.
-plot = solution.plot_noise(sink="nout")
-solution.save_figure(plot, sys.argv[1])
+plotter = solution.plot_noise(sink="nout")
+plotter.save(sys.argv[1])
