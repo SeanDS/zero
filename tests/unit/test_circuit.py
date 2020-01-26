@@ -2,9 +2,12 @@
 
 from unittest import TestCase
 from itertools import permutations
+from copy import deepcopy
+import numpy as np
 
 from zero import Circuit
 from zero.components import Resistor, Capacitor, Inductor, OpAmp, Node
+from zero.analysis import AcSignalAnalysis
 from ..data import ZeroDataTestCase
 
 
@@ -233,3 +236,24 @@ class TestComponentReplacement(ZeroDataTestCase):
                 self.assertRaises(ValueError, circuit.replace_component, passive, opamp)
                 # Test that the circuit still has the passive.
                 self.assertTrue(circuit.has_component(passive.name))
+
+
+class TestCircuitCopying(ZeroDataTestCase):
+    def test_deep_copy(self):
+        """Test deep copying of a circuit."""
+        circuit1 = Circuit()
+        circuit1.add_resistor(name="R1", value=50, node1="n1", node2="n2")
+        circuit1.add_resistor(name="R2", value=50, node1="n2", node2="gnd")
+
+        frequencies = np.logspace(0, 3, 11)
+
+        analysis1 = AcSignalAnalysis(circuit=circuit1)
+        sol1 = analysis1.calculate(frequencies=frequencies, input_type="voltage", node="n1")
+
+        # Copy the circuit.
+        circuit2 = deepcopy(circuit1)
+
+        analysis2 = AcSignalAnalysis(circuit=circuit2)
+        sol2 = analysis2.calculate(frequencies=frequencies, input_type="voltage", node="n1")
+
+        self.assertTrue(sol1.equivalent_to(sol2))

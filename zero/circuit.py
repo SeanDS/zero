@@ -2,6 +2,7 @@
 on which simulations can be performed."""
 
 import logging
+from copy import deepcopy
 import numpy as np
 
 from .config import ZeroConfig, OpAmpLibrary
@@ -56,6 +57,38 @@ class Circuit:
         new_instance.components = list(self.components)
         new_instance.nodes = set(self.nodes)
         return new_instance
+
+    def __deepcopy__(self, memo):
+        """Deep copy circuit.
+
+        Creates a new circuit containing new copies of the components in this one. The new
+        components have identical properties but are stored in memory as new objects and so any
+        references to components from the old circuit in user code will not point to the new
+        versions.
+
+        This is useful when you want to create a "master" circuit and modify and analyse several
+        independent versions of it.
+
+        Notes
+        -----
+
+        :class:`Nodes <Node>` are by design singletons, existing in the global state of the Python
+        kernel, and so the new circuit references the same node objects as the old circuit.
+        """
+        new_instance = self.__class__()
+        new_instance.nodes = set()
+
+        # Shallow copy the nodes, and update the memo to make deepcopy think we already deep copied
+        # the nodes.
+        for node in self.nodes:
+            memo[id(node)] = node
+            new_instance.nodes.add(node)
+
+        # Deep copy the components. deepcopy() should use the already-copied nodes from above.
+        new_instance.components = deepcopy(self.components, memo)
+
+        return new_instance
+
 
     @property
     def non_gnd_nodes(self):
