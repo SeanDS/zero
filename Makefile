@@ -1,5 +1,6 @@
 docs-html:
 	$(MAKE) -C docs html
+	xdg-open docs/_build/html/index.html
 
 test: test-all
 
