@@ -290,11 +290,11 @@ def library_show(paged):
                    "extension. Supported extensions are \"csv\" and \"txt\". Can be specified "
                    "multiple times.")
 @click.option("--plot-voltage-noise/--no-plot-voltage-noise", is_flag=True, default=False,
-              help="Display op-amp voltage noise as figure.")
+              show_default=True, help="Display op-amp voltage noise as figure.")
 @click.option("--plot-current-noise/--no-plot-current-noise", is_flag=True, default=False,
-              help="Display op-amp current noise as figure.")
+              show_default=True, help="Display op-amp current noise as figure.")
 @click.option("--plot-gain/--no-plot-gain", is_flag=True, default=False,
-              help="Display op-amp open loop gain as figure.")
+              show_default=True, help="Display op-amp open loop gain as figure.")
 @click.option("--save-voltage-noise-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of voltage noise figure to file. Can be specified multiple times.")
 @click.option("--save-current-noise-figure", type=click.File("wb", lazy=False), multiple=True,
