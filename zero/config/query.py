@@ -34,9 +34,8 @@ class LibraryQueryParser:
 
     # top level tokens
     tokens = [
-        'TERM', # base for PARAMETER and VALUE
+        'ID', # Numeric or string values.
         'PARAMETER',
-        'VALUE',
         'EQUAL',
         'NOT_EQUAL',
         'GREATER_THAN',
@@ -127,17 +126,15 @@ class LibraryQueryParser:
     # Error handling.
     def t_error(self, t):
         # Anything that gets past the other filters.
-        raise ValueError(f"illegal character '{t.value[0]}' on line {t.lexer.linenp}")
+        raise ValueError(f"illegal character '{t.value[0]}' on line {t.lexer.lineno}")
 
     def t_eof(self, t):
         return None
 
-    def t_TERM(self, t):
+    def t_ID(self, t):
         r'[a-zA-Z\?\*\d.-]+'
         if t.value.lower() in self.parameters:
             t.type = 'PARAMETER'
-        else:
-            t.type = 'VALUE'
         return t
 
     def p_error(self, p):
@@ -189,12 +186,12 @@ class LibraryQueryParser:
         t[0] = getattr(operator, self._operators[t[1]])
 
     def p_value_with_unit(self, t):
-        'value_with_unit : VALUE VALUE'
+        'value_with_unit : ID ID'
         # Matches a value with a unit.
         t[0] = t[1] + t[2]
 
     def p_comparison_expression(self, t):
-        '''expression : PARAMETER comparison_operator VALUE
+        '''expression : PARAMETER comparison_operator ID
                       | PARAMETER comparison_operator value_with_unit'''
         # parse value
         try:
