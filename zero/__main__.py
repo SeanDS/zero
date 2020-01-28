@@ -301,8 +301,8 @@ def library_show(paged):
               help="Save image of current noise figure to file. Can be specified multiple times.")
 @click.option("--save-gain-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of open loop gain figure to file. Can be specified multiple times.")
-@click.option("--fstart", type=float, default=1e0, show_default=True, help="Plot start frequency.")
-@click.option("--fstop", type=float, default=1e9, show_default=True, help="Plot stop frequency.")
+@click.option("--fstart", type=str, default="1", show_default=True, help="Plot start frequency.")
+@click.option("--fstop", type=str, default="1G", show_default=True, help="Plot stop frequency.")
 @click.option("--npoints", type=int, default=1000, show_default=True, help="Plot number of points.")
 def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorner, sort_inoise,
                    sort_icorner, sort_vmax, sort_imax, sort_sr, show_table, paged, save_data,

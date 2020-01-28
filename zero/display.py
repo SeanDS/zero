@@ -14,6 +14,7 @@ from tabulate import tabulate
 
 from .config import ZeroConfig
 from .components import Resistor, Capacitor, Inductor, OpAmp, Input, Component, Node
+from .format import Quantity
 from .data import Series, Response, NoiseDensity, MultiNoiseDensity
 
 LOGGER = logging.getLogger(__name__)
@@ -834,7 +835,8 @@ class OpAmpGainPlotter(BodePlotter):
             if any([param is None for param in (fstart, fstop, npoints)]):
                 raise ValueError("either frequencies, or all of fstart, fstop and npoints must be "
                                  "specified")
-            frequencies = np.logspace(np.log10(fstart), np.log10(fstop), npoints)
+            frequencies = np.logspace(np.log10(Quantity(fstart)), np.log10(Quantity(fstop)),
+                                      npoints)
         self.frequencies = np.array(frequencies)
 
     def response(self, opamp):
@@ -858,7 +860,8 @@ class OpAmpNoisePlotter(SpectralDensityPlotter, metaclass=abc.ABCMeta):
             if any([param is None for param in (fstart, fstop, npoints)]):
                 raise ValueError("either frequencies, or all of fstart, fstop and npoints must be "
                                  "specified")
-            frequencies = np.logspace(np.log10(fstart), np.log10(fstop), npoints)
+            frequencies = np.logspace(np.log10(Quantity(fstart)), np.log10(Quantity(fstop)),
+                                      npoints)
         self.frequencies = np.array(frequencies)
 
     @abc.abstractmethod
