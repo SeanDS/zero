@@ -14,7 +14,7 @@ from tabulate import tabulate
 
 from .config import ZeroConfig
 from .components import Resistor, Capacitor, Inductor, OpAmp, Input, Component, Node
-from .data import Response, Series, MultiNoiseDensity
+from .data import Series, Response, NoiseDensity, MultiNoiseDensity
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -849,3 +849,46 @@ class OpAmpGainPlotter(BodePlotter):
 
     def show(self):
         plt.show()
+
+
+class OpAmpNoisePlotter(SpectralDensityPlotter, metaclass=abc.ABCMeta):
+    def __init__(self, title, frequencies=None, fstart=None, fstop=None, npoints=1000):
+        super().__init__(title=title)
+        if frequencies is None:
+            if any([param is None for param in (fstart, fstop, npoints)]):
+                raise ValueError("either frequencies, or all of fstart, fstop and npoints must be "
+                                 "specified")
+            frequencies = np.logspace(np.log10(fstart), np.log10(fstop), npoints)
+        self.frequencies = np.array(frequencies)
+
+    @abc.abstractmethod
+    def noise(self, opamp):
+        raise NotImplementedError
+
+    def plot(self, opamps):
+        super().plot([self.noise(opamp) for opamp in opamps])
+
+    def show(self):
+        plt.show()
+
+
+class OpAmpVoltageNoisePlotter(OpAmpNoisePlotter):
+    def __init__(self, **kwargs):
+        super().__init__(title="Voltage noise", **kwargs)
+
+    def noise(self, opamp):
+        series = Series(self.frequencies, opamp.voltage_noise.noise_voltage(self.frequencies))
+        spectral_density = NoiseDensity(source=opamp.node3, sink=opamp.node3, series=series)
+        spectral_density.label = opamp.model
+        return spectral_density
+
+
+class OpAmpCurrentNoisePlotter(OpAmpNoisePlotter):
+    def __init__(self, **kwargs):
+        super().__init__(title="Current noise", **kwargs)
+
+    def noise(self, opamp):
+        series = Series(self.frequencies, opamp.non_inv_current_noise.noise_current(self.frequencies))
+        spectral_density = NoiseDensity(source=opamp.node1, sink=opamp.node1, series=series)
+        spectral_density.label = opamp.model
+        return spectral_density

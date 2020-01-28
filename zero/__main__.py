@@ -13,7 +13,7 @@ from .solution import Solution
 from .liso import LisoInputParser, LisoOutputParser, LisoRunner, LisoParserError
 from .datasheet import PartRequest
 from .components import OpAmp
-from .display import OpAmpGainPlotter
+from .display import OpAmpVoltageNoisePlotter, OpAmpCurrentNoisePlotter, OpAmpGainPlotter
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
                      ConfigAlreadyExistsException, LibraryQueryEngine, LibraryParserError)
 
@@ -282,14 +282,32 @@ def library_show(paged):
 @click.option("--sort-vmax", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
 @click.option("--sort-imax", type=LIBRARY_FILTER_CHOICE, default="DESC", show_default=True)
 @click.option("--sort-sr", type=LIBRARY_FILTER_CHOICE, default="ASC", show_default=True)
-@click.option("--show/--no-show", default=True, show_default=True, help="Print results as a table.")
+@click.option("--show-table/--no-show-table", default=True, show_default=True,
+              help="Print results as a table.")
 @click.option("--paged", is_flag=True, default=False, help="Print results with paging.")
-@click.option("--save", type=click.File("wb", lazy=False), multiple=True,
+@click.option("--save-data", type=click.File("wb", lazy=False), multiple=True,
               help="Save search results to file. The file format is decided based on the specified "
                    "extension. Supported extensions are \"csv\" and \"txt\". Can be specified "
                    "multiple times.")
+@click.option("--plot-voltage-noise/--no-plot-voltage-noise", is_flag=True, default=False,
+              help="Display op-amp voltage noise as figure.")
+@click.option("--plot-current-noise/--no-plot-current-noise", is_flag=True, default=False,
+              help="Display op-amp current noise as figure.")
+@click.option("--plot-gain/--no-plot-gain", is_flag=True, default=False,
+              help="Display op-amp open loop gain as figure.")
+@click.option("--save-voltage-noise-figure", type=click.File("wb", lazy=False), multiple=True,
+              help="Save image of voltage noise figure to file. Can be specified multiple times.")
+@click.option("--save-current-noise-figure", type=click.File("wb", lazy=False), multiple=True,
+              help="Save image of current noise figure to file. Can be specified multiple times.")
+@click.option("--save-gain-figure", type=click.File("wb", lazy=False), multiple=True,
+              help="Save image of open loop gain figure to file. Can be specified multiple times.")
+@click.option("--fstart", type=float, default=1e0, show_default=True, help="Plot start frequency.")
+@click.option("--fstop", type=float, default=1e9, show_default=True, help="Plot stop frequency.")
+@click.option("--npoints", type=int, default=1000, show_default=True, help="Plot number of points.")
 def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorner, sort_inoise,
-                   sort_icorner, sort_vmax, sort_imax, sort_sr, show, paged, save):
+                   sort_icorner, sort_vmax, sort_imax, sort_sr, show_table, paged, save_data,
+                   plot_voltage_noise, plot_current_noise, plot_gain, save_voltage_noise_figure,
+                   save_current_noise_figure, save_gain_figure, fstart, fstop, npoints):
     """Search Zero op-amp library.
 
     Op-amp parameters listed in the library can be searched:
@@ -334,25 +352,36 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
         sys.exit(1)
 
     if not devices:
-        click.echo("No op-amps found", err=True)
-        sys.exit(1)
+        click.echo("No op-amps found.")
+        sys.exit(0)
+
     nmodel = len(devices)
+
     if nmodel == 1:
         opstr = "op-amp"
     else:
         opstr = "op-amps"
+
+    opamps = []
     rows = []
+
     for device in devices:
         rows.append([str(getattr(device, param)) for param in engine.parameters])
+
+        opamp = OpAmp(model=OpAmpLibrary.format_name(device.model), node1="input", node2="gnd",
+                      node3="output", **LIBRARY.get_data(device.model))
+        opamps.append(opamp)
+
     table = tabulate(rows, engine.parameters, tablefmt=CONF["format"]["table"])
-    if show:
+    if show_table:
         click.echo(f"{nmodel} {opstr} found:")
         if paged:
             click.echo_via_pager(table)
         else:
             click.echo(table)
-    if save:
-        for path in save:
+
+    if save_data:
+        for path in save_data:
             pieces = os.path.splitext(path.name)
             if not len(pieces) == 2:
                 click.echo(f"Path {path} extension invalid.", err=True)
@@ -368,43 +397,25 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
                 writer.writerow(engine.parameters)
                 writer.writerows(rows)
 
-@library.command("opamp")
-@click.argument("models", type=str, nargs=-1, metavar="[MODEL]...")
-@click.option("--show/--no-show", is_flag=True, default=True, show_default=True,
-              help="Show op-amp data.")
-@click.option("--plot/--no-plot", is_flag=True, default=False,
-              help="Display open loop gain as figure.")
-@click.option("--fstart", type=float, default=1e0, show_default=True, help="Plot start frequency.")
-@click.option("--fstop", type=float, default=1e9, show_default=True, help="Plot stop frequency.")
-@click.option("--npoints", type=int, default=1000, show_default=True, help="Plot number of points.")
-@click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
-              help="Save image of figure to file. Can be specified multiple times.")
-def opamp_tools(models, show, plot, fstart, fstop, npoints, save_figure):
-    """Display library op-amp parameters."""
-    if not models:
-        click.echo("No op-amps specified.")
-        sys.exit(0)
+    def _plot_save_figure(plot_flag, save_flag, plot_type):
+        """Plot and/or save an op-amp plot of a particular type."""
+        if plot_flag or save_flag:
+            plotter = plot_type(fstart=fstart, fstop=fstop, npoints=npoints)
+            plotter.plot(opamps)
 
-    opamps = []
-    for model in models:
-        library_opamp = LIBRARY.get_opamp(model)
-        if show:
-            print(repr(library_opamp))
-        opamp = OpAmp(model=OpAmpLibrary.format_name(model), node1="input", node2="gnd",
-                      node3="output", **LIBRARY.get_data(model))
-        opamps.append(opamp)
-    # Determine whether to generate plot.
-    generate_plot = plot or save_figure
-    if generate_plot:
-        plotter = OpAmpGainPlotter(fstart=fstart, fstop=fstop, npoints=npoints)
-        plotter.plot(opamps)
-        if save_figure:
-            for save_path in save_figure:
-                # NOTE: use figure file's name so that Matplotlib can identify the file type
-                # appropriately.
-                plotter.save(save_path.name)
-    if plot:
-        plotter.show()
+            if save_flag:
+                for save_path in save_flag:
+                    # NOTE: use figure file's name so that Matplotlib can identify the file type
+                    # appropriately.
+                    plotter.save(save_path.name)
+
+            if plot_flag:
+                plotter.show()
+
+    _plot_save_figure(plot_voltage_noise, save_voltage_noise_figure, OpAmpVoltageNoisePlotter)
+    _plot_save_figure(plot_current_noise, save_current_noise_figure, OpAmpCurrentNoisePlotter)
+    _plot_save_figure(plot_gain, save_gain_figure, OpAmpGainPlotter)
+
 
 @cli.group()
 def config():
