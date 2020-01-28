@@ -374,6 +374,11 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
 @click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of figure to file. Can be specified multiple times.")
 def opamp_tools(models, show, plot, fstart, fstop, npoints, save_figure):
+    """Op-amp tools."""
+    if not models:
+        click.echo("No op-amps specified.")
+        sys.exit(0)
+
     opamps = []
     for model in models:
         library_opamp = LIBRARY.get_opamp(model)
