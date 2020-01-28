@@ -15,7 +15,7 @@ from .datasheet import PartRequest
 from .components import OpAmp
 from .display import OpAmpGainPlotter
 from .config import (ZeroConfig, OpAmpLibrary, ConfigDoesntExistException,
-                     ConfigAlreadyExistsException, LibraryQueryEngine)
+                     ConfigAlreadyExistsException, LibraryQueryEngine, LibraryParserError)
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -326,7 +326,13 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
                   "icorner": sort_icorner == "DESC", "vmax": sort_vmax == "DESC",
                   "imax": sort_imax == "DESC", "sr": sort_sr == "DESC"}
     # Get results.
-    devices = engine.query(query, sort_order=sort_order)
+    try:
+        devices = engine.query(query, sort_order=sort_order)
+    except (LibraryParserError, ValueError) as error:
+        click.echo(str(error), err=True)
+        click.echo("Add --help for syntax help.", err=True)
+        sys.exit(1)
+
     if not devices:
         click.echo("No op-amps found", err=True)
         sys.exit(1)
@@ -374,7 +380,7 @@ def library_search(query, sort_a0, sort_gbw, sort_delay, sort_vnoise, sort_vcorn
 @click.option("--save-figure", type=click.File("wb", lazy=False), multiple=True,
               help="Save image of figure to file. Can be specified multiple times.")
 def opamp_tools(models, show, plot, fstart, fstop, npoints, save_figure):
-    """Op-amp tools."""
+    """Display library op-amp parameters."""
     if not models:
         click.echo("No op-amps specified.")
         sys.exit(0)
