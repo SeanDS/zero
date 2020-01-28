@@ -140,11 +140,11 @@ Parentheses may be used to delimit groups:
 Display
 ~~~~~~~
 
-The results are displayed in a table. The rows are sorted based on the order in which the parameters
-are defined in the search query, from left to right, with the leftmost parameter being sorted last.
-The default sort direction is defined based on the parameter. The sort direction can be specified
-explicitly as ``ASC`` (ascending) or ``DESC`` (descending) with the corresponding ``--sort``
-parameter:
+The results are by default displayed in a table. The rows are sorted based on the order in which the
+parameters are defined in the search query, from left to right, with the leftmost parameter being
+sorted last. The default sort direction is defined based on the parameter. The sort direction can be
+specified explicitly as ``ASC`` (ascending) or ``DESC`` (descending) with the corresponding
+``--sort`` parameter:
 
 ==================  ===========  =================
 Flag                Parameter    Default direction
@@ -162,6 +162,18 @@ Flag                Parameter    Default direction
 ==================  ===========  =================
 
 Parameters that are not explicitly searched are not ordered.
+
+The display of the results table can be disabled using the ``--no-show-table`` flag. The results
+can also be saved into a text file by specifying it with ``--save-data``. The specified file
+extension will be used to guess the format to use, e.g. `csv` for comma-separated values or `txt`
+for tab-separated values.
+
+Results can also be plotted. The flags ``--plot-voltage-noise``, ``--plot-current-noise`` and
+``--plot-gain`` can be used to plot the voltage and current noise or open loop gain of the op-amp,
+respectively. Generated plots can also be saved by specifying a filename (or multiple filenames,
+if you like) with the ``--save-voltage-noise-figure``, ``--save-current-noise-figure`` and
+``--save-gain-figure`` options, respectively. Figures can be saved without being displayed with
+``--no-plot-voltage-noise``, ``--no-plot-current-noise`` and ``--no-plot-gain``, respectively.
 
 Command reference
 -----------------
