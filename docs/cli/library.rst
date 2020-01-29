@@ -175,6 +175,14 @@ if you like) with the ``--save-voltage-noise-figure``, ``--save-current-noise-fi
 ``--save-gain-figure`` options, respectively. Figures can be saved without being displayed with
 ``--no-plot-voltage-noise``, ``--no-plot-current-noise`` and ``--no-plot-gain``, respectively.
 
+The following command will produce the plot below.
+
+.. code-block:: bash
+
+  $ zero library search "gbw > 800M & ((vnoise < 10n & inoise < 10p) | (vnoise < 100n & inoise < 1p)) & model != OP00" --plot-gain --fstop 1M
+
+.. image:: /_static/cli-opamp-gain.svg
+
 Command reference
 -----------------
 
