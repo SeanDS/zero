@@ -67,11 +67,17 @@ The steps below should be followed when creating a new release:
 #. Delete the release branch: ``git branch -d release/x.x.x``.
 #. Push all changes to ``master`` and ``develop`` and the new tag to origin.
 
+Note that when a new tag is pushed to the `ligo.org` GitLab server, the CI runner automatically
+creates and uploads a new PyPI release.
+
 Updating PyPI (pip) package
 ---------------------------
 
 This requires `twine <https://packaging.python.org/key_projects/#twine>`__ and the credentials for
 the |Zero| PyPI project.
+
+By default, the GitLab CI runner will deploy a PyPI package automatically whenever a new tag is
+created. The instructions below are for when this must be done manually:
 
 #. Go to the source root directory.
 #. Checkout the ``master`` branch (so the release uses the correct tag).

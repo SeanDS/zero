@@ -61,15 +61,3 @@ You can at any time list the circuit's constituent components:
     	4. o1 [in+=nin, in-=nm, out=nout, model=LT1124]
     	5. r1 [in=n1, out=nm, R=430.0]
     	6. r2 [in=nm, out=nout, R=43000.0]
-
-You can also plot the circuit's node network using Graphviz, if installed:
-
-.. code:: python
-
-    >>> from zero.display import NodeGraph
-    >>> NodeGraph(parser.circuit)
-
-.. image:: /_static/liso-input-node-graph.svg
-
-Graphviz almost always produces a messy representation, but it can sometimes be useful to help
-spot simple mistakes in circuit definitions.

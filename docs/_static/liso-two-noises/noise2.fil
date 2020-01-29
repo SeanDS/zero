@@ -1,0 +1,15 @@
+r r1 400k nin n1
+r r2 400k n1 n2
+r r3 50 n5 n3
+r rs 230 n5 n6
+r led 48.6 n6 gnd
+c c1 20u n1 n3
+c c2 10u n2 gnd
+op op1 op27 n2 n3 n4
+op op2 buf634 n4 n5 n5
+
+freq log .003 300 1000
+
+uinput nin 0
+inputnoise n6 sum
+noisy all

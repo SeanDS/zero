@@ -38,7 +38,7 @@ op op5 op27 n15 n16 n16
 
 r r15 50 n16 gnd
 
-freq log .01 1000 300
+freq log .01 1000 1000
 
 uinput n1 n2 0
 noise n16 sum

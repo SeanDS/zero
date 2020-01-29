@@ -291,27 +291,19 @@ class LisoOutputParser(LisoParser):
                 raise ValueError("cannot build solution without either magnitude or phase, or "
                                  "both real and imaginary data columns present")
 
-            # Create appropriate response depending on analysis.
             if self.input_type == "voltage":
                 source = self.input_node_p
-
-                if response_output.OUTPUT_TYPE == "voltage":
-                    sink = self.circuit.get_node(response_output.node)
-                elif response_output.OUTPUT_TYPE == "current":
-                    sink = self.circuit[response_output.component]
-                else:
-                    raise ValueError("invalid output type")
             elif self.input_type == "current":
                 source = self._input_component
-
-                if response_output.OUTPUT_TYPE == "voltage":
-                    sink = self.circuit.get_node(response_output.node)
-                elif response_output.OUTPUT_TYPE == "current":
-                    sink = self.circuit[response_output.component]
-                else:
-                    raise ValueError("invalid output type")
             else:
                 raise ValueError("invalid input type")
+
+            if response_output.OUTPUT_TYPE == "voltage":
+                sink = self.circuit.get_node(response_output.node)
+            elif response_output.OUTPUT_TYPE == "current":
+                sink = self.circuit[response_output.component]
+            else:
+                raise ValueError("invalid output type")
 
             function = Response(series=series, source=source, sink=sink)
 
@@ -322,8 +314,16 @@ class LisoOutputParser(LisoParser):
 
     def _build_noise(self, data):
         """Build noise outputs"""
-        # The data sink is always the noise output element
-        sink = self.circuit[self.noise_output_element]
+        if self.input_refer:
+            if self.input_type == "voltage":
+                sink = self.input_node_p
+            elif self.input_type == "current":
+                sink = self._input_component
+            else:
+                raise ValueError("invalid input type")
+        else:
+            # The data sink is the noise output element.
+            sink = self.circuit[self.noise_output_element]
 
         # Now that we have all the noise sources, create noise outputs.
         for index, noisy_element in enumerate(self.noisy_elements):
@@ -405,6 +405,10 @@ class LisoOutputParser(LisoParser):
         self.n_nodes = t.lexer.lexmatch.group('n')
         t.lexer.begin('nodes')
 
+    def t_ANY_inputrefer(self, t):
+        r'\#Noise\sis\sINPUT-REFERRED\sto\s(.*)\sinput\sat\snode\s(.*).'
+        self.input_refer = True
+
     def t_ANY_noisysources(self, t):
         # match start of noise source section
         r'\#Noise\sis\scomputed\s(?P<ntype>at\snode|through\scomponent)\s(?:.+\:)?(?P<element>.+)\sfor\s\(nnoise=(?P<nnoise>\d+),\snnoisy=(?P<nnoisy>\d+)\)\s:'
@@ -458,6 +462,10 @@ class LisoOutputParser(LisoParser):
         r'\#OUTPUT\s(?P<nsource>\d+)\snoise\scurrents?\scaused\sby:'
         self.n_noise_sources = t.lexer.lexmatch.group('nsource')
         t.lexer.begin('noisecurrentoutputs')
+
+    def t_ANY_noiseinputreferred(self, t):
+        r'\#\sNoise\sis\sREFERRED\sTO\sTHE\sINPUT.'
+        pass
 
     def t_ANY_gnuplotoptions(self, t):
         # match start of gnuplot section
@@ -772,51 +780,42 @@ class LisoOutputParser(LisoParser):
             if prop.startswith("a0"):
                 kwargs["a0"] = value
             elif prop.startswith("gbw"):
-                unit = next(params)
-                kwargs["gbw"] = value + unit
+                # Combine number with unit since LISO often (always?) specifies combinations of
+                # scientific notation and SI prefixes.
+                kwargs["gbw"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("un"):
-                unit = next(params)
+                units = next(params)
                 # split off "/sqrt(Hz)"
-                unit = unit.rstrip("/sqrt(Hz)")
+                units = units.rstrip("/sqrt(Hz)")
                 # parse as V
-                voltage_noise = Quantity(value + unit, "V")
-                # change unit back
-                voltage_noise.unit = "V/sqrt(Hz)"
-                kwargs["vnoise"] = voltage_noise
+                kwargs["vnoise"] = Quantity(str(float(value)) + units)
             elif prop.startswith("uc"):
-                unit = next(params)
-                kwargs["vcorner"] = value + unit
+                kwargs["vcorner"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("in"):
-                unit = next(params)
+                units = next(params)
                 # split off "/sqrt(Hz)"
-                unit = unit.rstrip("/sqrt(Hz)")
+                units = units.rstrip("/sqrt(Hz)")
                 # parse as A
-                current_noise = Quantity(value + unit, "A")
-                # change unit back
-                current_noise.unit = "A/sqrt(Hz)"
-                kwargs["inoise"] = current_noise
+                kwargs["inoise"] = Quantity(str(float(value)) + units)
             elif prop.startswith("ic"):
-                unit = next(params)
-                kwargs["icorner"] = value + unit
+                kwargs["icorner"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("umax"):
-                unit = next(params)
-                kwargs["vmax"] = value + unit
+                kwargs["vmax"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("imax"):
-                unit = next(params)
-                kwargs["imax"] = value + unit
+                kwargs["imax"] = Quantity(str(float(value)) + next(params))
             elif prop.startswith("sr"):
-                unit = next(params)
+                next(params)
                 # parse without unit to avoid warning
-                slew_rate = Quantity(value, "V/s")
+                slew_rate = Quantity(str(float(value)), "V/s")
                 # convert from V/us to V/s
                 slew_rate *= 1e6
                 kwargs["sr"] = slew_rate
             elif prop.startswith("delay"):
                 if value != "0":
-                    unit = next(params)
+                    units = next(params)
                 else:
-                    unit = ""
-                kwargs["delay"] = value + unit
+                    units = ""
+                kwargs["delay"] = Quantity(str(float(value)) + units)
             elif prop.startswith("pole"):
                 # skip "at"
                 next(params)

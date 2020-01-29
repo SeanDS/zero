@@ -2,6 +2,7 @@
 on which simulations can be performed."""
 
 import logging
+from copy import deepcopy
 import numpy as np
 
 from .config import ZeroConfig, OpAmpLibrary
@@ -14,7 +15,7 @@ LIBRARY = OpAmpLibrary()
 
 
 class Circuit:
-    """Represents an electronic circuit containing components.
+    """Represents an electronic circuit containing components and nodes.
 
     A circuit can contain components like :class:`resistors <.components.Resistor>`,
     :class:`capacitors <.components.Capacitor>`, :class:`inductors <.components.Inductor>`
@@ -28,7 +29,7 @@ class Circuit:
     nodes : :class:`set` of :class:`.Node`
         The circuit nodes.
     """
-    # disallowed component names
+    # Disallowed component names.
     RESERVED_NAMES = ["all", "allop", "allr", "sum"]
 
     def __init__(self):
@@ -56,6 +57,38 @@ class Circuit:
         new_instance.components = list(self.components)
         new_instance.nodes = set(self.nodes)
         return new_instance
+
+    def __deepcopy__(self, memo):
+        """Deep copy circuit.
+
+        Creates a new circuit containing new copies of the components in this one. The new
+        components have identical properties but are stored in memory as new objects and so any
+        references to components from the old circuit in user code will not point to the new
+        versions.
+
+        This is useful when you want to create a "master" circuit and modify and analyse several
+        independent versions of it.
+
+        Notes
+        -----
+
+        :class:`Nodes <Node>` are by design singletons, existing in the global state of the Python
+        kernel, and so the new circuit references the same node objects as the old circuit.
+        """
+        new_instance = self.__class__()
+        new_instance.nodes = set()
+
+        # Shallow copy the nodes, and update the memo to make deepcopy think we already deep copied
+        # the nodes.
+        for node in self.nodes:
+            memo[id(node)] = node
+            new_instance.nodes.add(node)
+
+        # Deep copy the components. deepcopy() should use the already-copied nodes from above.
+        new_instance.components = deepcopy(self.components, memo)
+
+        return new_instance
+
 
     @property
     def non_gnd_nodes(self):
@@ -108,24 +141,19 @@ class Circuit:
         """
         if component is None:
             raise ValueError("component cannot be None")
-
         if component.name is None:
-            # assign name
+            # Assign name.
             self._set_default_name(component)
-
         if component.name in self:
             raise ValueError(f"element with name '{component.name}' already in circuit")
         elif component.name in self.RESERVED_NAMES:
             raise ValueError(f"component name '{component.name}' is reserved")
-
-        # add component to end of list
+        # Add component to end of list.
         self.components.append(component)
-
-        # add nodes
+        # Add nodes.
         for node in component.nodes:
             if node.name in self.component_names:
                 raise ValueError(f"node '{node.name}' is the same as existing circuit component")
-
             self.nodes.add(node)
 
     def add_resistor(self, *args, **kwargs):
@@ -169,15 +197,19 @@ class Circuit:
         ----------
         component : :class:`str` or :class:`.Component`
             The component to remove.
+
+        Raises
+        ------
+        :class:`.ComponentNotFoundError`
+            If the component is not found.
         """
         if isinstance(component, str):
-            # get component by name
+            # Get component by name.
             component = self.get_component(component)
-
-        # remove component
+        elif component not in self.components:
+            raise ComponentNotFoundError(component)
         self.components.remove(component)
-
-        # implicitly remove orphaned nodes by regenerating node set from components
+        # Implicitly remove orphaned nodes by regenerating node set from components.
         self._regenerate_node_set()
 
     def get_component(self, component_name):
@@ -185,7 +217,7 @@ class Circuit:
 
         Parameters
         ----------
-        component_name : :class:`str`
+        component_name : :class:`str` or :class:`.Component`
             The name of the component to fetch.
 
         Returns
@@ -195,16 +227,50 @@ class Circuit:
 
         Raises
         ------
-        :class:`ComponentNotFoundError`
+        :class:`.ComponentNotFoundError`
             If the component is not found.
         """
+        # Get the component name from the object, if appropriate.
+        component_name = getattr(component_name, "name", component_name)
         name = component_name.lower()
-
         for component in self.components:
             if name == component.name.lower():
                 return component
-
         raise ComponentNotFoundError(component_name)
+
+    def replace_component(self, current_component, new_component):
+        """Replace circuit component with a new one.
+
+        This can be used to replace components of the same type, but can also replace components of
+        different types as long as they have the same number of nodes.
+
+        Parameters
+        ----------
+        current_component : :class:`.Component`
+            The component to replace.
+        new_component : :class:`str` or :class:`.Component`
+            The new component.
+
+        Raises
+        ------
+        :class:`.ComponentNotFoundError`
+            If the current component is not in the circuit.
+        ValueError
+            If the new component is already in the circuit, or if the nodes of the new component are
+            incompatible with those of the current component.
+        """
+        current_component = self.get_component(current_component)
+        if new_component in self.components:
+            raise ValueError(f"{new_component} is already in the circuit")
+        if len(current_component.nodes) != len(new_component.nodes):
+            raise ValueError(f"{current_component} and {new_component} nodes are incompatible")
+        # Copy the nodes.
+        nodes = current_component.nodes
+        # Do the replacement.
+        self.remove_component(current_component)
+        LOGGER.debug(f"Overwriting {new_component}'s nodes with those from {current_component}'")
+        new_component.nodes = nodes
+        self.add_component(new_component)
 
     def has_component(self, component_name):
         """Check if component is present in circuit.
@@ -219,14 +285,18 @@ class Circuit:
         :class:`bool`
             True if component exists, False otherwise.
         """
-        return component_name.lower() in [name.lower() for name in self.component_names]
+        try:
+            self.get_component(component_name)
+        except ComponentNotFoundError:
+            return False
+        return True
 
     def get_node(self, node_name):
         """Get circuit node by name.
 
         Parameters
         ----------
-        node_name : :class:`str`
+        node_name : :class:`str` or :class:`.Node`
             The name of the node to fetch.
 
         Returns
@@ -239,12 +309,12 @@ class Circuit:
         :class:`NodeNotFoundError`
             If the node is not found.
         """
+        # Get the node name from the object, if appropriate.
+        node_name = getattr(node_name, "name", node_name)
         name = node_name.lower()
-
         for node in self.nodes:
             if name == node.name.lower():
                 return node
-
         raise NodeNotFoundError(name)
 
     def has_node(self, node_name):
@@ -260,7 +330,11 @@ class Circuit:
         :class:`bool`
             True if node exists, False otherwise.
         """
-        return node_name.lower() in [name.lower() for name in self.node_names]
+        try:
+            self.get_node(node_name)
+        except NodeNotFoundError:
+            return False
+        return True
 
     def get_element(self, element_name):
         """Get circuit element (component or node) by name.
@@ -281,17 +355,14 @@ class Circuit:
             If the element is not found.
         """
         name = element_name.lower()
-
         try:
             return self.get_component(name)
         except ComponentNotFoundError:
             pass
-
         try:
             return self.get_node(name)
         except NodeNotFoundError:
             pass
-
         raise ElementNotFoundError(element_name)
 
     def has_element(self, element_name):
@@ -307,7 +378,7 @@ class Circuit:
         :class:`bool`
             True if element exists, False otherwise.
         """
-        return element_name.lower() in [name.lower() for name in self.element_names]
+        return self.has_component(element_name) or self.has_node(element_name)
 
     def get_noise(self, noise_name):
         """Get noise by component or node name.

@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     # Add components.
     circuit.add_capacitor(value="10u", node1="gnd", node2="n1")
-    circuit.add_resistor(value="430", node1="n1", node2="nm")
+    circuit.add_resistor(value="430", node1="n1", node2="nm", name="r1")
     circuit.add_resistor(value="43k", node1="nm", node2="nout")
     circuit.add_capacitor(value="47p", node1="nm", node2="nout")
     circuit.add_library_opamp(model="LT1124", node1="gnd", node2="nm", node3="nout")
@@ -33,5 +33,5 @@ if __name__ == "__main__":
     noise_sum.label = "Total noise"
 
     # Plot.
-    solution.plot_noise(sink="nout")
-    solution.show()
+    plot = solution.plot_noise(sink="nout")
+    plot.show()

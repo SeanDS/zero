@@ -4,16 +4,14 @@ import logging
 from collections import defaultdict
 import datetime
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cycler
-from matplotlib.ticker import MultipleLocator
 
 from .config import ZeroConfig
 from .data import (Response, NoiseDensity, MultiNoiseDensity, ReferenceResponse, ReferenceNoise,
                    frequencies_match)
-from .components import BaseElement, Noise
+from .components import BaseElement
+from .noise import Noise
 from .format import Quantity
-from .misc import lighten_colours
+from .display import BodePlotter, SpectralDensityPlotter
 
 LOGGER = logging.getLogger(__name__)
 CONF = ZeroConfig()
@@ -57,20 +55,18 @@ class Solution:
         self.response_references = []
         self.noise_references = []
 
+        # Default plotters.
+        self.response_plotter = BodePlotter
+        self.noise_plotter = SpectralDensityPlotter
+        # Last created plotter.
+        self._last_plotter = None
+
         self._name = None
 
         # Creation date.
         self._creation_date = datetime.datetime.now()
         # Solution name.
         self.name = name
-
-        # Line style group cycle.
-        self._linestyles = ["-", "--", "-.", ":"]
-
-        # Default colour cycle.
-        self._default_color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        # Cycles by group.
-        self._group_colours = {}
 
         self.frequencies = frequencies
 
@@ -907,9 +903,9 @@ class Solution:
 
     def plot(self):
         if self.has_responses:
-            self.plot_responses()
+            self._last_plotter = self.plot_responses()
         if self.has_noise:
-            self.plot_noise()
+            self._last_plotter = self.plot_noise()
 
     def plot_responses(self, figure=None, group=None, groups=None, source=None, sources=None,
                        sink=None, sinks=None, xlabel=None, ylabel_mag=None, ylabel_phase=None,
@@ -955,41 +951,29 @@ class Solution:
 
         Returns
         -------
-        :class:`~matplotlib.figure.Figure`
-            The plotted figure.
+        :class:`.BasePlotter`
+            The plotter object.
         """
         # Plot default noise if no filters are being applied.
         default_none_param_names = ("group", "groups", "source", "sources", "sink", "sinks")
         default_none_params = (group, groups, source, sources, sink, sinks)
         if all([param is None for param in default_none_params]):
-            responses = self.default_responses
+            groups = self.default_responses
         else:
-            responses = self.filter_responses(source=source, sources=sources, sink=sink,
-                                              sinks=sinks, group=group, groups=groups)
-
-        if not responses:
+            groups = self.filter_responses(source=source, sources=sources, sink=sink, sinks=sinks,
+                                           group=group, groups=groups)
+        if not groups:
             filters = ", ".join([f"'{param}'" for param in default_none_param_names])
             raise NoDataException(f"No responses found. Consider setting one of {filters}.")
-
-        if xlabel is None:
-            xlabel = r"$\bf{Frequency}$ (Hz)"
-        if ylabel_mag is None:
-            if scale_db:
-                ylabel_mag = r"$\bf{Magnitude}$ (dB)"
-            else:
-                ylabel_mag = r"$\bf{Magnitude}$"
-        if ylabel_phase is None:
-            ylabel_phase = r"$\bf{Phase}$ ($\degree$)"
-
         # Add reference functions.
-        responses[self.DEFAULT_REF_GROUP_NAME] = self.response_references
-
+        groups[self.DEFAULT_REF_GROUP_NAME] = self.response_references
         # Draw plot.
-        figure = self._plot_bode(responses, figure=figure, xlabel=xlabel, ylabel_mag=ylabel_mag,
-                                 ylabel_phase=ylabel_phase, scale_db=scale_db, **kwargs)
-        LOGGER.info("response(s) plotted on %s", figure.canvas.get_window_title())
-
-        return figure
+        plotter = self.response_plotter(figure=figure, xlabel=xlabel, ylabel_mag=ylabel_mag,
+                                        ylabel_phase=ylabel_phase, scale_db=scale_db,
+                                        hidden_group_names=[self.DEFAULT_GROUP_NAME], **kwargs)
+        plotter.plot_groups(groups)
+        self._last_plotter = plotter
+        return plotter
 
     def plot_noise(self, figure=None, group=None, groups=None, source=None, sources=None, sink=None,
                    sinks=None, type=None, types=None, show_sums=True, xlabel=None, ylabel=None,
@@ -1032,8 +1016,8 @@ class Solution:
 
         Returns
         -------
-        :class:`~matplotlib.figure.Figure`
-            The plotted figure.
+        :class:`.BasePlotter`
+            The plotter object.
         """
         # Plot default noise if no filters are being applied.
         default_none_param_names = ("group", "groups", "source", "sources", "sink", "sinks", "type",
@@ -1041,249 +1025,41 @@ class Solution:
         default_none_params = (group, groups, source, sources, sink, sinks, type, types)
         if all([param is None for param in default_none_params]):
             # Filter against sum flag.
-            noise = self._filter_default_noise()
-
+            groups = self._filter_default_noise()
             if show_sums:
-                noise = self._merge_groupsets(noise, self.default_noise_sums)
+                groups = self._merge_groupsets(groups, self.default_noise_sums)
         else:
-            noise = self.filter_noise(source=source, sources=sources, sink=sink, sinks=sinks,
-                                      group=group, groups=groups, type=type, types=types)
-
+            groups = self.filter_noise(source=source, sources=sources, sink=sink, sinks=sinks,
+                                       group=group, groups=groups, type=type, types=types)
             if show_sums:
-                noise = self._merge_groupsets(noise, self.noise_sums)
-
-        if not noise:
+                groups = self._merge_groupsets(groups, self.noise_sums)
+        if not groups:
             filters = ", ".join([f"'{param}'" for param in default_none_param_names])
             raise NoDataException(f"No noise spectra found. Consider setting one of {filters}.")
-
-        if xlabel is None:
-            xlabel = r"$\bf{Frequency}$ (Hz)"
-
         if ylabel is None:
             # Show all plotted noise units.
             unit_tex = []
             noise_units = set()
-            for spectra in noise.values():
+            for spectra in groups.values():
                 noise_units.update([spectral_density.sink_unit for spectral_density in spectra])
             if noise_units:
                 unit_tex = [r"$\frac{\mathrm{" + unit + r"}}{\sqrt{\mathrm{Hz}}}$"
                             for unit in sorted(noise_units)]
             unit = ", ".join(unit_tex)
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
-
         # Add reference functions.
-        noise[self.DEFAULT_REF_GROUP_NAME] = self.noise_references
+        groups[self.DEFAULT_REF_GROUP_NAME] = self.noise_references
+        # Draw plot.
+        plotter = self.noise_plotter(figure=figure, xlabel=xlabel, ylabel=ylabel,
+                                     hidden_group_names=[self.DEFAULT_GROUP_NAME], **kwargs)
+        plotter.plot_groups(groups)
+        self._last_plotter = plotter
+        return plotter
 
-        figure = self._plot_spectral_density(noise, figure=figure, xlabel=xlabel, ylabel=ylabel,
-                                             **kwargs)
-        LOGGER.info("noise plotted on %s", figure.canvas.get_window_title())
-
-        return figure
-
-    def figure(self):
-        return plt.figure(figsize=(float(CONF["plot"]["size_x"]),
-                                   float(CONF["plot"]["size_y"])))
-
-    def bode_figure(self):
-        figure = self.figure()
-        ax1 = figure.add_subplot(211)
-        _ = figure.add_subplot(212, sharex=ax1)
-
-        return figure
-
-    def noise_figure(self):
-        figure = self.figure()
-        _ = figure.add_subplot(111)
-
-        return figure
-
-    def _plot_bode(self, responses, figure=None, legend=True, legend_loc="best", legend_groups=True,
-                   title=None, scale_db=True, xlim=None, mag_ylim=None, phase_ylim=None,
-                   xlabel=None, ylabel_mag=None, ylabel_phase=None, db_tick_major_step=20,
-                   db_tick_minor_step=10, phase_tick_major_step=30, phase_tick_minor_step=15):
-        if figure is None:
-            # create figure
-            figure = self.bode_figure()
-
-        if len(figure.axes) != 2:
-            raise ValueError("specified figure must contain two axes")
-
-        ax1, ax2 = figure.axes
-
-        for group, group_responses in responses.items():
-            if not group_responses:
-                # Skip empty group.
-                continue
-
-            with self._figure_style_context(group):
-                # Reset axes colour wheels.
-                ax1.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
-                ax2.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
-
-                if legend_groups and group != self.DEFAULT_GROUP_NAME:
-                    # Show group.
-                    legend_group = "(%s)" % group
-                else:
-                    legend_group = None
-
-                for response in group_responses:
-                    response.draw(ax1, ax2, label_suffix=legend_group, scale_db=scale_db)
-
-                if title:
-                    # Use ax1 since it's at the top. We could use figure.suptitle but this doesn't
-                    # behave with tight_layout.
-                    ax1.set_title(title)
-
-                if legend:
-                    ax1.legend(loc=legend_loc)
-
-                if xlim:
-                    ax1.set_xlim(xlim)
-                    ax2.set_xlim(xlim)
-                if mag_ylim:
-                    ax1.set_ylim(mag_ylim)
-                if phase_ylim:
-                    ax2.set_ylim(phase_ylim)
-
-                if xlabel is not None:
-                    ax2.set_xlabel(xlabel)
-                if ylabel_mag is not None:
-                    ax1.set_ylabel(ylabel_mag)
-                if ylabel_phase is not None:
-                    ax2.set_ylabel(ylabel_phase)
-                ax1.grid(zorder=CONF["plot"]["grid_zorder"])
-                ax2.grid(zorder=CONF["plot"]["grid_zorder"])
-
-                # Magnitude and phase tick locators.
-                if scale_db:
-                    ax1.yaxis.set_major_locator(MultipleLocator(base=db_tick_major_step))
-                    ax1.yaxis.set_minor_locator(MultipleLocator(base=db_tick_minor_step))
-                ax2.yaxis.set_major_locator(MultipleLocator(base=phase_tick_major_step))
-                ax2.yaxis.set_minor_locator(MultipleLocator(base=phase_tick_minor_step))
-
-        return figure
-
-    def _plot_spectral_density(self, noise, figure=None, legend=True, legend_loc="best",
-                               legend_groups=True, title=None, xlim=None, ylim=None, xlabel=None,
-                               ylabel=None):
-        if figure is None:
-            # create figure
-            figure = self.noise_figure()
-
-        if len(figure.axes) != 1:
-            raise ValueError("specified figure must contain one axis")
-
-        ax = figure.axes[0]
-
-        for group, spectra in noise.items():
-            if not spectra:
-                # Skip empty group.
-                continue
-
-            # reset axis colour wheel
-            ax.set_prop_cycle(None)
-
-            with self._figure_style_context(group):
-                # reset axes colour wheels
-                ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
-
-                if legend_groups and group != self.DEFAULT_GROUP_NAME:
-                    # Show group.
-                    legend_group = "(%s)" % group
-                else:
-                    legend_group = None
-
-                sums = []
-
-                for spectral_density in spectra:
-                    if isinstance(spectral_density, MultiNoiseDensity):
-                        # Leave to end as we need to set a new prop cycler on the axis.
-                        sums.append(spectral_density)
-                        continue
-
-                    spectral_density.draw(ax, label_suffix=legend_group)
-
-                with self._sum_context():
-                    ax.set_prop_cycle(plt.rcParams["axes.prop_cycle"])
-                    for sum_spectral_density in sums:
-                        sum_spectral_density.draw(ax, label_suffix=legend_group)
-
-                # overall figure title
-                if title:
-                    ax.set_title(title)
-
-                # legend
-                if legend:
-                    ax.legend(loc=legend_loc)
-
-                # limits
-                if xlim:
-                    ax.set_xlim(xlim)
-                if ylim:
-                    ax.set_ylim(ylim)
-
-                # Set other axis properties.
-                if xlabel is not None:
-                    ax.set_xlabel(xlabel)
-                if ylabel is not None:
-                    ax.set_ylabel(ylabel)
-                ax.grid(zorder=CONF["plot"]["grid_zorder"])
-
-        return figure
-
-    @property
-    def _grayscale_colours(self):
-        """Grayscale colour palette."""
-        greys = plt.get_cmap('Greys')
-        return greys(np.linspace(CONF["plot"]["sum_greyscale_cycle_start"],
-                                 CONF["plot"]["sum_greyscale_cycle_stop"],
-                                 CONF["plot"]["sum_greyscale_cycle_count"]))
-
-    def _figure_style_context(self, group):
-        """Figure style context manager.
-
-        Used to override the default style for a figure.
-        """
-        # Find group index.
-        group_index = self.groups.index(group)
-        # get line style according to group index
-        index = group_index % len(self._linestyles)
-
-        if group not in self._group_colours:
-            # brighten new cycle
-            cycle = lighten_colours(self._default_color_cycle, 0.5 ** group_index)
-            self._group_colours[group] = cycle
-
-        prop_cycler = cycler(color=self._group_colours[group])
-
-        settings = {"lines.linestyle": self._linestyles[index],
-                    "axes.prop_cycle": prop_cycler}
-
-        return plt.rc_context(settings)
-
-    def _sum_context(self):
-        """Sum figure style context manager. This sets the sum colors to greyscale."""
-        return plt.rc_context({"axes.prop_cycle": cycler(color=self._grayscale_colours)})
-
-    @staticmethod
-    def save_figure(figure, path, **kwargs):
-        """Save specified figure to specified path.
-
-        (path can be file object or string path)
-        """
-        # set figure as current figure
-        plt.figure(figure.number)
-
-        # squeeze things together
-        figure.tight_layout()
-
-        plt.savefig(path, **kwargs)
-
-    @staticmethod
-    def show():
-        """Show plots"""
-        plt.tight_layout()
-        plt.show()
+    def show(self):
+        """Show plot(s)."""
+        if self._last_plotter is not None:
+            self._last_plotter.show()
 
     def __str__(self):
         return self.name
@@ -1417,6 +1193,13 @@ class Solution:
         other : :class:`.Solution`
             The other solution to compare to.
 
+        Other Parameters
+        ----------------
+        defaults_only : :class:`bool`, optional
+            Whether to check only the default functions, or everything. Defaults to everything.
+        meta_only : :class:`bool`, optional
+            Whether to check only meta data, not function data, when comparing. Defaults to False.
+
         Returns
         -------
         :class:`bool`
@@ -1459,10 +1242,10 @@ class Solution:
             # absolute and relative worst indices
             iworst = np.argmax(np.abs(data_a - data_b))
             worst = np.abs(data_a[iworst] - data_b[iworst])
-            fworst = Quantity(frequencies[iworst], unit="Hz")
+            fworst = Quantity(frequencies[iworst], units="Hz")
             irelworst = np.argmax(np.abs((data_a - data_b) / data_b))
             relworst = np.abs((data_a[irelworst] - data_b[irelworst]) / data_b[irelworst])
-            frelworst = Quantity(frequencies[irelworst], unit="Hz")
+            frelworst = Quantity(frequencies[irelworst], units="Hz")
 
             if worst != 0:
                 # descriptions of worst
@@ -1494,9 +1277,9 @@ def matches_between(sol_a, sol_b, defaults_only=False, meta_only=False):
     sol_a, sol_b : :class:`.Solution`
         The solutions to compare.
     defaults_only : :class:`bool`, optional
-        Whether to check only the default functions, or everything.
+        Whether to check only the default functions, or everything. Defaults to everything.
     meta_only : :class:`bool`, optional
-        Whether to check only meta data when comparing.
+        Whether to check only meta data, not function data, when comparing. Defaults to False.
 
     Returns
     -------

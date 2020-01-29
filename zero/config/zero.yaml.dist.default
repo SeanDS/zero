@@ -2,7 +2,6 @@
 
 # Physical constants.
 constants:
-  kB: 1.3806488e-23
   T: 298.15
 
 # Formatting options.

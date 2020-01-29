@@ -38,5 +38,6 @@ if __name__ == "__main__":
     solution.scale_noise(pd_to_displacement, sink="input")
 
     # Plot. Note that the sink is now the input, since we projected the noise there.
-    solution.plot_noise(sink="displacement", ylim=(1e-23, 1e-18), title="Photodetector noise")
-    solution.show()
+    plot = solution.plot_noise(sink="displacement", ylim=(1e-23, 1e-18),
+                               title="Photodetector noise")
+    plot.show()

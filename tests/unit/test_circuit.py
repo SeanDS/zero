@@ -1,9 +1,14 @@
 """Circuit tests"""
 
 from unittest import TestCase
+from itertools import permutations
+from copy import deepcopy
+import numpy as np
 
 from zero import Circuit
 from zero.components import Resistor, Capacitor, Inductor, OpAmp, Node
+from zero.analysis import AcSignalAnalysis
+from ..data import ZeroDataTestCase
 
 
 class CircuitTestCase(TestCase):
@@ -154,7 +159,6 @@ class CircuitTestCase(TestCase):
         self.assertRaisesRegex(ValueError, r"element with name 'n1' already in circuit",
                                self.circuit.add_component, op1)
 
-
     def test_cannot_add_node_with_same_name_as_component(self):
         """Test node with same name as existing component cannot be added"""
         # first component
@@ -175,3 +179,81 @@ class CircuitTestCase(TestCase):
         self.circuit.add_component(r1)
         self.assertRaisesRegex(ValueError, r"node 'r1' is the same as existing circuit component",
                                self.circuit.add_component, op1)
+
+
+class TestComponentReplacement(ZeroDataTestCase):
+    def setUp(self):
+        super().setUp()
+        self.passives = [self._resistor(), self._resistor(),
+                         self._capacitor(), self._capacitor(),
+                         self._inductor(), self._inductor()]
+
+    def test_replace_passive_passive(self):
+        """Test passive component replacement."""
+        for cmp1, cmp2 in permutations(self.passives, 2):
+            with self.subTest((cmp1, cmp2)):
+                circuit = Circuit()
+                circuit.add_component(cmp1)
+                self.assertTrue(circuit.has_component(cmp1.name))
+                circuit.replace_component(cmp1, cmp2)
+                # Test circuit composition.
+                self.assertTrue(circuit.has_component(cmp2.name))
+                self.assertFalse(circuit.has_component(cmp1.name))
+                # Nodes in cmp2 should have been copied from cmp1.
+                self.assertEqual(cmp1.nodes, cmp2.nodes)
+
+    def test_replace_opamp_opamp(self):
+        """Test op-amp replacement."""
+        op1 = self._opamp()
+        op2 = self._opamp()
+        circuit = Circuit()
+        circuit.add_component(op1)
+        self.assertTrue(circuit.has_component(op1.name))
+        circuit.replace_component(op1, op2)
+        # Test circuit composition.
+        self.assertTrue(circuit.has_component(op2.name))
+        self.assertFalse(circuit.has_component(op1.name))
+        # Nodes in cmp2 should have been copied from cmp1.
+        self.assertEqual(op1.nodes, op2.nodes)
+
+    def test_cannot_replace_passive_opamp_or_opamp_passive(self):
+        """Test passive components cannot be replaced with op-amps (and vice versa)."""
+        opamp = self._opamp()
+        for passive in self.passives:
+            # Test replacement of op-amp.
+            with self.subTest((opamp, passive)):
+                circuit = Circuit()
+                circuit.add_component(opamp)
+                self.assertTrue(circuit.has_component(opamp.name))
+                self.assertRaises(ValueError, circuit.replace_component, opamp, passive)
+                # Test that the circuit still has the op-amp.
+                self.assertTrue(circuit.has_component(opamp.name))
+            # Test replacement of passive.
+            with self.subTest((passive, opamp)):
+                circuit = Circuit()
+                circuit.add_component(passive)
+                self.assertTrue(circuit.has_component(passive.name))
+                self.assertRaises(ValueError, circuit.replace_component, passive, opamp)
+                # Test that the circuit still has the passive.
+                self.assertTrue(circuit.has_component(passive.name))
+
+
+class TestCircuitCopying(ZeroDataTestCase):
+    def test_deep_copy(self):
+        """Test deep copying of a circuit."""
+        circuit1 = Circuit()
+        circuit1.add_resistor(name="R1", value=50, node1="n1", node2="n2")
+        circuit1.add_resistor(name="R2", value=50, node1="n2", node2="gnd")
+
+        frequencies = np.logspace(0, 3, 11)
+
+        analysis1 = AcSignalAnalysis(circuit=circuit1)
+        sol1 = analysis1.calculate(frequencies=frequencies, input_type="voltage", node="n1")
+
+        # Copy the circuit.
+        circuit2 = deepcopy(circuit1)
+
+        analysis2 = AcSignalAnalysis(circuit=circuit2)
+        sol2 = analysis2.calculate(frequencies=frequencies, input_type="voltage", node="n1")
+
+        self.assertTrue(sol1.equivalent_to(sol2))

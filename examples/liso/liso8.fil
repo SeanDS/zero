@@ -13,4 +13,4 @@ freq log .003 300 1000
 
 uinput nin 0
 #uoutput n6:db:deg
-noise n6 all
+noise n6 all sum

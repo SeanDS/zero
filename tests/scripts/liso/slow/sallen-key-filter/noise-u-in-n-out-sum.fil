@@ -10,7 +10,7 @@ c c2 10u n2 gnd
 op op1 op27 n2 n3 n4
 op op2 buf634 n4 n5 n5
 
-freq log .003 300 100
+freq log .003 300 1000
 
 uinput nin 0
 noise n6 sum

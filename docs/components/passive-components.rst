@@ -30,7 +30,7 @@ The resistance can be changed using the resistor's :meth:`~Resistor.resistance` 
 
    >>> r.resistance = "1.1M"
 
-In a circuit, resistor produce :class:`Johnson noise <.JohnsonNoise>`.
+In a circuit, resistor produce :class:`Johnson noise <.ResistorJohnsonNoise>`.
 
 Capacitors
 ==========

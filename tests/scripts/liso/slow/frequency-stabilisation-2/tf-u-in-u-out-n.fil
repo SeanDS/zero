@@ -173,7 +173,7 @@ c theEOM 20p nPC_OUT gnd
 # Computation commands
 ###############################################################################
 
-freq log 1 10M 100
+freq log 1 10M 1000
 
 uinput nTP1
 uoutput nPC_OUT nFAST_OUT
