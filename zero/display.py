@@ -566,6 +566,76 @@ class MatplotlibPlotter(BasePlotter, metaclass=abc.ABCMeta):
         self.legend = legend
         self.legend_loc = legend_loc
 
+    def _expand_linear_axis_limits(self, dmin, dmax, step, margin):
+        """Intelligently expand specified limits for a linearly scaled axis.
+
+        This is similar in behaviour to Matplotlib when axes.autolimit_mode = round_numbers, except
+        it applies the autoscale margin rcparam to the current y-axis limits before deciding whether
+        to add another major tick step to the limits.
+
+        The reason why this method might be used instead of the default Matplotlib behaviour is to
+        ensure that when axis data is close to the upper or lower limit of its axis, the axis limits
+        are expanded by a full `step` on top of the closest higher/lower step (for upper/lower
+        limits, respectively). By default, Matplotlib will simply expand by the margin settings,
+        which is by default 5%. Expanding by a full step is in some contexts neater.
+        """
+        # closeto, le and ge adapted from :class:`matplotlib.ticker._Edge_integer` (3.2.0).
+        def closeto(ms, edge):
+            tol = 1e-10
+            return abs(ms - edge) < tol
+
+        def le(x):
+            d, m = divmod(x, step)
+            if closeto(m / step, 1):
+                return (d + 1)
+            return d
+
+        def ge(x):
+            d, m = divmod(x, step)
+            if closeto(m / step, 0):
+                return d
+            return (d + 1)
+
+        factor = 1 + margin
+
+        vmin = le(dmin * factor) * step
+        vmax = ge(dmax * factor) * step
+        if vmin == vmax:
+            vmin -= 1
+            vmax += 1
+
+        return vmin, vmax
+
+    def _expand_log_axis_limits(self, dmin, dmax, base, margin):
+        """Intelligently expand specified limits for a log scaled axis.
+
+        This is similar in behaviour to Matplotlib when axes.autolimit_mode = round_numbers, except
+        it applies the autoscale margin rcparam to the current y-axis limits before deciding whether
+        to add another major tick step to the limits.
+
+        The reason why this method might be used instead of the default Matplotlib behaviour is to
+        ensure that when axis data is close to the upper or lower limit of its axis, the axis limits
+        are expanded by a full `base` on top of the closest higher/lower multiple of `base` (for
+        upper/lower limits, respectively). By default, Matplotlib will simply expand by the margin
+        settings, which is by default 5%. Expanding by a full step is in some contexts neater.
+        """
+        def _decade_less_equal(x, base):
+            return (x if x == 0 else
+                    -_decade_greater_equal(-x, base) if x < 0 else
+                    base ** np.floor(np.log(x) / np.log(base)))
+
+        def _decade_greater_equal(x, base):
+            return (x if x == 0 else
+                    -_decade_less_equal(-x, base) if x < 0 else
+                    base ** np.ceil(np.log(x) / np.log(base)))
+
+        factor = 1 + margin
+
+        vmin = _decade_less_equal(dmin * factor, base)
+        vmax = _decade_greater_equal(dmax * factor, base)
+
+        return vmin, vmax
+
     @property
     def figure(self):
         if self._figure is None:
@@ -670,7 +740,7 @@ class MplGroupPlotter(MatplotlibPlotter, BaseGroupPlotter, metaclass=abc.ABCMeta
 class BodePlotter(MplGroupPlotter):
     def __init__(self, scale_db=True, xlim=None, mag_ylim=None, phase_ylim=None, xlabel=None,
                  ylabel_mag=None, ylabel_phase=None, db_tick_major_step=20, db_tick_minor_step=10,
-                 phase_tick_major_step=30, phase_tick_minor_step=15, **kwargs):
+                 phase_tick_major_step=45, phase_tick_minor_step=15, **kwargs):
         super().__init__(**kwargs)
         self.scale_db = scale_db
         self.xlim = xlim
@@ -760,13 +830,37 @@ class BodePlotter(MplGroupPlotter):
             self.ax1.set_xlim(self.xlim)
             self.ax2.set_xlim(self.xlim)
 
-        if self.mag_ylim is not None:
-            self.ax1.set_ylim(self.mag_ylim)
+        mag_ylim = self.mag_ylim
+
+        if mag_ylim is None:
+            LOGGER.info("No magnitude y-axis limits specified; attempting to use reasonable values.")
+            yinterval = self.ax1.yaxis.get_data_interval()
+            _, mag_ymargin = self.ax1.margins()
+            if self.scale_db:
+                # Round up/down to nearest multiple.
+                # Note: you might be tempted to turn on axes.autolimit_mode = round_numbers here,
+                # which also does this rounding up/down, but also sets the log x-axis limits a full
+                # decade lower/above.
+                mag_ylim = self._expand_linear_axis_limits(*yinterval, self.db_tick_minor_step,
+                                                           mag_ymargin)
+            else:
+                mag_ylim = self._expand_log_axis_limits(*yinterval, 10, mag_ymargin)
+
+        self.ax1.set_ylim(mag_ylim)
 
         phase_ylim = self.phase_ylim
 
         if phase_ylim is None:
-            phase_ylim = CONF["plot"]["bode"]["default_phase_ylim"]
+            _, phase_ymargin = self.ax2.margins()
+            if CONF["plot"]["bode"]["show_full_phase_limits"]:
+                LOGGER.info("No phase y-axis limits specified; defaulting to full span due to "
+                            "show_full_phase_limits setting.")
+                yinterval = (-180, 180)
+            else:
+                LOGGER.info("No phase y-axis limits specified; attempting to use reasonable values.")
+                yinterval = self.ax2.yaxis.get_data_interval()
+            phase_ylim = self._expand_linear_axis_limits(*yinterval, self.phase_tick_minor_step,
+                                                         phase_ymargin)
 
         self.ax2.set_ylim(phase_ylim)
 
@@ -839,11 +933,23 @@ class SpectralDensityPlotter(MplGroupPlotter):
     def _finalise_plot(self):
         # Update the legend.
         self.axis.legend()
-        # Set limits.
+
+        self._set_limits()
+
+    def _set_limits(self):
+        """Set appropriate plot limits, if not explicitly specified."""
         if self.xlim is not None:
             self.axis.set_xlim(self.xlim)
-        if self.ylim is not None:
-            self.axis.set_ylim(self.ylim)
+
+        ylim = self.ylim
+
+        if ylim is None:
+            LOGGER.info("No y-axis limits specified; attempting to use reasonable values.")
+            yinterval = self.axis.yaxis.get_data_interval()
+            _, ymargin = self.axis.margins()
+            ylim = self._expand_log_axis_limits(*yinterval, 10, ymargin)
+
+        self.axis.set_ylim(ylim)
 
 
 class OpAmpGainPlotter(BodePlotter):

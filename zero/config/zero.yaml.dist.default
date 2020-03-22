@@ -41,7 +41,8 @@ plot:
 
   # BodePlotter options.
   bode:
-    default_phase_ylim: [-180, 180]
+    # If not limits are specified, show ±180° (plus a little extra margin).
+    show_full_phase_limits: true
 
   # Matplotlib configuration overrides.
   matplotlib:
