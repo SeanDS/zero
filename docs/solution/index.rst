@@ -212,7 +212,8 @@ The resulting solution's group names can be changed using :meth:`.rename_group`.
 Here is an example of solution combination using a :ref:`LISO model <liso/index:LISO compatibility>`
 of an RF summing box with two inputs and one output:
 
-.. code-block:: python
+.. plot::
+    :include-source:
 
     from zero.liso import LisoInputParser
 
@@ -264,8 +265,6 @@ of an RF summing box with two inputs and one output:
     # Plot.
     solution.plot()
     solution.show()
-
-.. image:: /_static/solution-combination.svg
 
 .. hint::
 

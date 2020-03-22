@@ -43,7 +43,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx_click.ext'
+    'sphinx_click.ext',
+    'matplotlib.sphinxext.plot_directive',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -378,3 +379,11 @@ napoleon_use_param = False
 
 # show return type on same line as description
 napoleon_use_rtype = False
+
+# -- Options for Matplotlib plot directive --------------------------------
+
+# Code to run before plot scripts.
+plot_pre_code = None
+
+# Plot formats to show under each generated plot.
+plot_formats = [('png', 200), 'pdf']
