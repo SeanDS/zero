@@ -746,14 +746,24 @@ class BodePlotter(MplGroupPlotter):
     def _finalise_plot(self):
         # Update the legend.
         self.ax1.legend(loc=self.legend_loc)
-        # Set limits.
+
+        self._set_limits()
+
+    def _set_limits(self):
+        """Set appropriate plot limits, if not explicitly specified."""
         if self.xlim is not None:
             self.ax1.set_xlim(self.xlim)
             self.ax2.set_xlim(self.xlim)
+
         if self.mag_ylim is not None:
             self.ax1.set_ylim(self.mag_ylim)
-        if self.phase_ylim is not None:
-            self.ax2.set_ylim(self.phase_ylim)
+
+        phase_ylim = self.phase_ylim
+
+        if phase_ylim is None:
+            phase_ylim = CONF["plot"]["bode"]["default_phase_ylim"]
+
+        self.ax2.set_ylim(phase_ylim)
 
 
 class SpectralDensityPlotter(MplGroupPlotter):

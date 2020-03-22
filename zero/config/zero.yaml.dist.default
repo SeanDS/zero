@@ -34,6 +34,10 @@ plot:
   sum_greyscale_cycle_count: 4  # number of steps
   grid_zorder: 1
 
+  # BodePlotter options.
+  bode:
+    default_phase_ylim: [-180, 180]
+
   # Matplotlib configuration overrides.
   matplotlib:
     legend.fontsize: 9
