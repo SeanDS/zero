@@ -719,8 +719,13 @@ class BodePlotter(MplGroupPlotter):
             ax1.set_ylabel(self.ylabel_mag)
         if self.ylabel_phase is not None:
             ax2.set_ylabel(self.ylabel_phase)
-        ax1.grid(zorder=CONF["plot"]["grid_zorder"])
-        ax2.grid(zorder=CONF["plot"]["grid_zorder"])
+
+        gridconf = CONF["plot"]["grid"]
+        ax1.grid(which="major", alpha=gridconf["alpha_major"], zorder=gridconf["zorder"])
+        ax1.grid(which="minor", alpha=gridconf["alpha_minor"], zorder=gridconf["zorder"])
+        ax2.grid(which="major", alpha=gridconf["alpha_major"], zorder=gridconf["zorder"])
+        ax2.grid(which="minor", alpha=gridconf["alpha_minor"], zorder=gridconf["zorder"])
+
         # Magnitude and phase tick locators.
         if self.scale_db:
             ax1.yaxis.set_major_locator(MultipleLocator(base=self.db_tick_major_step))
@@ -784,19 +789,23 @@ class SpectralDensityPlotter(MplGroupPlotter):
 
     def _create_figure(self):
         figure = super()._create_figure()
-        axis = figure.add_subplot(111)
+        ax = figure.add_subplot(111)
         # Draw labels etc.
         if self.title is not None:
             # Use ax1 since it's at the top. We could use figure.suptitle but this doesn't
             # behave with tight_layout.
-            axis.set_title(self.title)
+            ax.set_title(self.title)
         if self.legend:
-            axis.legend(loc=self.legend_loc)
+            ax.legend(loc=self.legend_loc)
         if self.xlabel is not None:
-            axis.set_xlabel(self.xlabel)
+            ax.set_xlabel(self.xlabel)
         if self.ylabel is not None:
-            axis.set_ylabel(self.ylabel)
-        axis.grid(zorder=CONF["plot"]["grid_zorder"])
+            ax.set_ylabel(self.ylabel)
+
+        gridconf = CONF["plot"]["grid"]
+        ax.grid(which="major", alpha=gridconf["alpha_major"], zorder=gridconf["zorder"])
+        ax.grid(which="minor", alpha=gridconf["alpha_minor"], zorder=gridconf["zorder"])
+
         # Magnitude and phase tick locators.
         return figure
 

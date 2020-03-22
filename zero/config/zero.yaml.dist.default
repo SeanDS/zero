@@ -32,7 +32,12 @@ plot:
   sum_greyscale_cycle_start: 1  # black
   sum_greyscale_cycle_stop: 0.2 # light grey
   sum_greyscale_cycle_count: 4  # number of steps
-  grid_zorder: 1
+
+  # Plot grid options.
+  grid:
+    zorder: 1
+    alpha_major: 1
+    alpha_minor: 0.3
 
   # BodePlotter options.
   bode:
