@@ -65,7 +65,8 @@ return the corresponding noise.
 
 Here is an example of defining a resistor current noise source and using it in a circuit:
 
-.. code-block:: python
+.. plot::
+    :include-source:
 
     import numpy as np
     from zero import Circuit
@@ -129,6 +130,3 @@ Here is an example of defining a resistor current noise source and using it in a
     # Plot.
     solution.plot_noise(sink="nout")
     solution.show()
-
-
-.. image:: /_static/resistor-current-noise.svg

@@ -19,9 +19,6 @@ STATICDIR = _static
 ### Dynamic plot dependencies
 # Static files
 ZEROSTATICDEPS = $(STATICDIR)/liso-input-node-graph.svg
-# Zero Python files.
-ZEROPYTHONDEPS = $(STATICDIR)/liso-input-response.svg $(STATICDIR)/solution-combination.svg \
-				 $(STATICDIR)/resistor-current-noise.svg
 # Native plots with LISO files.
 ZEROLISODEPS = $(STATICDIR)/liso-two-noises.svg
 # Native/LISO script comparisons.
@@ -82,11 +79,6 @@ cli-plots: $(ZEROCLIPLOTDEPS)
 $(CLIOPAMPGAINDEP):
 	@echo "Generating $@"
 	zero library search "gbw > 800M & ((vnoise < 10n & inoise < 10p) | (vnoise < 100n & inoise < 1p)) & model != OP00" --no-plot-gain --save-gain-figure $@ --fstop 1M
-
-# Generate SVG plots of Zero output using Python script.
-$(STATICDIR)/%.svg: $(STATICDIR)/zero-python/%.py
-	@echo "Generating $@ from $<"
-	python $< $@
 
 # Generate SVG plot of two noise example.
 $(STATICDIR)/liso-two-noises.svg:

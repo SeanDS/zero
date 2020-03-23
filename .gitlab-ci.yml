@@ -95,7 +95,7 @@ test validation:3.7:
 
 # Generate the documentation only on creation of new tags.
 deploy pages:
-  image: python:3.7
+  image: python:3.8
   stage: deploy
   only:
     refs:
@@ -125,7 +125,7 @@ deploy pages:
 
 # Generate PyPI release only on creation of new tags.
 deploy pypi:
-  image: python:3.7
+  image: python:3.8
   stage: deploy
   only:
     refs:

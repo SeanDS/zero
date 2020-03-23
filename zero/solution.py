@@ -958,6 +958,7 @@ class Solution:
         default_none_param_names = ("group", "groups", "source", "sources", "sink", "sinks")
         default_none_params = (group, groups, source, sources, sink, sinks)
         if all([param is None for param in default_none_params]):
+            # No filters have been applied.
             groups = self.default_responses
         else:
             groups = self.filter_responses(source=source, sources=sources, sink=sink, sinks=sinks,
@@ -976,8 +977,8 @@ class Solution:
         return plotter
 
     def plot_noise(self, figure=None, group=None, groups=None, source=None, sources=None, sink=None,
-                   sinks=None, type=None, types=None, show_sums=True, xlabel=None, ylabel=None,
-                   **kwargs):
+                   sinks=None, type=None, types=None, show_individual=True, show_sums=True,
+                   xlabel=None, ylabel=None, **kwargs):
         """Plot noise.
 
         Note: if only some of "groups", "sources", "sinks", "types" are specified, the others
@@ -996,6 +997,8 @@ class Solution:
             The sink(s) to plot noise at. If None, all matched sinks are plotted.
         type, types : :class:`str` or list of :class:`str`, optional
             The noise type(s) to plot. If None, all matched noise types are plotted.
+        show_individual : :class:`bool`, optional
+            Plot any individual noise spectra contained in this solution.
         show_sums : :class:`bool`, optional
             Plot any sums contained in this solution.
         xlabel, ylabel : :class:`str`, optional
@@ -1023,24 +1026,32 @@ class Solution:
         default_none_param_names = ("group", "groups", "source", "sources", "sink", "sinks", "type",
                                     "types")
         default_none_params = (group, groups, source, sources, sink, sinks, type, types)
+
+        grouped_noise = {}
         if all([param is None for param in default_none_params]):
-            # Filter against sum flag.
-            groups = self._filter_default_noise()
+            # No filters have been applied.
+            if show_individual:
+                grouped_noise = self._merge_groupsets(grouped_noise, self._filter_default_noise())
             if show_sums:
-                groups = self._merge_groupsets(groups, self.default_noise_sums)
+                grouped_noise = self._merge_groupsets(grouped_noise, self.default_noise_sums)
         else:
-            groups = self.filter_noise(source=source, sources=sources, sink=sink, sinks=sinks,
-                                       group=group, groups=groups, type=type, types=types)
+            if show_individual:
+                individual = self.filter_noise(source=source, sources=sources, sink=sink,
+                                               sinks=sinks, group=group, groups=groups, type=type,
+                                               types=types)
+                grouped_noise = self._merge_groupsets(grouped_noise, individual)
             if show_sums:
-                groups = self._merge_groupsets(groups, self.noise_sums)
-        if not groups:
+                sums = self.filter_noise_sums(sink=sink, sinks=sinks, group=group, groups=groups,
+                                              type=type, types=types)
+                grouped_noise = self._merge_groupsets(grouped_noise, sums)
+        if not grouped_noise:
             filters = ", ".join([f"'{param}'" for param in default_none_param_names])
             raise NoDataException(f"No noise spectra found. Consider setting one of {filters}.")
         if ylabel is None:
             # Show all plotted noise units.
             unit_tex = []
             noise_units = set()
-            for spectra in groups.values():
+            for spectra in grouped_noise.values():
                 noise_units.update([spectral_density.sink_unit for spectral_density in spectra])
             if noise_units:
                 unit_tex = [r"$\frac{\mathrm{" + unit + r"}}{\sqrt{\mathrm{Hz}}}$"
@@ -1048,11 +1059,11 @@ class Solution:
             unit = ", ".join(unit_tex)
             ylabel = r"$\bf{Noise}$" + f" ({unit})"
         # Add reference functions.
-        groups[self.DEFAULT_REF_GROUP_NAME] = self.noise_references
+        grouped_noise[self.DEFAULT_REF_GROUP_NAME] = self.noise_references
         # Draw plot.
         plotter = self.noise_plotter(figure=figure, xlabel=xlabel, ylabel=ylabel,
                                      hidden_group_names=[self.DEFAULT_GROUP_NAME], **kwargs)
-        plotter.plot_groups(groups)
+        plotter.plot_groups(grouped_noise)
         self._last_plotter = plotter
         return plotter
 
@@ -1069,27 +1080,39 @@ class Solution:
 
         if self.has_responses:
             data += "\n\tResponses:"
-            for response in self.responses:
-                data += f"\n\t\t{response}"
-
-                if self.is_default_response(response):
-                    data += " (default)"
+            for group, responses in self.responses.items():
+                if group == self.DEFAULT_GROUP_NAME:
+                    data += f"\n\t\tDefault group:"
+                else:
+                    data += f"\n\t\tGroup '{group}':"
+                for response in responses:
+                    data += f"\n\t\t\t{response}"
+                    if self.is_default_response(response):
+                        data += " (default)"
 
         if self.has_noise:
             data += "\n\tNoise spectra:"
-            for noise in self.noise:
-                data += f"\n\t\t{noise}"
-
-                if self.is_default_noise(noise):
-                    data += " (default)"
+            for group, noises in self.noise.items():
+                if group == self.DEFAULT_GROUP_NAME:
+                    data += f"\n\t\tDefault group:"
+                else:
+                    data += f"\n\t\tGroup '{group}':"
+                for noise in noises:
+                    data += f"\n\t\t\t{noise}"
+                    if self.is_default_noise(noise):
+                        data += " (default)"
 
         if self.has_noise_sums:
             data += "\n\tNoise sums:"
-            for noise_sum in self.noise_sums:
-                data += f"\n\t\t{noise_sum}"
-
-                if self.is_default_noise_sum(noise_sum):
-                    data += " (default)"
+            for group, noise_sums in self.noise_sums.items():
+                if group == self.DEFAULT_GROUP_NAME:
+                    data += f"\n\t\tDefault group:"
+                else:
+                    data += f"\n\t\tGroup '{group}':"
+                for noise_sum in noise_sums:
+                    data += f"\n\t\t\t{noise_sum}"
+                    if self.is_default_noise_sum(noise_sum):
+                        data += " (default)"
 
         return data
 
