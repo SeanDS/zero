@@ -94,7 +94,7 @@ test validation:3.7:
   <<: *template-test-validation
 
 # Generate the documentation only on creation of new tags.
-deploy pages:
+pages:
   image: python:3.8
   stage: deploy
   only:
@@ -124,7 +124,7 @@ deploy pages:
     - public
 
 # Generate PyPI release only on creation of new tags.
-deploy pypi:
+pypi:
   image: python:3.8
   stage: deploy
   only:
