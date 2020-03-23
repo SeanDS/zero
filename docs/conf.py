@@ -43,6 +43,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'sphinxcontrib.programoutput',
     'sphinx_click.ext',
     'matplotlib.sphinxext.plot_directive',
 ]
