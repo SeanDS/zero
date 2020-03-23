@@ -33,8 +33,12 @@ Showing the configuration
 -------------------------
 
 The combined contents of the built-in configuration and any user-defined additions or overrides can
-be printed to the screen with ``zero config show``. For large configurations, it is often useful to
-specify the ``--paged`` flag to allow the contents to be navigated.
+be printed to the screen with:
+
+.. command-output:: zero config show
+
+For large configurations, it is often useful to specify the ``--paged`` flag to allow the contents
+to be navigated.
 
 Styling plots
 -------------

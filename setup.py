@@ -27,6 +27,7 @@ EXTRAS = {
         "sphinx-autobuild",
         "sphinx-click",
         "sphinx_rtd_theme",
+        "sphinxcontrib-programoutput",
         "doc8",
         "numpydoc",
         "nbsphinx",

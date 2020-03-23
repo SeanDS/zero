@@ -45,25 +45,7 @@ Search queries are specified as a set of declarative filters after the ``zero li
 command. |Zero| implements an expression parser which allows queries to be
 arbitrarily long and complex, e.g.:
 
-.. code-block:: text
-
-    $ zero library search "model != OP* & ((vnoise <= 2n & vcorner < 10) | (vnoise <= 25n & inoise < 100f & icorner < 100))" --vnoise --vcorner --inoise --icorner
-
-    ╒═════════╤════════════════════╤════════════╤════════════════════╤════════════╕
-    │ Model   │ vnoise             │ vcorner    │ inoise             │ icorner    │
-    ╞═════════╪════════════════════╪════════════╪════════════════════╪════════════╡
-    │ PZTFET1 │ 1.0000 nV/sqrt(Hz) │ 1.0000 Hz  │ 1.0000 pA/sqrt(Hz) │ 1.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ PZTFET2 │ 1.0000 nV/sqrt(Hz) │ 1.0000 Hz  │ 1.0000 pA/sqrt(Hz) │ 1.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ LT1028  │ 850.00 pV/sqrt(Hz) │ 3.5000 Hz  │ 1.0000 pA/sqrt(Hz) │ 250.00 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ PZTFET3 │ 1.0000 nV/sqrt(Hz) │ 1.0000 Hz  │ 1.0000 pA/sqrt(Hz) │ 1.0000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ AD706   │ 17.000 nV/sqrt(Hz) │ 3.0000 Hz  │ 50.000 fA/sqrt(Hz) │ 10.000 Hz  │
-    ├─────────┼────────────────────┼────────────┼────────────────────┼────────────┤
-    │ AD8628  │ 22.000 nV/sqrt(Hz) │ 1.0000 µHz │ 5.0000 fA/sqrt(Hz) │ 1.0000 µHz │
-    ╘═════════╧════════════════════╧════════════╧════════════════════╧════════════╛
+.. command-output:: zero library search "model != OP* & ((vnoise <= 2n & vcorner < 10) | (vnoise <= 25n & inoise < 100f & icorner < 100))"
 
 The expression must be defined on one line. Whitespace is ignored. Where values are specified,
 such as "1n", these are parsed by :class:`.Quantity`
