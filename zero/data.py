@@ -233,6 +233,13 @@ class BaseFunction(metaclass=abc.ABCMeta):
             return
         self.plot_options[key] = value
 
+    def _escape_label_tex(self, text):
+        """Escape TeX commands in the specified text.
+
+        Currently only escapes underscores.
+        """
+        return text.replace("_", r"\_")
+
     @property
     def frequencies(self):
         return self.series.x
@@ -383,17 +390,23 @@ class Response(SingleSourceFunction, SingleSinkFunction):
     def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
         if not ignore_user_label and self._label is not None:
             return self._label
+        source_label = self.source.label
+        sink_label = self.sink.label
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)%s"
+            source_label = self._escape_label_tex(source_label)
+            sink_label = self._escape_label_tex(sink_label)
         else:
             format_str = "%s to %s (%s)%s"
 
         if suffix is not None:
+            if tex:
+                suffix = self._escape_label_tex(suffix)
             suffix = " %s" % suffix
         else:
             suffix = ""
 
-        return format_str % (self.source.label, self.sink.label, self.unit_str, suffix)
+        return format_str % (source_label, sink_label, self.unit_str, suffix)
 
     @property
     def unit_str(self):
@@ -525,12 +538,18 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
     def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
         if not ignore_user_label and self._label is not None:
             return self._label
+        noise_name = self.noise_name
+        sink_label = self.sink.label
         if tex:
             format_str = r"$\bf{%s}$ to $\bf{%s}$%s"
+            noise_name = self._escape_label_tex(noise_name)
+            sink_label = self._escape_label_tex(sink_label)
         else:
             format_str = "%s to %s%s"
 
         if suffix is not None:
+            if tex:
+                suffix = self._escape_label_tex(suffix)
             suffix = " %s" % suffix
         else:
             suffix = ""
