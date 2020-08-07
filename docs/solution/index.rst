@@ -292,3 +292,33 @@ A function can be made default by setting the ``default`` flag to ``True`` when 
     does not output every possible response or noise whereas |Zero| does. In this case, only the
     functions that are requested in the LISO script are set as defaults in the |Zero| solution, so
     that only the relevant functions are compared.
+
+Accessing the raw data
+----------------------
+
+Solutions are a high level wrapper around :ref:`functions <data/index:Functions>` which themselves
+contain :ref:`series <data/index:Series>`. The raw data can be accessed from a solution by first
+grabbing the respective function and grabbing the `x` or `y` data from the series:
+
+.. code-block:: python
+
+    >>> my_noise = solution.get_noise(op1.voltage_noise, "nout")
+    >>> print(my_noise.series.x)
+    array([1.00000000e+00, 1.00925289e+00, 1.01859139e+00, ...,
+           9.81747943e+03, 9.90831945e+03, 1.00000000e+04])
+    >>> print(my_noise.series.y)
+    array([1.29259971e-07, 1.28826858e-07, 1.28396274e-07, ...,
+           6.71859930e-08, 6.71854939e-08, 6.71849878e-08])
+
+These are Numpy arrays so you can perform any usual Numpy operation on them. For example, if you
+wished to find the y-axis value corresponding to the x-axis value nearest some reference value (this
+is often useful when using log-spaced axes), you could do the following:
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> x, y = my_noise.series.x, my_noise.series.y
+    >>> xref = 9.4  # The x-axis value to get the closest y-axis value to.
+    >>> index = np.abs(x - xref).argmin()
+    >>> print(x[index], y[index])  # The actual x-axis value and its corresponding y-value.
+    9.375620069258803 7.6263707283595e-08
