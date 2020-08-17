@@ -250,18 +250,32 @@ class BaseFunction(metaclass=abc.ABCMeta):
 
     @property
     def label(self):
-        return self._format_label()
+        return self._label
 
     @label.setter
     def label(self, label):
         self._label = label
 
-    @abc.abstractmethod
-    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
-        raise NotImplementedError
+    def formatted_label(self, **kwargs):
+        return self._format_label(self._label, **kwargs)
+
+    def _format_label(self, base, suffix=None, tex=True):
+        if self._label is not None:
+            LOGGER.debug(f"Using explicit label for {self!r}")
+            return self._label
+
+        if suffix is not None:
+            if tex:
+                # Show in monospace.
+                suffix = fr"$\tt{{{self._escape_label_tex(suffix)}}}$"
+            suffix = f" {suffix}"
+        else:
+            suffix = ""
+
+        return base + suffix
 
     def __str__(self):
-        return self.label
+        return self.formatted_label()
 
     def meta_data(self):
         """Meta data used to provide a hash and check for meta equivalence."""
@@ -368,7 +382,8 @@ class Response(SingleSourceFunction, SingleSinkFunction):
 
     def _draw_magnitude(self, axes, label_suffix=None, scale_db=True):
         """Add magnitude plot to axes"""
-        label = self._format_label(tex=True, suffix=label_suffix)
+        label = self.formatted_label(tex=True, suffix=label_suffix)
+
         if scale_db:
             # Decibel y-axis scaling.
             axes.semilogx(self.frequencies, self.db_magnitude, label=label, **self.plot_options)
@@ -387,26 +402,21 @@ class Response(SingleSourceFunction, SingleSinkFunction):
         self._draw_magnitude(axes[0], **kwargs)
         self._draw_phase(axes[1])
 
-    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
-        if not ignore_user_label and self._label is not None:
-            return self._label
+    def formatted_label(self, tex=True, **kwargs):
         source_label = self.source.label
         sink_label = self.sink.label
+
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)%s"
             source_label = self._escape_label_tex(source_label)
             sink_label = self._escape_label_tex(sink_label)
-        else:
-            format_str = "%s to %s (%s)%s"
 
-        if suffix is not None:
-            if tex:
-                suffix = self._escape_label_tex(suffix)
-            suffix = " %s" % suffix
+            format_str = r"$\bf{%s}$ to $\bf{%s}$ (%s)"
         else:
-            suffix = ""
+            format_str = "%s to %s (%s)"
 
-        return format_str % (source_label, sink_label, self.unit_str, suffix)
+        base = format_str % (source_label, sink_label, self.unit_str)
+
+        return self._format_label(base, **kwargs)
 
     @property
     def unit_str(self):
@@ -487,7 +497,7 @@ class NoiseDensityBase(SingleSinkFunction, metaclass=abc.ABCMeta):
 
         axes = axes[0]
 
-        label = self._format_label(tex=True, suffix=label_suffix)
+        label = self.formatted_label(tex=True, suffix=label_suffix)
         axes.loglog(self.frequencies, self.spectral_density, label=label, **self.plot_options)
 
     def __mul__(self, other):
@@ -535,26 +545,20 @@ class NoiseDensity(SingleSourceFunction, NoiseDensityBase):
     def noise_type(self):
         return self.source.noise_type
 
-    def _format_label(self, tex=False, suffix=None, ignore_user_label=False):
-        if not ignore_user_label and self._label is not None:
-            return self._label
+    def formatted_label(self, tex=True, **kwargs):
         noise_name = self.noise_name
         sink_label = self.sink.label
+
         if tex:
-            format_str = r"$\bf{%s}$ to $\bf{%s}$%s"
+            format_str = r"$\bf{%s}$ to $\bf{%s}$"
             noise_name = self._escape_label_tex(noise_name)
             sink_label = self._escape_label_tex(sink_label)
         else:
-            format_str = "%s to %s%s"
+            format_str = "%s to %s"
 
-        if suffix is not None:
-            if tex:
-                suffix = self._escape_label_tex(suffix)
-            suffix = " %s" % suffix
-        else:
-            suffix = ""
+        base = format_str % (noise_name, sink_label)
 
-        return format_str % (self.noise_name, self.sink.label, suffix)
+        return self._format_label(base, **kwargs)
 
     def _new_noise_density(self, new_sink, new_series):
         """Create a copy of this noise density with the specified sink and series."""
@@ -601,9 +605,8 @@ class MultiNoiseDensity(NoiseDensityBase):
         # call parent constructor
         super().__init__(sources=sources, series=series, **kwargs)
 
-        if label is None:
-            label = "Incoherent sum"
-        self.label = label
+        if label is not None:
+            self.label = label
 
         if constituents is not None:
             # check sink agrees with those set in constituents
@@ -632,42 +635,30 @@ class MultiNoiseDensity(NoiseDensityBase):
 
         return [spectral_density.noise_name for spectral_density in self.constituent_noise]
 
-    def _format_label(self, *args, suffix=None, ignore_user_label=False, **kwargs):
-        if not ignore_user_label and self._label is not None:
-            return self._label
-        if suffix is not None:
-            suffix = " %s" % suffix
-        else:
-            suffix = ""
-        return f"{self._label}{suffix}"
-
     def _new_noise_density(self, new_sink, new_series):
         """Create a copy of this noise density with the specified sink and series."""
         new_noise = self.__class__(sources=self.sources, sink=new_sink, series=new_series,
                                    label=self._label)
         return new_noise
 
+    def formatted_label(self, **kwargs):
+        return self._format_label("Incoherent sum", **kwargs)
+
 
 class Reference(BaseFunction, metaclass=abc.ABCMeta):
     def __init__(self, frequencies, data, label=None, unit=None, **kwargs):
         self._sink_unit = unit
         super().__init__(series=Series(frequencies, data), **kwargs)
-        if label is None:
-            label = "Reference"
-        self.label = label
 
-    def _format_label(self, *args, suffix=None, ignore_user_label=False, **kwargs):
-        if not ignore_user_label and self._label is not None:
-            return self._label
-        if suffix is not None:
-            suffix = " %s" % suffix
-        else:
-            suffix = ""
-        return f"{self._label}{suffix}"
+        if label is not None:
+            self.label = label
 
     @property
     def sink_unit(self):
         return self._sink_unit
+
+    def formatted_label(self, **kwargs):
+        return self._format_label("Reference", **kwargs)
 
 
 class ReferenceResponse(Reference, Response):

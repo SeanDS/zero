@@ -407,7 +407,7 @@ class Solution:
                 labels = [labels]
             for group, group_responses in responses.items():
                 for response in list(group_responses): # List required to allow item removal.
-                    if response.label not in labels:
+                    if response.formatted_label(tex=False) not in labels:
                         # No match.
                         group_responses.remove(response)
                 responses[group] = group_responses
@@ -665,7 +665,7 @@ class Solution:
                 labels = [labels]
             for group, group_spectra in spectra.items():
                 for noise in list(group_spectra): # List required to allow item removal.
-                    if noise.label not in labels:
+                    if noise.formatted_label(tex=False) not in labels:
                         # No match.
                         group_spectra.remove(noise)
                 spectra[group] = group_spectra

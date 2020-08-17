@@ -117,11 +117,10 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
 
     for liso_file in files:
         if compute_liso:
-            if add_path_suffix:
-                name_suffix = f" {liso_file.name}"
-            else:
-                name_suffix = ""
-            name = f"LISO{name_suffix}"
+            name_suffix = liso_file.name if add_path_suffix else ""
+
+            # Prepend LISO label for clarity when comparing to native.
+            name = f"LISO {name_suffix}" if compute_native else name_suffix
 
             # Run file with LISO and parse results.
             runner = LisoRunner(script_path=liso_file.name)
@@ -145,11 +144,10 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
                     sys.exit(1)
 
         if compute_native:
-            if add_path_suffix:
-                name_suffix = f" {liso_file.name}"
-            else:
-                name_suffix = ""
-            name = f"Zero{name_suffix}"
+            name_suffix = liso_file.name if add_path_suffix else ""
+
+            # Prepend Zero label for clarity when comparing to LISO.
+            name = f"Zero {name_suffix}" if compute_liso else name_suffix
 
             # Build argument list.
             kwargs = {"print_progress": state.verbose,
@@ -201,7 +199,7 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
     solution = solutions[0]
     if len(solutions) > 1:
         # Combine all simulated solutions.
-        solution = solution.combine(*solutions[1:], merge_groups=True)
+        solution = solution.combine(*solutions[1:])
 
     # Determine whether to generate plot.
     generate_plot = plot or save_figure
