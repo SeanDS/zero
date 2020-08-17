@@ -242,7 +242,7 @@ of an RF summing box with two inputs and one output:
     parser.parse("r nrfsrc 5 nrf gnd")
     # Calculate the solution.
     solutionlf = parser.solution()
-    solutionlf.name = "LF Circuit"
+    solutionlf.name = "LF"
 
     # Reset the parser's state.
     parser.reset()
@@ -255,7 +255,7 @@ of an RF summing box with two inputs and one output:
     parser.parse("r nlfsrc 5 nlf gnd")
     # Calculate the solution.
     solutionrf = parser.solution()
-    solutionrf.name = "RF Circuit"
+    solutionrf.name = "RF"
 
     # Combine the solutions. By default, this keeps the functions from each source solution in
     # different groups in the resulting solution. This makes the plot show the functions with
