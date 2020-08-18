@@ -20,11 +20,11 @@ STATICDIR = _static
 # Static files
 ZEROSTATICDEPS = $(STATICDIR)/liso-input-node-graph.svg
 # Native plots with LISO files.
-ZEROLISODEPS = $(STATICDIR)/liso-two-noises.svg
+ZEROLISODEPS = $(BUILDDIR)/liso-two-noises.svg
 # Native/LISO script comparisons.
-ZEROLISOCOMPAREDEPS = $(STATICDIR)/liso-compare-response.svg
+ZEROLISOCOMPAREDEPS = $(BUILDDIR)/liso-compare-response.svg
 # CLI example plots.
-CLIOPAMPGAINDEP = $(STATICDIR)/cli-opamp-gain.svg
+CLIOPAMPGAINDEP = $(BUILDDIR)/cli-opamp-gain.svg
 ZEROCLIPLOTDEPS = $(CLIOPAMPGAINDEP)
 
 .PHONY: help
@@ -81,12 +81,12 @@ $(CLIOPAMPGAINDEP):
 	zero library search "gbw > 800M & ((vnoise < 10n & inoise < 10p) | (vnoise < 100n & inoise < 1p)) & model != OP00" --no-plot-gain --save-gain-figure $@ --fstop 1M
 
 # Generate SVG plot of two noise example.
-$(STATICDIR)/liso-two-noises.svg:
+$(BUILDDIR)/liso-two-noises.svg:
 	@echo "Generating $@"
 	zero liso $(STATICDIR)/liso-two-noises/noise1.fil $(STATICDIR)/liso-two-noises/noise2.fil --no-plot --save-figure $@
 
 # Generate SVG plots comparing Zero to LISO using LISO files.
-$(STATICDIR)/%.svg: $(STATICDIR)/liso-compare/%.fil
+$(BUILDDIR)/%.svg: $(STATICDIR)/liso-compare/%.fil
 	@echo "Generating $@ from $<"
 	zero liso $< --compare --no-plot --save-figure $@
 

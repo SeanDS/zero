@@ -163,7 +163,7 @@ The following command will produce the plot below.
 
   $ zero library search "gbw > 800M & ((vnoise < 10n & inoise < 10p) | (vnoise < 100n & inoise < 1p)) & model != OP00" --plot-gain --fstop 1M
 
-.. image:: /_static/cli-opamp-gain.svg
+.. image:: /_build/cli-opamp-gain.svg
 
 Command reference
 -----------------

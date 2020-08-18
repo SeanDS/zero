@@ -94,7 +94,7 @@ input file itself and with LISO, then it will parse the LISO results and combine
 The resulting plot then contains each function, with the native results with solid lines and the
 LISO results with dashed lines:
 
-.. image:: /_static/liso-compare-response.svg
+.. image:: /_build/liso-compare-response.svg
 
 A textual representation of the differences can also be displayed by specifying ``--diff``. This
 must be provided in addition to ``--compare``. When specified, this prints a table containing
@@ -114,22 +114,20 @@ they occur:
 Simulating multiple input files together
 ----------------------------------------
 
-Multiple input or output files may be specified in the ``zero liso`` call. These are simulated
-separately and the results are merged together such that they can be plotted on one graph if
-possible. The results can only be combined with the simulations contain the same frequency vectors.
-If they do not have the same frequency vectors, an error is displayed and the program exits.
+Multiple input or output files may be specified in the ``zero liso`` call as long as they specify
+equivalent frequency vectors. These are each simulated separately and the results are merged
+together such that they can be plotted together. This can be useful for example for simulating
+similar circuits with different component values on one graph. Each script is plotted with a
+different line style and a gradually lighter colour map.
 
-This can be useful for example for simulating similar circuits with different component values on
-one graph. Each script is plotted with a different line style and a gradually lighter colour map.
-
-Here is an example that shows the noise at an output node and the same noise referred to the input
-on one plot:
+The example below shows the noise at an output node and the same noise referred to the input on one
+plot. The respective input filenames are appended to the legend labels.
 
 .. code-block:: bash
 
     $ zero liso noise1.fil noise2.fil
 
-.. image:: /_static/liso-two-noises.svg
+.. image:: /_build/liso-two-noises.svg
 
 Contents of ``noise1.fil``:
 
