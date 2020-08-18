@@ -166,15 +166,16 @@ manipulating and plotting a solution's functions, but they become important when
 By default, functions are added to a solution's default group. Functions can be added to another
 group by passing the ``group`` parameter to one of :meth:`.add_response`,
 :meth:`~.Solution.add_noise` or :meth:`.add_noise_sum`. Groups can be renamed with
-:meth:`.rename_group` and merged with :meth:`.merge_group`. The functions in the default group can
+:meth:`.rename_group` and merged with :meth:`.merge_groups`. The functions in the default group can
 be moved to a new group with :meth:`.move_default_group_functions`.
 
 Plotting with groups
 ~~~~~~~~~~~~~~~~~~~~
 
 When a solution containing multiple groups is plotted, the functions in each group have different
-formatting applied. The colours of functions within each group follow roughly the same progression
-as the first group, but with gradually lighter shades and different line styles.
+formatting applied by the :class:`default plotting class <.MplGroupPlotter>`. The colours of
+functions within each group follow roughly the same progression as the first group, but with
+gradually lighter shades and different line styles.
 
 To plot functions from different groups without different shades or line styles, you should combine
 them into the same group (see above).
@@ -190,16 +191,10 @@ a new solution containing the combined functions.
 
     In order to be combined, the solutions must have identical frequency vectors.
 
-Solutions can be combined in two ways as determined by :meth:`.combine`'s ``merge_groups`` flag.
-When ``merge_groups`` is ``False`` (the default), the groups in each source solution are copied into
-the resulting solution. The default group in each source solution is copied into a group with the
-name of the corresponding source solution, and other groups have the corresponding source solution's
-name appended in brackets. This form of combination supports the ``sol_a + sol_b`` syntax. When
-``merge_groups`` is ``True``, the groups in each source solution are merged in the resulting
-solution. This requires that the source solutions contain *no* identical functions in cases where
-the group names are the same (including the default group).
-
-The resulting solution's group names can be changed using :meth:`.rename_group`.
+The groups in each source solution are copied into a group with the same name in the resulting
+solution. This means the default group in each source solution is will be merged. It is up to the
+user to rename groups using :meth:`~.Solution.rename_group` or :meth:`~.Solution.merge_groups` prior
+to the merge if this behaviour is not desired.
 
 .. hint::
 
@@ -242,7 +237,9 @@ of an RF summing box with two inputs and one output:
     parser.parse("r nrfsrc 5 nrf gnd")
     # Calculate the solution.
     solutionlf = parser.solution()
-    solutionlf.name = "LF"
+    # Move the computed results from the default group to a named group so the comparison plot is
+    # clearer.
+    solutionlf.move_default_group_functions("LF")
 
     # Reset the parser's state.
     parser.reset()
@@ -255,11 +252,13 @@ of an RF summing box with two inputs and one output:
     parser.parse("r nlfsrc 5 nlf gnd")
     # Calculate the solution.
     solutionrf = parser.solution()
-    solutionrf.name = "RF"
+    # Move the computed results from the default group to a named group so the comparison plot is
+    # clearer.
+    solutionrf.move_default_group_functions("RF")
 
-    # Combine the solutions. By default, this keeps the functions from each source solution in
-    # different groups in the resulting solution. This makes the plot show the functions with
-    # different styles and shows the source solution's name as a suffix on each legend label.
+    # Combine the solutions. Since we regrouped the results into "LF" and "RF" groups, these new
+    # names get appended to the function labels in the legend and the curves are plotted with
+    # different styles.
     solution = solutionlf.combine(solutionrf)
 
     # Plot.
@@ -268,21 +267,29 @@ of an RF summing box with two inputs and one output:
 
 .. hint::
 
-    The above example makes a call to :meth:`~.Solution.plot`. This relies on :ref:`default
-    functions <solution/index:Default functions>` having been set, in this case by the :ref:`LISO
-    compatibility module <liso/index:LISO compatibility>`, which is normally not the case when a
-    circuit is constructed and simulated natively. In such cases, calls to :meth:`.plot_responses`
-    and :meth:`.plot_noise` with filter parameters are usually required.
+    The above example makes a call to :meth:`~.Solution.plot` instead of to
+    :meth:`~.Solution.plot_response` with the source, sink, group or other :ref:`function filter
+    parameters <solution/index:Retrieving functions>`. This default behaviour relies on
+    :ref:`default functions <solution/index:Default functions>` having been set in the solution,
+    which in this case is performed by the :ref:`LISO compatibility module <liso/index:LISO
+    compatibility>` automatically. When using Zero via a Python file or notebook, defaults are not
+    set automatically. In such cases, calls to :meth:`.plot_responses` and :meth:`.plot_noise` with
+    function filter parameters are required unless defaults are explicitly set with
+    :meth:`~.Solution.set_response_as_default`, :meth:`~.Solution.set_noise_as_default` and
+    :meth:`~.Solution.set_noise_sum_as_default`.
 
 Default functions
 -----------------
 
-Default functions are functions that are plotted when a call is made to :meth:`.plot_responses` or
-:meth:`.plot_noise` without any filters. Functions are not normally marked as default when an
-:ref:`analysis <analyses/index:Analyses>` builds a solution.
+Default functions are functions that are plotted when a call is made to :meth:`~.Solution.plot`,
+:meth:`~.Solution.plot_responses` or :meth:`~.Solution.plot_noise` without any filters. Functions
+are not normally marked as default when an :ref:`analysis <analyses/index:Analyses>` builds a
+solution.
 
 A function can be made default by setting the ``default`` flag to ``True`` when calling
-:meth:`~.Solution.add_response`, :meth:`~.Solution.add_noise` or :meth:`~.Solution.add_noise_sum`.
+:meth:`~.Solution.add_response`, :meth:`~.Solution.add_noise` or :meth:`~.Solution.add_noise_sum`,
+or by calling :meth:`~.Solution.set_response_as_default`, :meth:`~.Solution.set_noise_as_default`
+or :meth:`~.Solution.set_noise_sum_as_default`.
 
 .. note::
 

@@ -12,11 +12,11 @@ and then plotting its results.
     In order to solve a circuit, |Zero| implicitly calculates responses to all sinks or noise from
     all sources, depending on the type of analysis. LISO, however, only outputs the functions
     specified as outputs or noise sources in the script. Instead of throwing away this extra data,
-    |Zero| stores all calculated functions in its :ref:`solution <solution/index:Solutions>`.
-    In order for the produced plots to be identical to those of LISO, the functions requested in
-    LISO are set as `default` in the solution such that they are plotted by :meth:`.Solution.plot`.
-    The other functions, however, are still available to be plotted by calling
-    :meth:`.Solution.plot_responses` or :meth:`.Solution.plot_noise` with appropriate arguments.
+    |Zero| stores all calculated functions in its :ref:`solution <solution/index:Solutions>`. In
+    order for the produced plots to be identical to those of LISO, the functions requested in LISO
+    are set as `default` in the solution such that they are plotted by :meth:`.Solution.plot`. The
+    other functions, however, are still accessible. See the :ref:`section on default functions
+    <solution/index:Default functions>` for more information.
 
 Parsing LISO files
 ------------------

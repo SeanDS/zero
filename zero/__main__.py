@@ -110,23 +110,14 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
         click.echo("No input files provided. For help, specify --help.")
         sys.exit(0)
 
-    # Determine whether to add script paths to solution names.
-    add_path_suffix = len(files) > 1
-
     solutions = []
 
     for liso_file in files:
         if compute_liso:
-            name_suffix = liso_file.name if add_path_suffix else ""
-
-            # Prepend LISO label for clarity when comparing to native.
-            name = f"LISO {name_suffix}" if compute_native else name_suffix
-
             # Run file with LISO and parse results.
             runner = LisoRunner(script_path=liso_file.name)
             parser = runner.run(liso_path, plot=False)
             liso_solution = parser.solution()
-            liso_solution.name = name
         else:
             # Parse specified file.
             try:
@@ -144,11 +135,6 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
                     sys.exit(1)
 
         if compute_native:
-            name_suffix = liso_file.name if add_path_suffix else ""
-
-            # Prepend Zero label for clarity when comparing to LISO.
-            name = f"Zero {name_suffix}" if compute_liso else name_suffix
-
             # Build argument list.
             kwargs = {"print_progress": state.verbose,
                       "print_equations": print_equations,
@@ -156,11 +142,11 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
 
             # Get native solution.
             native_solution = parser.solution(force=True, **kwargs)
-            native_solution.name = name
 
         # Determine solution to show or save.
         if compare:
             liso_functions = liso_solution.default_functions[Solution.DEFAULT_GROUP_NAME]
+
             def liso_order(function):
                 """Return order as specified in LISO file for specified function"""
                 for index, liso_function in enumerate(liso_functions):
@@ -184,7 +170,7 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
             # Combine results from LISO and native simulations. This puts the functions from each
             # solution into groups with that solution's name so we can differentiate them on the
             # plot.
-            solution = native_solution.combine(liso_solution)
+            solution = native_solution.combine(liso_solution, suffices=("Zero", "LISO"))
         else:
             # Plot single result.
             if compute_liso:
@@ -194,12 +180,15 @@ def liso(ctx, files, liso, liso_path, resp_scale_db, compare, diff, plot, save_f
                 # Use native solution.
                 solution = native_solution
 
+        solution.name = liso_file.name
         solutions.append(solution)
 
     solution = solutions[0]
+
     if len(solutions) > 1:
         # Combine all simulated solutions.
-        solution = solution.combine(*solutions[1:])
+        filenames = [liso_file.name for liso_file in files]
+        solution = solution.combine(*solutions[1:], suffices=filenames)
 
     # Determine whether to generate plot.
     generate_plot = plot or save_figure

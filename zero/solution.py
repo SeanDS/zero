@@ -140,10 +140,12 @@ class Solution:
         ----------
         response : :class:`.Response`
             The response to add.
+
         default : `bool`, optional
             Whether this response is a default.
+
         group : `str`, optional
-            Group name.
+            The function group. If None, the default group is assumed.
 
         Raises
         ------
@@ -172,8 +174,9 @@ class Solution:
         ----------
         response : :class:`.Response`
             The response to set as default.
+
         group : str, optional
-            The function group. If None, the default is used.
+            The function group. If None, the default group is assumed.
 
         Raises
         ------
@@ -198,10 +201,12 @@ class Solution:
         ----------
         spectral_density : :class:`.NoiseDensity`
             The noise spectral density to add.
+
         default : :class:`bool`, optional
             Whether this noise spectral density is a default.
+
         group : :class:`str`, optional
-            The function group. If None, the default is used.
+            The function group. If None, the default group is assumed.
 
         Raises
         ------
@@ -248,10 +253,12 @@ class Solution:
         ----------
         noise_sum : :class:`.MultiNoiseDensity`
             The noise sum to add.
+
         default : :class:`bool`, optional
             Whether this noise sum is a default.
+
         group : :class:`str`, optional
-            The function group. If None, the default is used.
+            The function group. If None, the default group is assumed.
 
         Raises
         ------
@@ -552,7 +559,7 @@ class Solution:
     def rename_group(self, source_group, new_group):
         """Rename the specified group, moving all of its functions to the new group.
 
-        The new group must not already exist. If it does, :meth:`.merge_group` should be used
+        The new group must not already exist. If it does, :meth:`.merge_groups` should be used
         instead.
 
         Raises
@@ -561,11 +568,13 @@ class Solution:
             If the new group already exists.
         """
         if new_group in self.groups:
-            raise ValueError("use merge_group to move functions into an existing group")
+            raise ValueError("use merge_groups to move functions into an existing group")
+
         # Touch the new function group to create its key.
         self.functions[new_group]
+
         # Merge source functions into new group.
-        self.merge_group(source_group, new_group)
+        self.merge_groups(source_group, new_group)
 
     def move_default_group_functions(self, new_group):
         """Move the default group's functions to a new group.
@@ -573,9 +582,9 @@ class Solution:
         The default group will still be used for any new functions added to the solution with no
         explicit group, as usual.
         """
-        return self.merge_group(self.DEFAULT_GROUP_NAME, new_group)
+        return self.merge_groups(self.DEFAULT_GROUP_NAME, new_group)
 
-    def merge_group(self, source_group, target_group):
+    def merge_groups(self, source_group, target_group):
         """Merge functions from source group into target group.
 
         The source group cannot contain any functions in the target group.
@@ -589,14 +598,19 @@ class Solution:
         """
         if source_group not in self.groups:
             raise ValueError("source group does not exist")
+
         if self.DEFAULT_REF_GROUP_NAME in (source_group, target_group):
             raise ValueError("neither source nor target group can be the reference group")
+
         if target_group == self.DEFAULT_GROUP_NAME:
-            target_group_name = None
+            target_group = None
+
         for function in self.functions[source_group]:
-            self._add_function(function, group=target_group_name)
+            self._add_function(function, group=target_group)
+
         # Remove source group.
         del self.functions[source_group]
+
         # Move default settings.
         self.default_responses[target_group] = self.default_responses[source_group]
         self.default_noise[target_group] = self.default_noise[source_group]
@@ -1119,15 +1133,12 @@ class Solution:
     def __add__(self, other):
         return self.combine(other)
 
-    def combine(self, *others, name=None, merge_groups=False):
+    def combine(self, *others, suffices=None, name=None):
         """Combine this solution with the specified other solution(s).
 
-        The groups of each solution are copied to a new, combined solution. By default, the group
-        names have the source solution's name appended as a suffix in the form "group name (solution
-        name)", unless the group is the default group, in which case the functions are placed in a
-        group with the solution name only. When the `merge_groups` flag is True, in cases where
-        groups from each solution have the same name, their functions are combined into a single new
-        group as long as none of the functions are present in both source groups.
+        The groups of each solution are copied to a new, combined solution. Any groups with the same
+        names are merged. If this behaviour is not desired, the source groups must be renamed before
+        calling this method.
 
         To be able to be combined, the two solutions must have equivalent frequency vectors, and
         cannot have the same name.
@@ -1136,6 +1147,10 @@ class Solution:
         ----------
         *others : sequence of :class:`.Solution`
             The solution(s) to combine.
+
+        suffices : sequence of :py:class:`str`, optional
+            Suffices to append to each group name. If None, nothing is appended.
+
         name : :class:`str`, optional
             The name to give to the combined solution. Defaults to the "A + B + ..." where "A", "B",
             etc. are the source solutions.
@@ -1148,17 +1163,17 @@ class Solution:
         Raises
         ------
         ValueError
-            If the solutions have the same name.
-        ValueError
             If the solutions have different frequency vectors.
         ValueError
             If an identical function with an identical group is present in both solutions.
         """
         other_names = ", ".join([str(other) for other in others])
-        LOGGER.info(f"combining {self} solution with {other_names}")
+        LOGGER.info(f"Combining {self} solution with {other_names}")
+
+        if suffices is None:
+            suffices = [None] * (len(others) + 1)
+
         for other in others:
-            if str(self) == str(other):
-                raise ValueError("cannot combined groups with the same name")
             # Check frequencies match.
             if not frequencies_match(self.frequencies, other.frequencies):
                 raise ValueError(f"specified other solution '{other}' has incompatible frequencies")
@@ -1169,42 +1184,52 @@ class Solution:
         # Resultant solution.
         result = self.__class__(self.frequencies, name)
 
-        def new_group_name(group, solution):
-            if merge_groups:
-                new_group = group if group != self.DEFAULT_GROUP_NAME else None
-            else:
-                if group == solution.DEFAULT_GROUP_NAME:
-                    # Use the solution name as the group name.
-                    new_group = solution.name
-                else:
-                    # Append the solution name to the group name.
-                    new_group = f"{group} ({solution.name})"
-            return new_group
+        def merge_into_result(solution, suffix=None):
+            def new_group_name(group):
+                """Fetch the name of the group in the combined solution.
 
-        def merge_into_result(solution):
+                If the group is the default and the suffix is None, the group is returned as-is.
+                If the group is the default and the suffix is set, only the suffix is returned.
+                If both are set, they are concatinated and returned.
+                """
+                if group == solution.DEFAULT_GROUP_NAME:
+                    # The default group is denoted by None in `add_response`.
+                    group = None
+
+                if suffix is None:
+                    return group
+
+                if group is None:
+                    return suffix
+
+                return group + suffix
+
             for group, responses in solution.responses.items():
-                new_group = new_group_name(group, solution)
                 for response in responses:
                     is_default = solution.is_default_response(response, group)
+                    new_group = new_group_name(group)
                     result.add_response(response, default=is_default, group=new_group)
+
             for group, spectra in solution.noise.items():
-                new_group = new_group_name(group, solution)
                 for spectral_density in spectra:
                     is_default = solution.is_default_noise(spectral_density, group)
+                    new_group = new_group_name(group)
                     result.add_noise(spectral_density, default=is_default, group=new_group)
+
             for group, noise_sums in solution.noise_sums.items():
-                new_group = new_group_name(group, solution)
                 for noise_sum in noise_sums:
                     is_default = solution.is_default_noise_sum(noise_sum, group)
+                    new_group = new_group_name(group)
                     result.add_noise_sum(noise_sum, default=is_default, group=new_group)
+
             for response_ref in solution.response_references:
                 result.add_response_reference(reference=response_ref)
+
             for noise_ref in solution.noise_references:
                 result.add_noise_reference(reference=noise_ref)
 
-        merge_into_result(self)
-        for other in others:
-            merge_into_result(other)
+        for sol, suffix in zip([self] + list(others), suffices):
+            merge_into_result(sol, suffix)
 
         return result
 
