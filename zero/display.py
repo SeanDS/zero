@@ -648,7 +648,7 @@ class MatplotlibPlotter(BasePlotter, metaclass=abc.ABCMeta):
 
     def _create_figure(self):
         figure = plt.figure(figsize=(float(CONF["plot"]["size_x"]), float(CONF["plot"]["size_y"])))
-        LOGGER.info("figure created on %s", figure.canvas.get_window_title())
+        LOGGER.info("figure created") #  %s", figure.canvas.get_window_title())
         return figure
 
     def show(self, tight_layout=True):
